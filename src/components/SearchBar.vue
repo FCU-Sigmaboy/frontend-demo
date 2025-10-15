@@ -111,7 +111,6 @@ const handleSearch = () => {
     font-size: 16px;
     color: #fff;
     padding: 0 30px;
-    margin: 3px;
     height: 44px;
     transition: all 0.3s;
 

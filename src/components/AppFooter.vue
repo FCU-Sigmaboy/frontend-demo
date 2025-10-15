@@ -5,7 +5,7 @@
         <!-- Logo -->
         <BCol cols="12" lg="3" class="text-center text-lg-start mb-4 mb-lg-0">
           <div class="footer-logo">
-            <img :src="logoImage" alt="Logo" class="logo-img" />
+            <img src="../assets/Logo.png" alt="Logo" class="logo-img" />
           </div>
         </BCol>
 
@@ -56,6 +56,10 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
 .footer-content {
   margin-bottom: 30px;
+
+  .footer-content:nth-child(n+1) div {
+    margin-bottom: 0;
+  }
 }
 
 .footer-logo {
