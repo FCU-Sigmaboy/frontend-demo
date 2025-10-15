@@ -71,7 +71,7 @@ const handleSearch = () => {
     border: none;
     background: transparent;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 25px;
+    font-size: 16px;
     color: #000;
     padding: 0 30px;
 
@@ -108,9 +108,9 @@ const handleSearch = () => {
     border: none;
     border-radius: 50px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px;
+    font-size: 16px;
     color: #fff;
-    padding: 0 25px;
+    padding: 0 30px;
     margin: 3px;
     height: 44px;
     transition: all 0.3s;
