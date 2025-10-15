@@ -68,7 +68,7 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
 .footer-heading {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 30px;
+  font-size: 24px;
   color: #000;
   margin-bottom: 20px;
   font-weight: 400;
@@ -85,7 +85,7 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
   a {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px;
+    font-size: 16px;
     color: #000;
     text-decoration: none;
     transition: all 0.3s;
@@ -107,7 +107,7 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
 .copyright {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13.781px;
+  font-size: 12px;
   color: #000;
   margin: 0;
   line-height: 20px;

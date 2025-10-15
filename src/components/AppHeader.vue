@@ -117,8 +117,8 @@ const mobileMenuItems = [
 
 // Placeholder images
 const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><circle cx="30" cy="30" r="25" fill="%2364978a"/></svg>';
-const chatIcon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><path d="M25 5C14.5 5 6 13.5 6 24c0 3.5 1 6.8 2.7 9.6L6 44l10.4-2.7C19.2 43 22 44 25 44c10.5 0 19-8.5 19-19S35.5 5 25 5z" fill="none" stroke="black" stroke-width="2"/></svg>';
-const heartIcon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><path d="M25 42l-2.5-2.3C12.5 30.6 5 23.8 5 16c0-6.6 5.4-12 12-12 3.8 0 7.5 1.8 10 4.8C29.5 5.8 33.2 4 37 4c6.6 0 12 5.4 12 12 0 7.8-7.5 14.6-17.5 23.7L25 42z" fill="none" stroke="black" stroke-width="2"/></svg>';
+const chatIcon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chat-left" viewBox="0 0 16 16"> <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/> </svg>';
+const heartIcon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-heart" viewBox="0 0 16 16"> <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143q.09.083.176.171a3 3 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15"/> </svg>';
 const userAvatar = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><circle cx="20" cy="20" r="18" fill="%23ddd"/><circle cx="20" cy="15" r="8" fill="%23999"/><path d="M5 35c0-8 7-12 15-12s15 4 15 12" fill="%23999"/></svg>';
 
 // Methods
@@ -141,8 +141,8 @@ const handleMobileMenuClick = (item) => {
 }
 
 .header-navbar {
-  background-color: #90534d;
-  height: 75px;
+  background-color: #d4a574;
+  height: 50px;
   padding: 0 20px;
 
   :deep(.navbar) {
@@ -152,22 +152,26 @@ const handleMobileMenuClick = (item) => {
 
 .logo-wrapper {
   .header-logo {
-    width: 60px;
-    height: 60px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
   }
 }
 
 .category-nav {
   display: flex;
+  gap: 30px;
 
   .category-link {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 30px;
-    color: #000;
+    font-size: 16px;
     text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
     text-decoration: none;
     transition: all 0.3s;
+
+    :deep(a) {
+      color: #000;
+    }
 
     &:hover {
       color: #333;
@@ -182,13 +186,13 @@ const handleMobileMenuClick = (item) => {
   padding: 0;
 
   .header-icon {
-    width: 50px;
-    height: 50px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
   }
 
   i {
-    font-size: 30px;
+    font-size: 32px;
     color: #000;
   }
 }
@@ -200,15 +204,15 @@ const handleMobileMenuClick = (item) => {
   background: rgba(255, 255, 255, 0.1);
 
   .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
   }
 
   .user-name {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 30px;
+    font-size: 16px;
     color: #000;
     white-space: nowrap;
   }
@@ -216,8 +220,8 @@ const handleMobileMenuClick = (item) => {
 
 .points-display {
   .points-icon {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     background: #d6ac4b;
     border-radius: 50%;
     display: flex;
@@ -225,30 +229,33 @@ const handleMobileMenuClick = (item) => {
     justify-content: center;
     font-family: 'Noto Sans TC', sans-serif;
     font-weight: 600;
-    font-size: 38px;
+    font-size: 16px;
     color: #000;
     text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
   }
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 30px;
+    font-size: 16px;
     font-weight: 500;
     color: #000;
   }
 }
 
 .post-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #000;
   border: 1px solid #d6ac4b;
   border-radius: 50px;
-  padding: 8px 20px;
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 30px;
+  font-size: 16px;
   color: #fff;
   text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
-  min-width: 101px;
-  height: 56px;
+  min-width: 64px;
+  height: 32px;
+  padding: 0 16px;
   transition: all 0.3s;
 
   &:hover {

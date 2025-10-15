@@ -158,18 +158,21 @@ const toggleFavorite = () => {
 
   .seller-badge {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 12px;
+    font-size: 13.2px;
+    font-weight: 500;
     background-color: #99a072;
     color: #000;
     border-radius: 13.2px;
-    padding: 4px 12px;
+    padding: 6px 14px;
     border: 1.65px solid #99a072;
-    box-shadow: 0px 6.6px 6.6px rgba(0, 0, 0, 0.25);
+    box-shadow: none;
     cursor: pointer;
     transition: all 0.3s;
+    line-height: 33px;
 
     &:hover {
       background-color: #8a9164;
+      border-color: #8a9164;
       transform: translateY(-2px);
     }
   }
@@ -194,13 +197,14 @@ const toggleFavorite = () => {
 .product-location,
 .product-time {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 16px;
+  font-size: 19.8px;
   color: #555555;
   margin-bottom: 6px;
+  line-height: 33px;
 
   i {
     margin-right: 6px;
-    font-size: 18px;
+    font-size: 23.1px;
   }
 }
 

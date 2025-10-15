@@ -98,8 +98,7 @@ const showScrollTop = ref(false);
 const filters = [
   { id: 1, label: '最新上架' },
   { id: 2, label: '離我最近' },
-  { id: 3, label: '全站熱搜' },
-  { id: 4, label: '為你推薦' }
+  { id: 3, label: '為你推薦' }
 ];
 
 // Banner data (placeholder)
