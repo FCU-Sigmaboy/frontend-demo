@@ -20,7 +20,7 @@ body {
   font-family: 'Noto Sans TC', 'Inter', 'Noto Sans JP', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #e7e1d9;
+  background-color: #f9f9f9;
 }
 
 #app {
