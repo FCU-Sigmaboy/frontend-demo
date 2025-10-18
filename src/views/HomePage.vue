@@ -29,6 +29,7 @@
               v-for="product in products"
               :key="product.id"
               :product="product"
+              @click="goToProductDetail(product.id)"
               @favorite-toggle="handleFavoriteToggle"
               @contact-seller="handleContactSeller"
             />
@@ -52,6 +53,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import SearchBar from '../components/SearchBar.vue';
@@ -59,6 +61,8 @@ import HeroBanner from '../components/HeroBanner.vue';
 import ExploreSection from '../components/ExploreSection.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 import ProductCard from '../components/ProductCard.vue';
+
+const router = useRouter();
 
 // State
 const userPoints = ref(500);
@@ -123,12 +127,20 @@ const products = ref([
 // Methods
 const handleSearch = (searchData) => {
   console.log('Search:', searchData);
-  // Implement search logic
+  // Navigate to item list page with search query
+  router.push({
+    name: 'ItemList',
+    query: { search: searchData.query, distance: searchData.distance }
+  });
 };
 
 const handleCategoryClick = (category) => {
   console.log('Category clicked:', category);
-  // Implement category filter logic
+  // Navigate to item list page with category filter
+  router.push({
+    name: 'ItemList',
+    query: { category: category }
+  });
 };
 
 const handleFavoriteToggle = (data) => {
@@ -139,6 +151,10 @@ const handleFavoriteToggle = (data) => {
 const handleContactSeller = (productId) => {
   console.log('Contact seller for product:', productId);
   // Implement contact logic
+};
+
+const goToProductDetail = (productId) => {
+  router.push({ name: 'ItemDetail', params: { id: productId } });
 };
 
 const handleScroll = () => {
