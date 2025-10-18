@@ -1,8 +1,8 @@
 <template>
   <div class="search-bar-wrapper">
-    <BInputGroup class="search-bar">
+    <div class="search-bar">
       <!-- Search Input -->
-      <BFormInput
+      <input
         v-model="searchQuery"
         placeholder="搜尋物品"
         class="search-input"
@@ -13,24 +13,23 @@
       <div class="search-divider"></div>
 
       <!-- Distance Filter -->
-      <BFormInput
+      <input
         v-model="distance"
-        placeholder="距離 +KM"
+        placeholder="距離 +K M"
         class="distance-input"
         type="text"
       />
 
       <!-- Search Button -->
-      <BButton variant="dark" class="search-btn" @click="handleSearch">
-        搜尋
-      </BButton>
-    </BInputGroup>
+      <button class="search-btn" @click="handleSearch">
+        搜 尋
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
-import { BInputGroup, BFormInput, BButton } from 'bootstrap-vue-next';
 
 const emit = defineEmits(['search']);
 
@@ -54,99 +53,106 @@ const handleSearch = () => {
 }
 
 .search-bar {
-  background-color: rgba(171, 186, 188, 0.6);
+  display: flex;
+  align-items: center;
+  background-color: white;
   backdrop-filter: blur(10px);
-  border: 3px solid #000;
-  border-radius: 50px;
+  border: 0.5px solid black;
+  border-radius: 5px;
   overflow: hidden;
-  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
   height: 50px;
-
-  :deep(.input-group) {
-    border-radius: 50px;
-  }
+  position: relative;
 
   .search-input,
   .distance-input {
     border: none;
     background: transparent;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #000;
-    padding: 0 30px;
+    font-size: 14px;
+    color: #1e1e1e;
+    padding: 0 25px;
+    outline: none;
+    height: 100%;
 
     &::placeholder {
-      color: #000;
+      color: #1e1e1e;
       opacity: 1;
     }
 
     &:focus {
       background: transparent;
-      box-shadow: none;
       outline: none;
     }
   }
 
   .search-input {
     flex: 1;
+    min-width: 0;
   }
 
   .distance-input {
-    max-width: 200px;
+    width: 246px;
     text-align: left;
   }
 
   .search-divider {
     width: 1px;
-    height: 44px;
-    background-color: #000;
-    margin: auto 0;
+    height: 50px;
+    background-color: #6fb8a5;
+    flex-shrink: 0;
   }
 
   .search-btn {
-    background-color: #000;
+    background-color: #6fb8a5;
     border: none;
-    border-radius: 50px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 16px;
-    color: #fff;
+    color: white;
     padding: 0 30px;
-    height: 44px;
+    height: 100%;
+    min-width: 115px;
+    cursor: pointer;
     transition: all 0.3s;
+    flex-shrink: 0;
 
     &:hover {
-      background-color: #1a1a1a;
-      transform: translateY(-2px);
+      background-color: #5fa795;
     }
 
     &:active {
-      transform: translateY(0);
+      transform: scale(0.98);
     }
   }
 }
 
 @media (max-width: 991.98px) {
+  .search-bar-wrapper {
+    padding: 0 15px;
+  }
+
   .search-bar {
     height: 45px;
 
     .search-input,
     .distance-input {
-      font-size: 18px;
+      font-size: 14px;
       padding: 0 15px;
     }
 
     .distance-input {
-      max-width: 150px;
-    }
-
-    .search-btn {
-      font-size: 16px;
-      padding: 0 20px;
-      height: 39px;
+      width: 150px;
     }
 
     .search-divider {
-      height: 39px;
+      height: 45px;
+    }
+
+    .search-btn {
+      font-size: 14px;
+      padding: 0 20px;
+      min-width: 80px;
     }
   }
 }
@@ -158,26 +164,26 @@ const handleSearch = () => {
 
   .search-bar {
     height: 40px;
-    flex-wrap: wrap;
 
     .search-input {
-      font-size: 16px;
-      padding: 0 12px;
+      font-size: 12px;
+      padding: 0 10px;
     }
 
     .distance-input {
-      max-width: 120px;
-      font-size: 14px;
-    }
-
-    .search-btn {
-      font-size: 14px;
-      padding: 0 15px;
-      height: 34px;
+      width: 100px;
+      font-size: 12px;
+      padding: 0 10px;
     }
 
     .search-divider {
-      height: 34px;
+      height: 40px;
+    }
+
+    .search-btn {
+      font-size: 12px;
+      padding: 0 15px;
+      min-width: 60px;
     }
   }
 }

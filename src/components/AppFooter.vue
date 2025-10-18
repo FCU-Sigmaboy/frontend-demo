@@ -5,7 +5,7 @@
         <!-- Logo -->
         <BCol cols="12" lg="3" class="text-center text-lg-start mb-4 mb-lg-0">
           <div class="footer-logo">
-            <img src="../assets/Logo.png" alt="Logo" class="logo-img" />
+            <img :src="logoImage" alt="Logo" class="logo-img" />
           </div>
         </BCol>
 
@@ -49,33 +49,29 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
 <style scoped lang="scss">
 .app-footer {
-  background-color: #64978a;
-  padding: 57px 0 20px;
+  background-color: #6fb8a5;
+  padding: 45px 0 20px;
   margin-top: auto;
 }
 
 .footer-content {
   margin-bottom: 30px;
-
-  .footer-content:nth-child(n+1) div {
-    margin-bottom: 0;
-  }
 }
 
 .footer-logo {
   .logo-img {
-    width: 80px;
-    height: 80px;
+    width: 70px;
+    height: 70px;
     object-fit: contain;
   }
 }
 
 .footer-heading {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 24px;
-  color: #000;
+  font-family: 'Inter', 'Noto Sans TC', sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: white;
   margin-bottom: 20px;
-  font-weight: 400;
 }
 
 .footer-links {
@@ -88,14 +84,14 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
   }
 
   a {
-    font-family: 'Noto Sans TC', sans-serif;
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
     font-size: 16px;
-    color: #000;
+    color: #f9f9f9;
     text-decoration: none;
     transition: all 0.3s;
 
     &:hover {
-      color: #333;
+      color: white;
       text-decoration: underline;
     }
   }
@@ -103,16 +99,16 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
 .footer-divider {
   border: 0;
-  border-top: 1px solid #000;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   margin: 30px auto;
   max-width: 700px;
   opacity: 1;
 }
 
 .copyright {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 12px;
-  color: #000;
+  font-family: 'Inter', 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #f9f9f9;
   margin: 0;
   line-height: 20px;
 }
@@ -123,11 +119,39 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
   }
 
   .footer-heading {
-    font-size: 24px;
+    font-size: 18px;
+    margin-bottom: 15px;
   }
 
   .footer-links a {
-    font-size: 18px;
+    font-size: 15px;
+  }
+
+  .copyright {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .app-footer {
+    padding: 30px 0 15px;
+  }
+
+  .footer-logo .logo-img {
+    width: 60px;
+    height: 60px;
+  }
+
+  .footer-heading {
+    font-size: 16px;
+  }
+
+  .footer-links a {
+    font-size: 14px;
+  }
+
+  .copyright {
+    font-size: 12px;
   }
 }
 </style>
