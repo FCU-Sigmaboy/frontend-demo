@@ -23,14 +23,19 @@
 
           <!-- Right Side Actions -->
           <div class="header-right">
-            <!-- Chat Icon -->
-            <BButton variant="link" class="icon-button">
-              <i class="bi bi-chat-left"></i>
+            <!-- Search Icon (Desktop & Tablet) -->
+            <BButton variant="link" class="icon-button d-none d-md-flex">
+              <i class="bi bi-search"></i>
             </BButton>
 
-            <!-- Favorites Icon -->
+            <!-- Favorites/Liked Icon (All Screens) -->
             <BButton variant="link" class="icon-button">
               <i class="bi bi-heart"></i>
+            </BButton>
+
+            <!-- Message/Chat Icon (All Screens) -->
+            <BButton variant="link" class="icon-button">
+              <i class="bi bi-chat-left"></i>
             </BButton>
 
             <!-- Points Display (Desktop) -->
@@ -85,7 +90,8 @@
 
             <ul class="menu-list">
               <li v-for="item in mobileMenuItems" :key="item.id" @click="handleMobileMenuClick(item)">
-                {{ item.name }}
+                <i :class="['bi', item.icon]"></i>
+                <span>{{ item.name }}</span>
               </li>
             </ul>
 
@@ -123,10 +129,10 @@ const categories = [
 ];
 
 const mobileMenuItems = [
-  { id: 1, name: '個人檔案' },
-  { id: 2, name: '刊登物品' },
-  { id: 3, name: '我的收藏' },
-  { id: 4, name: '聊天訊息' }
+  { id: 1, name: '個人檔案', icon: 'bi-person' },
+  { id: 2, name: '刊登物品', icon: 'bi-plus-circle' },
+  { id: 3, name: '我的收藏', icon: 'bi-heart' },
+  { id: 4, name: '聊天訊息', icon: 'bi-chat-left' }
 ];
 
 // Logo placeholder
@@ -408,13 +414,27 @@ const handleMobileMenuClick = (item) => {
   margin: 0;
 
   li {
+    display: flex;
+    align-items: center;
+    gap: 15px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px;
+    font-size: 18px;
     color: #1e1e1e;
-    padding: 15px 10px;
+    padding: 18px 10px;
     cursor: pointer;
     transition: background-color 0.3s;
     border-bottom: 1px solid #e0e0e0;
+
+    i {
+      font-size: 22px;
+      color: #1e1e1e;
+      width: 24px;
+      text-align: center;
+    }
+
+    span {
+      flex: 1;
+    }
 
     &:hover {
       background-color: #f5f5f5;

@@ -21,10 +21,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f9f9f9;
+  min-width: 360px;
 }
 
 #app {
   min-height: 100vh;
+  min-width: 360px;
 }
 
 /* Import Bootstrap Icons */
