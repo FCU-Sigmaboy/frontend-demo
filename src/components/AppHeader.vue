@@ -110,6 +110,9 @@
 import { ref } from 'vue';
 import { BNavbar, BContainer, BNav, BNavItem, BButton } from 'bootstrap-vue-next';
 
+// Logo Image
+import logoImage from '../assets/Logo.png';
+
 // Props
 const props = defineProps({
   userPoints: {
@@ -134,9 +137,6 @@ const mobileMenuItems = [
   { id: 3, name: '我的收藏', icon: 'bi-heart' },
   { id: 4, name: '聊天訊息', icon: 'bi-chat-left' }
 ];
-
-// Logo placeholder
-const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="125" height="35" viewBox="0 0 125 35"><rect fill="%236fb8a5" width="125" height="35" rx="4"/><text x="62.5" y="22" font-family="Noto Sans TC, sans-serif" font-size="14" fill="white" text-anchor="middle">台中易起來</text></svg>';
 
 // Methods
 const toggleMobileMenu = () => {
@@ -181,8 +181,10 @@ const handleMobileMenuClick = (item) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  max-width: 1600px;
   width: 100%;
   height: 50px;
+  margin: auto;
 }
 
 // Left Side

@@ -44,7 +44,8 @@
 <script setup>
 import { BContainer, BRow, BCol } from 'bootstrap-vue-next';
 
-const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="35" fill="%2364978a"/></svg>';
+import logoImage from '../assets/Logo-white.png';
+
 </script>
 
 <style scoped lang="scss">
@@ -60,7 +61,7 @@ const logoImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" wi
 
 .footer-logo {
   .logo-img {
-    width: 70px;
+    width: 250px;
     height: 70px;
     object-fit: contain;
   }
