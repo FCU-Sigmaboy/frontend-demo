@@ -193,7 +193,7 @@ onUnmounted(() => {
   padding: 20px 0;
   margin-top: 10px;
   position: relative;
-  z-index: 1000;
+  z-index: 1;
 }
 
 // Hero Section

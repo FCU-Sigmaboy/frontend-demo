@@ -190,11 +190,14 @@ const handleSearch = () => {
     .search-input,
     .distance-dropdown {
       font-size: 14px;
-      padding: 0 15px;
     }
 
     .distance-dropdown {
       width: 150px;
+
+      :deep(.btn) {
+        padding: 0 15px;
+      }
     }
 
     .search-divider {
@@ -225,7 +228,10 @@ const handleSearch = () => {
     .distance-dropdown {
       width: 100px;
       font-size: 12px;
-      padding: 0 10px;
+
+      :deep(.btn) {
+        padding: 0 10px;
+      }
     }
 
     .search-divider {
