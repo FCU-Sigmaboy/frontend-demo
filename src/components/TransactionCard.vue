@@ -99,7 +99,7 @@ const props = defineProps({
   },
   sellerAvatar: {
     type: String,
-    default: 'https://via.placeholder.com/49/1e1e1e/ffffff?text=A'
+    default: 'https://placehold.co/49/1e1e1e/ffffff?text=A'
   },
   rating: {
     type: Number,

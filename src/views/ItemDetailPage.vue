@@ -116,13 +116,13 @@ const product = ref({
   postedTime: '3天前',
   description: '物品描述... 這是一個很棒的物品，使用狀況良好，適合需要的人使用。',
   sellerName: '提供者名稱',
-  sellerAvatar: 'https://via.placeholder.com/49/1e1e1e/ffffff?text=A',
+  sellerAvatar: 'https://placehold.co/49/1e1e1e/ffffff?text=A',
   rating: 4.5,
   images: [
-    'https://via.placeholder.com/600x600/6fb8a5/ffffff?text=Image+1',
-    'https://via.placeholder.com/600x600/5a9d8c/ffffff?text=Image+2',
-    'https://via.placeholder.com/600x600/4a8b7d/ffffff?text=Image+3',
-    'https://via.placeholder.com/600x600/3a7a6e/ffffff?text=Image+4'
+    'https://placehold.co/600x600/6fb8a5/ffffff?text=Image+1',
+    'https://placehold.co/600x600/5a9d8c/ffffff?text=Image+2',
+    'https://placehold.co/600x600/4a8b7d/ffffff?text=Image+3',
+    'https://placehold.co/600x600/3a7a6e/ffffff?text=Image+4'
   ]
 });
 
@@ -132,9 +132,9 @@ const relatedProducts = ref([
     id: 2,
     name: '物品名稱',
     price: 700,
-    image: 'https://via.placeholder.com/330x250/6fb8a5/ffffff?text=Product+1',
+    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Product+1',
     sellerName: '提供者名稱',
-    sellerAvatar: 'https://via.placeholder.com/32/1e1e1e/ffffff?text=A',
+    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=A',
     location: '台中市西屯區',
     distance: '500m',
     postedTime: '3天前'
@@ -143,9 +143,9 @@ const relatedProducts = ref([
     id: 3,
     name: '物品名稱',
     price: 700,
-    image: 'https://via.placeholder.com/330x250/5a9d8c/ffffff?text=Product+2',
+    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Product+2',
     sellerName: '提供者名稱',
-    sellerAvatar: 'https://via.placeholder.com/32/1e1e1e/ffffff?text=B',
+    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=B',
     location: '台中市西屯區',
     distance: '500m',
     postedTime: '3天前'
@@ -154,9 +154,9 @@ const relatedProducts = ref([
     id: 4,
     name: '物品名稱',
     price: 700,
-    image: 'https://via.placeholder.com/330x250/4a8b7d/ffffff?text=Product+3',
+    image: 'https://placehold.co/330x250/4a8b7d/ffffff?text=Product+3',
     sellerName: '提供者名稱',
-    sellerAvatar: 'https://via.placeholder.com/32/1e1e1e/ffffff?text=C',
+    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=C',
     location: '台中市西屯區',
     distance: '500m',
     postedTime: '3天前'
@@ -165,9 +165,9 @@ const relatedProducts = ref([
     id: 5,
     name: '物品名稱',
     price: 700,
-    image: 'https://via.placeholder.com/330x250/3a7a6e/ffffff?text=Product+4',
+    image: 'https://placehold.co/330x250/3a7a6e/ffffff?text=Product+4',
     sellerName: '提供者名稱',
-    sellerAvatar: 'https://via.placeholder.com/32/1e1e1e/ffffff?text=D',
+    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=D',
     location: '台中市西屯區',
     distance: '500m',
     postedTime: '3天前'

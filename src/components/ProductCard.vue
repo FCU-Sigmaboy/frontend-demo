@@ -14,22 +14,27 @@
     <!-- Product Image with Favorite Button -->
     <div class="product-image-wrapper">
       <img :src="product.image" :alt="product.name" class="product-image" />
-      <button
-        class="favorite-btn"
-        :class="{ active: isFavorite }"
-        @click.stop="toggleFavorite"
-      >
-        <i :class="isFavorite ? 'bi bi-heart-fill' : 'bi bi-heart'"></i>
-      </button>
+      
     </div>
 
     <!-- Card Body -->
     <div class="product-body">
-      <!-- Product Name -->
-      <h5 class="product-name">{{ product.name }}</h5>
+      <!-- Product Name and Favorite Button -->
+       <div class="name-and-favorite-button-wrapper">
+        <h5 class="product-name">{{ product.name }}</h5>
+
+        <!-- Favorite Button -->
+        <button
+          class="favorite-btn"
+          :class="{ active: isFavorite }"
+          @click.stop="toggleFavorite"
+        >
+          <i :class="isFavorite ? 'bi bi-heart-fill' : 'bi bi-heart'"></i>
+        </button>
+      </div>
 
       <!-- Price -->
-      <p class="product-price">{{ product.price }}P</p>
+      <p class="product-price"><i class="bi bi-leaf points-icon" style="font-size: 1rem;"></i> {{ product.price }} </p>
 
       <!-- Location and Distance -->
       <div class="product-meta">
@@ -59,9 +64,9 @@ const props = defineProps({
       id: 1,
       name: '物品名稱',
       price: 700,
-      image: '',
+      image: 'https://placehold.co/600x400',
       sellerName: '提供者名稱',
-      sellerAvatar: '',
+      sellerAvatar: 'https://placehold.co/50x50',
       location: '台中市西屯區',
       distance: '500m',
       postedTime: '3天前'
@@ -86,7 +91,7 @@ const handleContact = () => {
 <style scoped lang="scss">
 .product-card {
   background: white;
-  border: 0.1px solid #1e1e1e;
+  border: 0.1px solid #6fb8a5;
   border-radius: 5px;
   overflow: hidden;
   transition: all 0.3s;
@@ -171,39 +176,6 @@ const handleContact = () => {
     height: 100%;
     object-fit: cover;
   }
-
-  .favorite-btn {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 26.4px;
-    height: 26.4px;
-    border-radius: 50%;
-    background-color: white;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-
-    i {
-      font-size: 16px;
-      color: #1e1e1e;
-    }
-
-    &.active i,
-    &:hover i {
-      color: #ff6b6b;
-    }
-
-    &:hover {
-      background-color: #fff;
-      transform: scale(1.1);
-    }
-  }
 }
 
 .product-body {
@@ -215,7 +187,48 @@ const handleContact = () => {
   flex: 1;
 }
 
+
+.name-and-favorite-button-wrapper {
+    display: flex;
+    align-items: center;
+    top: 10px;
+    right: 10px;
+
+    .favorite-btn {
+      display: block;
+      bottom: 10px;
+      right: 10px;
+      width: 26.4px;
+      height: 26.4px;
+      border-radius: 50%;
+      background-color: transparent;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      transition: all 0.3s;
+    
+      i {
+        font-size: 16px;
+        color: #1e1e1e;
+      }
+    
+      &.active i,
+      &:hover i {
+        color: #ff6b6b;
+      }
+    
+      &:hover {
+        background-color: #fff;
+        transform: scale(1.1);
+      }
+    }
+}
+
 .product-name {
+  flex: 8;
   font-family: 'Inter', 'Noto Sans TC', sans-serif;
   font-size: 15px;
   font-weight: 500;
