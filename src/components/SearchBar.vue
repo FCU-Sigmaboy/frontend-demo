@@ -13,12 +13,22 @@
       <div class="search-divider"></div>
 
       <!-- Distance Filter -->
-      <input
-        v-model="distance"
-        placeholder="距離 +K M"
-        class="distance-input"
-        type="text"
-      />
+      <BDropdown
+        :text="selectedDistanceLabel"
+        variant="link"
+        class="distance-dropdown"
+        no-caret
+        strategy="fixed"
+        :teleport="true"
+      >
+        <BDropdownItem
+          v-for="option in distance_options"
+          :key="option.value"
+          @click="selectDistance(option.value)"
+        >
+          {{ option.label }}
+        </BDropdownItem>
+      </BDropdown>
 
       <!-- Search Button -->
       <button class="search-btn" @click="handleSearch">
@@ -29,12 +39,30 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { BDropdown, BDropdownItem } from 'bootstrap-vue-next';
 
 const emit = defineEmits(['search']);
 
 const searchQuery = ref('');
 const distance = ref('');
+
+const selectedDistanceLabel = computed(() => {
+  const selected = distance_options.find(opt => opt.value === distance.value);
+  return selected ? selected.label : '距離 km';
+});
+
+const distance_options = [
+  { label: '不限', value: '' },
+  { label: '5 km 以內', value: '5' },
+  { label: '10 km 以內', value: '10' },
+  { label: '20 km 以內', value: '20' },
+  { label: '50 km 以內', value: '50' }
+];
+
+const selectDistance = (value) => {
+  distance.value = value;
+};
 
 const handleSearch = () => {
   emit('search', {
@@ -49,7 +77,6 @@ const handleSearch = () => {
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
-  padding: 0 20px;
 }
 
 .search-bar {
@@ -59,12 +86,13 @@ const handleSearch = () => {
   backdrop-filter: blur(10px);
   border: 0.5px solid black;
   border-radius: 5px;
-  overflow: hidden;
+  overflow: visible;
   height: 50px;
   position: relative;
 
-  .search-input,
-  .distance-input {
+  .search-input {
+    flex: 1;
+    min-width: 0;
     border: none;
     background: transparent;
     font-family: 'Noto Sans TC', sans-serif;
@@ -85,14 +113,38 @@ const handleSearch = () => {
     }
   }
 
-  .search-input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .distance-input {
+  .distance-dropdown {
     width: 246px;
-    text-align: left;
+    height: 100%;
+    position: relative;
+    z-index: 1000;
+
+    :deep(.btn) {
+      border: none;
+      background: transparent;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #1e1e1e;
+      padding: 0 25px;
+      height: 100%;
+      width: 100%;
+      text-align: left;
+      box-shadow: none !important;
+      border-radius: 0;
+      text-decoration: none;
+
+      &:hover, &:focus, &:active {
+        background: transparent;
+        color: #1e1e1e;
+      }
+    }
+
+    :deep(.dropdown-menu) {
+      margin-top: 0;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      z-index: 1050;
+    }
   }
 
   .search-divider {
@@ -136,12 +188,12 @@ const handleSearch = () => {
     height: 45px;
 
     .search-input,
-    .distance-input {
+    .distance-dropdown {
       font-size: 14px;
       padding: 0 15px;
     }
 
-    .distance-input {
+    .distance-dropdown {
       width: 150px;
     }
 
@@ -170,7 +222,7 @@ const handleSearch = () => {
       padding: 0 10px;
     }
 
-    .distance-input {
+    .distance-dropdown {
       width: 100px;
       font-size: 12px;
       padding: 0 10px;

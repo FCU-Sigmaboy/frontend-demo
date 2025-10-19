@@ -192,6 +192,8 @@ onUnmounted(() => {
 .search-section {
   padding: 20px 0;
   margin-top: 10px;
+  position: relative;
+  z-index: 1000;
 }
 
 // Hero Section
