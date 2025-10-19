@@ -5,7 +5,7 @@
         <div class="header-content">
           <!-- Left Side: Logo & Navigation -->
           <div class="header-left">
-            <a href="#" class="logo-link">
+            <a href="/" class="logo-link">
               <img :src="logoImage" alt="台中易起來" class="header-logo" />
             </a>
 
@@ -23,10 +23,6 @@
 
           <!-- Right Side Actions -->
           <div class="header-right">
-            <!-- Search Icon (Desktop & Tablet) -->
-            <BButton variant="link" class="icon-button d-none d-md-flex">
-              <i class="bi bi-search"></i>
-            </BButton>
 
             <!-- Favorites/Liked Icon (Desktop) -->
             <BButton variant="link" class="icon-button d-none d-lg-flex">
@@ -118,10 +114,10 @@ const props = defineProps({
 const showMobileMenu = ref(false);
 
 const categories = [
-  { id: 1, name: '服飾', link: '#' },
-  { id: 2, name: '家電', link: '#' },
-  { id: 3, name: '電子3C', link: '#' },
-  { id: 4, name: '書籍', link: '#' }
+  { id: 1, name: '服飾', link: '/items?category=服飾' },
+  { id: 2, name: '家電', link: '/items?category=家電' },
+  { id: 3, name: '電子3C', link: '/items?category=電子3C' },
+  { id: 4, name: '書籍', link: '/items?category=書籍' }
 ];
 
 const mobileMenuItems = [
