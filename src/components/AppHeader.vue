@@ -28,26 +28,26 @@
               <i class="bi bi-search"></i>
             </BButton>
 
-            <!-- Favorites/Liked Icon (All Screens) -->
-            <BButton variant="link" class="icon-button">
+            <!-- Favorites/Liked Icon (Desktop) -->
+            <BButton variant="link" class="icon-button d-none d-lg-flex">
               <i class="bi bi-heart"></i>
             </BButton>
 
-            <!-- Message/Chat Icon (All Screens) -->
-            <BButton variant="link" class="icon-button">
+            <!-- Message/Chat Icon (Desktop) -->
+            <BButton variant="link" class="icon-button d-none d-lg-flex">
               <i class="bi bi-chat-left"></i>
             </BButton>
-
-            <!-- Points Display (Desktop) -->
-            <div class="points-display d-none d-lg-flex">
-              <div class="points-icon">P</div>
-              <span class="points-value">{{ userPoints }}</span>
-            </div>
 
             <!-- User Profile (Desktop) -->
             <div class="user-info d-none d-lg-flex">
               <i class="bi bi-person-circle user-avatar-icon"></i>
               <span class="user-name">Hi, 使用者</span>
+            </div>
+            
+            <!-- Points Display (Desktop) -->
+            <div class="points-display d-none d-lg-flex">
+              <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
+              <span class="points-value">{{ userPoints }}</span>
             </div>
 
             <!-- Post Button (Desktop) -->
@@ -83,22 +83,15 @@
             <div class="menu-user-section">
               <i class="bi bi-person-circle user-icon"></i>
               <span class="user-greeting">Hi, 使用者</span>
-              <div class="hamburger-menu-icon">
-                <i class="bi bi-list"></i>
-              </div>
+              <span class="menu-points"><i class="bi bi-leaf"></i> {{ userPoints }}</span>
             </div>
-
+            
             <ul class="menu-list">
               <li v-for="item in mobileMenuItems" :key="item.id" @click="handleMobileMenuClick(item)">
                 <i :class="['bi', item.icon]"></i>
                 <span>{{ item.name }}</span>
               </li>
             </ul>
-
-            <div class="menu-points">
-              <i class="bi bi-coin"></i>
-              <span>{{ userPoints }}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -230,7 +223,7 @@ const handleMobileMenuClick = (item) => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
 }
 
 .icon-button {
@@ -259,25 +252,21 @@ const handleMobileMenuClick = (item) => {
   gap: 5px;
 
   .points-icon {
-    width: 25px;
-    height: 25px;
     background: #f2efeb;
-    border: 2px solid #1e1e1e;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'Noto Sans TC', sans-serif;
     font-weight: 600;
     font-size: 14px;
-    color: #1e1e1e;
+    color: #6fb8a5;
   }
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 16px;
     font-weight: 500;
-    color: #1e1e1e;
+    color: #6fb8a5;
   }
 }
 
@@ -300,21 +289,20 @@ const handleMobileMenuClick = (item) => {
 }
 
 .post-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #6fb8a5;
-  border: 1px solid #f2efeb;
   border-radius: 5px;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 16px;
   color: white;
-  text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
   min-width: 58px;
   height: 32px;
-  padding: 0 10px;
   transition: all 0.3s;
 
   &:hover {
     background-color: #5fa795;
-    transform: translateY(-2px);
   }
 }
 
@@ -322,6 +310,17 @@ const handleMobileMenuClick = (item) => {
   padding: 0;
   border: none;
   background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+
+  &:hover,
+  &:focus {
+    background: transparent;
+    border: none;
+  }
 
   i {
     font-size: 32px;
@@ -403,11 +402,6 @@ const handleMobileMenuClick = (item) => {
     font-size: 18px;
     color: #1e1e1e;
   }
-
-  .hamburger-menu-icon i {
-    font-size: 28px;
-    color: #1e1e1e;
-  }
 }
 
 .menu-list {
@@ -449,23 +443,18 @@ const handleMobileMenuClick = (item) => {
 }
 
 .menu-points {
-  margin-top: auto;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 20px;
+  font-weight: 400;
   display: flex;
+  gap: 5px;
   align-items: center;
-  gap: 10px;
-  padding: 15px;
-  background: #6fb8a5;
-  border-radius: 8px;
-  color: white;
+  justify-content: space-around;
+  background: transparent;
+  color: #6fb8a5;
 
   i {
     font-size: 24px;
-  }
-
-  span {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px;
-    font-weight: 600;
   }
 }
 
@@ -489,13 +478,33 @@ const handleMobileMenuClick = (item) => {
 }
 
 // Responsive
-@media (max-width: 991.98px) {
+@media (max-width: 1000px) {
   .header-navbar {
     height: 60px;
   }
 
   .header-content {
     height: 60px;
+  }
+
+  .header-logo {
+    height: 40px;
+  }
+
+  .icon-button i {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 400px) {
+  .header-navbar {
+    height: 60px;
+  }
+
+  .header-content {
+    height: 60px;
+    padding: 0;
+    max-width: 370px;
   }
 
   .header-logo {
