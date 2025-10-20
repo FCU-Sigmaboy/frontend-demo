@@ -73,11 +73,6 @@
                   <span class="detail-value">{{ product.points }}P</span>
                 </div>
 
-                <div v-if="!product.isFree" class="detail-row">
-                  <span class="detail-label">運費</span>
-                  <span class="detail-value">{{ shippingFee }}P</span>
-                </div>
-
                 <div class="divider"></div>
 
                 <div class="detail-row total-row">
@@ -121,20 +116,18 @@ const form = ref({
 const product = ref({
   id: 1,
   name: '物品名稱',
-  image: 'https://via.placeholder.com/130x130/6fb8a5/ffffff?text=Product',
+  image: 'https://placehold.co/130x130/6fb8a5/ffffff?text=Product',
   location: '台北市北投區',
   points: 700,
   isFree: false // Set to true for free items
 });
-
-const shippingFee = ref(0);
 
 // Computed
 const totalPoints = computed(() => {
   if (product.value.isFree) {
     return 0;
   }
-  return product.value.points + shippingFee.value;
+  return product.value.points;
 });
 
 const isFormValid = computed(() => {
