@@ -3,6 +3,10 @@ import HomePage from '../views/HomePage.vue';
 import ItemListPage from '../views/ItemListPage.vue';
 import ItemDetailPage from '../views/ItemDetailPage.vue';
 import TransactionDetailsPage from '../views/TransactionDetailsPage.vue';
+import AboutPage from '../views/AboutPage.vue';
+import TermsPage from '../views/TermsPage.vue';
+import FAQPage from '../views/FAQPage.vue';
+import HowToTradePage from '../views/HowToTradePage.vue';
 
 const routes = [
   {
@@ -24,6 +28,26 @@ const routes = [
     path: '/items/:id/transaction',
     name: 'TransactionDetails',
     component: TransactionDetailsPage
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: AboutPage
+  },
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: TermsPage
+  },
+  {
+    path: '/faq',
+    name: 'FAQ',
+    component: FAQPage
+  },
+  {
+    path: '/how-to-trade',
+    name: 'HowToTrade',
+    component: HowToTradePage
   }
 ];
 

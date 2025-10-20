@@ -13,8 +13,8 @@
         <BCol cols="12" md="6" lg="3" class="mb-4 mb-lg-0">
           <h5 class="footer-heading">關於台中易起來</h5>
           <ul class="footer-links">
-            <li><a href="#">關於我們</a></li>
-            <li><a href="#">服務條款</a></li>
+            <li><router-link to="/about">關於我們</router-link></li>
+            <li><router-link to="/terms">服務條款</router-link></li>
           </ul>
         </BCol>
 
@@ -22,8 +22,8 @@
         <BCol cols="12" md="6" lg="3" class="mb-4 mb-lg-0">
           <h5 class="footer-heading">權益相關</h5>
           <ul class="footer-links">
-            <li><a href="#">常見 Q&A</a></li>
-            <li><a href="#">如何交易</a></li>
+            <li><router-link to="/faq">常見 Q&A</router-link></li>
+            <li><router-link to="/how-to-trade">如何交易</router-link></li>
           </ul>
         </BCol>
       </BRow>

@@ -23,8 +23,6 @@
       <span>發布於 {{ postedTime }}</span>
     </div>
 
-    <div class="divider"></div>
-
     <!-- Description Section -->
     <div class="section">
       <h4 class="section-title">物品描述</h4>
