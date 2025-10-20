@@ -12,17 +12,11 @@
       <section class="filter-header-section">
         <div class="filter-container">
           <!-- Category Breadcrumb Tabs -->
-          <div class="category-tabs">
-            <button
-              v-for="category in categories"
-              :key="category.id"
-              class="category-tab"
-              :class="{ active: selectedCategory === category.id }"
-              @click="selectCategory(category.id)"
-            >
-              {{ category.label }}
-            </button>
-          </div>
+          <CategoryTabs
+            v-model="selectedCategory"
+            :categories="categories"
+            @change="handleCategoryChange"
+          />
 
           <!-- Page Title -->
           <h1 class="page-title">{{ pageTitle }}</h1>
@@ -77,31 +71,36 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import SearchBar from '../components/SearchBar.vue';
 import ProductCard from '../components/ProductCard.vue';
+import CategoryTabs from '../components/CategoryTabs.vue';
 
 const route = useRoute();
 const router = useRouter();
 
 // State
 const userPoints = ref(500);
-const selectedCategory = ref('all');
+const selectedCategory = ref(0); // Default to '全部物品'
 const activeFilter = ref(1);
 const searchQuery = ref('');
 const hasMore = ref(true);
 
 // Categories
 const categories = [
-  { id: 'all', label: '全部物品' },
-  { id: 'electronics', label: '電子產品' },
-  { id: 'furniture', label: '家具' },
-  { id: 'clothing', label: '服飾' },
-  { id: 'books', label: '書籍' },
-  { id: 'sports', label: '運動用品' }
+  { id: 0, category_id: 0, name: '全部物品', icon: '', image: '' },
+  { id: 1, category_id: 1, name: '流行服飾', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=流行服飾' },
+  { id: 2, category_id: 2, name: '鞋包配件', icon: 'bi bi-handbag', image: 'https://placehold.co/150/e76f51/ffffff?text=鞋包配件' },
+  { id: 3, category_id: 3, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝保養' },
+  { id: 4, category_id: 4, name: '電子 3C', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=電子3C' },
+  { id: 5, category_id: 5, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電用品' },
+  { id: 6, category_id: 6, name: '家具家飾', icon: 'bi bi-house', image: 'https://placehold.co/150/8d99ae/ffffff?text=家具家飾' },
+  { id: 7, category_id: 7, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子婦幼' },
+  { id: 8, category_id: 8, name: '生活娛樂', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=生活娛樂' },
+  { id: 9, category_id: 9, name: '圖書影音', icon: 'bi bi-book', image: 'https://placehold.co/150/ffafcc/ffffff?text=圖書影音' }
 ];
 
 // Filters
@@ -213,13 +212,13 @@ const products = ref([
 
 // Computed
 const pageTitle = computed(() => {
-  const categoryLabel = categories.find(c => c.id === selectedCategory.value)?.label || '全部物品';
+  const categoryLabel = categories.find(c => c.category_id === selectedCategory.value)?.name || '全部物品';
 
   if (searchQuery.value) {
-    if (selectedCategory.value === 'all') {
+    if (selectedCategory.value === 0) {
       return `有關 "${searchQuery.value}" 的物品`;
     }
-    return `${categoryLabel}中有關 "${searchQuery.value}" 的物品`;
+    return `${categoryLabel} 中有關 "${searchQuery.value}" 的物品`;
   }
 
   return categoryLabel;
@@ -229,7 +228,7 @@ const filteredProducts = computed(() => {
   let result = products.value;
 
   // Filter by category
-  if (selectedCategory.value !== 'all') {
+  if (selectedCategory.value !== 0) {
     result = result.filter(p => p.category === selectedCategory.value);
   }
 
@@ -246,12 +245,43 @@ const filteredProducts = computed(() => {
 // Methods
 const handleSearch = (data) => {
   searchQuery.value = data.query;
-  // In real app, would also handle distance filter
+
+  // Update URL query params
+  const query = { ...route.query };
+
+  if (data.query) {
+    query.search = data.query;
+  } else {
+    delete query.search;
+  }
+
+  if (data.distance) {
+    query.distance = data.distance;
+  } else {
+    delete query.distance;
+  }
+
+  router.push({ query });
+
   console.log('Search:', data);
 };
 
-const selectCategory = (categoryId) => {
-  selectedCategory.value = categoryId;
+const handleCategoryChange = (categoryId) => {
+  // Update URL query params when category changes
+  const query = { ...route.query };
+
+  // Find the category object to get category_id
+  const category = categories.find(c => c.category_id === categoryId);
+
+  if (categoryId === 0 || !category) {
+    // Remove category param if it's 'all'
+    delete query.category;
+  } else {
+    // Use category_id (number) in URL
+    query.category = category.category_id;
+  }
+
+  router.push({ query });
 };
 
 const goToProductDetail = (productId) => {
@@ -272,13 +302,26 @@ const loadMore = () => {
   hasMore.value = false;
 };
 
+// Watch for URL changes (e.g., browser back/forward)
+watch(() => route.query.category, (newCategoryId) => {
+  if (!newCategoryId) {
+    selectedCategory.value = 0;
+  } else {
+    // Convert category_id (number) back to id (string)
+    const category = categories.find(c => c.category_id === Number(newCategoryId));
+    selectedCategory.value = category ? category.category_id : 0;
+  }
+});
+
 // Initialize from route query
 onMounted(() => {
   if (route.query.search) {
     searchQuery.value = route.query.search;
   }
   if (route.query.category) {
-    selectedCategory.value = route.query.category;
+    // Convert category_id (number) from URL to id (string)
+    const category = categories.find(c => c.category_id === Number(route.query.category));
+    selectedCategory.value = category ? category.category_id : 0;
   }
 });
 </script>
@@ -312,37 +355,9 @@ onMounted(() => {
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 20px;
-}
 
-.category-tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.category-tab {
-  background-color: white;
-  border: 1px solid #d0d0d0;
-  border-radius: 16px;
-  padding: 6px 16px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #1e1e1e;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f5f5f5;
-    border-color: #6fb8a5;
-  }
-
-  &.active {
-    background-color: #6fb8a5;
-    border-color: #6fb8a5;
-    color: white;
-    font-weight: 500;
+  :deep(.category-tabs) {
+    margin-bottom: 20px;
   }
 }
 
@@ -464,16 +479,10 @@ onMounted(() => {
 
   .filter-container {
     padding: 0 15px;
-  }
 
-  .category-tabs {
-    gap: 10px;
-    margin-bottom: 18px;
-  }
-
-  .category-tab {
-    font-size: 13px;
-    padding: 5px 14px;
+    :deep(.category-tabs) {
+      margin-bottom: 18px;
+    }
   }
 
   .page-title {
@@ -534,29 +543,10 @@ onMounted(() => {
 
   .filter-container {
     padding: 0 10px;
-  }
 
-  .category-tabs {
-    gap: 8px;
-    margin-bottom: 15px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 5px;
-    -webkit-overflow-scrolling: touch;
-
-    &::-webkit-scrollbar {
-      height: 4px;
+    :deep(.category-tabs) {
+      margin-bottom: 15px;
     }
-
-    &::-webkit-scrollbar-thumb {
-      background-color: #d0d0d0;
-      border-radius: 2px;
-    }
-  }
-
-  .category-tab {
-    font-size: 12px;
-    padding: 4px 12px;
   }
 
   .page-title {

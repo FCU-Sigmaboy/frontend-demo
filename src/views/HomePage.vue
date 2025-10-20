@@ -139,7 +139,7 @@ const handleCategoryClick = (category) => {
   // Navigate to item list page with category filter
   router.push({
     name: 'ItemList',
-    query: { category: category }
+    query: { category: category.category_id }
   });
 };
 

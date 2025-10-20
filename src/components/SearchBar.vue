@@ -39,10 +39,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { BDropdown, BDropdownItem } from 'bootstrap-vue-next';
 
 const emit = defineEmits(['search']);
+const route = useRoute();
 
 const searchQuery = ref('');
 const distance = ref('');
@@ -70,6 +72,15 @@ const handleSearch = () => {
     distance: distance.value
   });
 };
+
+// Watch for URL changes and update search bar values
+watch(() => route.query.search, (newSearch) => {
+  searchQuery.value = newSearch || '';
+}, { immediate: true });
+
+watch(() => route.query.distance, (newDistance) => {
+  distance.value = newDistance || '';
+}, { immediate: true });
 </script>
 
 <style scoped lang="scss">

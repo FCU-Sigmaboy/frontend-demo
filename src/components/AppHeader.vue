@@ -13,7 +13,7 @@
               <BNavItem
                 v-for="category in categories"
                 :key="category.id"
-                :href="category.link"
+                :href="`/items?category=${category.category_id}`"
                 class="category-link"
               >
                 {{ category.name }}
@@ -114,10 +114,10 @@ const props = defineProps({
 const showMobileMenu = ref(false);
 
 const categories = [
-  { id: 1, name: '服飾', link: '/items?category=服飾' },
-  { id: 2, name: '家電', link: '/items?category=家電' },
-  { id: 3, name: '電子3C', link: '/items?category=電子3C' },
-  { id: 4, name: '書籍', link: '/items?category=書籍' }
+  { id: 1, name: '流行服飾', category_id: 1 },
+  { id: 2, name: '家電用品', category_id: 5 },
+  { id: 3, name: '電子 3C', category_id: 4 },
+  { id: 4, name: '圖書影音', category_id: 9 }
 ];
 
 const mobileMenuItems = [

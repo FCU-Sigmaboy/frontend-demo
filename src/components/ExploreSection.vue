@@ -36,33 +36,38 @@ const emit = defineEmits(['category-click']);
 
 // Categories data
 const categories = [
-  { id: 1, name: '流行服飾', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=流行服飾' },
-  { id: 2, name: '鞋包配件', icon: 'bi bi-handbag', image: 'https://placehold.co/150/e76f51/ffffff?text=鞋包配件' },
-  { id: 3, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝保養' },
-  { id: 4, name: '電子 3C', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=電子3C' },
-  { id: 5, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電用品' },
-  { id: 6, name: '家具家飾', icon: 'bi bi-house', image: 'https://placehold.co/150/8d99ae/ffffff?text=家具家飾' },
-  { id: 7, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子婦幼' },
-  { id: 8, name: '生活娛樂', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=生活娛樂' },
-  { id: 9, name: '圖書影音', icon: 'bi bi-book', image: 'https://placehold.co/150/ffafcc/ffffff?text=圖書影音' }
+  { id: 1, category_id: 1, name: '流行服飾', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=流行服飾' },
+  { id: 2, category_id: 2, name: '鞋包配件', icon: 'bi bi-handbag', image: 'https://placehold.co/150/e76f51/ffffff?text=鞋包配件' },
+  { id: 3, category_id: 3, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝保養' },
+  { id: 4, category_id: 4, name: '電子 3C', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=電子3C' },
+  { id: 5, category_id: 5, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電用品' },
+  { id: 6, category_id: 6, name: '家具家飾', icon: 'bi bi-house', image: 'https://placehold.co/150/8d99ae/ffffff?text=家具家飾' },
+  { id: 7, category_id: 7, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子婦幼' },
+  { id: 8, category_id: 8, name: '生活娛樂', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=生活娛樂' },
+  { id: 9, category_id: 9, name: '圖書影音', icon: 'bi bi-book', image: 'https://placehold.co/150/ffafcc/ffffff?text=圖書影音' }
 ];
 
 // Drag/swipe state
 const categoriesContainer = ref(null);
 const isDragging = ref(false);
+const isMouseDown = ref(false);
 const startX = ref(0);
 const scrollLeft = ref(0);
 
 const startDrag = (e) => {
-  isDragging.value = true;
+  isMouseDown.value = true;
   const pageX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
   startX.value = pageX - categoriesContainer.value.offsetLeft;
   scrollLeft.value = categoriesContainer.value.scrollLeft;
 };
 
 const onDrag = (e) => {
-  if (!isDragging.value) return;
+  if (!isMouseDown.value) return;
+
+  // Only set isDragging to true when actually moving
+  isDragging.value = true;
   e.preventDefault();
+
   const pageX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
   const x = pageX - categoriesContainer.value.offsetLeft;
   const walk = (x - startX.value) * 2;
@@ -70,7 +75,11 @@ const onDrag = (e) => {
 };
 
 const endDrag = () => {
-  isDragging.value = false;
+  isMouseDown.value = false;
+  // Reset isDragging after a short delay to allow click event to check it
+  setTimeout(() => {
+    isDragging.value = false;
+  }, 10);
 };
 
 const handleCategoryClick = (category) => {
