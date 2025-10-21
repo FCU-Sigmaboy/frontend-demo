@@ -87,7 +87,6 @@ const handleClick = (id) => {
 
   .filter-tabs {
     gap: 15px;
-    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 

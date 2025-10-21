@@ -141,8 +141,7 @@ const handleCategoryClick = (category) => {
 
 @media (max-width: 1199.98px) {
   .categories-container {
-    grid-template-columns: repeat(9, minmax(120px, 1fr));
-    gap: 20px;
+    gap: 15px;
   }
 }
 
@@ -161,8 +160,7 @@ const handleCategoryClick = (category) => {
   }
 
   .categories-container {
-    grid-template-columns: repeat(9, minmax(110px, 1fr));
-    gap: 15px;
+    gap: 10px;
   }
 }
 
@@ -181,8 +179,7 @@ const handleCategoryClick = (category) => {
   }
 
   .categories-container {
-    grid-template-columns: repeat(9, minmax(100px, 1fr));
-    gap: 10px;
+    gap: 5px;
     cursor: grab;
 
     &.is-dragging {

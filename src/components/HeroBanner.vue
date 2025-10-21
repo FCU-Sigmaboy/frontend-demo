@@ -119,7 +119,7 @@
   }
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 1600px) {
   .hero-banner {
     padding: 0 15px;
   }

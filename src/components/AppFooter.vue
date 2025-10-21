@@ -139,8 +139,7 @@ import logoImage from '../assets/Logo-white.png';
   }
 
   .footer-logo .logo-img {
-    width: 60px;
-    height: 60px;
+    width: 200px;
   }
 
   .footer-heading {
