@@ -24,32 +24,58 @@
           <!-- Right Side Actions -->
           <div class="header-right">
 
-            <!-- Favorites/Liked Icon (Desktop) -->
-            <BButton variant="link" class="icon-button d-none d-lg-flex">
-              <i class="bi bi-heart"></i>
-            </BButton>
-
-            <!-- Message/Chat Icon (Desktop) -->
-            <BButton variant="link" class="icon-button d-none d-lg-flex">
-              <i class="bi bi-chat-left"></i>
-            </BButton>
-
-            <!-- User Profile (Desktop) -->
-            <div class="user-info d-none d-lg-flex">
-              <i class="bi bi-person-circle user-avatar-icon"></i>
-              <span class="user-name">Hi, 使用者</span>
-            </div>
             
-            <!-- Points Display (Desktop) -->
-            <div class="points-display d-none d-lg-flex">
-              <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
-              <span class="points-value">{{ userPoints }}</span>
-            </div>
+            <!-- 已登入：顯示使用者資訊 -->
+            <template v-if="authStore.isLoggedIn">
 
-            <!-- Post Button (Desktop) -->
-            <BButton class="post-button d-none d-lg-flex">
-              刊登
-            </BButton>
+              <!-- Favorites/Liked Icon (Desktop) -->
+              <BButton variant="link" class="icon-button d-none d-lg-flex">
+                <i class="bi bi-heart"></i>
+              </BButton>
+
+              <!-- Message/Chat Icon (Desktop) -->
+              <BButton variant="link" class="icon-button d-none d-lg-flex">
+                <i class="bi bi-chat-left"></i>
+              </BButton>
+
+              <!-- User Profile (Desktop) -->
+              <div class="user-info d-none d-lg-flex">
+                <img
+                  v-if="authStore.userAvatar"
+                  :src="authStore.userAvatar"
+                  alt="User Avatar"
+                  class="user-avatar-img"
+                  referrerpolicy="no-referrer"
+                />
+                <i v-else class="bi bi-person-circle user-avatar-icon"></i>
+                <span class="user-name">Hi, {{ authStore.userName }}</span>
+              </div>
+
+              <!-- Points Display (Desktop) -->
+              <div class="points-display d-none d-lg-flex">
+                <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
+                <span class="points-value">{{ userPoints }}</span>
+              </div>
+              
+              <!-- Post Button (Desktop) -->
+             <BButton class="post-button d-none d-lg-flex">
+               刊登
+             </BButton>
+
+              <!-- Logout Button -->
+              <BButton variant="outline" class="logout-button d-none d-lg-flex" @click="handleLogout">
+                登出
+              </BButton>
+
+            </template>
+
+            <!-- 未登入：顯示 Google 登入按鈕 -->
+            <template v-else>
+              <BButton class="google-login-button d-none d-lg-flex" @click="handleGoogleLogin">
+                <i class="bi bi-google"></i>
+                <span>使用 Google 登入</span>
+              </BButton>
+            </template>
 
             <!-- Hamburger Menu (Mobile) -->
             <BButton
@@ -69,25 +95,52 @@
       <div v-if="showMobileMenu" class="mobile-menu-overlay d-lg-none" @click="closeMobileMenu">
         <div class="mobile-menu-content" @click.stop>
           <div class="mobile-menu-header">
-            <img :src="logoImage" alt="台中易起來" class="menu-logo" />
+            <div class="menu-user-section">
+              <img
+                v-if="authStore.userAvatar"
+                :src="authStore.userAvatar"
+                alt="User Avatar"
+                class="user-icon-img"
+                referrerpolicy="no-referrer"
+              />
+              <i v-else class="bi bi-person-circle user-icon"></i>
+              <span class="user-greeting">Hi, {{ authStore.userName }}</span>
+            </div>
             <BButton variant="link" class="close-button" @click="closeMobileMenu">
               <i class="bi bi-x-lg"></i>
             </BButton>
           </div>
 
           <div class="mobile-menu-body">
-            <div class="menu-user-section">
-              <i class="bi bi-person-circle user-icon"></i>
-              <span class="user-greeting">Hi, 使用者</span>
-              <span class="menu-points"><i class="bi bi-leaf"></i> {{ userPoints }}</span>
-            </div>
-            
-            <ul class="menu-list">
-              <li v-for="item in mobileMenuItems" :key="item.id" @click="handleMobileMenuClick(item)">
-                <i :class="['bi', item.icon]"></i>
-                <span>{{ item.name }}</span>
-              </li>
-            </ul>
+            <!-- 已登入狀態 -->
+            <template v-if="authStore.isLoggedIn">
+              <div class="menu-user-section">
+                <span class="user-greeting">我的點數</span>
+                <span class="menu-points"><i class="bi bi-leaf"></i> {{ userPoints }}</span>
+              </div>
+              
+              <ul class="menu-list">
+                <li v-for="item in mobileMenuItems" :key="item.id" @click="handleMobileMenuClick(item)">
+                  <i :class="['bi', item.icon]"></i>
+                  <span>{{ item.name }}</span>
+                </li>
+                <li @click="handleLogout" class="logout-item">
+                  <i class="bi bi-box-arrow-right"></i>
+                  <span>登出</span>
+                </li>
+              </ul>
+            </template>
+
+            <!-- 未登入狀態 -->
+            <template v-else>
+              <div class="menu-login-section">
+                <p class="login-prompt">請先登入以使用完整功能</p>
+                <BButton class="google-login-button-mobile" @click="handleGoogleLogin">
+                  <i class="bi bi-google"></i>
+                  <span>使用 Google 登入</span>
+                </BButton>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -98,6 +151,10 @@
 <script setup>
 import { ref } from 'vue';
 import { BNavbar, BContainer, BNav, BNavItem, BButton } from 'bootstrap-vue-next';
+import { useAuthStore } from '../stores/auth';
+
+// Auth Store
+const authStore = useAuthStore();
 
 // Logo Image
 import logoImage from '../assets/Logo.png';
@@ -144,6 +201,25 @@ const closeMobileMenu = () => {
 
 const handleMobileMenuClick = (item) => {
   console.log('Menu item clicked:', item.name);
+  closeMobileMenu();
+};
+
+// 使用 Supabase Google Login
+const handleGoogleLogin = async () => {
+  try {
+    const { error } = await authStore.signInWithGoogle();
+    if (error) {
+      console.error('Google 登入失敗:', error);
+    }
+  } catch (error) {
+    console.error('Google 登入錯誤:', error);
+  }
+};
+
+// 登出
+const handleLogout = async () => {
+  await authStore.signOut();
+  console.log('已登出');
   closeMobileMenu();
 };
 </script>
@@ -271,6 +347,13 @@ const handleMobileMenuClick = (item) => {
   align-items: center;
   gap: 8px;
 
+  .user-avatar-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
   .user-avatar-icon {
     font-size: 32px;
     color: #1e1e1e;
@@ -281,6 +364,56 @@ const handleMobileMenuClick = (item) => {
     font-size: 16px;
     color: #1e1e1e;
     white-space: nowrap;
+  }
+}
+
+.google-login-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: white;
+  border: 1px solid #dadce0;
+  border-radius: 5px;
+  font-family: 'Noto Sans TC', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3c4043;
+  padding: 0 12px;
+  height: 36px;
+  transition: all 0.3s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  i {
+    font-size: 18px;
+    color: #4285f4;
+  }
+
+  &:hover {
+    background-color: #f8f9fa;
+    border-color: #d2d4d7;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: 1px solid #1e1e1e;
+  border-radius: 5px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #1e1e1e;
+  min-width: 58px;
+  height: 32px;
+  padding: 0 12px;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #f5f5f5;
+    border-color: #1e1e1e;
   }
 }
 
@@ -382,10 +515,15 @@ const handleMobileMenuClick = (item) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 15px;
-  background: #f5f5f5;
+  padding: 0 15px;
   border-radius: 8px;
-  margin-bottom: 20px;
+
+  .user-icon-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
 
   .user-icon {
     font-size: 32px;
@@ -397,6 +535,51 @@ const handleMobileMenuClick = (item) => {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 18px;
     color: #1e1e1e;
+  }
+}
+
+.menu-login-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 30px 15px;
+  text-align: center;
+
+  .login-prompt {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+  }
+}
+
+.google-login-button-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: white;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', 'Roboto', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #3c4043;
+  padding: 12px 24px;
+  width: 100%;
+  transition: all 0.3s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  i {
+    font-size: 20px;
+    color: #4285f4;
+  }
+
+  &:hover {
+    background-color: #f8f9fa;
+    border-color: #d2d4d7;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -434,6 +617,18 @@ const handleMobileMenuClick = (item) => {
 
     &:last-child {
       border-bottom: none;
+    }
+
+    &.logout-item {
+      color: #dc3545;
+
+      i {
+        color: #dc3545;
+      }
+
+      &:hover {
+        background-color: #fff5f5;
+      }
     }
   }
 }
@@ -474,6 +669,18 @@ const handleMobileMenuClick = (item) => {
 }
 
 // Responsive
+@media (max-width: 1200px) {
+  .category-nav {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .category-nav {
+    visibility: hidden;
+  }
+}
+
 @media (max-width: 1000px) {
   .header-navbar {
     height: 60px;
