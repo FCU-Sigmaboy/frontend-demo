@@ -16,13 +16,12 @@
       <div class="search-divider"></div>
 
       <!-- Location Filter with Icon -->
-      <div class="location-section">
+      <!-- <div class="location-section">
         <i class="bi bi-geo-alt location-icon"></i>
         <BDropdown
           :text="selectedLocation"
           variant="link"
           class="location-dropdown"
-          no-caret
           strategy="fixed"
           :teleport="true"
         >
@@ -34,28 +33,27 @@
             {{ option.label }}
           </BDropdownItem>
         </BDropdown>
-      </div>
-
-      <!-- Divider -->
-      <div class="search-divider"></div>
+      </div> -->
 
       <!-- Distance Filter -->
-      <BDropdown
-        :text="selectedDistanceLabel"
-        variant="link"
-        class="distance-dropdown"
-        no-caret
-        strategy="fixed"
-        :teleport="true"
-      >
-        <BDropdownItem
-          v-for="option in distance_options"
-          :key="option.value"
-          @click="selectDistance(option.value)"
+      <div class="distance-section">
+        <i class="bi bi-geo-alt location-icon"></i>
+        <BDropdown
+          :text="selectedDistanceLabel"
+          variant="link"
+          class="distance-dropdown"
+          strategy="fixed"
+          :teleport="true"
         >
-          {{ option.label }}
-        </BDropdownItem>
-      </BDropdown>
+          <BDropdownItem
+            v-for="option in distance_options"
+            :key="option.value"
+            @click="selectDistance(option.value)"
+          >
+            {{ option.label }}
+          </BDropdownItem>
+        </BDropdown>
+      </div>
 
       <!-- Search Button -->
       <button class="search-btn" @click="handleSearch">
@@ -75,38 +73,38 @@ const route = useRoute();
 
 const searchQuery = ref('');
 const distance = ref('');
-const location = ref('taichung');
+// const location = ref('taichung');
 
-const selectedLocation = computed(() => {
-  const selected = location_options.find(opt => opt.value === location.value);
-  return selected ? selected.label : '台中';
-});
+// const selectedLocation = computed(() => {
+//   const selected = location_options.find(opt => opt.value === location.value);
+//   return selected ? selected.label : '台中';
+// });
 
 const selectedDistanceLabel = computed(() => {
   const selected = distance_options.find(opt => opt.value === distance.value);
-  return selected ? selected.label : '+km';
+  return selected ? selected.label : '選擇距離';
 });
 
-const location_options = [
-  { label: '台中', value: 'taichung' },
-  { label: '台北', value: 'taipei' },
-  { label: '新北', value: 'new-taipei' },
-  { label: '桃園', value: 'taoyuan' },
-  { label: '台南', value: 'tainan' },
-  { label: '高雄', value: 'kaohsiung' }
-];
+// const location_options = [
+//   { label: '台中', value: 'taichung' },
+//   { label: '台北', value: 'taipei' },
+//   { label: '新北', value: 'new-taipei' },
+//   { label: '桃園', value: 'taoyuan' },
+//   { label: '台南', value: 'tainan' },
+//   { label: '高雄', value: 'kaohsiung' }
+// ];
 
 const distance_options = [
-  { label: '不限', value: '' },
-  { label: '5 km', value: '5' },
-  { label: '10 km', value: '10' },
-  { label: '20 km', value: '20' },
-  { label: '50 km', value: '50' }
+  { label: '不限距離', value: '-1' },
+  { label: '5 km 以內', value: '5' },
+  { label: '10 km 以內', value: '10' },
+  { label: '20 km 以內', value: '20' },
+  { label: '50 km 以內', value: '50' }
 ];
 
-const selectLocation = (value) => {
-  location.value = value;
-};
+// const selectLocation = (value) => {
+//   location.value = value;
+// };
 
 const selectDistance = (value) => {
   distance.value = value;
@@ -185,81 +183,89 @@ watch(() => route.query.distance, (newDistance) => {
     }
   }
 
-  .location-section {
+  // .location-section {
+  //   display: flex;
+  //   align-items: center;
+  //   gap: 8px;
+  //   padding: 0 16px;
+  //   height: 100%;
+
+  //   .location-icon {
+  //     font-size: 20px;
+  //     color: #6fb8a5;
+  //     flex-shrink: 0;
+  //   }
+  // }
+
+  // .location-dropdown {
+  //   height: 100%;
+  //   position: relative;
+  //   z-index: 1000;
+
+  //   :deep(.btn) {
+  //     border: none;
+  //     background: transparent;
+  //     font-family: 'Noto Sans TC', sans-serif;
+  //     font-size: 15px;
+  //     font-weight: 500;
+  //     color: #1e1e1e;
+  //     padding: 0;
+  //     height: 100%;
+  //     display: flex;
+  //     align-items: center;
+  //     gap: 4px;
+  //     box-shadow: none !important;
+  //     border-radius: 0;
+  //     text-decoration: none;
+
+  //     &:hover, &:focus, &:active {
+  //       background: transparent;
+  //       color: #1e1e1e;
+  //     }
+
+  //     &::after {
+  //       content: '\F282';
+  //       font-family: 'bootstrap-icons';
+  //       border: none;
+  //       vertical-align: 0;
+  //       margin-left: 4px;
+  //       font-size: 12px;
+  //     }
+  //   }
+
+  //   :deep(.dropdown-menu) {
+  //     margin-top: 8px;
+  //     border-radius: 8px;
+  //     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  //     border: 1px solid #e0e0e0;
+  //     z-index: 1050;
+  //     min-width: 140px;
+  //   }
+
+  //   :deep(.dropdown-item) {
+  //     padding: 10px 16px;
+  //     font-size: 14px;
+  //     font-family: 'Noto Sans TC', sans-serif;
+
+  //     &:hover {
+  //       background-color: #f5f5f5;
+  //     }
+  //   }
+  // }
+
+  .distance-section {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 0 16px;
     height: 100%;
-
-    .location-icon {
-      font-size: 20px;
-      color: #6fb8a5;
-      flex-shrink: 0;
-    }
-  }
-
-  .location-dropdown {
-    height: 100%;
-    position: relative;
-    z-index: 1000;
-
-    :deep(.btn) {
-      border: none;
-      background: transparent;
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 15px;
-      font-weight: 500;
-      color: #1e1e1e;
-      padding: 0;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      box-shadow: none !important;
-      border-radius: 0;
-      text-decoration: none;
-
-      &:hover, &:focus, &:active {
-        background: transparent;
-        color: #1e1e1e;
-      }
-
-      &::after {
-        content: '\F282';
-        font-family: 'bootstrap-icons';
-        border: none;
-        vertical-align: 0;
-        margin-left: 4px;
-        font-size: 12px;
-      }
-    }
-
-    :deep(.dropdown-menu) {
-      margin-top: 8px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      border: 1px solid #e0e0e0;
-      z-index: 1050;
-      min-width: 140px;
-    }
-
-    :deep(.dropdown-item) {
-      padding: 10px 16px;
-      font-size: 14px;
-      font-family: 'Noto Sans TC', sans-serif;
-
-      &:hover {
-        background-color: #f5f5f5;
-      }
-    }
   }
 
   .distance-dropdown {
     height: 100%;
     position: relative;
     z-index: 1000;
-    padding: 0 16px;
+    padding-right: 16px;
 
     :deep(.btn) {
       border: none;
@@ -391,6 +397,13 @@ watch(() => route.query.distance, (newDistance) => {
       min-width: 90px;
     }
   }
+}
+
+@media (max-width: 1300px) {
+  .category-nav {
+    visibility: hidden;
+  }
+
 }
 
 @media (max-width: 991.98px) {
