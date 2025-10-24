@@ -1,7 +1,7 @@
 <template>
   <section class="explore-section">
     <div class="section-container">
-      <h2 class="section-title">探索 Carousell</h2>
+      <h2 class="section-title">探索</h2>
 
       <div class="categories-wrapper">
         <!-- Left Arrow -->
@@ -184,7 +184,6 @@ onUnmounted(() => {
 
 .categories-wrapper {
   position: relative;
-  overflow: hidden;
 }
 
 .categories-container {
@@ -194,7 +193,7 @@ onUnmounted(() => {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 8px 0;
+  padding: 8px;
 
   &::-webkit-scrollbar {
     display: none;
@@ -218,7 +217,7 @@ onUnmounted(() => {
 // Navigation Arrows
 .nav-arrow {
   position: absolute;
-  top: 50%;
+  top: calc(50% - 15px);
   transform: translateY(-50%);
   width: 48px;
   height: 48px;
@@ -249,11 +248,11 @@ onUnmounted(() => {
   }
 
   &.nav-arrow-left {
-    left: -20px;
+    left: -50px;
   }
 
   &.nav-arrow-right {
-    right: -20px;
+    right: -50px;
   }
 }
 
