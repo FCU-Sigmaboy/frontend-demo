@@ -1,9 +1,19 @@
 <template>
   <section class="explore-section">
     <div class="section-container">
-      <h2 class="section-title">探索</h2>
+      <h2 class="section-title">探索 Carousell</h2>
 
       <div class="categories-wrapper">
+        <!-- Left Arrow -->
+        <button
+          v-if="showLeftArrow"
+          class="nav-arrow nav-arrow-left"
+          @click="scrollLeft"
+          aria-label="Previous"
+        >
+          <i class="bi bi-chevron-left"></i>
+        </button>
+
         <div
           ref="categoriesContainer"
           class="categories-container"
@@ -15,6 +25,7 @@
           @touchstart="startDrag"
           @touchmove="onDrag"
           @touchend="endDrag"
+          @scroll="handleScroll"
         >
           <CategoryCard
             v-for="category in categories"
@@ -23,28 +34,41 @@
             @click="handleCategoryClick"
           />
         </div>
+
+        <!-- Right Arrow -->
+        <button
+          v-if="showRightArrow"
+          class="nav-arrow nav-arrow-right"
+          @click="scrollRight"
+          aria-label="Next"
+        >
+          <i class="bi bi-chevron-right"></i>
+        </button>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import CategoryCard from './CategoryCard.vue';
 
 const emit = defineEmits(['category-click']);
 
 // Categories data
 const categories = [
-  { id: 1, category_id: 1, name: '流行服飾', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=流行服飾' },
-  { id: 2, category_id: 2, name: '鞋包配件', icon: 'bi bi-handbag', image: 'https://placehold.co/150/e76f51/ffffff?text=鞋包配件' },
-  { id: 3, category_id: 3, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝保養' },
-  { id: 4, category_id: 4, name: '電子 3C', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=電子3C' },
-  { id: 5, category_id: 5, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電用品' },
-  { id: 6, category_id: 6, name: '家具家飾', icon: 'bi bi-house', image: 'https://placehold.co/150/8d99ae/ffffff?text=家具家飾' },
-  { id: 7, category_id: 7, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子婦幼' },
-  { id: 8, category_id: 8, name: '生活娛樂', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=生活娛樂' },
-  { id: 9, category_id: 9, name: '圖書影音', icon: 'bi bi-book', image: 'https://placehold.co/150/ffafcc/ffffff?text=圖書影音' }
+  { id: 1, category_id: 1, name: '追蹤中', icon: 'bi bi-eye', image: 'https://placehold.co/150/6e3ba5/ffffff?text=追蹤中' },
+  { id: 2, category_id: 2, name: '免費贈送', icon: 'bi bi-gift', image: 'https://placehold.co/150/00b894/ffffff?text=免費' },
+  { id: 3, category_id: 3, name: '3C用品', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=3C' },
+  { id: 4, category_id: 4, name: '手機', icon: 'bi bi-phone', image: 'https://placehold.co/150/5a9bd4/ffffff?text=手機' },
+  { id: 5, category_id: 5, name: '女裝', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=女裝' },
+  { id: 6, category_id: 6, name: '男裝', icon: 'bi bi-bag', image: 'https://placehold.co/150/e76f51/ffffff?text=男裝' },
+  { id: 7, category_id: 7, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝' },
+  { id: 8, category_id: 8, name: '精品', icon: 'bi bi-handbag', image: 'https://placehold.co/150/ffb6b6/ffffff?text=精品' },
+  { id: 9, category_id: 9, name: '遊戲', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=遊戲' },
+  { id: 10, category_id: 10, name: '運動健身', icon: 'bi bi-bicycle', image: 'https://placehold.co/150/81c784/ffffff?text=運動' },
+  { id: 11, category_id: 11, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電' },
+  { id: 12, category_id: 12, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子' }
 ];
 
 // Drag/swipe state
@@ -52,13 +76,17 @@ const categoriesContainer = ref(null);
 const isDragging = ref(false);
 const isMouseDown = ref(false);
 const startX = ref(0);
-const scrollLeft = ref(0);
+const scrollLeftPos = ref(0);
+
+// Arrow visibility
+const showLeftArrow = ref(false);
+const showRightArrow = ref(true);
 
 const startDrag = (e) => {
   isMouseDown.value = true;
   const pageX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
   startX.value = pageX - categoriesContainer.value.offsetLeft;
-  scrollLeft.value = categoriesContainer.value.scrollLeft;
+  scrollLeftPos.value = categoriesContainer.value.scrollLeft;
 };
 
 const onDrag = (e) => {
@@ -71,7 +99,7 @@ const onDrag = (e) => {
   const pageX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
   const x = pageX - categoriesContainer.value.offsetLeft;
   const walk = (x - startX.value) * 2;
-  categoriesContainer.value.scrollLeft = scrollLeft.value - walk;
+  categoriesContainer.value.scrollLeft = scrollLeftPos.value - walk;
 };
 
 const endDrag = () => {
@@ -87,6 +115,49 @@ const handleCategoryClick = (category) => {
     emit('category-click', category);
   }
 };
+
+// Arrow navigation
+const scrollLeft = () => {
+  const container = categoriesContainer.value;
+  const scrollAmount = container.offsetWidth * 0.8;
+  container.scrollBy({
+    left: -scrollAmount,
+    behavior: 'smooth'
+  });
+};
+
+const scrollRight = () => {
+  const container = categoriesContainer.value;
+  const scrollAmount = container.offsetWidth * 0.8;
+  container.scrollBy({
+    left: scrollAmount,
+    behavior: 'smooth'
+  });
+};
+
+const handleScroll = () => {
+  const container = categoriesContainer.value;
+  if (!container) return;
+
+  // Show/hide left arrow
+  showLeftArrow.value = container.scrollLeft > 10;
+
+  // Show/hide right arrow
+  const maxScroll = container.scrollWidth - container.clientWidth;
+  showRightArrow.value = container.scrollLeft < maxScroll - 10;
+};
+
+// Update arrow visibility on mount and resize
+onMounted(() => {
+  if (categoriesContainer.value) {
+    handleScroll();
+    window.addEventListener('resize', handleScroll);
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleScroll);
+});
 </script>
 
 <style scoped lang="scss">
@@ -117,13 +188,13 @@ const handleCategoryClick = (category) => {
 }
 
 .categories-container {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 30px;
+  display: flex;
+  gap: 16px;
   overflow-x: auto;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  padding: 8px 0;
 
   &::-webkit-scrollbar {
     display: none;
@@ -137,11 +208,79 @@ const handleCategoryClick = (category) => {
       pointer-events: none;
     }
   }
+
+  :deep(.category-card) {
+    flex-shrink: 0;
+    width: 140px;
+  }
+}
+
+// Navigation Arrows
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s;
+
+  i {
+    font-size: 24px;
+    color: #1e1e1e;
+  }
+
+  &:hover {
+    background: #f5f5f5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  &:active {
+    transform: translateY(-50%) scale(0.95);
+  }
+
+  &.nav-arrow-left {
+    left: -20px;
+  }
+
+  &.nav-arrow-right {
+    right: -20px;
+  }
 }
 
 @media (max-width: 1199.98px) {
   .categories-container {
-    gap: 15px;
+    gap: 14px;
+
+    :deep(.category-card) {
+      width: 130px;
+    }
+  }
+
+  .nav-arrow {
+    width: 44px;
+    height: 44px;
+
+    i {
+      font-size: 22px;
+    }
+
+    &.nav-arrow-left {
+      left: -18px;
+    }
+
+    &.nav-arrow-right {
+      right: -18px;
+    }
   }
 }
 
@@ -160,7 +299,34 @@ const handleCategoryClick = (category) => {
   }
 
   .categories-container {
-    gap: 10px;
+    gap: 12px;
+
+    :deep(.category-card) {
+      width: 120px;
+    }
+  }
+
+  .nav-arrow {
+    width: 40px;
+    height: 40px;
+
+    i {
+      font-size: 20px;
+    }
+
+    &.nav-arrow-left {
+      left: -15px;
+    }
+
+    &.nav-arrow-right {
+      right: -15px;
+    }
+  }
+}
+
+@media (max-width: 767.98px) {
+  .nav-arrow {
+    display: none;
   }
 }
 
@@ -179,11 +345,15 @@ const handleCategoryClick = (category) => {
   }
 
   .categories-container {
-    gap: 5px;
+    gap: 10px;
     cursor: grab;
 
     &.is-dragging {
       cursor: grabbing;
+    }
+
+    :deep(.category-card) {
+      width: 110px;
     }
   }
 }

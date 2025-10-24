@@ -18,6 +18,16 @@
               >
                 {{ category.name }}
               </BNavItem>
+
+              <!-- All Categories Button -->
+              <BButton
+                variant="link"
+                class="all-categories-btn"
+                @click="toggleAllCategories"
+              >
+                <i class="bi bi-grid-3x3-gap"></i>
+                <span>所有分類</span>
+              </BButton>
             </BNav>
           </div>
 
@@ -145,6 +155,77 @@
         </div>
       </div>
     </Transition>
+
+    <!-- All Categories Offcanvas -->
+    <Transition name="offcanvas">
+      <div v-if="showAllCategories" class="all-categories-offcanvas" @click="closeAllCategories">
+        <div class="offcanvas-content" @click.stop>
+          <div class="offcanvas-header">
+            <h3 class="offcanvas-title">所有分類</h3>
+            <BButton variant="link" class="close-button" @click="closeAllCategories">
+              <i class="bi bi-x-lg"></i>
+            </BButton>
+          </div>
+
+          <div class="offcanvas-body">
+            <!-- Search Categories -->
+            <div class="category-search">
+              <i class="bi bi-search"></i>
+              <input type="text" placeholder="搜尋分類..." v-model="categorySearch" />
+            </div>
+
+            <!-- Category List -->
+            <div class="category-list">
+              <!-- Following Section -->
+              <div class="category-item">
+                <div class="category-icon-wrapper following">
+                  <i class="bi bi-eye"></i>
+                </div>
+                <span class="category-name">追蹤中</span>
+              </div>
+
+              <!-- Free Items Section -->
+              <div class="category-item">
+                <div class="category-icon-wrapper free">
+                  <i class="bi bi-gift"></i>
+                  <span class="badge-new">NEW</span>
+                </div>
+                <span class="category-name">免費贈送</span>
+              </div>
+
+              <!-- Main Categories with Expandable Subcategories -->
+              <div v-for="cat in allCategoriesList" :key="cat.id" class="category-section">
+                <div class="category-item expandable" @click="toggleCategory(cat.id)">
+                  <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
+                    <i :class="['bi', cat.icon]"></i>
+                  </div>
+                  <span class="category-name">{{ cat.name }}</span>
+                  <i
+                    :class="['bi', expandedCategories.includes(cat.id) ? 'bi-chevron-up' : 'bi-chevron-down']"
+                    class="expand-icon"
+                  ></i>
+                </div>
+
+                <!-- Subcategories -->
+                <Transition name="subcategory">
+                  <div v-if="expandedCategories.includes(cat.id)" class="subcategory-list">
+                    <a
+                      v-for="sub in cat.subcategories"
+                      :key="sub.id"
+                      :href="`/items?category=${sub.category_id}`"
+                      class="subcategory-item"
+                      @click="closeAllCategories"
+                    >
+                      {{ sub.name }}
+                    </a>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </header>
 </template>
 
@@ -169,12 +250,122 @@ const props = defineProps({
 
 // State
 const showMobileMenu = ref(false);
+const showAllCategories = ref(false);
+const categorySearch = ref('');
+const expandedCategories = ref([]);
 
 const categories = [
   { id: 1, name: '流行服飾', category_id: 1 },
   { id: 2, name: '家電用品', category_id: 5 },
   { id: 3, name: '電子 3C', category_id: 4 },
   { id: 4, name: '圖書影音', category_id: 9 }
+];
+
+// All Categories List with Subcategories
+const allCategoriesList = [
+  {
+    id: 1,
+    name: '流行服飾',
+    icon: 'bi-bag',
+    color: '#4a90e2',
+    category_id: 1,
+    subcategories: [
+      { id: 11, name: '女裝', category_id: 11 },
+      { id: 12, name: '男裝', category_id: 12 },
+      { id: 13, name: '童裝', category_id: 13 }
+    ]
+  },
+  {
+    id: 2,
+    name: '鞋包配件',
+    icon: 'bi-handbag',
+    color: '#e76f51',
+    category_id: 2,
+    subcategories: [
+      { id: 21, name: '女鞋', category_id: 21 },
+      { id: 22, name: '男鞋', category_id: 22 },
+      { id: 23, name: '包包', category_id: 23 }
+    ]
+  },
+  {
+    id: 3,
+    name: '美妝保養',
+    icon: 'bi-flower1',
+    color: '#f4c2c2',
+    category_id: 3,
+    subcategories: [
+      { id: 31, name: '化妝品', category_id: 31 },
+      { id: 32, name: '保養品', category_id: 32 },
+      { id: 33, name: '香水', category_id: 33 }
+    ]
+  },
+  {
+    id: 4,
+    name: '電子 3C',
+    icon: 'bi-laptop',
+    color: '#457b9d',
+    category_id: 4,
+    subcategories: [
+      { id: 41, name: '手機', category_id: 41 },
+      { id: 42, name: '平板電腦', category_id: 42 },
+      { id: 43, name: '筆記型電腦', category_id: 43 }
+    ]
+  },
+  {
+    id: 5,
+    name: '家電用品',
+    icon: 'bi-tv',
+    color: '#a8dadc',
+    category_id: 5,
+    subcategories: [
+      { id: 51, name: '廚房家電', category_id: 51 },
+      { id: 52, name: '生活家電', category_id: 52 }
+    ]
+  },
+  {
+    id: 6,
+    name: '家具家飾',
+    icon: 'bi-house',
+    color: '#8d99ae',
+    category_id: 6,
+    subcategories: [
+      { id: 61, name: '家具', category_id: 61 },
+      { id: 62, name: '居家裝飾', category_id: 62 }
+    ]
+  },
+  {
+    id: 7,
+    name: '親子婦幼',
+    icon: 'bi-heart',
+    color: '#ffc8dd',
+    category_id: 7,
+    subcategories: [
+      { id: 71, name: '嬰幼兒用品', category_id: 71 },
+      { id: 72, name: '玩具', category_id: 72 }
+    ]
+  },
+  {
+    id: 8,
+    name: '生活娛樂',
+    icon: 'bi-controller',
+    color: '#cdb4db',
+    category_id: 8,
+    subcategories: [
+      { id: 81, name: '運動健身', category_id: 81 },
+      { id: 82, name: '戶外休閒', category_id: 82 }
+    ]
+  },
+  {
+    id: 9,
+    name: '圖書影音',
+    icon: 'bi-book',
+    color: '#ffafcc',
+    category_id: 9,
+    subcategories: [
+      { id: 91, name: '書籍', category_id: 91 },
+      { id: 92, name: 'CD/DVD', category_id: 92 }
+    ]
+  }
 ];
 
 const mobileMenuItems = [
@@ -221,6 +412,31 @@ const handleLogout = async () => {
   await authStore.signOut();
   console.log('已登出');
   closeMobileMenu();
+};
+
+// All Categories Toggle
+const toggleAllCategories = () => {
+  showAllCategories.value = !showAllCategories.value;
+  if (showAllCategories.value) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
+};
+
+const closeAllCategories = () => {
+  showAllCategories.value = false;
+  document.body.style.overflow = '';
+};
+
+// Toggle Category Expansion
+const toggleCategory = (categoryId) => {
+  const index = expandedCategories.value.indexOf(categoryId);
+  if (index > -1) {
+    expandedCategories.value.splice(index, 1);
+  } else {
+    expandedCategories.value.push(categoryId);
+  }
 };
 </script>
 
@@ -668,10 +884,272 @@ const handleLogout = async () => {
   }
 }
 
+// All Categories Button
+.all-categories-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border: 1px solid #1e1e1e;
+  border-radius: 5px;
+  background-color: white;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 15px;
+  color: #1e1e1e;
+  text-decoration: none;
+  transition: all 0.3s;
+  margin-left: 10px;
+
+  i {
+    font-size: 18px;
+  }
+
+  &:hover {
+    background-color: #f5f5f5;
+    border-color: #6fb8a5;
+    color: #6fb8a5;
+  }
+}
+
+// All Categories Offcanvas
+.all-categories-offcanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2500;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.offcanvas-content {
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.offcanvas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  .offcanvas-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0;
+  }
+
+  .close-button {
+    padding: 0;
+    border: none;
+    background: transparent;
+
+    i {
+      font-size: 24px;
+      color: #1e1e1e;
+    }
+  }
+}
+
+.offcanvas-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 0;
+}
+
+.category-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0 24px 20px;
+
+  i {
+    font-size: 18px;
+    color: #666;
+  }
+
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #1e1e1e;
+    outline: none;
+
+    &::placeholder {
+      color: #999;
+    }
+  }
+}
+
+.category-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.category-section {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f9f9f9;
+  }
+
+  &.expandable {
+    .category-name {
+      flex: 1;
+    }
+  }
+}
+
+.category-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+
+  i {
+    font-size: 24px;
+    color: white;
+  }
+
+  &.following {
+    background-color: #6e3ba5;
+  }
+
+  &.free {
+    background-color: #00b894;
+  }
+
+  .badge-new {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ff3b30;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 8px;
+  }
+}
+
+.category-name {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #1e1e1e;
+}
+
+.expand-icon {
+  font-size: 16px;
+  color: #666;
+  transition: transform 0.3s;
+}
+
+.subcategory-list {
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.subcategory-item {
+  padding: 14px 24px 14px 88px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 15px;
+  color: #666;
+  text-decoration: none;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f0f0f0;
+    color: #6fb8a5;
+    padding-left: 92px;
+  }
+}
+
+// Offcanvas Transitions
+.offcanvas-enter-active,
+.offcanvas-leave-active {
+  transition: opacity 0.3s ease;
+
+  .offcanvas-content {
+    transition: transform 0.3s ease;
+  }
+}
+
+.offcanvas-enter-from,
+.offcanvas-leave-to {
+  opacity: 0;
+
+  .offcanvas-content {
+    transform: translateX(100%);
+  }
+}
+
+// Subcategory Transitions
+.subcategory-enter-active,
+.subcategory-leave-active {
+  transition: all 0.3s ease;
+}
+
+.subcategory-enter-from,
+.subcategory-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.subcategory-enter-to,
+.subcategory-leave-from {
+  max-height: 500px;
+  opacity: 1;
+}
+
 // Responsive
 @media (max-width: 1200px) {
   .category-nav {
     gap: 10px;
+  }
+
+  .all-categories-btn {
+    padding: 5px 12px;
+    font-size: 14px;
+
+    i {
+      font-size: 16px;
+    }
   }
 }
 
