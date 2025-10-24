@@ -19,16 +19,16 @@
                 {{ category.name }}
               </BNavItem>
 
-              <!-- All Categories Button -->
-              <BButton
-                variant="link"
-                class="all-categories-btn"
-                @click="toggleAllCategories"
-              >
-                <i class="bi bi-grid-3x3-gap"></i>
-                <span>所有分類</span>
-              </BButton>
             </BNav>
+            <!-- All Categories Button -->
+            <BButton
+              variant="link"
+              class="all-categories-btn"
+              @click="toggleAllCategories"
+            >
+              <i class="bi bi-grid-3x3-gap"></i>
+              <span>所有分類</span>
+            </BButton>
           </div>
 
           <!-- Right Side Actions -->
@@ -890,12 +890,10 @@ const toggleCategory = (categoryId) => {
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  border: 1px solid #1e1e1e;
-  border-radius: 5px;
-  background-color: white;
+  background-color: transparent;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 15px;
-  color: #1e1e1e;
+  color: #6fb8a5;
   text-decoration: none;
   transition: all 0.3s;
   margin-left: 10px;
@@ -1137,25 +1135,10 @@ const toggleCategory = (categoryId) => {
   opacity: 1;
 }
 
-// Responsive
-@media (max-width: 1200px) {
-  .category-nav {
-    gap: 10px;
-  }
-
-  .all-categories-btn {
-    padding: 5px 12px;
-    font-size: 14px;
-
-    i {
-      font-size: 16px;
-    }
-  }
-}
-
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
   .category-nav {
     visibility: hidden;
+    width: 0;
   }
 }
 
