@@ -17,6 +17,7 @@ import AccountSettingsPage from '../views/AccountSettingsPage.vue';
 import ManageListingsPage from '../views/ManageListingsPage.vue';
 import MyReviewsPage from '../views/MyReviewsPage.vue';
 import MyFollowersPage from '../views/MyFollowersPage.vue';
+import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
 
 const routes = [
   {
@@ -109,6 +110,11 @@ const routes = [
     path: '/my-followers',
     name: 'MyFollowers',
     component: MyFollowersPage
+  },
+  {
+    path: '/user/:id',
+    name: 'PublicUserProfile',
+    component: PublicUserProfilePage
   }
 ];
 

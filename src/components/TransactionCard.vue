@@ -34,7 +34,7 @@
     <!-- Seller Info Section -->
     <div class="section">
       <h4 class="section-title">提供者資訊</h4>
-      <div class="seller-info">
+      <div class="seller-info" @click="goToSellerProfile">
         <img :src="sellerAvatar" :alt="sellerName" class="seller-avatar" />
         <div class="seller-details">
           <p class="seller-name">{{ sellerName }}</p>
@@ -62,6 +62,10 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
 const props = defineProps({
   productName: {
     type: String,
@@ -99,6 +103,10 @@ const props = defineProps({
     type: String,
     default: 'https://placehold.co/49/1e1e1e/ffffff?text=A'
   },
+  sellerId: {
+    type: Number,
+    default: 1
+  },
   rating: {
     type: Number,
     default: 4.5
@@ -113,6 +121,10 @@ const handleTransaction = () => {
 
 const handleMessage = () => {
   emit('message');
+};
+
+const goToSellerProfile = () => {
+  router.push({ name: 'PublicUserProfile', params: { id: props.sellerId } });
 };
 </script>
 
@@ -212,6 +224,12 @@ const handleMessage = () => {
   display: flex;
   align-items: center;
   gap: 15px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 0.7;
+  }
 }
 
 .seller-avatar {

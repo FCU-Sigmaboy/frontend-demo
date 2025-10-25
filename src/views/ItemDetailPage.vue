@@ -59,6 +59,7 @@
                 :description="product.description"
                 :seller-name="product.sellerName"
                 :seller-avatar="product.sellerAvatar"
+                :seller-id="product.sellerId"
                 :rating="product.rating"
                 @transaction="handleTransaction"
                 @message="handleMessage"
@@ -117,6 +118,7 @@ const product = ref({
   description: '物品描述... 這是一個很棒的物品，使用狀況良好，適合需要的人使用。',
   sellerName: '提供者名稱',
   sellerAvatar: 'https://placehold.co/49/1e1e1e/ffffff?text=A',
+  sellerId: 1,
   rating: 4.5,
   images: [
     'https://placehold.co/600x600/6fb8a5/ffffff?text=Image+1',

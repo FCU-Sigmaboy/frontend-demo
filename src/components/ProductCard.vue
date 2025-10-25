@@ -2,7 +2,7 @@
   <div class="product-card">
     <!-- Card Header -->
     <div class="card-header">
-      <div class="seller-info">
+      <div class="seller-info" @click.stop="goToSellerProfile">
         <img :src="product.sellerAvatar" :alt="product.sellerName" class="seller-avatar" />
         <span class="seller-name">{{ product.sellerName }}</span>
       </div>
@@ -55,6 +55,9 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const props = defineProps({
   product: {
@@ -67,6 +70,7 @@ const props = defineProps({
       image: 'https://placehold.co/600x400',
       sellerName: '提供者名稱',
       sellerAvatar: 'https://placehold.co/50x50',
+      sellerId: 1,
       location: '台中市西屯區',
       distance: '500m',
       postedTime: '3天前'
@@ -85,6 +89,10 @@ const toggleFavorite = () => {
 
 const handleContact = () => {
   emit('contact-seller', props.product.id);
+};
+
+const goToSellerProfile = () => {
+  router.push({ name: 'PublicUserProfile', params: { id: props.product.sellerId || props.product.id } });
 };
 </script>
 
@@ -121,6 +129,12 @@ const handleContact = () => {
   gap: 10px;
   flex: 1;
   min-width: 0;
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 0.7;
+  }
 
   .seller-avatar {
     width: 32px;
