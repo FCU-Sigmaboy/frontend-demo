@@ -7,6 +7,13 @@ import AboutPage from '../views/AboutPage.vue';
 import TermsPage from '../views/TermsPage.vue';
 import FAQPage from '../views/FAQPage.vue';
 import HowToTradePage from '../views/HowToTradePage.vue';
+// User-related pages
+import UserProfilePage from '../views/UserProfilePage.vue';
+import EditProfilePage from '../views/EditProfilePage.vue';
+import FavoritesPage from '../views/FavoritesPage.vue';
+import MessagesPage from '../views/MessagesPage.vue';
+import CreateListingPage from '../views/CreateListingPage.vue';
+import AccountSettingsPage from '../views/AccountSettingsPage.vue';
 
 const routes = [
   {
@@ -48,6 +55,42 @@ const routes = [
     path: '/how-to-trade',
     name: 'HowToTrade',
     component: HowToTradePage
+  },
+  // User routes
+  {
+    path: '/profile',
+    name: 'UserProfile',
+    component: UserProfilePage
+  },
+  {
+    path: '/profile/edit',
+    name: 'EditProfile',
+    component: EditProfilePage
+  },
+  {
+    path: '/favorites',
+    name: 'Favorites',
+    component: FavoritesPage
+  },
+  {
+    path: '/messages',
+    name: 'Messages',
+    component: MessagesPage
+  },
+  {
+    path: '/create-listing',
+    name: 'CreateListing',
+    component: CreateListingPage
+  },
+  {
+    path: '/listing/:id/edit',
+    name: 'EditListing',
+    component: CreateListingPage
+  },
+  {
+    path: '/settings',
+    name: 'AccountSettings',
+    component: AccountSettingsPage
   }
 ];
 

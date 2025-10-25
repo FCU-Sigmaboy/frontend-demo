@@ -39,17 +39,17 @@
             <template v-if="authStore.isLoggedIn">
 
               <!-- Favorites/Liked Icon (Desktop) -->
-              <BButton variant="link" class="icon-button d-none d-lg-flex">
+              <BButton variant="link" class="icon-button d-none d-lg-flex" @click="router.push({ name: 'Favorites' })">
                 <i class="bi bi-heart"></i>
               </BButton>
 
               <!-- Message/Chat Icon (Desktop) -->
-              <BButton variant="link" class="icon-button d-none d-lg-flex">
+              <BButton variant="link" class="icon-button d-none d-lg-flex" @click="router.push({ name: 'Messages' })">
                 <i class="bi bi-chat-left"></i>
               </BButton>
 
               <!-- User Profile (Desktop) -->
-              <div class="user-info d-none d-lg-flex">
+              <div class="user-info d-none d-lg-flex" @click="router.push({ name: 'UserProfile' })" style="cursor: pointer;">
                 <img
                   v-if="authStore.userAvatar"
                   :src="authStore.userAvatar"
@@ -68,7 +68,7 @@
               </div>
               
               <!-- Post Button (Desktop) -->
-             <BButton class="post-button d-none d-lg-flex">
+             <BButton class="post-button d-none d-lg-flex" @click="router.push({ name: 'CreateListing' })">
                刊登
              </BButton>
 
@@ -231,10 +231,12 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { BNavbar, BContainer, BNav, BNavItem, BButton } from 'bootstrap-vue-next';
 import { useAuthStore } from '../stores/auth';
 
-// Auth Store
+// Router & Auth Store
+const router = useRouter();
 const authStore = useAuthStore();
 
 // Logo Image
@@ -369,10 +371,11 @@ const allCategoriesList = [
 ];
 
 const mobileMenuItems = [
-  { id: 1, name: '個人檔案', icon: 'bi-person' },
-  { id: 2, name: '刊登物品', icon: 'bi-plus-circle' },
-  { id: 3, name: '我的收藏', icon: 'bi-heart' },
-  { id: 4, name: '聊天訊息', icon: 'bi-chat-left' }
+  { id: 1, name: '個人檔案', icon: 'bi-person', route: 'UserProfile' },
+  { id: 2, name: '刊登物品', icon: 'bi-plus-circle', route: 'CreateListing' },
+  { id: 3, name: '我的收藏', icon: 'bi-heart', route: 'Favorites' },
+  { id: 4, name: '聊天訊息', icon: 'bi-chat-left', route: 'Messages' },
+  { id: 5, name: '帳號設定', icon: 'bi-gear', route: 'AccountSettings' }
 ];
 
 // Methods
@@ -393,6 +396,9 @@ const closeMobileMenu = () => {
 const handleMobileMenuClick = (item) => {
   console.log('Menu item clicked:', item.name);
   closeMobileMenu();
+  if (item.route) {
+    router.push({ name: item.route });
+  }
 };
 
 // 使用 Supabase Google Login
