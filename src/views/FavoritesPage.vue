@@ -12,7 +12,7 @@
             </button>
             <div class="header-info">
               <h1 class="page-title">我的收藏</h1>
-              <p class="page-subtitle">{{ favoriteItems.length }} 個物品</p>
+              <p class="page-subtitle">{{ favoritesStore.count }} 個物品</p>
             </div>
           </div>
 
@@ -25,7 +25,7 @@
             </select>
 
             <button
-              v-if="favoriteItems.length > 0"
+              v-if="favoritesStore.count > 0"
               class="edit-btn"
               @click="toggleEditMode"
             >
@@ -36,7 +36,7 @@
         </div>
 
         <!-- Filter Tabs -->
-        <div v-if="favoriteItems.length > 0" class="filter-section">
+        <div v-if="filteredFavorites.length > 0 || favoritesStore.count > 0" class="filter-section">
           <div class="filter-tabs">
             <button
               v-for="filter in filters"
@@ -114,11 +114,13 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useFavoritesStore } from '../stores/favorites';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 
 const router = useRouter();
+const favoritesStore = useFavoritesStore();
 
 // State
 const userPoints = ref(500);
@@ -127,123 +129,20 @@ const activeFilter = ref('all');
 const isEditMode = ref(false);
 const selectedItems = ref([]);
 
-const filters = [
-  { id: 'all', label: '全部', count: 8 },
-  { id: 'available', label: '可購買', count: 6 },
-  { id: 'sold', label: '已售出', count: 2 }
-];
+const filters = computed(() => {
+  const availableCount = favoritesStore.favoriteItems.filter(i => i.status === 'available').length;
+  const soldCount = favoritesStore.favoriteItems.filter(i => i.status === 'sold').length;
 
-// Mock favorite items
-const favoriteItems = ref([
-  {
-    id: 1,
-    name: '二手 iPhone 13 Pro',
-    price: 25000,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Phone',
-    sellerName: '王小明',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=W',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    status: 'available',
-    favoriteDate: '2024-01-20'
-  },
-  {
-    id: 2,
-    name: '復古沙發',
-    price: 5000,
-    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Sofa',
-    sellerName: '李美麗',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=L',
-    location: '台中市南屯區',
-    distance: '1.2km',
-    postedTime: '1週前',
-    status: 'available',
-    favoriteDate: '2024-01-19'
-  },
-  {
-    id: 3,
-    name: '二手筆記型電腦',
-    price: 15000,
-    image: 'https://placehold.co/330x250/4a8b7d/ffffff?text=Laptop',
-    sellerName: '陳大明',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=C',
-    location: '台中市北區',
-    distance: '2.5km',
-    postedTime: '2天前',
-    status: 'sold',
-    favoriteDate: '2024-01-18'
-  },
-  {
-    id: 4,
-    name: '全新運動鞋',
-    price: 3000,
-    image: 'https://placehold.co/330x250/3a7a6e/ffffff?text=Shoes',
-    sellerName: '張小華',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=Z',
-    location: '台中市西區',
-    distance: '800m',
-    postedTime: '5天前',
-    status: 'available',
-    favoriteDate: '2024-01-17'
-  },
-  {
-    id: 5,
-    name: '設計師桌燈',
-    price: 1200,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Lamp',
-    sellerName: '林小美',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=L',
-    location: '台中市南區',
-    distance: '1.5km',
-    postedTime: '1週前',
-    status: 'available',
-    favoriteDate: '2024-01-16'
-  },
-  {
-    id: 6,
-    name: '兒童玩具組',
-    price: 800,
-    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Toys',
-    sellerName: '黃大雄',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=H',
-    location: '台中市東區',
-    distance: '3km',
-    postedTime: '4天前',
-    status: 'available',
-    favoriteDate: '2024-01-15'
-  },
-  {
-    id: 7,
-    name: '原木書桌',
-    price: 4500,
-    image: 'https://placehold.co/330x250/4a8b7d/ffffff?text=Desk',
-    sellerName: '吳小莉',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=W',
-    location: '台中市北屯區',
-    distance: '2km',
-    postedTime: '6天前',
-    status: 'available',
-    favoriteDate: '2024-01-14'
-  },
-  {
-    id: 8,
-    name: '相機鏡頭',
-    price: 8000,
-    image: 'https://placehold.co/330x250/3a7a6e/ffffff?text=Lens',
-    sellerName: '蔡小強',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=C',
-    location: '台中市中區',
-    distance: '1.8km',
-    postedTime: '3天前',
-    status: 'sold',
-    favoriteDate: '2024-01-13'
-  }
-]);
+  return [
+    { id: 'all', label: '全部', count: favoritesStore.count },
+    { id: 'available', label: '可購買', count: availableCount },
+    { id: 'sold', label: '已售出', count: soldCount }
+  ];
+});
 
 // Computed
 const filteredFavorites = computed(() => {
-  let filtered = favoriteItems.value;
+  let filtered = favoritesStore.favoriteItems;
 
   // Filter by status
   if (activeFilter.value !== 'all') {
@@ -313,9 +212,9 @@ const selectAll = () => {
 
 const deleteSelected = () => {
   if (confirm(`確定要移除 ${selectedItems.value.length} 個收藏？`)) {
-    favoriteItems.value = favoriteItems.value.filter(
-      item => !selectedItems.value.includes(item.id)
-    );
+    selectedItems.value.forEach(itemId => {
+      favoritesStore.removeFavorite(itemId);
+    });
     selectedItems.value = [];
     isEditMode.value = false;
   }
@@ -323,10 +222,7 @@ const deleteSelected = () => {
 
 const handleFavoriteToggle = (data) => {
   // Remove from favorites
-  const index = favoriteItems.value.findIndex(item => item.id === data.productId);
-  if (index > -1) {
-    favoriteItems.value.splice(index, 1);
-  }
+  favoritesStore.removeFavorite(data.productId);
 };
 </script>
 

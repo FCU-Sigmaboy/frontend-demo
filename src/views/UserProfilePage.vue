@@ -24,6 +24,20 @@
             <div class="user-info-section">
               <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
               <p class="user-email">{{ authStore.userEmail }}</p>
+
+              <!-- Followers/Following Stats -->
+              <div class="follow-stats">
+                <button class="follow-stat-btn" @click="goToFollowers">
+                  <span class="stat-number">100</span>
+                  <span class="stat-text">追蹤中</span>
+                </button>
+                <span class="stat-divider">|</span>
+                <button class="follow-stat-btn" @click="goToFollowers">
+                  <span class="stat-number">80</span>
+                  <span class="stat-text">追蹤者</span>
+                </button>
+              </div>
+
               <div class="user-stats">
                 <div class="stat-item">
                   <i class="bi bi-leaf"></i>
@@ -41,10 +55,17 @@
                   <span class="stat-label">收藏</span>
                 </div>
               </div>
-              <button class="edit-profile-btn" @click="goToEditProfile">
-                <i class="bi bi-pencil"></i>
-                編輯個人資料
-              </button>
+
+              <div class="action-buttons">
+                <button class="edit-profile-btn" @click="goToEditProfile">
+                  <i class="bi bi-pencil"></i>
+                  編輯個人資料
+                </button>
+                <button class="review-btn" @click="goToReviews">
+                  <i class="bi bi-star"></i>
+                  查看評價
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -69,6 +90,13 @@
         <section class="tab-content">
           <!-- My Listings Tab -->
           <div v-show="activeTab === 'listings'" class="content-section">
+            <div class="section-header">
+              <h2 class="section-title">我的刊登</h2>
+              <button class="manage-btn" @click="goToManageListings">
+                <i class="bi bi-gear"></i>
+                管理刊登
+              </button>
+            </div>
             <div v-if="myListings.length > 0" class="listings-grid">
               <ProductCard
                 v-for="product in myListings"
@@ -148,9 +176,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useFavoritesStore } from '../stores/favorites';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
@@ -158,24 +187,25 @@ import TransactionCard from '../components/TransactionCard.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const favoritesStore = useFavoritesStore();
 
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
 
-const userStats = ref({
+const userStats = computed(() => ({
   listings: 12,
-  favorites: 8,
+  favorites: favoritesStore.count,
   purchases: 5,
   sales: 3
-});
+}));
 
-const tabs = [
+const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
   { id: 'favorites', label: '收藏', icon: 'bi-heart', count: userStats.value.favorites },
   { id: 'purchases', label: '購買紀錄', icon: 'bi-bag', count: userStats.value.purchases },
   { id: 'sales', label: '銷售紀錄', icon: 'bi-cash-stack', count: userStats.value.sales }
-];
+]);
 
 // Mock data
 const myListings = ref([
@@ -193,7 +223,7 @@ const myListings = ref([
   }
 ]);
 
-const favoriteItems = ref([]);
+const favoriteItems = computed(() => favoritesStore.favoriteItems);
 const purchaseHistory = ref([]);
 const salesHistory = ref([]);
 
@@ -216,6 +246,18 @@ const goToProductDetail = (id) => {
 
 const goToTransactionDetail = (id) => {
   router.push({ name: 'TransactionDetails', params: { id } });
+};
+
+const goToManageListings = () => {
+  router.push({ name: 'ManageListings' });
+};
+
+const goToReviews = () => {
+  router.push({ name: 'MyReviews' });
+};
+
+const goToFollowers = () => {
+  router.push({ name: 'MyFollowers' });
 };
 </script>
 
@@ -312,7 +354,50 @@ const goToTransactionDetail = (id) => {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 16px;
     color: #666;
-    margin: 0 0 24px 0;
+    margin: 0 0 16px 0;
+  }
+}
+
+.follow-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .follow-stat-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 0;
+
+    .stat-number {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e1e1e;
+    }
+
+    .stat-text {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #666;
+    }
+
+    &:hover {
+      .stat-number,
+      .stat-text {
+        color: #6fb8a5;
+      }
+    }
+  }
+
+  .stat-divider {
+    color: #d0d0d0;
+    font-size: 14px;
   }
 }
 
@@ -346,7 +431,14 @@ const goToTransactionDetail = (id) => {
   }
 }
 
-.edit-profile-btn {
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.edit-profile-btn,
+.review-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -445,6 +537,46 @@ const goToTransactionDetail = (id) => {
 
 .content-section {
   animation: fadeIn 0.3s ease;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+
+  .section-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+  }
+
+  .manage-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid #6fb8a5;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6fb8a5;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    i {
+      font-size: 16px;
+    }
+
+    &:hover {
+      background: #6fb8a5;
+      color: white;
+    }
+  }
 }
 
 @keyframes fadeIn {

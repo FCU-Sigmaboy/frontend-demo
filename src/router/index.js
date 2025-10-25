@@ -14,6 +14,9 @@ import FavoritesPage from '../views/FavoritesPage.vue';
 import MessagesPage from '../views/MessagesPage.vue';
 import CreateListingPage from '../views/CreateListingPage.vue';
 import AccountSettingsPage from '../views/AccountSettingsPage.vue';
+import ManageListingsPage from '../views/ManageListingsPage.vue';
+import MyReviewsPage from '../views/MyReviewsPage.vue';
+import MyFollowersPage from '../views/MyFollowersPage.vue';
 
 const routes = [
   {
@@ -91,6 +94,21 @@ const routes = [
     path: '/settings',
     name: 'AccountSettings',
     component: AccountSettingsPage
+  },
+  {
+    path: '/manage-listings',
+    name: 'ManageListings',
+    component: ManageListingsPage
+  },
+  {
+    path: '/my-reviews',
+    name: 'MyReviews',
+    component: MyReviewsPage
+  },
+  {
+    path: '/my-followers',
+    name: 'MyFollowers',
+    component: MyFollowersPage
   }
 ];
 
