@@ -227,6 +227,8 @@ const handleFavoriteToggle = (data) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .favorites-page {
   min-height: 100vh;
   display: flex;
@@ -324,7 +326,7 @@ const handleFavoriteToggle = (data) => {
     transition: all 0.3s;
 
     &:focus {
-      border-color: #6fb8a5;
+      border-color: $primary;
     }
   }
 
@@ -349,8 +351,8 @@ const handleFavoriteToggle = (data) => {
 
     &:hover {
       background: #f5f5f5;
-      border-color: #6fb8a5;
-      color: #6fb8a5;
+      border-color: $primary;
+      color: $primary;
     }
   }
 }
@@ -395,13 +397,13 @@ const handleFavoriteToggle = (data) => {
   }
 
   &:hover {
-    border-color: #6fb8a5;
-    color: #6fb8a5;
+    border-color: $primary;
+    color: $primary;
   }
 
   &.active {
-    background: #6fb8a5;
-    border-color: #6fb8a5;
+    background: $primary;
+    border-color: $primary;
     color: white;
 
     .filter-count {
@@ -457,8 +459,8 @@ const handleFavoriteToggle = (data) => {
 
     &:hover {
       background: #f5f5f5;
-      border-color: #6fb8a5;
-      color: #6fb8a5;
+      border-color: $primary;
+      color: $primary;
     }
 
     &.delete-btn {
@@ -529,7 +531,7 @@ const handleFavoriteToggle = (data) => {
 
     i {
       font-size: 24px;
-      color: #6fb8a5;
+      color: $primary;
 
       &.bi-circle {
         color: #d0d0d0;
@@ -575,7 +577,7 @@ const handleFavoriteToggle = (data) => {
     align-items: center;
     gap: 8px;
     padding: 14px 32px;
-    background: #6fb8a5;
+    background: $primary;
     border: none;
     border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;

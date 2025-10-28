@@ -353,6 +353,8 @@ const handleDeleteAccount = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .account-settings-page {
   min-height: 100vh;
   display: flex;
@@ -501,7 +503,7 @@ const handleDeleteAccount = () => {
 
     i {
       font-size: 22px;
-      color: #6fb8a5;
+      color: $primary;
       width: 24px;
       text-align: center;
       flex-shrink: 0;
@@ -545,7 +547,7 @@ const handleDeleteAccount = () => {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 13px;
   font-weight: 500;
-  color: #6fb8a5;
+  color: $primary;
 
   i {
     font-size: 14px;
@@ -566,7 +568,7 @@ const handleDeleteAccount = () => {
     height: 0;
 
     &:checked + .slider {
-      background-color: #6fb8a5;
+      background-color: $primary;
 
       &:before {
         transform: translateX(22px);

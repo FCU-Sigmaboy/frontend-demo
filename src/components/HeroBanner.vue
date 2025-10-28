@@ -19,6 +19,8 @@
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .hero-banner {
   width: 100%;
   max-width: 1600px;
@@ -26,7 +28,7 @@
 }
 
 .banner-content {
-  background: linear-gradient(135deg, #6fb8a5 0%, #5a9d8c 100%);
+  background: linear-gradient(135deg, $primary 0%, #5a9d8c 100%);
   border-radius: 5px;
   min-height: 400px;
   position: relative;

@@ -1,5 +1,3 @@
-$primary: #90534D;
-$secondary: #D69652;
+@import './variables';
 
-@import 'bootstrap/dist/css/bootstrap.css';
-@import 'bootstrap-vue-next/dist/bootstrap-vue-next.css';
+@import 'bootstrap/scss/bootstrap.scss';

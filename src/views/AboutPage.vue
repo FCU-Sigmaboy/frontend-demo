@@ -96,6 +96,8 @@ import AppFooter from '../components/AppFooter.vue';
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .about-page {
   min-height: 100vh;
   display: flex;
@@ -115,7 +117,7 @@ import AppFooter from '../components/AppFooter.vue';
   margin-bottom: 30px;
 
   a {
-    color: #6fb8a5;
+    color: $primary;
     text-decoration: none;
 
     &:hover {
@@ -133,7 +135,7 @@ import AppFooter from '../components/AppFooter.vue';
 .hero-placeholder {
   width: 100%;
   height: 400px;
-  background: linear-gradient(135deg, #6fb8a5 0%, #5fa795 100%);
+  background: linear-gradient(135deg, $primary 0%, #5fa795 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,7 +157,7 @@ import AppFooter from '../components/AppFooter.vue';
   color: #1e1e1e;
   margin-bottom: 24px;
   padding-bottom: 12px;
-  border-bottom: 3px solid #6fb8a5;
+  border-bottom: 3px solid $primary;
   display: inline-block;
 }
 
@@ -179,11 +181,11 @@ import AppFooter from '../components/AppFooter.vue';
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px dashed #6fb8a5;
+  border: 2px dashed $primary;
 
   i {
     font-size: 60px;
-    color: #6fb8a5;
+    color: $primary;
   }
 }
 
@@ -217,7 +219,7 @@ import AppFooter from '../components/AppFooter.vue';
 
     i {
       font-size: 40px;
-      color: #6fb8a5;
+      color: $primary;
     }
   }
 

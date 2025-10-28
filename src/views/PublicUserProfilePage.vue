@@ -392,6 +392,8 @@ const goToProductDetail = (id) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .public-user-profile-page {
   min-height: 100vh;
   display: flex;
@@ -513,7 +515,7 @@ const goToProductDetail = (id) => {
   align-items: center;
   gap: 8px;
   padding: 12px 32px;
-  background: #6fb8a5;
+  background: $primary;
   border: none;
   border-radius: 8px;
   font-family: 'Noto Sans TC', sans-serif;
@@ -535,8 +537,8 @@ const goToProductDetail = (id) => {
 
   &.following {
     background: white;
-    border: 2px solid #6fb8a5;
-    color: #6fb8a5;
+    border: 2px solid $primary;
+    color: $primary;
 
     &:hover {
       background: #dc3545;
@@ -594,7 +596,7 @@ const goToProductDetail = (id) => {
     cursor: pointer;
 
     .badge-icon {
-      background: #6fb8a5;
+      background: $primary;
 
       i {
         color: white;
@@ -675,7 +677,7 @@ const goToProductDetail = (id) => {
 
   .stat-icon {
     font-size: 32px;
-    color: #6fb8a5;
+    color: $primary;
     flex-shrink: 0;
   }
 
@@ -735,16 +737,16 @@ const goToProductDetail = (id) => {
   }
 
   &:hover {
-    color: #6fb8a5;
+    color: $primary;
     background: #f9f9f9;
   }
 
   &.active {
-    color: #6fb8a5;
-    border-bottom-color: #6fb8a5;
+    color: $primary;
+    border-bottom-color: $primary;
 
     .tab-count {
-      color: #6fb8a5;
+      color: $primary;
     }
   }
 }
@@ -851,7 +853,7 @@ const goToProductDetail = (id) => {
 
     .rating-bar-fill {
       height: 100%;
-      background: #6fb8a5;
+      background: $primary;
       transition: width 0.3s ease;
     }
   }

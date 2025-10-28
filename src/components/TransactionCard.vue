@@ -129,6 +129,8 @@ const goToSellerProfile = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .transaction-card {
   background-color: white;
   border: 1px solid #e0e0e0;
@@ -164,7 +166,7 @@ const goToSellerProfile = () => {
 }
 
 .free-badge {
-  background-color: #6fb8a5;
+  background-color: $primary;
   color: white;
 }
 
@@ -184,7 +186,7 @@ const goToSellerProfile = () => {
 
   i {
     font-size: 16px;
-    color: #6fb8a5;
+    color: $primary;
   }
 
   .separator {
@@ -293,7 +295,7 @@ const goToSellerProfile = () => {
 }
 
 .btn-primary {
-  background-color: #6fb8a5;
+  background-color: $primary;
   color: white;
 
   &:hover {
@@ -305,8 +307,8 @@ const goToSellerProfile = () => {
 
 .btn-secondary {
   background-color: white;
-  color: #6fb8a5;
-  border: 1px solid #6fb8a5;
+  color: $primary;
+  border: 1px solid $primary;
 
   &:hover {
     background-color: #f5f5f5;

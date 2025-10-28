@@ -152,6 +152,8 @@ const goToUserProfile = (userId) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .my-reviews-page {
   min-height: 100vh;
   display: flex;
@@ -180,7 +182,7 @@ const goToUserProfile = (userId) => {
   font-size: 14px;
 
   .breadcrumb-link {
-    color: #6fb8a5;
+    color: $primary;
     text-decoration: none;
     transition: color 0.3s;
 
@@ -246,7 +248,7 @@ const goToUserProfile = (userId) => {
 
   .action-btn {
     padding: 10px 24px;
-    background: #6fb8a5;
+    background: $primary;
     border: none;
     border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;

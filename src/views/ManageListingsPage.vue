@@ -285,6 +285,8 @@ const markAsAvailable = (id) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .manage-listings-page {
   min-height: 100vh;
   display: flex;
@@ -313,7 +315,7 @@ const markAsAvailable = (id) => {
   font-size: 14px;
 
   .breadcrumb-link {
-    color: #6fb8a5;
+    color: $primary;
     text-decoration: none;
     transition: color 0.3s;
 
@@ -423,8 +425,8 @@ const markAsAvailable = (id) => {
   }
 
   &.primary {
-    background: #6fb8a5;
-    border-color: #6fb8a5;
+    background: $primary;
+    border-color: $primary;
     color: white;
 
     &:hover {
@@ -595,11 +597,11 @@ const markAsAvailable = (id) => {
 
   &.btn-view {
     background: white;
-    border-color: #6fb8a5;
-    color: #6fb8a5;
+    border-color: $primary;
+    color: $primary;
 
     &:hover {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
     }
   }
@@ -628,11 +630,11 @@ const markAsAvailable = (id) => {
 
   &.btn-relist {
     background: white;
-    border-color: #6fb8a5;
-    color: #6fb8a5;
+    border-color: $primary;
+    color: $primary;
 
     &:hover {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
     }
   }

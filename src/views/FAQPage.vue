@@ -183,6 +183,8 @@ const handleContact = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .faq-page {
   min-height: 100vh;
   display: flex;
@@ -202,7 +204,7 @@ const handleContact = () => {
   margin-bottom: 30px;
 
   a {
-    color: #6fb8a5;
+    color: $primary;
     text-decoration: none;
 
     &:hover {
@@ -262,7 +264,7 @@ const handleContact = () => {
 
     &:not(.collapsed) {
       background-color: #e9f5f2;
-      color: #6fb8a5;
+      color: $primary;
     }
 
     &:focus {
@@ -288,7 +290,7 @@ const handleContact = () => {
 
     i {
       font-size: 22px;
-      color: #6fb8a5;
+      color: $primary;
       flex-shrink: 0;
     }
 
@@ -319,7 +321,7 @@ const handleContact = () => {
 }
 
 .contact-card {
-  background: linear-gradient(135deg, #6fb8a5 0%, #5fa795 100%);
+  background: linear-gradient(135deg, $primary 0%, #5fa795 100%);
   border-radius: 16px;
   padding: 50px 60px;
   text-align: center;
@@ -349,7 +351,7 @@ const handleContact = () => {
 
   .btn-contact {
     background-color: white;
-    color: #6fb8a5;
+    color: $primary;
     border: none;
     border-radius: 25px;
     padding: 12px 40px;

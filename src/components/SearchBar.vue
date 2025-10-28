@@ -128,6 +128,8 @@ watch(() => route.query.distance, (newDistance) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .search-bar-wrapper {
   width: 100%;
   max-width: 1600px;
@@ -192,7 +194,7 @@ watch(() => route.query.distance, (newDistance) => {
 
   //   .location-icon {
   //     font-size: 20px;
-  //     color: #6fb8a5;
+  //     color: $primary;
   //     flex-shrink: 0;
   //   }
   // }
@@ -326,7 +328,7 @@ watch(() => route.query.distance, (newDistance) => {
   }
 
   .search-btn {
-    background-color: #009688;
+    background-color: $primary;
     border: none;
     border-top-right-radius: 8px;
     border-bottom-right-radius: 8px;

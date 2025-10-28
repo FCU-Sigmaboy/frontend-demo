@@ -447,6 +447,8 @@ const toggleCategory = (categoryId) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .app-header {
   position: sticky;
   top: 0;
@@ -507,7 +509,7 @@ const toggleCategory = (categoryId) => {
       transition: color 0.3s;
 
       &:hover {
-        color: #6fb8a5;
+        color: $primary;
       }
     }
   }
@@ -536,7 +538,7 @@ const toggleCategory = (categoryId) => {
   }
 
   &:hover i {
-    color: #6fb8a5;
+    color: $primary;
   }
 }
 
@@ -553,14 +555,14 @@ const toggleCategory = (categoryId) => {
     font-family: 'Noto Sans TC', sans-serif;
     font-weight: 600;
     font-size: 14px;
-    color: #6fb8a5;
+    color: $primary;
   }
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 16px;
     font-weight: 500;
-    color: #6fb8a5;
+    color: $primary;
   }
 }
 
@@ -643,7 +645,7 @@ const toggleCategory = (categoryId) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #6fb8a5;
+  background-color: $primary;
   border-radius: 5px;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 16px;
@@ -864,7 +866,7 @@ const toggleCategory = (categoryId) => {
   align-items: center;
   justify-content: space-around;
   background: transparent;
-  color: #6fb8a5;
+  color: $primary;
 
   i {
     font-size: 24px;
@@ -899,7 +901,7 @@ const toggleCategory = (categoryId) => {
   background-color: transparent;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 15px;
-  color: #6fb8a5;
+  color: $primary;
   text-decoration: none;
   transition: all 0.3s;
   margin-left: 10px;
@@ -910,8 +912,8 @@ const toggleCategory = (categoryId) => {
 
   &:hover {
     background-color: #f5f5f5;
-    border-color: #6fb8a5;
-    color: #6fb8a5;
+    border-color: $primary;
+    color: $primary;
   }
 }
 
@@ -1099,7 +1101,7 @@ const toggleCategory = (categoryId) => {
 
   &:hover {
     background-color: #f0f0f0;
-    color: #6fb8a5;
+    color: $primary;
     padding-left: 92px;
   }
 }
