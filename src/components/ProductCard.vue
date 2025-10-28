@@ -3,8 +3,8 @@
     <!-- Card Header -->
     <div class="card-header">
       <div class="seller-info" @click.stop="goToSellerProfile">
-        <img :src="product.sellerAvatar" :alt="product.sellerName" class="seller-avatar" />
-        <span class="seller-name">{{ product.sellerName }}</span>
+        <img :src="product.user.profile_picture_url" :alt="product.user.nickname" class="seller-avatar" />
+        <span class="seller-name">{{ product.user.nickname }}</span>
       </div>
       <button class="contact-btn" @click.stop="handleContact">
         私訊此商品
@@ -13,7 +13,7 @@
 
     <!-- Product Image with Favorite Button -->
     <div class="product-image-wrapper">
-      <img :src="product.image" :alt="product.name" class="product-image" />
+      <img :src="product.image_url" :alt="product.title" class="product-image" />
       
     </div>
 
@@ -21,7 +21,7 @@
     <div class="product-body">
       <!-- Product Name and Favorite Button -->
        <div class="name-and-favorite-button-wrapper">
-        <h5 class="product-name">{{ product.name }}</h5>
+        <h5 class="product-name">{{ product.title }}</h5>
 
         <!-- Favorite Button -->
         <button
@@ -39,23 +39,24 @@
       <!-- Location and Distance -->
       <div class="product-meta">
         <i class="bi bi-geo-alt-fill"></i>
-        <span>{{ product.location }}</span>
+        <span>{{ product.formatted_address }}</span>
         <span class="separator">•</span>
-        <span>{{ product.distance }}</span>
+        <span>{{ Math.round(product.distance_km * 100) / 100 }} km</span>
       </div>
 
       <!-- Posted Time -->
       <div class="product-meta">
         <i class="bi bi-clock-fill"></i>
-        <span>{{ product.postedTime }}</span>
+        <span>{{ formattedTime }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatRelativeTime } from '@/utils/timeFormat';
 
 const router = useRouter();
 
@@ -64,16 +65,26 @@ const props = defineProps({
     type: Object,
     required: true,
     default: () => ({
-      id: 1,
-      name: '物品名稱',
+      item_id: 1,
+      title: '物品名稱',
+      image_url: 'https://placehold.co/600x400',
       price: 700,
-      image: 'https://placehold.co/600x400',
-      sellerName: '提供者名稱',
-      sellerAvatar: 'https://placehold.co/50x50',
-      sellerId: 1,
-      location: '台中市西屯區',
-      distance: '500m',
-      postedTime: '3天前'
+      distance_km: '0.5',
+      formatted_address: '台中市西屯區',
+      created_at: '2024-06-01T12:00:00Z',
+      updated_at: '2024-06-01T12:00:00Z',
+      favorites_count: 10,
+      user: {
+        id: "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
+        nickname: '提供者名稱',
+        profile_picture_url: 'https://placehold.co/50x50'
+      },
+      // sellerName: '提供者名稱',
+      // sellerAvatar: 'https://placehold.co/50x50',
+      // sellerId: 1,
+      // location: '台中市西屯區',
+      // distance: '500m',
+      // postedTime: '3天前'
     })
   }
 });
@@ -81,6 +92,11 @@ const props = defineProps({
 const emit = defineEmits(['favorite-toggle', 'contact-seller']);
 
 const isFavorite = ref(false);
+
+// 格式化時間
+const formattedTime = computed(() => {
+  return formatRelativeTime(props.product.created_at);
+});
 
 const toggleFavorite = () => {
   isFavorite.value = !isFavorite.value;

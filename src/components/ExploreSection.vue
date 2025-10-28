@@ -6,7 +6,7 @@
       <div class="categories-wrapper">
         <!-- Left Arrow -->
         <button
-          v-if="showLeftArrow"
+          v-if="showLeftArrow && !loading"
           class="nav-arrow nav-arrow-left"
           @click="scrollLeft"
           aria-label="Previous"
@@ -27,7 +27,19 @@
           @touchend="endDrag"
           @scroll="handleScroll"
         >
+          <!-- Loading State with Skeleton Cards -->
+          <template v-if="loading">
+            <div v-for="i in 8" :key="`skeleton-${i}`" class="skeleton-card">
+              <div class="skeleton-icon">
+                <BSpinner variant="primary" type="grow" small />
+              </div>
+              <div class="skeleton-text"></div>
+            </div>
+          </template>
+
+          <!-- Actual Category Cards -->
           <CategoryCard
+            v-else
             v-for="category in categories"
             :key="category.id"
             :category="category"
@@ -37,7 +49,7 @@
 
         <!-- Right Arrow -->
         <button
-          v-if="showRightArrow"
+          v-if="showRightArrow && !loading"
           class="nav-arrow nav-arrow-right"
           @click="scrollRight"
           aria-label="Next"
@@ -50,26 +62,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { BSpinner } from 'bootstrap-vue-next';
 import CategoryCard from './CategoryCard.vue';
+import { useCategoriesStore } from '@/stores/categories.js'
 
 const emit = defineEmits(['category-click']);
+const categoriesStore = useCategoriesStore()
+
+if (!categoriesStore.isLoaded) {
+  categoriesStore.fetchCategories().catch((error) => {
+    console.error('Failed to fetch categories in ExploreSection:', error);
+  });
+}
 
 // Categories data
-const categories = [
-  { id: 1, category_id: 1, name: '追蹤中', icon: 'bi bi-eye', image: 'https://placehold.co/150/6e3ba5/ffffff?text=追蹤中' },
-  { id: 2, category_id: 2, name: '免費贈送', icon: 'bi bi-gift', image: 'https://placehold.co/150/00b894/ffffff?text=免費' },
-  { id: 3, category_id: 3, name: '3C用品', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=3C' },
-  { id: 4, category_id: 4, name: '手機', icon: 'bi bi-phone', image: 'https://placehold.co/150/5a9bd4/ffffff?text=手機' },
-  { id: 5, category_id: 5, name: '女裝', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=女裝' },
-  { id: 6, category_id: 6, name: '男裝', icon: 'bi bi-bag', image: 'https://placehold.co/150/e76f51/ffffff?text=男裝' },
-  { id: 7, category_id: 7, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝' },
-  { id: 8, category_id: 8, name: '精品', icon: 'bi bi-handbag', image: 'https://placehold.co/150/ffb6b6/ffffff?text=精品' },
-  { id: 9, category_id: 9, name: '遊戲', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=遊戲' },
-  { id: 10, category_id: 10, name: '運動健身', icon: 'bi bi-bicycle', image: 'https://placehold.co/150/81c784/ffffff?text=運動' },
-  { id: 11, category_id: 11, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電' },
-  { id: 12, category_id: 12, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子' }
-];
+const categories = computed(() => categoriesStore.categories);
+const loading = computed(() => categoriesStore.isLoading);
+console.log(categoriesStore.categories); 
+
 
 // Drag/swipe state
 const categoriesContainer = ref(null);
@@ -184,11 +195,52 @@ onUnmounted(() => {
 
 .categories-wrapper {
   position: relative;
+  min-height: 180px;
+}
+
+.skeleton-card {
+  flex-shrink: 0;
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  .skeleton-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .skeleton-text {
+    width: 80%;
+    height: 16px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .categories-container {
   display: flex;
-  gap: 16px;
+  gap: 32px;
   overflow-x: auto;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -257,6 +309,10 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1199.98px) {
+  .skeleton-card {
+    width: 130px;
+  }
+
   .categories-container {
     gap: 14px;
 
@@ -295,6 +351,10 @@ onUnmounted(() => {
   .section-title {
     font-size: 22px;
     margin-bottom: 25px;
+  }
+
+  .skeleton-card {
+    width: 120px;
   }
 
   .categories-container {
@@ -341,6 +401,10 @@ onUnmounted(() => {
   .section-title {
     font-size: 20px;
     margin-bottom: 20px;
+  }
+
+  .skeleton-card {
+    width: 110px;
   }
 
   .categories-container {

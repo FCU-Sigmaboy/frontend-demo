@@ -1,6 +1,13 @@
 <template>
   <div class="category-tabs">
+    <!-- Loading State -->
+    <template v-if="loading">
+      <div v-for="i in 5" :key="`skeleton-${i}`" class="skeleton-tab"></div>
+    </template>
+
+    <!-- Category Tabs -->
     <button
+      v-else
       v-for="category in categories"
       :key="category.id"
       class="category-tab"
@@ -12,31 +19,24 @@
   </div>
 </template>
 
-<script>
-const DEFAULT_CATEGORIES = [
-  { id: 1, category_id: 1, name: '流行服飾', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=流行服飾' },
-  { id: 2, category_id: 2, name: '鞋包配件', icon: 'bi bi-handbag', image: 'https://placehold.co/150/e76f51/ffffff?text=鞋包配件' },
-  { id: 3, category_id: 3, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝保養' },
-  { id: 4, category_id: 4, name: '電子 3C', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=電子3C' },
-  { id: 5, category_id: 5, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電用品' },
-  { id: 6, category_id: 6, name: '家具家飾', icon: 'bi bi-house', image: 'https://placehold.co/150/8d99ae/ffffff?text=家具家飾' },
-  { id: 7, category_id: 7, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子婦幼' },
-  { id: 8, category_id: 8, name: '生活娛樂', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=生活娛樂' },
-  { id: 9, category_id: 9, name: '圖書影音', icon: 'bi bi-book', image: 'https://placehold.co/150/ffafcc/ffffff?text=圖書影音' }
-];
-</script>
-
 <script setup>
+import { computed } from 'vue';
+import { useCategoriesStore } from '@/stores/categories.js';
+
 defineProps({
   categories: {
-    type: Array,
-    default: () => DEFAULT_CATEGORIES
+    type: Array
   },
   modelValue: {
     type: Number,
     default: 0
   }
 });
+
+const categoriesStore = useCategoriesStore();
+
+const categories = computed(() => [{ id: 0, name: '全部' }, ...categoriesStore.categories]);
+const loading = computed(() => categoriesStore.isLoading);
 
 const emit = defineEmits(['update:modelValue', 'change']);
 
@@ -53,6 +53,25 @@ const handleCategoryClick = (categoryId) => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.skeleton-tab {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  min-width: 80px;
+  height: 32px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .category-tab {
@@ -86,6 +105,12 @@ const handleCategoryClick = (categoryId) => {
     gap: 10px;
   }
 
+  .skeleton-tab {
+    padding: 5px 14px;
+    min-width: 70px;
+    height: 28px;
+  }
+
   .category-tab {
     font-size: 13px;
     padding: 5px 14px;
@@ -108,6 +133,12 @@ const handleCategoryClick = (categoryId) => {
       background-color: #d0d0d0;
       border-radius: 2px;
     }
+  }
+
+  .skeleton-tab {
+    padding: 4px 12px;
+    min-width: 60px;
+    height: 26px;
   }
 
   .category-tab {

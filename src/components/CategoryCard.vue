@@ -1,14 +1,14 @@
 <template>
   <div class="category-card" @click="handleClick">
-    <div class="category-icon">
-      <img v-if="category.image" :src="category.image" :alt="category.name" />
-      <i v-else :class="category.icon" class="placeholder-icon"></i>
+    <div class="category-icon" :style="{ backgroundColor: category.color }">
+      <i :class="category.icon" class="placeholder-icon"></i>
     </div>
     <p class="category-name">{{ category.name }}</p>
   </div>
 </template>
 
 <script setup>
+
 const props = defineProps({
   category: {
     type: Object,
@@ -17,7 +17,7 @@ const props = defineProps({
       id: 1,
       name: '分類',
       icon: 'bi bi-grid',
-      image: null
+      color: '#6FB8A5'
     })
   }
 });
@@ -64,7 +64,7 @@ const handleClick = () => {
 
   .placeholder-icon {
     font-size: 64px;
-    color: #6fb8a5;
+    color: #ffffff;
   }
 }
 

@@ -20,44 +20,54 @@
 
           <!-- Page Title -->
           <h1 class="page-title">{{ pageTitle }}</h1>
-
-          <!-- Filter Options -->
-          <div class="filter-options">
-            <button
-              v-for="filter in filters"
-              :key="filter.id"
-              class="filter-btn"
-              :class="{ active: activeFilter === filter.id }"
-              @click="activeFilter = filter.id"
-            >
-              {{ filter.label }}
-            </button>
-          </div>
         </div>
+      </section>
+
+      <!-- Filter Tabs Section -->
+      <section class="filter-section">
+        <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
       </section>
 
       <!-- Product Grid Section -->
       <section class="products-section">
         <div class="products-container">
-          <div class="products-grid">
+          <!-- Loading Skeleton -->
+          <div v-if="loading" class="products-grid">
+            <div v-for="i in 8" :key="`skeleton-${i}`" class="skeleton-product-card">
+              <div class="skeleton-image"></div>
+              <div class="skeleton-content">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text short"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actual Product Cards with Animation -->
+          <TransitionGroup
+            v-else
+            name="product-list"
+            tag="div"
+            class="products-grid"
+          >
             <ProductCard
-              v-for="product in filteredProducts"
-              :key="product.id"
+              v-for="product in displayedProducts"
+              :key="product.item_id"
               :product="product"
-              @click="goToProductDetail(product.id)"
+              @click="goToProductDetail(product.item_id)"
               @favorite-toggle="handleFavoriteToggle"
               @contact-seller="handleContactSeller"
             />
-          </div>
+          </TransitionGroup>
 
           <!-- Empty State -->
-          <div v-if="filteredProducts.length === 0" class="empty-state">
+          <div v-if="!loading && displayedProducts.length === 0" class="empty-state">
             <i class="bi bi-inbox"></i>
             <p>找不到符合條件的物品</p>
           </div>
 
           <!-- Load More Button -->
-          <div v-if="hasMore && filteredProducts.length > 0" class="load-more-section">
+          <div v-if="!loading && hasMore && displayedProducts.length > 0" class="load-more-section">
             <button class="load-more-btn" @click="loadMore">
               載入更多
             </button>
@@ -78,30 +88,30 @@ import AppFooter from '../components/AppFooter.vue';
 import SearchBar from '../components/SearchBar.vue';
 import ProductCard from '../components/ProductCard.vue';
 import CategoryTabs from '../components/CategoryTabs.vue';
+import FilterTabs from '../components/FilterTabs.vue';
+
+import { useCategoriesStore } from '@/stores/categories.js';
+import { searchItems } from '@/api/get_searchItemsAPI';
 
 const route = useRoute();
 const router = useRouter();
 
+const categoriesStore = useCategoriesStore()
+
+if (!categoriesStore.isLoaded) {
+  categoriesStore.fetchCategories().catch((error) => {
+    console.error('Failed to fetch categories in ExploreSection:', error);
+  });
+}
+
+const categories = computed(() => categoriesStore.categories);
+
 // State
 const userPoints = ref(500);
 const selectedCategory = ref(0); // Default to '全部物品'
-const activeFilter = ref(1);
 const searchQuery = ref('');
 const hasMore = ref(true);
-
-// Categories
-const categories = [
-  { id: 0, category_id: 0, name: '全部物品', icon: '', image: '' },
-  { id: 1, category_id: 1, name: '流行服飾', icon: 'bi bi-bag', image: 'https://placehold.co/150/f4a261/ffffff?text=流行服飾' },
-  { id: 2, category_id: 2, name: '鞋包配件', icon: 'bi bi-handbag', image: 'https://placehold.co/150/e76f51/ffffff?text=鞋包配件' },
-  { id: 3, category_id: 3, name: '美妝保養', icon: 'bi bi-flower1', image: 'https://placehold.co/150/f4c2c2/ffffff?text=美妝保養' },
-  { id: 4, category_id: 4, name: '電子 3C', icon: 'bi bi-laptop', image: 'https://placehold.co/150/457b9d/ffffff?text=電子3C' },
-  { id: 5, category_id: 5, name: '家電用品', icon: 'bi bi-tv', image: 'https://placehold.co/150/a8dadc/ffffff?text=家電用品' },
-  { id: 6, category_id: 6, name: '家具家飾', icon: 'bi bi-house', image: 'https://placehold.co/150/8d99ae/ffffff?text=家具家飾' },
-  { id: 7, category_id: 7, name: '親子婦幼', icon: 'bi bi-heart', image: 'https://placehold.co/150/ffc8dd/ffffff?text=親子婦幼' },
-  { id: 8, category_id: 8, name: '生活娛樂', icon: 'bi bi-controller', image: 'https://placehold.co/150/cdb4db/ffffff?text=生活娛樂' },
-  { id: 9, category_id: 9, name: '圖書影音', icon: 'bi bi-book', image: 'https://placehold.co/150/ffafcc/ffffff?text=圖書影音' }
-];
+const loading = ref(false);
 
 // Filters
 const filters = [
@@ -110,109 +120,13 @@ const filters = [
   { id: 3, label: '為你推薦' }
 ];
 
-// Mock product data (same structure as HomePage)
-const products = ref([
-  {
-    id: 1,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Product+1',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=A',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'electronics'
-  },
-  {
-    id: 2,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Product+2',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=B',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'electronics'
-  },
-  {
-    id: 3,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/4a8b7d/ffffff?text=Product+3',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=C',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'furniture'
-  },
-  {
-    id: 4,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/3a7a6e/ffffff?text=Product+4',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=D',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'electronics'
-  },
-  {
-    id: 5,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Product+5',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=E',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'electronics'
-  },
-  {
-    id: 6,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Product+6',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=F',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'books'
-  },
-  {
-    id: 7,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/4a8b7d/ffffff?text=Product+7',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=G',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'electronics'
-  },
-  {
-    id: 8,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/3a7a6e/ffffff?text=Product+8',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=H',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    category: 'electronics'
-  }
-]);
+// Products data
+const products = ref([]);
+const displayedProducts = ref([]);
 
 // Computed
 const pageTitle = computed(() => {
-  const categoryLabel = categories.find(c => c.category_id === selectedCategory.value)?.name || '全部物品';
+  const categoryLabel = categories.value.find(c => c.id === selectedCategory.value)?.name || '全部物品';
 
   if (searchQuery.value) {
     if (selectedCategory.value === 0) {
@@ -224,23 +138,6 @@ const pageTitle = computed(() => {
   return categoryLabel;
 });
 
-const filteredProducts = computed(() => {
-  let result = products.value;
-
-  // Filter by category
-  if (selectedCategory.value !== 0) {
-    result = result.filter(p => p.category === selectedCategory.value);
-  }
-
-  // Filter by search query
-  if (searchQuery.value) {
-    result = result.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    );
-  }
-
-  return result;
-});
 
 // Methods
 const handleSearch = (data) => {
@@ -270,15 +167,12 @@ const handleCategoryChange = (categoryId) => {
   // Update URL query params when category changes
   const query = { ...route.query };
 
-  // Find the category object to get category_id
-  const category = categories.find(c => c.category_id === categoryId);
-
-  if (categoryId === 0 || !category) {
+  if (categoryId === 0) {
     // Remove category param if it's 'all'
     delete query.category;
   } else {
-    // Use category_id (number) in URL
-    query.category = category.category_id;
+    // Use category.id (number) in URL
+    query.category = categoryId;
   }
 
   router.push({ query });
@@ -302,27 +196,58 @@ const loadMore = () => {
   hasMore.value = false;
 };
 
+// Load products function
+const loadProducts = async () => {
+  loading.value = true;
+  try {
+    const data = await searchItems();
+    products.value = data;
+    displayedProducts.value = data;
+    console.log('Products loaded:', data);
+  } catch (error) {
+    console.error('Failed to load products:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
 // Watch for URL changes (e.g., browser back/forward)
 watch(() => route.query.category, (newCategoryId) => {
   if (!newCategoryId) {
     selectedCategory.value = 0;
   } else {
     // Convert category_id (number) back to id (string)
-    const category = categories.find(c => c.category_id === Number(newCategoryId));
-    selectedCategory.value = category ? category.category_id : 0;
+    const category = categories.value.find(c => c.id === Number(newCategoryId));
+    selectedCategory.value = category ? category.id : 0;
   }
 });
+
+// Watch for selectedCategory changes and reload products
+watch(selectedCategory, (newVal, oldVal) => {
+  // Skip if it's the initial value assignment
+  if (oldVal === undefined) return;
+  loadProducts();
+});
+
+// Watch categories to initialize selectedCategory when data is loaded
+watch(categories, (newCategories) => {
+  if (newCategories.length > 0 && route.query.category) {
+    const category = newCategories.find(c => c.id === Number(route.query.category));
+    if (category) {
+      selectedCategory.value = category.id;
+    }
+  }
+}, { immediate: true });
 
 // Initialize from route query
 onMounted(() => {
   if (route.query.search) {
     searchQuery.value = route.query.search;
   }
-  if (route.query.category) {
-    // Convert category_id (number) from URL to id (string)
-    const category = categories.find(c => c.category_id === Number(route.query.category));
-    selectedCategory.value = category ? category.category_id : 0;
-  }
+  // Category initialization is handled by the categories watcher above
+
+  // Load products
+  loadProducts();
 });
 </script>
 
@@ -368,38 +293,13 @@ onMounted(() => {
   font-size: 28px;
   font-weight: 700;
   color: #1e1e1e;
-  margin: 0 0 20px 0;
+  margin: 0;
 }
 
-.filter-options {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.filter-btn {
-  background-color: white;
-  border: 1px solid #d0d0d0;
-  border-radius: 5px;
-  padding: 6px 16px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #1e1e1e;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f5f5f5;
-    border-color: #6fb8a5;
-  }
-
-  &.active {
-    background-color: #6fb8a5;
-    border-color: #6fb8a5;
-    color: white;
-    font-weight: 500;
-  }
+// Filter Section
+.filter-section {
+  padding: 20px 0;
+  background-color: #f9f9f9;
 }
 
 // Products Section
@@ -418,6 +318,81 @@ onMounted(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 40px;
+}
+
+// Product List Animation
+.product-list-move,
+.product-list-enter-active,
+.product-list-leave-active {
+  transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.product-list-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(30px);
+}
+
+.product-list-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(-30px);
+}
+
+.product-list-leave-active {
+  position: absolute;
+}
+
+// Skeleton Product Card
+.skeleton-product-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.short {
+    width: 60%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 // Empty State
@@ -489,16 +464,10 @@ onMounted(() => {
 
   .page-title {
     font-size: 24px;
-    margin-bottom: 18px;
   }
 
-  .filter-options {
-    gap: 10px;
-  }
-
-  .filter-btn {
-    font-size: 13px;
-    padding: 5px 14px;
+  .filter-section {
+    padding: 18px 0;
   }
 
   .products-section {
@@ -553,16 +522,10 @@ onMounted(() => {
 
   .page-title {
     font-size: 20px;
-    margin-bottom: 15px;
   }
 
-  .filter-options {
-    gap: 8px;
-  }
-
-  .filter-btn {
-    font-size: 12px;
-    padding: 4px 12px;
+  .filter-section {
+    padding: 15px 0;
   }
 
   .products-section {

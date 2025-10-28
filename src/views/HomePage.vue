@@ -18,22 +18,40 @@
 
       <!-- Filter Tabs Section -->
       <section class="filter-section">
-        <FilterTabs v-model="activeFilter" :filters="filters" />
+        <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
       </section>
 
       <!-- Product Grid Section -->
       <section class="products-section">
         <div class="products-container">
-          <div class="products-grid">
+          <!-- Loading Skeleton -->
+          <div v-if="loading" class="products-grid">
+            <div v-for="i in 8" :key="`skeleton-${i}`" class="skeleton-product-card">
+              <div class="skeleton-image"></div>
+              <div class="skeleton-content">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text short"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actual Product Cards -->
+          <TransitionGroup
+            v-else
+            name="product-list"
+            tag="div"
+            class="products-grid"
+          >
             <ProductCard
-              v-for="product in products"
-              :key="product.id"
+              v-for="product in displayedProducts"
+              :key="product.item_id"
               :product="product"
-              @click="goToProductDetail(product.id)"
+              @click="goToProductDetail(product.item_id)"
               @favorite-toggle="handleFavoriteToggle"
               @contact-seller="handleContactSeller"
             />
-          </div>
+          </TransitionGroup>
         </div>
       </section>
 
@@ -62,11 +80,12 @@ import ExploreSection from '../components/ExploreSection.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 import ProductCard from '../components/ProductCard.vue';
 
+import { searchItems } from '@/api/get_searchItemsAPI';
+
 const router = useRouter();
 
 // State
 const userPoints = ref(500);
-const activeFilter = ref(1);
 const showScrollTop = ref(false);
 
 // Filters
@@ -76,53 +95,10 @@ const filters = [
   { id: 3, label: '為你推薦' }
 ];
 
-// Mock product data
-const products = ref([
-  {
-    id: 1,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Product+1',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=A',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前'
-  },
-  {
-    id: 2,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Product+2',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=B',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前'
-  },
-  {
-    id: 3,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/4a8b7d/ffffff?text=Product+3',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=C',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前'
-  },
-  {
-    id: 4,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/3a7a6e/ffffff?text=Product+4',
-    sellerName: '提供者名稱',
-    sellerAvatar: 'https://placehold.co/32/1e1e1e/ffffff?text=D',
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前'
-  }
-]);
+// Products data
+const products = ref([]);
+const displayedProducts = ref([]);
+const loading = ref(false);
 
 // Methods
 const handleSearch = (searchData) => {
@@ -139,7 +115,7 @@ const handleCategoryClick = (category) => {
   // Navigate to item list page with category filter
   router.push({
     name: 'ItemList',
-    query: { category: category.category_id }
+    query: { category: category.id }
   });
 };
 
@@ -166,7 +142,21 @@ const scrollToTop = () => {
 };
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // Load products
+  loading.value = true;
+  try {
+    const data = await searchItems();
+    products.value = data;
+    displayedProducts.value = data;
+    console.log('Products loaded:', data);
+  } catch (error) {
+    console.error('Failed to load products:', error);
+  } finally {
+    loading.value = false;
+  }
+
+  // Add scroll listener
   window.addEventListener('scroll', handleScroll);
 });
 
@@ -222,6 +212,81 @@ onUnmounted(() => {
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 20px;
   justify-content: space-between;
+}
+
+// Skeleton Product Card
+.skeleton-product-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 330px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.short {
+    width: 60%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// Product List Animations
+.product-list-move,
+.product-list-enter-active,
+.product-list-leave-active {
+  transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.product-list-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(30px);
+}
+
+.product-list-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(-30px);
+}
+
+.product-list-leave-active {
+  position: absolute;
 }
 
 // Scroll to Top Button

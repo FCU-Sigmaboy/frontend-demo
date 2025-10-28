@@ -224,6 +224,8 @@ const handleContactSeller = (productId) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .item-detail-page {
   min-height: 100vh;
   display: flex;
@@ -258,7 +260,7 @@ const handleContactSeller = (productId) => {
 }
 
 .breadcrumb-link {
-  color: #6fb8a5;
+  color: $primary;
   text-decoration: none;
   transition: all 0.3s;
 
@@ -371,12 +373,12 @@ const handleContactSeller = (productId) => {
   }
 
   &:hover {
-    border-color: #6fb8a5;
+    border-color: $primary;
   }
 
   &.active {
-    border-color: #6fb8a5;
-    box-shadow: 0 0 0 1px #6fb8a5;
+    border-color: $primary;
+    box-shadow: 0 0 0 1px $primary;
   }
 }
 
