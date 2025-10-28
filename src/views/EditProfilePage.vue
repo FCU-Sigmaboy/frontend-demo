@@ -274,6 +274,8 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .edit-profile-page {
   min-height: 100vh;
   display: flex;
@@ -390,7 +392,7 @@ const handleSubmit = async () => {
   outline: none;
 
   &:focus {
-    border-color: #6fb8a5;
+    border-color: $primary;
     box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
   }
 
@@ -474,7 +476,7 @@ const handleSubmit = async () => {
 }
 
 .upload-btn {
-  background: #6fb8a5;
+  background: $primary;
   color: white;
   border: none;
 
@@ -511,7 +513,7 @@ const handleSubmit = async () => {
     width: 20px;
     height: 20px;
     cursor: pointer;
-    accent-color: #6fb8a5;
+    accent-color: $primary;
   }
 
   .checkbox-text {
@@ -559,7 +561,7 @@ const handleSubmit = async () => {
 }
 
 .save-btn {
-  background: #6fb8a5;
+  background: $primary;
   color: white;
   border: none;
 

@@ -371,6 +371,8 @@ const goToProduct = (productId) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .messages-page {
   min-height: 100vh;
   display: flex;
@@ -515,13 +517,13 @@ const goToProduct = (productId) => {
   }
 
   &:hover {
-    border-color: #6fb8a5;
-    color: #6fb8a5;
+    border-color: $primary;
+    color: $primary;
   }
 
   &.active {
-    background: #6fb8a5;
-    border-color: #6fb8a5;
+    background: $primary;
+    border-color: $primary;
     color: white;
 
     .filter-count {
@@ -551,7 +553,7 @@ const goToProduct = (productId) => {
 
   &.active {
     background: #f0faf8;
-    border-left: 3px solid #6fb8a5;
+    border-left: 3px solid $primary;
   }
 }
 
@@ -629,7 +631,7 @@ const goToProduct = (productId) => {
     min-width: 20px;
     height: 20px;
     padding: 0 6px;
-    background: #6fb8a5;
+    background: $primary;
     border-radius: 10px;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 12px;
@@ -725,7 +727,7 @@ const goToProduct = (productId) => {
       .user-status {
         font-family: 'Noto Sans TC', sans-serif;
         font-size: 12px;
-        color: #6fb8a5;
+        color: $primary;
       }
     }
   }
@@ -788,7 +790,7 @@ const goToProduct = (productId) => {
       font-family: 'Noto Sans TC', sans-serif;
       font-size: 14px;
       font-weight: 600;
-      color: #6fb8a5;
+      color: $primary;
       margin: 0;
     }
   }
@@ -796,17 +798,17 @@ const goToProduct = (productId) => {
   .view-product-btn {
     padding: 8px 16px;
     background: white;
-    border: 1px solid #6fb8a5;
+    border: 1px solid $primary;
     border-radius: 6px;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 13px;
     font-weight: 500;
-    color: #6fb8a5;
+    color: $primary;
     cursor: pointer;
     transition: all 0.3s;
 
     &:hover {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
     }
   }
@@ -849,7 +851,7 @@ const goToProduct = (productId) => {
     justify-content: flex-end;
 
     .message-content {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
       border-radius: 16px 16px 4px 16px;
 
@@ -933,11 +935,11 @@ const goToProduct = (productId) => {
   .send-btn {
     &:not(:disabled) {
       i {
-        color: #6fb8a5;
+        color: $primary;
       }
 
       &:hover {
-        background: #6fb8a5;
+        background: $primary;
 
         i {
           color: white;
@@ -964,7 +966,7 @@ const goToProduct = (productId) => {
     transition: all 0.3s;
 
     &:focus {
-      border-color: #6fb8a5;
+      border-color: $primary;
       background: white;
     }
 

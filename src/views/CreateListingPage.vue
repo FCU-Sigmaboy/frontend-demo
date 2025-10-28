@@ -370,6 +370,8 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .create-listing-page {
   min-height: 100vh;
   display: flex;
@@ -497,7 +499,7 @@ const handleSubmit = async () => {
   outline: none;
 
   &:focus {
-    border-color: #6fb8a5;
+    border-color: $primary;
     box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
   }
 
@@ -568,7 +570,7 @@ const handleSubmit = async () => {
     bottom: 8px;
     left: 8px;
     padding: 4px 10px;
-    background: #6fb8a5;
+    background: $primary;
     color: white;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 12px;
@@ -603,11 +605,11 @@ const handleSubmit = async () => {
 
   &:hover {
     background: #f0f0f0;
-    border-color: #6fb8a5;
+    border-color: $primary;
 
     i,
     span {
-      color: #6fb8a5;
+      color: $primary;
     }
   }
 }
@@ -651,7 +653,7 @@ const handleSubmit = async () => {
     width: 18px;
     height: 18px;
     cursor: pointer;
-    accent-color: #6fb8a5;
+    accent-color: $primary;
   }
 
   .checkbox-text {
@@ -693,13 +695,13 @@ const handleSubmit = async () => {
   }
 
   &:hover {
-    border-color: #6fb8a5;
+    border-color: $primary;
     background: #f9fffe;
   }
 
   &.active {
-    border-color: #6fb8a5;
-    background: #6fb8a5;
+    border-color: $primary;
+    background: $primary;
 
     .condition-label {
       color: white;
@@ -745,7 +747,7 @@ const handleSubmit = async () => {
 }
 
 .publish-btn {
-  background: #6fb8a5;
+  background: $primary;
   color: white;
   border: none;
 

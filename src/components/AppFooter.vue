@@ -49,8 +49,10 @@ import logoImage from '../assets/Logo-white.png';
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .app-footer {
-  background-color: #6fb8a5;
+  background-color: $primary;
   padding: 45px 0 20px;
   margin-top: auto;
 }

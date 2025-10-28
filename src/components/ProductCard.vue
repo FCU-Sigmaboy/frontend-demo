@@ -97,9 +97,11 @@ const goToSellerProfile = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .product-card {
   background: white;
-  border: 0.1px solid #6fb8a5;
+  border: 0.1px solid $primary;
   border-radius: 5px;
   overflow: hidden;
   transition: all 0.3s;
@@ -155,7 +157,7 @@ const goToSellerProfile = () => {
 }
 
 .contact-btn {
-  background-color: #6fb8a5;
+  background-color: $primary;
   border: none;
   border-radius: 5px;
   font-family: 'Inter', 'Noto Sans TC', sans-serif;

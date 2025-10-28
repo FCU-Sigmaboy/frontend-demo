@@ -327,6 +327,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .item-list-page {
   min-height: 100vh;
   display: flex;
@@ -444,17 +446,17 @@ onMounted(() => {
 
 .load-more-btn {
   background-color: white;
-  border: 1px solid #6fb8a5;
+  border: 1px solid $primary;
   border-radius: 5px;
   padding: 12px 40px;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 16px;
-  color: #6fb8a5;
+  color: $primary;
   cursor: pointer;
   transition: all 0.3s;
 
   &:hover {
-    background-color: #6fb8a5;
+    background-color: $primary;
     color: white;
   }
 }

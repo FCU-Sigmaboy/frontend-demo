@@ -262,6 +262,8 @@ const goToFollowers = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .user-profile-page {
   min-height: 100vh;
   display: flex;
@@ -319,7 +321,7 @@ const goToFollowers = () => {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #6fb8a5;
+    background: $primary;
     border: 3px solid white;
     display: flex;
     align-items: center;
@@ -390,7 +392,7 @@ const goToFollowers = () => {
     &:hover {
       .stat-number,
       .stat-text {
-        color: #6fb8a5;
+        color: $primary;
       }
     }
   }
@@ -413,7 +415,7 @@ const goToFollowers = () => {
 
     i {
       font-size: 24px;
-      color: #6fb8a5;
+      color: $primary;
     }
 
     .stat-value {
@@ -444,12 +446,12 @@ const goToFollowers = () => {
   gap: 8px;
   padding: 12px 24px;
   background: white;
-  border: 2px solid #6fb8a5;
+  border: 2px solid $primary;
   border-radius: 8px;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 16px;
   font-weight: 500;
-  color: #6fb8a5;
+  color: $primary;
   cursor: pointer;
   transition: all 0.3s;
 
@@ -458,7 +460,7 @@ const goToFollowers = () => {
   }
 
   &:hover {
-    background: #6fb8a5;
+    background: $primary;
     color: white;
   }
 }
@@ -515,16 +517,16 @@ const goToFollowers = () => {
   }
 
   &:hover {
-    color: #6fb8a5;
+    color: $primary;
     background: #f9f9f9;
   }
 
   &.active {
-    color: #6fb8a5;
-    border-bottom-color: #6fb8a5;
+    color: $primary;
+    border-bottom-color: $primary;
 
     .tab-count {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
     }
   }
@@ -559,12 +561,12 @@ const goToFollowers = () => {
     gap: 8px;
     padding: 10px 20px;
     background: white;
-    border: 1px solid #6fb8a5;
+    border: 1px solid $primary;
     border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
     font-weight: 500;
-    color: #6fb8a5;
+    color: $primary;
     cursor: pointer;
     transition: all 0.3s;
 
@@ -573,7 +575,7 @@ const goToFollowers = () => {
     }
 
     &:hover {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
     }
   }
@@ -630,7 +632,7 @@ const goToFollowers = () => {
     align-items: center;
     gap: 8px;
     padding: 12px 32px;
-    background: #6fb8a5;
+    background: $primary;
     border: none;
     border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;

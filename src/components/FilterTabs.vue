@@ -38,6 +38,8 @@ const handleClick = (id) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .filter-tabs-wrapper {
   width: 100%;
   max-width: 1600px;
@@ -75,7 +77,7 @@ const handleClick = (id) => {
   }
 
   &.active {
-    background-color: #6fb8a5;
+    background-color: $primary;
     color: white;
   }
 }

@@ -158,6 +158,8 @@ const handleSubmit = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .transaction-details-page {
   min-height: 100vh;
   display: flex;
@@ -192,7 +194,7 @@ const handleSubmit = () => {
 }
 
 .breadcrumb-link {
-  color: #6fb8a5;
+  color: $primary;
   text-decoration: none;
   transition: all 0.3s;
   cursor: pointer;
@@ -270,7 +272,7 @@ const handleSubmit = () => {
 
   &:focus {
     outline: none;
-    border-color: #6fb8a5;
+    border-color: $primary;
     box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
   }
 }
@@ -344,7 +346,7 @@ const handleSubmit = () => {
   font-weight: 600;
 
   .total-value {
-    color: #6fb8a5;
+    color: $primary;
     font-size: 18px;
   }
 }
@@ -352,7 +354,7 @@ const handleSubmit = () => {
 .submit-btn {
   width: 100%;
   padding: 14px 24px;
-  background-color: #6fb8a5;
+  background-color: $primary;
   color: white;
   border: none;
   border-radius: 5px;

@@ -254,6 +254,8 @@ const goToUserProfile = (userId) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .my-followers-page {
   min-height: 100vh;
   display: flex;
@@ -282,7 +284,7 @@ const goToUserProfile = (userId) => {
   font-size: 14px;
 
   .breadcrumb-link {
-    color: #6fb8a5;
+    color: $primary;
     text-decoration: none;
     transition: color 0.3s;
 
@@ -331,15 +333,15 @@ const goToUserProfile = (userId) => {
   }
 
   &:hover {
-    color: #6fb8a5;
+    color: $primary;
   }
 
   &.active {
-    color: #6fb8a5;
-    border-bottom-color: #6fb8a5;
+    color: $primary;
+    border-bottom-color: $primary;
 
     .tab-count {
-      color: #6fb8a5;
+      color: $primary;
     }
   }
 }
@@ -471,23 +473,23 @@ const goToUserProfile = (userId) => {
   .follow-btn {
     padding: 8px 20px;
     background: white;
-    border: 1px solid #6fb8a5;
+    border: 1px solid $primary;
     border-radius: 6px;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
     font-weight: 500;
-    color: #6fb8a5;
+    color: $primary;
     cursor: pointer;
     transition: all 0.3s;
     flex-shrink: 0;
 
     &:hover {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
     }
 
     &.following {
-      background: #6fb8a5;
+      background: $primary;
       color: white;
 
       &:hover {

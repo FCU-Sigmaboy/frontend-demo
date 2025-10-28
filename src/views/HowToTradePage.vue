@@ -176,6 +176,8 @@ import AppFooter from '../components/AppFooter.vue';
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .how-to-trade-page {
   min-height: 100vh;
   display: flex;
@@ -195,7 +197,7 @@ import AppFooter from '../components/AppFooter.vue';
   margin-bottom: 30px;
 
   a {
-    color: #6fb8a5;
+    color: $primary;
     text-decoration: none;
 
     &:hover {
@@ -252,7 +254,7 @@ import AppFooter from '../components/AppFooter.vue';
     left: 20px;
     width: 40px;
     height: 40px;
-    background-color: #6fb8a5;
+    background-color: $primary;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -272,11 +274,11 @@ import AppFooter from '../components/AppFooter.vue';
     align-items: center;
     justify-content: center;
     margin: 0 auto 24px;
-    border: 2px solid #6fb8a5;
+    border: 2px solid $primary;
 
     i {
       font-size: 50px;
-      color: #6fb8a5;
+      color: $primary;
     }
   }
 
@@ -303,7 +305,7 @@ import AppFooter from '../components/AppFooter.vue';
 
   i {
     font-size: 40px;
-    color: #6fb8a5;
+    color: $primary;
     animation: bounce 2s infinite;
   }
 }
@@ -366,7 +368,7 @@ import AppFooter from '../components/AppFooter.vue';
 
     i {
       font-size: 32px;
-      color: #6fb8a5;
+      color: $primary;
     }
   }
 
@@ -388,7 +390,7 @@ import AppFooter from '../components/AppFooter.vue';
 }
 
 .cta-section {
-  background: linear-gradient(135deg, #6fb8a5 0%, #5fa795 100%);
+  background: linear-gradient(135deg, $primary 0%, #5fa795 100%);
   border-radius: 16px;
   padding: 60px 40px;
   text-align: center;
@@ -412,7 +414,7 @@ import AppFooter from '../components/AppFooter.vue';
   .btn-cta {
     display: inline-block;
     background-color: white;
-    color: #6fb8a5;
+    color: $primary;
     border-radius: 30px;
     padding: 14px 48px;
     font-family: 'Noto Sans TC', sans-serif;

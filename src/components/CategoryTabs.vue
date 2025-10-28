@@ -47,6 +47,8 @@ const handleCategoryClick = (categoryId) => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/variables';
+
 .category-tabs {
   display: flex;
   gap: 12px;
@@ -67,12 +69,12 @@ const handleCategoryClick = (categoryId) => {
 
   &:hover {
     background-color: #f5f5f5;
-    border-color: #6fb8a5;
+    border-color: $primary;
   }
 
   &.active {
-    background-color: #6fb8a5;
-    border-color: #6fb8a5;
+    background-color: $primary;
+    border-color: $primary;
     color: white;
     font-weight: 500;
   }
