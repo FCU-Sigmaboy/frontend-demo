@@ -11,9 +11,9 @@
 
             <BNav class="category-nav d-none d-lg-flex">
               <BNavItem
-                v-for="category in categories"
+                v-for="category in categories.slice(0, 4)"
                 :key="category.id"
-                :href="`/items?category=${category.category_id}`"
+                :href="`/items?category=${category.id}`"
                 class="category-link"
               >
                 {{ category.name }}
@@ -177,24 +177,24 @@
             <!-- Category List -->
             <div class="category-list">
               <!-- Following Section -->
-              <div class="category-item">
+              <!-- <div class="category-item">
                 <div class="category-icon-wrapper following">
                   <i class="bi bi-eye"></i>
                 </div>
                 <span class="category-name">追蹤中</span>
-              </div>
+              </div> -->
 
               <!-- Free Items Section -->
-              <div class="category-item">
+              <!-- <div class="category-item">
                 <div class="category-icon-wrapper free">
                   <i class="bi bi-gift"></i>
                   <span class="badge-new">NEW</span>
                 </div>
                 <span class="category-name">免費贈送</span>
-              </div>
+              </div> -->
 
               <!-- Main Categories with Expandable Subcategories -->
-              <div v-for="cat in allCategoriesList" :key="cat.id" class="category-section">
+              <div v-for="cat in categories" :key="cat.id" class="category-section">
                 <div class="category-item expandable" @click="toggleCategory(cat.id)">
                   <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
                     <i :class="['bi', cat.icon]"></i>
@@ -210,9 +210,9 @@
                 <Transition name="subcategory">
                   <div v-if="expandedCategories.includes(cat.id)" class="subcategory-list">
                     <a
-                      v-for="sub in cat.subcategories"
+                      v-for="sub in cat.sub_categories"
                       :key="sub.id"
-                      :href="`/items?category=${sub.category_id}`"
+                      :href="`/items?category=${cat.id}&sub_category=${sub.id}`"
                       class="subcategory-item"
                       @click="closeAllCategories"
                     >
@@ -230,10 +230,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { BNavbar, BContainer, BNav, BNavItem, BButton } from 'bootstrap-vue-next';
 import { useAuthStore } from '../stores/auth';
+
+import { useCategoriesStore } from '@/stores/categories.js';
 
 // Router & Auth Store
 const router = useRouter();
@@ -256,12 +258,16 @@ const showAllCategories = ref(false);
 const categorySearch = ref('');
 const expandedCategories = ref([]);
 
-const categories = [
-  { id: 1, name: '流行服飾', category_id: 1 },
-  { id: 2, name: '家電用品', category_id: 5 },
-  { id: 3, name: '電子 3C', category_id: 4 },
-  { id: 4, name: '圖書影音', category_id: 9 }
-];
+
+const categoriesStore = useCategoriesStore()
+
+if (!categoriesStore.isLoaded) {
+  categoriesStore.fetchCategories().catch((error) => {
+    console.error('Failed to fetch categories in ExploreSection:', error);
+  });
+}
+
+const categories = computed(() => categoriesStore.categories);
 
 // All Categories List with Subcategories
 const allCategoriesList = [
