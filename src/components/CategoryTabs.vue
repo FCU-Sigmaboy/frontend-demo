@@ -23,20 +23,20 @@
 import { computed } from 'vue';
 import { useCategoriesStore } from '@/stores/categories.js';
 
-defineProps({
+const props = defineProps({
   categories: {
-    type: Array
+    type: Array,
+    default: () => []
   },
   modelValue: {
     type: Number,
     default: 0
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
 });
-
-const categoriesStore = useCategoriesStore();
-
-const categories = computed(() => [{ id: 0, name: '全部' }, ...categoriesStore.categories]);
-const loading = computed(() => categoriesStore.isLoading);
 
 const emit = defineEmits(['update:modelValue', 'change']);
 

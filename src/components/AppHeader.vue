@@ -212,7 +212,7 @@
                     <a
                       v-for="sub in cat.sub_categories"
                       :key="sub.id"
-                      :href="`/items?category=${cat.id}&sub_category=${sub.id}`"
+                      :href="`/items?category=${cat.id}&subCategory=${sub.id}`"
                       class="subcategory-item"
                       @click="closeAllCategories"
                     >
@@ -268,113 +268,6 @@ if (!categoriesStore.isLoaded) {
 }
 
 const categories = computed(() => categoriesStore.categories);
-
-// All Categories List with Subcategories
-const allCategoriesList = [
-  {
-    id: 1,
-    name: '流行服飾',
-    icon: 'bi-bag',
-    color: '#4a90e2',
-    category_id: 1,
-    subcategories: [
-      { id: 11, name: '女裝', category_id: 11 },
-      { id: 12, name: '男裝', category_id: 12 },
-      { id: 13, name: '童裝', category_id: 13 }
-    ]
-  },
-  {
-    id: 2,
-    name: '鞋包配件',
-    icon: 'bi-handbag',
-    color: '#e76f51',
-    category_id: 2,
-    subcategories: [
-      { id: 21, name: '女鞋', category_id: 21 },
-      { id: 22, name: '男鞋', category_id: 22 },
-      { id: 23, name: '包包', category_id: 23 }
-    ]
-  },
-  {
-    id: 3,
-    name: '美妝保養',
-    icon: 'bi-flower1',
-    color: '#f4c2c2',
-    category_id: 3,
-    subcategories: [
-      { id: 31, name: '化妝品', category_id: 31 },
-      { id: 32, name: '保養品', category_id: 32 },
-      { id: 33, name: '香水', category_id: 33 }
-    ]
-  },
-  {
-    id: 4,
-    name: '電子 3C',
-    icon: 'bi-laptop',
-    color: '#457b9d',
-    category_id: 4,
-    subcategories: [
-      { id: 41, name: '手機', category_id: 41 },
-      { id: 42, name: '平板電腦', category_id: 42 },
-      { id: 43, name: '筆記型電腦', category_id: 43 }
-    ]
-  },
-  {
-    id: 5,
-    name: '家電用品',
-    icon: 'bi-tv',
-    color: '#a8dadc',
-    category_id: 5,
-    subcategories: [
-      { id: 51, name: '廚房家電', category_id: 51 },
-      { id: 52, name: '生活家電', category_id: 52 }
-    ]
-  },
-  {
-    id: 6,
-    name: '家具家飾',
-    icon: 'bi-house',
-    color: '#8d99ae',
-    category_id: 6,
-    subcategories: [
-      { id: 61, name: '家具', category_id: 61 },
-      { id: 62, name: '居家裝飾', category_id: 62 }
-    ]
-  },
-  {
-    id: 7,
-    name: '親子婦幼',
-    icon: 'bi-heart',
-    color: '#ffc8dd',
-    category_id: 7,
-    subcategories: [
-      { id: 71, name: '嬰幼兒用品', category_id: 71 },
-      { id: 72, name: '玩具', category_id: 72 }
-    ]
-  },
-  {
-    id: 8,
-    name: '生活娛樂',
-    icon: 'bi-controller',
-    color: '#cdb4db',
-    category_id: 8,
-    subcategories: [
-      { id: 81, name: '運動健身', category_id: 81 },
-      { id: 82, name: '戶外休閒', category_id: 82 }
-    ]
-  },
-  {
-    id: 9,
-    name: '圖書影音',
-    icon: 'bi-book',
-    color: '#ffafcc',
-    category_id: 9,
-    subcategories: [
-      { id: 91, name: '書籍', category_id: 91 },
-      { id: 92, name: 'CD/DVD', category_id: 92 }
-    ]
-  }
-];
 
 const mobileMenuItems = [
   { id: 1, name: '個人檔案', icon: 'bi-person', route: 'UserProfile' },
