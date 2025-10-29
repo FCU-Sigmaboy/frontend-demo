@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
   items: {
@@ -167,6 +167,15 @@ const getSortDirectionText = (filter) => {
     return order === 'asc' ? '升序' : '降序';
   }
 };
+
+// 監聽 sortedItems 的變化，自動 emit 給父組件
+watch(
+  sortedItems,
+  (newValue) => {
+    emit('update:sortedItems', newValue);
+  },
+  { immediate: true } // 立即執行一次，確保初始化時也會 emit
+);
 
 // 暴露 sortedItems 給父組件使用
 defineExpose({
