@@ -85,7 +85,6 @@
               :key="product.item_id"
               :product="product"
               @click="goToProductDetail(product.item_id)"
-              @favorite-toggle="handleFavoriteToggle"
               @contact-seller="handleContactSeller"
             />
           </TransitionGroup>
@@ -122,6 +121,7 @@ import FilterTabs from '../components/FilterTabs.vue';
 
 import { useCategoriesStore } from '@/stores/categories.js';
 import { searchItems } from '@/api/get_searchItemsAPI';
+import { sortByRecommendation } from '@/utils/sortFunctions.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -144,11 +144,38 @@ const searchQuery = ref('');
 const hasMore = ref(true);
 const loading = ref(false);
 
-// Filters
+// Filters - 使用配置驅動的方式
 const filters = [
-  { id: 1, label: '最新上架' },
-  { id: 2, label: '離我最近' },
-  { id: 3, label: '為你推薦' }
+  {
+    id: 1,
+    label: '上架時間',
+    sortKey: 'created_at',
+    defaultOrder: 'desc',  // 預設：晚到早
+    ascText: '晚到早',
+    descText: '早到晚'
+  },
+  {
+    id: 2,
+    label: '距離',
+    sortKey: 'distance_km',
+    defaultOrder: 'asc',   // 預設：近到遠
+    ascText: '近到遠',
+    descText: '遠到近'
+  },
+  {
+    id: 3,
+    label: '價格',
+    sortKey: 'price',
+    defaultOrder: 'asc',   // 預設：低到高
+    ascText: '低到高',
+    descText: '高到低'
+  },
+  {
+    id: 4,
+    label: '為你推薦',
+    sortFn: sortByRecommendation,
+    sortable: false  // 不可切換排序方向
+  }
 ];
 
 // Products data
@@ -308,10 +335,6 @@ const handleCategoryChange = (tabId) => {
 
 const goToProductDetail = (productId) => {
   router.push({ name: 'ItemDetail', params: { id: productId } });
-};
-
-const handleFavoriteToggle = (data) => {
-  console.log('Favorite toggled:', data);
 };
 
 const handleContactSeller = (productId) => {

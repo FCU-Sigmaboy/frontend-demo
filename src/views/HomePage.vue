@@ -80,6 +80,7 @@ import ExploreSection from '../components/ExploreSection.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 import ProductCard from '../components/ProductCard.vue';
 
+import { supabase } from '@/lib/supabase';
 import { searchItems } from '@/api/get_searchItemsAPI';
 
 const router = useRouter();
@@ -88,12 +89,13 @@ const router = useRouter();
 const userPoints = ref(500);
 const showScrollTop = ref(false);
 
+const authenticatedUser = ref(null);
+
 // Filters
-const filters = [
+const filters = ref([
   { id: 1, label: '最新上架' },
   { id: 2, label: '離我最近' },
-  { id: 3, label: '為你推薦' }
-];
+]);
 
 // Products data
 const products = ref([]);
@@ -143,6 +145,12 @@ const scrollToTop = () => {
 
 // Lifecycle
 onMounted(async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  authenticatedUser.value = user;
+  if (authenticatedUser.value) {
+    filters.value.push({ id: 3, label: '為你推薦' });
+  }
+
   // Load products
   loading.value = true;
   try {
