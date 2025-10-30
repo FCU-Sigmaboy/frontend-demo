@@ -1044,7 +1044,7 @@ const toggleCategory = (categoryId) => {
 
 @media (max-width: 1300px) {
   .category-nav {
-    visibility: hidden;
+    display: none !important;
     width: 0;
   }
 }
