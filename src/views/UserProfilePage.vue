@@ -210,20 +210,24 @@ const tabs = computed(() => [
 // Mock data
 const myListings = ref([
   {
-    id: 1,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Product+1',
-    sellerName: authStore.userName,
-    sellerAvatar: authStore.userAvatar,
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前',
-    status: 'active'
+    "item_id": 101,
+    "title": "（全新）IKEA 檯燈",
+    "image_url": "https://.../item101_cover.jpg",
+    "price": 500,
+    "distance_km": "1.254",
+    "formatted_address": "台中市西屯區福星路",
+    "created_at": "2025-10-18T10:30:00.123+00:00",
+    "updated_at": "2025-10-18T10:30:00.123+00:00",
+    "favorites_count": 15,
+    "user": {
+      "id": "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
+      "nickname": "Joseph",
+      "profile_picture_url": "https://.../joseph.jpg"
+    }
   }
 ]);
 
-const favoriteItems = computed(() => favoritesStore.favoriteItems);
+const favoriteItems = computed(() => []); // favoritesStore.favoriteItems
 const purchaseHistory = ref([]);
 const salesHistory = ref([]);
 

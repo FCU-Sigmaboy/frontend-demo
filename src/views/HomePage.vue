@@ -80,7 +80,9 @@ import ExploreSection from '../components/ExploreSection.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 import ProductCard from '../components/ProductCard.vue';
 
+import { supabase } from '@/lib/supabase';
 import { searchItems } from '@/api/get_searchItemsAPI';
+import { sortByRecommendation } from '@/utils/sortFunctions.js';
 
 const router = useRouter();
 
@@ -88,12 +90,35 @@ const router = useRouter();
 const userPoints = ref(500);
 const showScrollTop = ref(false);
 
+const authenticatedUser = ref(null);
+
 // Filters
-const filters = [
-  { id: 1, label: '最新上架' },
-  { id: 2, label: '離我最近' },
-  { id: 3, label: '為你推薦' }
-];
+const filters = ref([
+  {
+    id: 1,
+    label: '上架時間',
+    sortKey: 'created_at',
+    defaultOrder: 'desc',  // 預設：晚到早
+    ascText: '晚到早',
+    descText: '早到晚'
+  },
+  {
+    id: 2,
+    label: '距離',
+    sortKey: 'distance_km',
+    defaultOrder: 'asc',   // 預設：近到遠
+    ascText: '近到遠',
+    descText: '遠到近'
+  },
+  {
+    id: 3,
+    label: '價格',
+    sortKey: 'price',
+    defaultOrder: 'asc',   // 預設：低到高
+    ascText: '低到高',
+    descText: '高到低'
+  }
+]);
 
 // Products data
 const products = ref([]);
@@ -143,6 +168,17 @@ const scrollToTop = () => {
 
 // Lifecycle
 onMounted(async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  authenticatedUser.value = user;
+  if (authenticatedUser.value) {
+    filters.value.push({
+      id: 4,
+      label: '為你推薦',
+      sortFn: sortByRecommendation,
+      sortable: false  // 不可切換排序方向
+    });
+  }
+
   // Load products
   loading.value = true;
   try {
