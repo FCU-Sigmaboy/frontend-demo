@@ -348,10 +348,10 @@ const loadMore = () => {
 };
 
 // Load products function
-const loadProducts = async () => {
+const loadProducts = async (filters) => {
   loading.value = true;
   try {
-    const data = await searchItems();
+    const data = await searchItems(filters);
     products.value = data || [];
     displayedProducts.value = data || [];
     console.log('Products loaded:', data);
@@ -392,6 +392,12 @@ watch(() => [route.query.category, route.query.subCategory, categories.value.len
         }
       }
     }
+    loadProducts({
+      category_id: newSubCategoryId != null ? null : newCategoryId,
+      sub_category_id: newSubCategoryId,
+      keyword: searchQuery.value || null,
+      distance_range_km: route.query.distance ? Number(route.query.distance) : null
+    });
   },
   { immediate: true }
 );
@@ -403,7 +409,12 @@ watch([selectedCategory, selectedSubCategory], ([newCategory, newSubCategory], [
 
   // Only reload if values actually changed
   if (newCategory !== oldCategory || newSubCategory !== oldSubCategory) {
-    loadProducts();
+    loadProducts({
+      category_id: newSubCategory != null ? null : newCategory,
+      sub_category_id: newSubCategory,
+      keyword: searchQuery.value || null,
+      distance_range_km: route.query.distance ? Number(route.query.distance) : null
+    });
   }
 });
 

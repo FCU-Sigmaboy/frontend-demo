@@ -28,7 +28,6 @@ export async function searchItems(filters = {}) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
         console.warn('searchItems: User not logged in.');
-        return null; // 或者您可以允許未登入搜尋，但距離會是 NULL
     }
 
     // 2. 準備傳遞給 RPC 函式的參數
@@ -44,8 +43,9 @@ export async function searchItems(filters = {}) {
         p_sort_by: filters.sort_by || 'created_at',
         p_sort_direction: filters.sort_direction || 'desc'
     };
-
-    return example;
+    console.debug(rpcParams);
+    
+    // return example;
 
     // 3. 呼叫 RPC 函式
     const { data, error } = await supabase.rpc('search_items', rpcParams);
