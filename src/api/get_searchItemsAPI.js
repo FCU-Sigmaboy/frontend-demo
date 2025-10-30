@@ -44,7 +44,9 @@ export async function searchItems(filters = {}) {
         p_sort_by: filters.sort_by || 'created_at',
         p_sort_direction: filters.sort_direction || 'desc'
     };
-    return example
+
+    return example;
+
     // 3. 呼叫 RPC 函式
     const { data, error } = await supabase.rpc('search_items', rpcParams);
 
@@ -69,6 +71,7 @@ const example = [
     "formatted_address": "台中市西屯區福星路",
     "created_at": "2025-10-18T10:30:00.123+00:00",
     "updated_at": "2025-10-18T10:30:00.123+00:00",
+    "favorited_at": "2025-10-20T09:00:00.000+00:00",
     "favorites_count": 15,
     "user": {
       "id": "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
@@ -85,6 +88,7 @@ const example = [
     "formatted_address": "台中市北屯區文心路",
     "created_at": "2025-10-17T15:00:00.456+00:00",
     "updated_at": "2025-10-17T15:00:00.456+00:00",
+    // "favorited_at": "2025-10-18T15:30:00+00:00",
     "favorites_count": 5,
     "user": {
       "id": "b2c3d4e5-xxxx-xxxx-xxxx-user002",
@@ -101,6 +105,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T10:30:00.000+00:00",
     "updated_at": "2025-10-25T10:30:00.000+00:00",
+    "favorited_at": "2025-10-28T09:00:00.000+00:00",
     "favorites_count": 12,
     "user": {
       "id": "a1b2c3d4-1111-4a5b-8c9d-000000000001",
@@ -117,6 +122,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T11:00:00.000+00:00",
     "updated_at": "2025-10-25T11:00:00.000+00:00",
+    // "favorited_at": "2025-10-28T09:30:00.000+00:00",
     "favorites_count": 7,
     "user": {
       "id": "a1b2c3d4-2222-4a5b-8c9d-000000000002",
@@ -133,6 +139,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T11:30:00.000+00:00",
     "updated_at": "2025-10-25T11:30:00.000+00:00",
+    // "favorited_at": "2025-10-28T10:00:00.000+00:00",
     "favorites_count": 9,
     "user": {
       "id": "a1b2c3d4-3333-4a5b-8c9d-000000000003",
@@ -149,6 +156,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T12:00:00.000+00:00",
     "updated_at": "2025-10-25T12:00:00.000+00:00",
+    // "favorited_at": "2025-10-28T10:30:00.000+00:00",
     "favorites_count": 10,
     "user": {
       "id": "a1b2c3d4-4444-4a5b-8c9d-000000000004",
@@ -165,6 +173,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T12:30:00.000+00:00",
     "updated_at": "2025-10-25T12:30:00.000+00:00",
+    "favorited_at": "2025-10-28T11:00:00.000+00:00",
     "favorites_count": 8,
     "user": {
       "id": "a1b2c3d4-5555-4a5b-8c9d-000000000005",
@@ -181,6 +190,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T13:00:00.000+00:00",
     "updated_at": "2025-10-25T13:00:00.000+00:00",
+    "favorited_at": "2025-10-28T11:30:00.000+00:00",
     "favorites_count": 11,
     "user": {
       "id": "a1b2c3d4-6666-4a5b-8c9d-000000000006",
@@ -197,6 +207,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T13:30:00.000+00:00",
     "updated_at": "2025-10-25T13:30:00.000+00:00",
+    "favorited_at": "2025-10-28T12:00:00.000+00:00",
     "favorites_count": 6,
     "user": {
       "id": "a1b2c3d4-7777-4a5b-8c9d-000000000007",
@@ -213,6 +224,7 @@ const example = [
     "formatted_address": "台中市西屯區",
     "created_at": "2025-10-25T14:00:00.000+00:00",
     "updated_at": "2025-10-25T14:00:00.000+00:00",
+    "favorited_at": "2025-10-28T12:30:00.000+00:00",
     "favorites_count": 9,
     "user": {
       "id": "a1b2c3d4-8888-4a5b-8c9d-000000000008",

@@ -8,19 +8,18 @@
         :class="{ active: activeFilter === filter.id }"
         @click="handleClick(filter.id)"
       >
-        <span>{{ getFilterLabel(filter) }}</span>
-        <i
-          v-if="filter.id !== 3 && activeFilter === filter.id"
-          :class="getSortIcon(filter.id)"
-          class="sort-icon"
-        ></i>
+        <span class="filter-label">{{ getFilterLabel(filter) }}</span>
+        <span
+          v-if="activeFilter === filter.id && filter.sortable !== false"
+          class="sort-direction"
+        >{{ getSortDirectionText(filter) }}</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
   items: {
@@ -29,56 +28,105 @@ const props = defineProps({
   },
   filters: {
     type: Array,
-    default: () => [
-      { id: 1, label: '最新上架' },
-      { id: 2, label: '離我最近' },
-      { id: 3, label: '為你推薦' }
-    ]
+    default: () => [],
+    // 每個 filter 的格式：
+    // {
+    //   id: number,
+    //   label: string,
+    //   sortKey?: string | string[],  // 排序欄位名稱，可以是陣列（fallback）
+    //   sortFn?: Function,              // 自訂排序函數
+    //   defaultOrder?: 'asc' | 'desc',  // 預設排序方向
+    //   ascText?: string,                // 升序時顯示的文字
+    //   descText?: string,               // 降序時顯示的文字
+    //   sortable?: boolean                // 是否可切換排序方向，預設 true
+    // }
   }
 });
 
 const emit = defineEmits(['update:sortedItems']);
 
+// 初始化排序方向
+const initSortOrder = () => {
+  const order = {};
+  props.filters.forEach(filter => {
+    order[filter.id] = filter.defaultOrder || 'asc';
+  });
+  return order;
+};
+
 // 內部狀態
-const activeFilter = ref(1);
-const sortOrder = ref({
-  1: 'desc', // 上架時間：desc = 晚到早，asc = 早到晚
-  2: 'asc'   // 距離：asc = 近到遠，desc = 遠到近
-});
+const activeFilter = ref(props.filters[0]?.id || 1);
+const sortOrder = ref(initSortOrder());
 
 // 排序後的項目
 const sortedItems = computed(() => {
   if (!props.items || props.items.length === 0) return [];
 
   const items = [...props.items];
+  const currentFilter = props.filters.find(f => f.id === activeFilter.value);
 
-  if (activeFilter.value === 1) {
-    // 上架時間排序
+  if (!currentFilter) return items;
+
+  // 如果提供了自訂排序函數，使用它
+  if (currentFilter.sortFn) {
     items.sort((a, b) => {
-      const dateA = new Date(a.created_at);
-      const dateB = new Date(b.created_at);
-      return sortOrder.value[1] === 'desc'
-        ? dateB - dateA  // 晚到早
-        : dateA - dateB; // 早到晚
+      const result = currentFilter.sortFn(a, b);
+      return sortOrder.value[currentFilter.id] === 'asc' ? result : -result;
     });
-  } else if (activeFilter.value === 2) {
-    // 距離排序
+    return items;
+  }
+
+  // 否則使用 sortKey 進行排序
+  if (currentFilter.sortKey) {
+    const keys = Array.isArray(currentFilter.sortKey)
+      ? currentFilter.sortKey
+      : [currentFilter.sortKey];
+
     items.sort((a, b) => {
-      const distA = parseFloat(a.distance_km) || 0;
-      const distB = parseFloat(b.distance_km) || 0;
-      return sortOrder.value[2] === 'asc'
-        ? distA - distB  // 近到遠
-        : distB - distA; // 遠到近
+      // 嘗試從 keys 中找到第一個有值的欄位
+      let valueA, valueB;
+      for (const key of keys) {
+        valueA = a[key];
+        valueB = b[key];
+        if (valueA != null && valueB != null) break;
+      }
+
+      // 處理不同類型的值
+      if (valueA instanceof Date || valueB instanceof Date ||
+          (typeof valueA === 'string' && !isNaN(Date.parse(valueA)))) {
+        // 日期類型
+        const dateA = new Date(valueA);
+        const dateB = new Date(valueB);
+        return sortOrder.value[currentFilter.id] === 'asc'
+          ? dateA - dateB
+          : dateB - dateA;
+      } else if (typeof valueA === 'number' || !isNaN(parseFloat(valueA))) {
+        // 數字類型
+        const numA = parseFloat(valueA) || 0;
+        const numB = parseFloat(valueB) || 0;
+        return sortOrder.value[currentFilter.id] === 'asc'
+          ? numA - numB
+          : numB - numA;
+      } else {
+        // 字串類型
+        const strA = String(valueA || '');
+        const strB = String(valueB || '');
+        return sortOrder.value[currentFilter.id] === 'asc'
+          ? strA.localeCompare(strB)
+          : strB.localeCompare(strA);
+      }
     });
   }
-  // activeFilter === 3 (為你推薦) 不排序，保持原順序
 
   return items;
 });
 
 // 當排序結果改變時，發送事件
 const handleClick = (id) => {
-  if (activeFilter.value === id && id !== 3) {
+  const filter = props.filters.find(f => f.id === id);
+  const isSortable = filter?.sortable !== false; // 預設為 true
+
+  if (activeFilter.value === id && isSortable) {
     // 如果點擊的是已選中的可排序標籤，切換排序方向
     const currentOrder = sortOrder.value[id];
     sortOrder.value[id] = currentOrder === 'asc' ? 'desc' : 'asc';
@@ -92,22 +140,42 @@ const handleClick = (id) => {
 };
 
 const getFilterLabel = (filter) => {
-  if (filter.id === 1) return '上架時間';
-  if (filter.id === 2) return '距離';
+  // 如果 filter 有自訂 label，直接使用
   return filter.label;
 };
 
-const getSortIcon = (filterId) => {
-  const order = sortOrder.value[filterId];
-  if (filterId === 1) {
-    // 上架時間：desc = 晚到早（箭頭向下），asc = 早到晚（箭頭向上）
-    return order === 'desc' ? 'bi bi-arrow-down' : 'bi bi-arrow-up';
-  } else if (filterId === 2) {
-    // 距離：asc = 近到遠（箭頭向上），desc = 遠到近（箭頭向下）
-    return order === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+const getSortDirectionText = (filter) => {
+  const order = sortOrder.value[filter.id];
+
+  // 優先使用傳入的自訂文字
+  if (filter.ascText && filter.descText) {
+    return order === 'asc' ? filter.ascText : filter.descText;
   }
-  return '';
+
+  // 否則根據 label 自動判斷
+  const label = filter.label;
+  if (label.includes('時間') || label.includes('日期')) {
+    return order === 'asc' ? '早到晚' : '晚到早';
+  } else if (label.includes('距離')) {
+    return order === 'asc' ? '近到遠' : '遠到近';
+  } else if (label.includes('價格')) {
+    return order === 'asc' ? '低到高' : '高到低';
+  } else if (label.includes('熱門') || label.includes('收藏')) {
+    return order === 'asc' ? '少到多' : '多到少';
+  } else {
+    // 預設通用文字
+    return order === 'asc' ? '升序' : '降序';
+  }
 };
+
+// 監聽 sortedItems 的變化，自動 emit 給父組件
+watch(
+  sortedItems,
+  (newValue) => {
+    emit('update:sortedItems', newValue);
+  },
+  { immediate: true } // 立即執行一次，確保初始化時也會 emit
+);
 
 // 暴露 sortedItems 給父組件使用
 defineExpose({
@@ -135,7 +203,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   height: 32px;
   padding: 0 20px;
   border-radius: 5px;
@@ -157,24 +225,16 @@ defineExpose({
   &.active {
     background-color: $primary;
     color: white;
-
-    .sort-icon {
-      animation: bounce 0.3s ease;
-    }
   }
 
-  .sort-icon {
-    font-size: 14px;
-    transition: transform 0.3s;
+  .filter-label {
+    font-weight: 500;
   }
-}
 
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
+  .sort-direction {
+    font-size: 13px;
+    opacity: 0.9;
+    font-weight: 400;
   }
 }
 

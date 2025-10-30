@@ -3,13 +3,21 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
+      <!-- Breadcrumb -->
+      <div class="breadcrumb-section">
+        <div class="breadcrumb-container">
+          <nav class="breadcrumb">
+            <router-link to="/" class="breadcrumb-link">首頁</router-link>
+            <span class="breadcrumb-separator">&gt;</span>
+            <span class="breadcrumb-current">我的收藏</span>
+          </nav>
+        </div>
+      </div>
+
       <div class="favorites-container">
         <!-- Page Header -->
         <div class="page-header">
           <div class="header-left">
-            <button class="back-btn" @click="goBack">
-              <i class="bi bi-arrow-left"></i>
-            </button>
             <div class="header-info">
               <h1 class="page-title">我的收藏</h1>
               <p class="page-subtitle">{{ favoritesStore.count }} 個物品</p>
@@ -17,13 +25,6 @@
           </div>
 
           <div class="header-actions">
-            <select v-model="sortBy" class="sort-select">
-              <option value="recent">最近收藏</option>
-              <option value="price-low">價格：低到高</option>
-              <option value="price-high">價格：高到低</option>
-              <option value="distance">距離最近</option>
-            </select>
-
             <button
               v-if="favoritesStore.count > 0"
               class="edit-btn"
@@ -34,21 +35,18 @@
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Filter Tabs -->
-        <div v-if="filteredFavorites.length > 0 || favoritesStore.count > 0" class="filter-section">
-          <div class="filter-tabs">
-            <button
-              v-for="filter in filters"
-              :key="filter.id"
-              :class="['filter-tab', { active: activeFilter === filter.id }]"
-              @click="activeFilter = filter.id"
-            >
-              {{ filter.label }}
-              <span v-if="filter.count" class="filter-count">{{ filter.count }}</span>
-            </button>
-          </div>
-        </div>
+      <!-- Filter Tabs Section -->
+      <section v-if="!isLoading && !error" class="filter-section">
+        <FilterTabs
+          :items="filteredFavorites"
+          :filters="sortFilters"
+          v-model:sortedItems="displayedFavorites"
+        />
+      </section>
+
+      <div class="favorites-container">
 
         <!-- Edit Mode Actions -->
         <div v-if="isEditMode && selectedItems.length > 0" class="batch-actions">
@@ -67,18 +65,51 @@
           </div>
         </div>
 
-        <!-- Favorites Grid -->
-        <section v-if="filteredFavorites.length > 0" class="favorites-section">
+        <!-- Loading Skeleton -->
+        <section v-if="isLoading" class="favorites-section">
           <div class="favorites-grid">
+            <div v-for="i in 8" :key="`skeleton-${i}`" class="skeleton-product-card">
+              <div class="skeleton-header">
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-name"></div>
+              </div>
+              <div class="skeleton-image"></div>
+              <div class="skeleton-content">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text short"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <i class="bi bi-exclamation-triangle"></i>
+          <h3>載入失敗</h3>
+          <p>{{ error }}</p>
+          <button class="action-btn" @click="loadFavorites">
+            <i class="bi bi-arrow-clockwise"></i>
+            重試
+          </button>
+        </div>
+
+        <!-- Favorites Grid -->
+        <section v-else-if="displayedFavorites.length > 0" class="favorites-section">
+          <TransitionGroup
+            name="favorite-list"
+            tag="div"
+            class="favorites-grid"
+          >
             <div
-              v-for="product in filteredFavorites"
-              :key="product.id"
-              :class="['favorite-item', { 'edit-mode': isEditMode, 'selected': isSelected(product.id) }]"
+              v-for="product in displayedFavorites"
+              :key="product.item_id"
+              :class="['favorite-item', { 'edit-mode': isEditMode, 'selected': isSelected(product.item_id) }]"
             >
               <!-- Selection Checkbox (Edit Mode) -->
-              <div v-if="isEditMode" class="selection-overlay" @click="toggleSelection(product.id)">
+              <div v-if="isEditMode" class="selection-overlay" @click="toggleSelection(product.item_id)">
                 <div class="selection-checkbox">
-                  <i v-if="isSelected(product.id)" class="bi bi-check-circle-fill"></i>
+                  <i v-if="isSelected(product.item_id)" class="bi bi-check-circle-fill"></i>
                   <i v-else class="bi bi-circle"></i>
                 </div>
               </div>
@@ -87,11 +118,10 @@
               <ProductCard
                 :product="product"
                 :show-favorite="!isEditMode"
-                @click="!isEditMode && goToProductDetail(product.id)"
-                @favorite-toggle="handleFavoriteToggle"
+                @click="!isEditMode && goToProductDetail(product.item_id)"
               />
             </div>
-          </div>
+          </TransitionGroup>
         </section>
 
         <!-- Empty State -->
@@ -112,68 +142,59 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '../stores/favorites';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
+import FilterTabs from '../components/FilterTabs.vue';
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 
 // State
 const userPoints = ref(500);
-const sortBy = ref('recent');
-const activeFilter = ref('all');
 const isEditMode = ref(false);
 const selectedItems = ref([]);
+const isLoading = ref(false);
+const error = ref(null);
+const displayedFavorites = ref([]);
 
-const filters = computed(() => {
-  const availableCount = favoritesStore.favoriteItems.filter(i => i.status === 'available').length;
-  const soldCount = favoritesStore.favoriteItems.filter(i => i.status === 'sold').length;
+// FilterTabs 使用的 filters - 使用配置驅動的方式
+const sortFilters = [
+  {
+    id: 1,
+    label: '收藏時間',
+    sortKey: ['favorited_at', 'created_at'],  // fallback: 如果沒有 favorited_at 就用 created_at
+    defaultOrder: 'desc',  // 預設：晚到早
+    ascText: '早到晚',
+    descText: '晚到早'
+  },
+  {
+    id: 2,
+    label: '距離',
+    sortKey: 'distance_km',
+    defaultOrder: 'asc',   // 預設：近到遠
+    ascText: '近到遠',
+    descText: '遠到近'
+  },
+  {
+    id: 3,
+    label: '價格',
+    sortKey: 'price',
+    defaultOrder: 'asc',   // 預設：低到高
+    ascText: '低到高',
+    descText: '高到低'
+  }
+];
 
-  return [
-    { id: 'all', label: '全部', count: favoritesStore.count },
-    { id: 'available', label: '可購買', count: availableCount },
-    { id: 'sold', label: '已售出', count: soldCount }
-  ];
-});
-
-// Computed
+// Computed - 給 FilterTabs 使用
 const filteredFavorites = computed(() => {
-  let filtered = favoritesStore.favoriteItems;
-
-  // Filter by status
-  if (activeFilter.value !== 'all') {
-    filtered = filtered.filter(item => item.status === activeFilter.value);
-  }
-
-  // Sort
-  const sorted = [...filtered];
-  switch (sortBy.value) {
-    case 'recent':
-      sorted.sort((a, b) => new Date(b.favoriteDate) - new Date(a.favoriteDate));
-      break;
-    case 'price-low':
-      sorted.sort((a, b) => a.price - b.price);
-      break;
-    case 'price-high':
-      sorted.sort((a, b) => b.price - a.price);
-      break;
-    case 'distance':
-      sorted.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-      break;
-  }
-
-  return sorted;
+  return favoritesStore.favoriteItems;
 });
 
 // Methods
-const goBack = () => {
-  router.back();
-};
-
 const goToHome = () => {
   router.push({ name: 'Home' });
 };
@@ -203,10 +224,10 @@ const toggleSelection = (id) => {
 };
 
 const selectAll = () => {
-  if (selectedItems.value.length === filteredFavorites.value.length) {
+  if (selectedItems.value.length === displayedFavorites.value.length) {
     selectedItems.value = [];
   } else {
-    selectedItems.value = filteredFavorites.value.map(item => item.id);
+    selectedItems.value = displayedFavorites.value.map(item => item.item_id);
   }
 };
 
@@ -220,10 +241,30 @@ const deleteSelected = () => {
   }
 };
 
-const handleFavoriteToggle = (data) => {
-  // Remove from favorites
-  favoritesStore.removeFavorite(data.productId);
+// 載入收藏列表
+const loadFavorites = async () => {
+  isLoading.value = true;
+  error.value = null;
+
+  try {
+    await favoritesStore.loadFavorites({
+      page: 1,
+      size: 100,
+      sort_by: 'favorited_at',
+      sort_direction: 'desc'
+    });
+  } catch (err) {
+    error.value = err.message || '載入收藏列表失敗';
+    console.error('Failed to load favorites:', err);
+  } finally {
+    isLoading.value = false;
+  }
 };
+
+// 頁面載入時獲取收藏列表
+onMounted(() => {
+  loadFavorites();
+});
 </script>
 
 <style scoped lang="scss">
@@ -238,13 +279,55 @@ const handleFavoriteToggle = (data) => {
 
 .main-content {
   flex: 1;
-  padding: 30px 0 60px;
+  padding-bottom: 60px;
+}
+
+// Breadcrumb Section
+.breadcrumb-section {
+  padding: 15px 0 10px;
+  background-color: #f9f9f9;
+}
+
+.breadcrumb-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #555;
+  flex-wrap: wrap;
+}
+
+.breadcrumb-link {
+  color: $primary;
+  text-decoration: none;
+  transition: all 0.3s;
+
+  &:hover {
+    color: #5fa795;
+    text-decoration: underline;
+  }
+}
+
+.breadcrumb-separator {
+  color: #999;
+}
+
+.breadcrumb-current {
+  color: #1e1e1e;
+  font-weight: 500;
 }
 
 .favorites-container {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 30px 20px 0;
 }
 
 // Page Header
@@ -259,32 +342,6 @@ const handleFavoriteToggle = (data) => {
   .header-left {
     display: flex;
     align-items: center;
-    gap: 16px;
-  }
-
-  .back-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: white;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    flex-shrink: 0;
-
-    i {
-      font-size: 20px;
-      color: #1e1e1e;
-    }
-
-    &:hover {
-      background: #f5f5f5;
-      transform: translateX(-3px);
-    }
   }
 
   .header-info {
@@ -311,23 +368,6 @@ const handleFavoriteToggle = (data) => {
     display: flex;
     align-items: center;
     gap: 12px;
-  }
-
-  .sort-select {
-    padding: 10px 16px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #1e1e1e;
-    background: white;
-    border: 1px solid #d0d0d0;
-    border-radius: 8px;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.3s;
-
-    &:focus {
-      border-color: $primary;
-    }
   }
 
   .edit-btn {
@@ -359,58 +399,8 @@ const handleFavoriteToggle = (data) => {
 
 // Filter Section
 .filter-section {
-  margin-bottom: 24px;
-}
-
-.filter-tabs {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.filter-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: white;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  .filter-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 8px;
-    background: #e0e0e0;
-    border-radius: 11px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-  }
-
-  &:hover {
-    border-color: $primary;
-    color: $primary;
-  }
-
-  &.active {
-    background: $primary;
-    border-color: $primary;
-    color: white;
-
-    .filter-count {
-      background: rgba(255, 255, 255, 0.3);
-      color: white;
-    }
-  }
+  padding: 20px 0;
+  background-color: #f9f9f9;
 }
 
 // Batch Actions
@@ -427,7 +417,7 @@ const handleFavoriteToggle = (data) => {
   .selection-info {
     span {
       font-family: 'Noto Sans TC', sans-serif;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 500;
       color: #1e1e1e;
     }
@@ -447,7 +437,7 @@ const handleFavoriteToggle = (data) => {
     border: 1px solid #d0d0d0;
     border-radius: 6px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
     color: #1e1e1e;
     cursor: pointer;
@@ -482,6 +472,27 @@ const handleFavoriteToggle = (data) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 20px;
+}
+
+// Favorite List Animation
+.favorite-list-move,
+.favorite-list-enter-active,
+.favorite-list-leave-active {
+  transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.favorite-list-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(30px);
+}
+
+.favorite-list-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(-30px);
+}
+
+.favorite-list-leave-active {
+  position: absolute;
 }
 
 .favorite-item {
@@ -536,6 +547,148 @@ const handleFavoriteToggle = (data) => {
       &.bi-circle {
         color: #d0d0d0;
       }
+    }
+  }
+}
+
+// Skeleton Product Card
+.skeleton-product-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 0.5px solid #e0e0e0;
+}
+
+.skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-name {
+  flex: 1;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 250px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-content {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 18px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 100%;
+  height: 14px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.short {
+    width: 60%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// Error State
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  i {
+    font-size: 100px;
+    color: #ff6b6b;
+    margin-bottom: 24px;
+  }
+
+  h3 {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0 0 12px 0;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #999;
+    margin: 0 0 32px 0;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: $primary;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    i {
+      font-size: 20px;
+      color: white;
+      margin: 0;
+    }
+
+    &:hover {
+      background: #5fa795;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
     }
   }
 }
@@ -604,11 +757,24 @@ const handleFavoriteToggle = (data) => {
 // Responsive
 @media (max-width: 991.98px) {
   .main-content {
-    padding: 20px 0 50px;
+    padding-bottom: 50px;
+  }
+
+  .breadcrumb-section {
+    padding: 12px 0 8px;
+  }
+
+  .breadcrumb-container {
+    padding: 0 15px;
+  }
+
+  .breadcrumb {
+    font-size: 13px;
+    gap: 6px;
   }
 
   .favorites-container {
-    padding: 0 15px;
+    padding: 25px 15px 0;
   }
 
   .favorites-grid {
@@ -633,10 +799,6 @@ const handleFavoriteToggle = (data) => {
         font-size: 24px;
       }
     }
-
-    .sort-select {
-      flex: 1;
-    }
   }
 
   .batch-actions {
@@ -656,11 +818,24 @@ const handleFavoriteToggle = (data) => {
 
 @media (max-width: 575.98px) {
   .main-content {
-    padding: 15px 0 40px;
+    padding-bottom: 40px;
+  }
+
+  .breadcrumb-section {
+    padding: 10px 0 6px;
+  }
+
+  .breadcrumb-container {
+    padding: 0 10px;
+  }
+
+  .breadcrumb {
+    font-size: 12px;
+    gap: 5px;
   }
 
   .favorites-container {
-    padding: 0 10px;
+    padding: 20px 10px 0;
   }
 
   .page-header {
@@ -673,15 +848,6 @@ const handleFavoriteToggle = (data) => {
 
       .page-subtitle {
         font-size: 13px;
-      }
-    }
-
-    .back-btn {
-      width: 36px;
-      height: 36px;
-
-      i {
-        font-size: 18px;
       }
     }
   }

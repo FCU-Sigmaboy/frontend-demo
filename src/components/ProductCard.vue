@@ -54,11 +54,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useFavoritesStore } from '@/stores/favorites';
 import { formatRelativeTime } from '@/utils/timeFormat';
 
 const router = useRouter();
+const favoritesStore = useFavoritesStore();
 
 const props = defineProps({
   product: {
@@ -73,42 +75,40 @@ const props = defineProps({
       formatted_address: '台中市西屯區',
       created_at: '2024-06-01T12:00:00Z',
       updated_at: '2024-06-01T12:00:00Z',
+      favorited_at: '2024-08-01T12:00:00Z',
       favorites_count: 10,
       user: {
         id: "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
         nickname: '提供者名稱',
         profile_picture_url: 'https://placehold.co/50x50'
-      },
-      // sellerName: '提供者名稱',
-      // sellerAvatar: 'https://placehold.co/50x50',
-      // sellerId: 1,
-      // location: '台中市西屯區',
-      // distance: '500m',
-      // postedTime: '3天前'
+      }
     })
   }
 });
 
-const emit = defineEmits(['favorite-toggle', 'contact-seller']);
+const emit = defineEmits(['contact-seller']);
 
-const isFavorite = ref(false);
+// 檢查是否已收藏
+const isFavorite = computed(() => {
+  return props.product.favorited_at !== undefined;
+});
 
 // 格式化時間
 const formattedTime = computed(() => {
   return formatRelativeTime(props.product.created_at);
 });
 
+// 切換收藏狀態
 const toggleFavorite = () => {
-  isFavorite.value = !isFavorite.value;
-  emit('favorite-toggle', { productId: props.product.id, isFavorite: isFavorite.value });
+  favoritesStore.toggleFavorite(props.product);
 };
 
 const handleContact = () => {
-  emit('contact-seller', props.product.id);
+  emit('contact-seller', props.product.item_id);
 };
 
 const goToSellerProfile = () => {
-  router.push({ name: 'PublicUserProfile', params: { id: props.product.sellerId || props.product.id } });
+  router.push({ name: 'PublicUserProfile', params: { id: props.product.user.id } });
 };
 </script>
 
