@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -364,7 +364,7 @@ const loadProducts = async (filters) => {
   }
 };
 
-// Watch for URL query changes and update selected category/subcategory
+// 同步更新 selectedCategory 和 selectedSubCategory (不觸發搜索)
 watch(() => [route.query.category, route.query.subCategory, categories.value.length],
   ([newCategoryId, newSubCategoryId, categoriesLength]) => {
     // 更新子分類選擇
@@ -392,41 +392,38 @@ watch(() => [route.query.category, route.query.subCategory, categories.value.len
         }
       }
     }
+  }
+);
+
+// 監聽 URL query 參數變化來觸發搜索
+watch(() => [route.query.category, route.query.subCategory, route.query.distance, route.query.search],
+  ([categoryId, subCategoryId, distance, search]) => {
+
+    // 如果同時有 category 和 subCategory，自動移除 category
+    if (categoryId && subCategoryId) {
+      const query = { ...route.query };
+      delete query.category;
+      router.replace({ query });
+      return; // 等待 URL 更新後重新觸發
+    }
+
+    // 如果有 subCategory，不使用 category (subCategory 優先)
+    const mainCategoryId = subCategoryId ? null : categoryId;
+
     loadProducts({
-      category_id: newSubCategoryId != null ? null : newCategoryId,
-      sub_category_id: newSubCategoryId,
-      keyword: searchQuery.value || null,
-      distance_range_km: route.query.distance ? Number(route.query.distance) : null
+      main_category_id: mainCategoryId,
+      sub_category_id: subCategoryId,
+      keyword: search || null,
+      distance_range_km: distance ? Number(distance) : null
     });
   },
   { immediate: true }
 );
 
-// Watch for category/subcategory changes and reload products
-watch([selectedCategory, selectedSubCategory], ([newCategory, newSubCategory], [oldCategory, oldSubCategory]) => {
-  // Skip if it's the initial value assignment
-  if (oldCategory === undefined && oldSubCategory === undefined) return;
-
-  // Only reload if values actually changed
-  if (newCategory !== oldCategory || newSubCategory !== oldSubCategory) {
-    loadProducts({
-      category_id: newSubCategory != null ? null : newCategory,
-      sub_category_id: newSubCategory,
-      keyword: searchQuery.value || null,
-      distance_range_km: route.query.distance ? Number(route.query.distance) : null
-    });
-  }
-});
-
-// Initialize from route query
-onMounted(() => {
-  if (route.query.search) {
-    searchQuery.value = route.query.search;
-  }
-
-  // Load products
-  loadProducts();
-});
+// 同步 searchQuery 與 URL
+watch(() => route.query.search, (newSearch) => {
+  searchQuery.value = newSearch || '';
+}, { immediate: true });
 </script>
 
 <style scoped lang="scss">

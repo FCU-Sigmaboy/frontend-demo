@@ -43,7 +43,7 @@ export async function searchItems(filters = {}) {
         p_sort_by: filters.sort_by || 'created_at',
         p_sort_direction: filters.sort_direction || 'desc'
     };
-    console.debug(rpcParams);
+    console.log(rpcParams);
     
     // return example;
 
