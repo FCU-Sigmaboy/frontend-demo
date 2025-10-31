@@ -207,7 +207,7 @@ import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 
 // --- 徽章圖片 ---
-// 請確保您將上傳的圖片放置在 'src/assets/' 路徑下
+// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
 import badgeRookie from '../assets/1badge.png';
 import badgeAdept from '../assets/2badge.png';
 import badgeExpert from '../assets/3badge.png';
@@ -247,11 +247,19 @@ const unlockedLineWidth = computed(() => {
   if (unlockedSteps.value <= 1) {
     return '0%';
   }
-  // Width is (unlocked - 1) / (total - 1) * 75% (total line width)
+  // 寬度是 (已解鎖 - 1) / (總數 - 1) * 75% (線條總寬度)
   const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
   return `${percentage * 75}%`;
 });
 
+// 給手機版使用的寬度計算 (Added)
+const unlockedLineWidthMobile = computed(() => {
+  const totalSteps = achievements.value.length;
+  if (unlockedSteps.value <= 1) return '0%';
+  // 在手機版，線條總寬度是 80%
+  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
+  return `${percentage * 80}%`;
+});
 
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
@@ -1039,8 +1047,7 @@ const goToFollowers = () => {
     .unlocked-line {
       left: 10%;
       top: 25px; // Half of 50px
-      // Recalculate width based on 80% total
-      width: calc(v-bind(unlockedLineWidth) / 75 * 80);
+      width: v-bind(unlockedLineWidthMobile); // 直接使用計算好的手機版寬度
     }
     .step-item {
       padding: 0 2px;
@@ -1056,5 +1063,3 @@ const goToFollowers = () => {
 
 }
 </style>
-
-
