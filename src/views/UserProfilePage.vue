@@ -74,7 +74,6 @@
             <div class="achievements-section">
               <h3 class="achievements-title">成就徽章</h3>
               <div class="achievements-stepper">
-                <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
                 <div
                     v-for="badge in achievements"
                     :key="badge.id"
@@ -579,31 +578,6 @@ const goToFollowers = () => {
   justify-content: space-between;
   position: relative;
 
-  // Base grey line
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50px; 
-    left: 12.5%;
-    width: 75%;
-    height: 2px;
-    background: #e0e0e0;
-    z-index: 0;
-    transform: translateY(-50%);
-  }
-
-  // Active green line
-  .unlocked-line {
-    position: absolute;
-    top: 50px; 
-    left: 12.5%;
-    height: 2px;
-    background: $primary;
-    z-index: 1;
-    transform: translateY(-50%);
-    transition: width 0.5s ease;
-  }
-
   .step-item {
     display: flex;
     flex-direction: column;
@@ -623,8 +597,8 @@ const goToFollowers = () => {
       align-items: center;
       justify-content: center;
       margin-bottom: 8px;
-      background: white;
-      border: 2px solid #e0e0e0;
+      background: transparent;
+      border: none;
       transition: all 0.3s;
       padding: 0;
       box-sizing: border-box;
@@ -649,7 +623,6 @@ const goToFollowers = () => {
 
     &.unlocked {
       .step-circle {
-        border-color: $primary;
 
         .step-image {
           filter: grayscale(0%) opacity(1); // Full color when unlocked
