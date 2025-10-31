@@ -208,10 +208,10 @@ import TransactionCard from '../components/TransactionCard.vue';
 
 // --- 徽章圖片 ---
 // 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
-import badgeRookie from '../assets/Gemini_Generated_Image_nrlq1dnrlq1dnrlq-removebg-preview-removebg-preview.png';
-import badgeAdept from '../assets/Gemini_Generated_Image_r8n02vr8n02vr8n0-removebg-preview-removebg-preview.png';
-import badgeExpert from '../assets/Gemini_Generated_Image_ihq3ujihq3ujihq3-removebg-preview-removebg-preview.png';
-import badgeMaster from '../assets/Gemini_Generated_Image_h5l3fyh5l3fyh5l3-removebg-preview.png';
+import badgeRookie from '../assets/1badge.png';
+import badgeAdept from '../assets/2badge.png';
+import badgeExpert from '../assets/3badge.png';
+import badgeMaster from '../assets/4badge.png';
 
 
 const router = useRouter();
@@ -549,7 +549,7 @@ const goToFollowers = () => {
   &::before {
     content: '';
     position: absolute;
-    top: 50px; // Half of 100px
+    top: 25px; // Half of 50px
     left: 12.5%;
     width: 75%;
     height: 2px;
@@ -561,7 +561,7 @@ const goToFollowers = () => {
   // Active green line
   .unlocked-line {
     position: absolute;
-    top: 50px; // Half of 100px
+    top: 25px; // Half of 50px
     left: 12.5%;
     height: 2px;
     background: $primary;
@@ -581,8 +581,8 @@ const goToFollowers = () => {
     padding: 0 4px;
 
     .step-circle {
-      width: 100px; // Updated size
-      height: 100px; // Updated size
+      width: 50px; // Updated size
+      height: 50px; // Updated size
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -871,15 +871,15 @@ const goToFollowers = () => {
 
   .achievements-stepper {
     &::before {
-      top: 40px; // Half of 80px
+      top: 25px; // Half of 50px
     }
     .unlocked-line {
-      top: 40px; // Half of 80px
+      top: 25px; // Half of 50px
     }
     .step-item {
       .step-circle {
-        width: 80px; // Tablet size
-        height: 80px; // Tablet size
+        width: 50px; // Tablet size
+        height: 50px; // Tablet size
       }
       .step-label {
         font-size: 13px;
@@ -960,15 +960,15 @@ const goToFollowers = () => {
 
   .achievements-stepper {
     &::before {
-      top: 30px; // Half of 60px
+      top: 25px; // Half of 50px
     }
     .unlocked-line {
-      top: 30px; // Half of 60px
+      top: 25px; // Half of 50px
     }
     .step-item {
       .step-circle {
-        width: 60px; // Mobile size
-        height: 60px; // Mobile size
+        width: 50px; // Mobile size
+        height: 50px; // Mobile size
       }
       .step-label {
         font-size: 12px;
@@ -1034,19 +1034,19 @@ const goToFollowers = () => {
     &::before {
       left: 10%;
       width: 80%;
-      top: 30px; // Half of 60px
+      top: 25px; // Half of 50px
     }
     .unlocked-line {
       left: 10%;
-      top: 30px; // Half of 60px
+      top: 25px; // Half of 50px
       // Recalculate width based on 80% total
       width: calc(v-bind(unlockedLineWidth) / 75 * 80);
     }
     .step-item {
       padding: 0 2px;
       .step-circle {
-        width: 60px; // Smaller for mobile
-        height: 60px; // Smaller for mobile
+        width: 50px; // Smaller for mobile
+        height: 50px; // Smaller for mobile
       }
       .step-label {
         font-size: 11px;
@@ -1056,3 +1056,5 @@ const goToFollowers = () => {
 
 }
 </style>
+
+
