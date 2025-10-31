@@ -9,11 +9,11 @@
           <div class="header-content">
             <div class="user-avatar-section">
               <img
-                  v-if="authStore.userAvatar"
-                  :src="authStore.userAvatar"
-                  alt="User Avatar"
-                  class="user-avatar"
-                  referrerpolicy="no-referrer"
+                v-if="authStore.userAvatar"
+                :src="authStore.userAvatar"
+                alt="User Avatar"
+                class="user-avatar"
+                referrerpolicy="no-referrer"
               />
               <i v-else class="bi bi-person-circle default-avatar"></i>
               <button class="edit-avatar-btn">
@@ -66,27 +66,6 @@
                   查看評價
                 </button>
               </div>
-
-              <!-- Achievement Badges Section (REMOVED FROM HERE) -->
-            </div>
-
-            <!-- Achievement Badges Section (MOVED HERE) -->
-            <div class="achievements-section">
-              <h3 class="achievements-title">成就徽章</h3>
-              <div class="achievements-stepper">
-                <div
-                    v-for="badge in achievements"
-                    :key="badge.id"
-                    :class="['step-item', { 'unlocked': badge.unlocked }]"
-                    @click="openBadgeModal(badge)"
-                >
-                  <div class="step-circle">
-                    <!-- 使用 <img> 顯示徽章圖片 -->
-                    <img :src="badge.image" :alt="badge.label" class="step-image" />
-                  </div>
-                  <span class="step-label">{{ badge.label }}</span>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -95,10 +74,10 @@
         <section class="profile-tabs">
           <div class="tabs-container">
             <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                :class="['tab-btn', { active: activeTab === tab.id }]"
-                @click="activeTab = tab.id"
+              v-for="tab in tabs"
+              :key="tab.id"
+              :class="['tab-btn', { active: activeTab === tab.id }]"
+              @click="activeTab = tab.id"
             >
               <i :class="['bi', tab.icon]"></i>
               <span>{{ tab.label }}</span>
@@ -120,10 +99,10 @@
             </div>
             <div v-if="myListings.length > 0" class="listings-grid">
               <ProductCard
-                  v-for="product in myListings"
-                  :key="product.id"
-                  :product="product"
-                  @click="goToProductDetail(product.id)"
+                v-for="product in myListings"
+                :key="product.id"
+                :product="product"
+                @click="goToProductDetail(product.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -140,10 +119,10 @@
           <div v-show="activeTab === 'favorites'" class="content-section">
             <div v-if="favoriteItems.length > 0" class="listings-grid">
               <ProductCard
-                  v-for="product in favoriteItems"
-                  :key="product.id"
-                  :product="product"
-                  @click="goToProductDetail(product.id)"
+                v-for="product in favoriteItems"
+                :key="product.id"
+                :product="product"
+                @click="goToProductDetail(product.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -160,10 +139,10 @@
           <div v-show="activeTab === 'purchases'" class="content-section">
             <div v-if="purchaseHistory.length > 0" class="transactions-list">
               <TransactionCard
-                  v-for="transaction in purchaseHistory"
-                  :key="transaction.id"
-                  :transaction="transaction"
-                  @click="goToTransactionDetail(transaction.id)"
+                v-for="transaction in purchaseHistory"
+                :key="transaction.id"
+                :transaction="transaction"
+                @click="goToTransactionDetail(transaction.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -176,11 +155,11 @@
           <div v-show="activeTab === 'sales'" class="content-section">
             <div v-if="salesHistory.length > 0" class="transactions-list">
               <TransactionCard
-                  v-for="transaction in salesHistory"
-                  :key="transaction.id"
-                  :transaction="transaction"
-                  type="sale"
-                  @click="goToTransactionDetail(transaction.id)"
+                v-for="transaction in salesHistory"
+                :key="transaction.id"
+                :transaction="transaction"
+                type="sale"
+                @click="goToTransactionDetail(transaction.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -193,19 +172,6 @@
     </main>
 
     <AppFooter />
-
-    <!-- Badge Modal -->
-    <div v-if="isModalVisible" class="badge-modal-overlay" @click="closeBadgeModal">
-      <div class="badge-modal-content" @click.stop>
-        <button class="close-btn" @click="closeBadgeModal">&times;</button>
-        <div v-if="selectedBadge">
-          <img :src="selectedBadge.image" :alt="selectedBadge.label" class="modal-badge-image" />
-          <h3 class="modal-badge-title">{{ selectedBadge.label }}</h3>
-          <p class="modal-badge-description">{{ selectedBadge.description }}</p>
-        </div>
-      </div>
-    </div>
-
   </div>
 </template>
 
@@ -219,14 +185,6 @@ import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 
-// --- 徽章圖片 ---
-// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
-import badgeRookie from '../assets/1badge.png';
-import badgeAdept from '../assets/2badge.png';
-import badgeExpert from '../assets/3badge.png';
-import badgeMaster from '../assets/4badge.png';
-
-
 const router = useRouter();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
@@ -234,8 +192,6 @@ const favoritesStore = useFavoritesStore();
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
-const isModalVisible = ref(false);
-const selectedBadge = ref(null);
 
 const userStats = computed(() => ({
   listings: 12,
@@ -243,38 +199,6 @@ const userStats = computed(() => ({
   purchases: 5,
   sales: 3
 }));
-
-// Achievement Badges (Updated with images and descriptions)
-const achievements = ref([
-  { id: 1, label: '環保新手', unlocked: true, image: badgeRookie, description: '完成首次物品刊登，開啟您的環保旅程！' },
-  { id: 2, label: '環保達人', unlocked: true, image: badgeAdept, description: '累積完成 10 次交易，感謝您為地球的貢獻！' },
-  { id: 3, label: '環保高手', unlocked: false, image: badgeExpert, description: '累積完成 50 次交易，您是環保的實踐家！' },
-  { id: 4, label: '環保大師', unlocked: false, image: badgeMaster, description: '累積完成 100 次交易，您的環保精神值得敬佩！' },
-]);
-
-// Computed property for unlocked line width (Added)
-const unlockedSteps = computed(() => {
-  return achievements.value.filter(b => b.unlocked).length;
-});
-
-const unlockedLineWidth = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) {
-    return '0%';
-  }
-  // 寬度是 (已解鎖 - 1) / (總數 - 1) * 75% (線條總寬度)
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 75}%`;
-});
-
-// 給手機版使用的寬度計算 (Added)
-const unlockedLineWidthMobile = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) return '0%';
-  // 在手機版，線條總寬度是 80%
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 80}%`;
-});
 
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
@@ -308,15 +232,6 @@ const purchaseHistory = ref([]);
 const salesHistory = ref([]);
 
 // Methods
-const openBadgeModal = (badge) => {
-  selectedBadge.value = badge;
-  isModalVisible.value = true;
-};
-
-const closeBadgeModal = () => {
-  isModalVisible.value = false;
-};
-
 const goToEditProfile = () => {
   router.push({ name: 'EditProfile' });
 };
@@ -431,8 +346,7 @@ const goToFollowers = () => {
 }
 
 .user-info-section {
-  flex: 2;
-  min-width: 0;
+  flex: 1;
 
   .user-name {
     font-family: 'Noto Sans TC', sans-serif;
@@ -554,87 +468,6 @@ const goToFollowers = () => {
     color: white;
   }
 }
-
-// Achievement Badges (Updated)
-.achievements-section {
-  flex: 3;
-  min-width: 0;
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-
-  .achievements-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 20px 0;
-  }
-}
-
-.achievements-stepper {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  position: relative;
-
-  .step-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 2; // Above lines
-    flex-basis: 25%;
-    text-align: center;
-    padding: 0 4px;
-    cursor: pointer;
-
-    .step-circle {
-      width: 100px; 
-      height: 100px; 
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 8px;
-      background: transparent;
-      border: none;
-      transition: all 0.3s;
-      padding: 0;
-      box-sizing: border-box;
-      overflow: hidden;
-
-      .step-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: filter 0.3s;
-        filter: grayscale(100%) opacity(0.6); // Default grayscale
-      }
-    }
-
-    .step-label {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      color: #999;
-      font-weight: 500;
-      transition: all 0.3s;
-    }
-
-    &.unlocked {
-      .step-circle {
-
-        .step-image {
-          filter: grayscale(0%) opacity(1); // Full color when unlocked
-        }
-      }
-      .step-label {
-        color: #1e1e1e;
-      }
-    }
-  }
-}
-
 
 // Profile Tabs
 .profile-tabs {
@@ -827,87 +660,6 @@ const goToFollowers = () => {
   }
 }
 
-// Badge Modal Styles
-.badge-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  transition: opacity 0.3s ease;
-}
-
-.badge-modal-content {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  text-align: center;
-  position: relative;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  transform: scale(0.95);
-  transition: transform 0.3s ease;
-
-  .close-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: transparent;
-    border: none;
-    font-size: 28px;
-    color: #999;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0;
-
-    &:hover {
-      color: #333;
-    }
-  }
-
-  .modal-badge-image {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 20px;
-  }
-
-  .modal-badge-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: #1e1e1e;
-    margin: 0 0 12px 0;
-  }
-
-  .modal-badge-description {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #666;
-    line-height: 1.6;
-    margin: 0;
-  }
-}
-
-.badge-modal-overlay.v-enter-active, .badge-modal-overlay.v-leave-active {
-  transition: opacity 0.3s ease;
-}
-.badge-modal-overlay.v-enter-from, .badge-modal-overlay.v-leave-to {
-  opacity: 0;
-}
-.badge-modal-overlay.v-enter-active .badge-modal-content, .badge-modal-overlay.v-leave-active .badge-modal-content {
-  transition: transform 0.3s ease;
-}
-.badge-modal-overlay.v-enter-from .badge-modal-content, .badge-modal-overlay.v-leave-to .badge-modal-content {
-  transform: scale(0.95);
-}
-
-
 // Responsive
 @media (max-width: 991.98px) {
   .main-content {
@@ -952,29 +704,6 @@ const goToFollowers = () => {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 18px;
   }
-
-  // Adjust achievement section for tablet
-  .achievements-section {
-    min-width: 280px;
-  }
-
-  .achievements-stepper {
-    &::before {
-      top: 50px; 
-    }
-    .unlocked-line {
-      top: 50px; 
-    }
-    .step-item {
-      .step-circle {
-        width: 100px; 
-        height: 100px; 
-      }
-      .step-label {
-        font-size: 13px;
-      }
-    }
-  }
 }
 
 @media (max-width: 767.98px) {
@@ -1015,25 +744,6 @@ const goToFollowers = () => {
     justify-content: center;
   }
 
-  .review-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  // Adjust achievement section for mobile
-  .achievements-section {
-    width: 100%;
-    flex-basis: auto; // Reset flex-basis
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid #f0f0f0; // Re-add border for mobile stacking
-    min-width: unset; // Unset min-width
-  }
-
   .tab-btn {
     padding: 16px 20px;
     font-size: 14px;
@@ -1044,24 +754,6 @@ const goToFollowers = () => {
 
     span:not(.tab-count) {
       display: none;
-    }
-  }
-
-  .achievements-stepper {
-    &::before {
-      top: 50px; 
-    }
-    .unlocked-line {
-      top: 50px; 
-    }
-    .step-item {
-      .step-circle {
-        width: 100px; 
-        height: 100px; 
-      }
-      .step-label {
-        font-size: 12px;
-      }
     }
   }
 }
@@ -1117,30 +809,5 @@ const goToFollowers = () => {
       font-size: 16px;
     }
   }
-
-  // Stepper on mobile
-  .achievements-stepper {
-    &::before {
-      left: 10%;
-      width: 80%;
-      top: 50px; 
-    }
-    .unlocked-line {
-      left: 10%;
-      top: 50px; 
-      width: v-bind(unlockedLineWidthMobile); // 直接使用計算好的手機版寬度
-    }
-    .step-item {
-      padding: 0 2px;
-      .step-circle {
-        width: 100px; 
-        height: 100px; 
-      }
-      .step-label {
-        font-size: 11px;
-      }
-    }
-  }
-
 }
 </style>
