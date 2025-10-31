@@ -79,6 +79,7 @@
                     v-for="badge in achievements"
                     :key="badge.id"
                     :class="['step-item', { 'unlocked': badge.unlocked }]"
+                    @click="openBadgeModal(badge)"
                 >
                   <div class="step-circle">
                     <!-- 使用 <img> 顯示徽章圖片 -->
@@ -193,6 +194,19 @@
     </main>
 
     <AppFooter />
+
+    <!-- Badge Modal -->
+    <div v-if="isModalVisible" class="badge-modal-overlay" @click="closeBadgeModal">
+      <div class="badge-modal-content" @click.stop>
+        <button class="close-btn" @click="closeBadgeModal">&times;</button>
+        <div v-if="selectedBadge">
+          <img :src="selectedBadge.image" :alt="selectedBadge.label" class="modal-badge-image" />
+          <h3 class="modal-badge-title">{{ selectedBadge.label }}</h3>
+          <p class="modal-badge-description">{{ selectedBadge.description }}</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -221,6 +235,8 @@ const favoritesStore = useFavoritesStore();
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
+const isModalVisible = ref(false);
+const selectedBadge = ref(null);
 
 const userStats = computed(() => ({
   listings: 12,
@@ -229,12 +245,12 @@ const userStats = computed(() => ({
   sales: 3
 }));
 
-// Achievement Badges (Updated with images)
+// Achievement Badges (Updated with images and descriptions)
 const achievements = ref([
-  { id: 1, label: '環保新手', unlocked: true, image: badgeRookie },
-  { id: 2, label: '環保達人', unlocked: true, image: badgeAdept },
-  { id: 3, label: '環保高手', unlocked: false, image: badgeExpert },
-  { id: 4, label: '環保大師', unlocked: false, image: badgeMaster },
+  { id: 1, label: '環保新手', unlocked: true, image: badgeRookie, description: '完成首次物品刊登，開啟您的環保旅程！' },
+  { id: 2, label: '環保達人', unlocked: true, image: badgeAdept, description: '累積完成 10 次交易，感謝您為地球的貢獻！' },
+  { id: 3, label: '環保高手', unlocked: false, image: badgeExpert, description: '累積完成 50 次交易，您是環保的實踐家！' },
+  { id: 4, label: '環保大師', unlocked: false, image: badgeMaster, description: '累積完成 100 次交易，您的環保精神值得敬佩！' },
 ]);
 
 // Computed property for unlocked line width (Added)
@@ -293,6 +309,15 @@ const purchaseHistory = ref([]);
 const salesHistory = ref([]);
 
 // Methods
+const openBadgeModal = (badge) => {
+  selectedBadge.value = badge;
+  isModalVisible.value = true;
+};
+
+const closeBadgeModal = () => {
+  isModalVisible.value = false;
+};
+
 const goToEditProfile = () => {
   router.push({ name: 'EditProfile' });
 };
@@ -407,7 +432,8 @@ const goToFollowers = () => {
 }
 
 .user-info-section {
-  flex: 1;
+  flex: 2;
+  min-width: 0;
 
   .user-name {
     font-family: 'Noto Sans TC', sans-serif;
@@ -532,11 +558,11 @@ const goToFollowers = () => {
 
 // Achievement Badges (Updated)
 .achievements-section {
+  flex: 3;
+  min-width: 0;
   margin-top: 0;
   padding-top: 0;
   border-top: none;
-  flex: 1;
-  min-width: 300px;
 
   .achievements-title {
     font-family: 'Noto Sans TC', sans-serif;
@@ -557,7 +583,7 @@ const goToFollowers = () => {
   &::before {
     content: '';
     position: absolute;
-    top: 25px; // Half of 50px
+    top: 50px; 
     left: 12.5%;
     width: 75%;
     height: 2px;
@@ -569,7 +595,7 @@ const goToFollowers = () => {
   // Active green line
   .unlocked-line {
     position: absolute;
-    top: 25px; // Half of 50px
+    top: 50px; 
     left: 12.5%;
     height: 2px;
     background: $primary;
@@ -587,10 +613,11 @@ const goToFollowers = () => {
     flex-basis: 25%;
     text-align: center;
     padding: 0 4px;
+    cursor: pointer;
 
     .step-circle {
-      width: 50px; // Updated size
-      height: 50px; // Updated size
+      width: 100px; 
+      height: 100px; 
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -827,6 +854,87 @@ const goToFollowers = () => {
   }
 }
 
+// Badge Modal Styles
+.badge-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  transition: opacity 0.3s ease;
+}
+
+.badge-modal-content {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  position: relative;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+
+  .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+
+    &:hover {
+      color: #333;
+    }
+  }
+
+  .modal-badge-image {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-badge-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0 0 12px 0;
+  }
+
+  .modal-badge-description {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+.badge-modal-overlay.v-enter-active, .badge-modal-overlay.v-leave-active {
+  transition: opacity 0.3s ease;
+}
+.badge-modal-overlay.v-enter-from, .badge-modal-overlay.v-leave-to {
+  opacity: 0;
+}
+.badge-modal-overlay.v-enter-active .badge-modal-content, .badge-modal-overlay.v-leave-active .badge-modal-content {
+  transition: transform 0.3s ease;
+}
+.badge-modal-overlay.v-enter-from .badge-modal-content, .badge-modal-overlay.v-leave-to .badge-modal-content {
+  transform: scale(0.95);
+}
+
+
 // Responsive
 @media (max-width: 991.98px) {
   .main-content {
@@ -879,15 +987,15 @@ const goToFollowers = () => {
 
   .achievements-stepper {
     &::before {
-      top: 25px; // Half of 50px
+      top: 50px; 
     }
     .unlocked-line {
-      top: 25px; // Half of 50px
+      top: 50px; 
     }
     .step-item {
       .step-circle {
-        width: 50px; // Tablet size
-        height: 50px; // Tablet size
+        width: 100px; 
+        height: 100px; 
       }
       .step-label {
         font-size: 13px;
@@ -968,15 +1076,15 @@ const goToFollowers = () => {
 
   .achievements-stepper {
     &::before {
-      top: 25px; // Half of 50px
+      top: 50px; 
     }
     .unlocked-line {
-      top: 25px; // Half of 50px
+      top: 50px; 
     }
     .step-item {
       .step-circle {
-        width: 50px; // Mobile size
-        height: 50px; // Mobile size
+        width: 100px; 
+        height: 100px; 
       }
       .step-label {
         font-size: 12px;
@@ -1042,18 +1150,18 @@ const goToFollowers = () => {
     &::before {
       left: 10%;
       width: 80%;
-      top: 25px; // Half of 50px
+      top: 50px; 
     }
     .unlocked-line {
       left: 10%;
-      top: 25px; // Half of 50px
+      top: 50px; 
       width: v-bind(unlockedLineWidthMobile); // 直接使用計算好的手機版寬度
     }
     .step-item {
       padding: 0 2px;
       .step-circle {
-        width: 50px; // Smaller for mobile
-        height: 50px; // Smaller for mobile
+        width: 100px; 
+        height: 100px; 
       }
       .step-label {
         font-size: 11px;
