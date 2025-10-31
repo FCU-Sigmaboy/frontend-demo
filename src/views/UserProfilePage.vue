@@ -590,26 +590,26 @@ const goToFollowers = () => {
     cursor: pointer;
 
     .step-circle {
-      width: 100px; 
-      height: 100px; 
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 8px;
-      background: transparent;
-      border: none;
+      background-color: #f0f7f5; // Light green background
+      border: 2px solid #e0e0e0; // Light grey border
       transition: all 0.3s;
-      padding: 0;
+      padding: 10px; // Add padding
       box-sizing: border-box;
       overflow: hidden;
 
       .step-image {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain; // Changed to contain
         transition: filter 0.3s;
-        filter: grayscale(100%) opacity(0.6); // Default grayscale
+        filter: grayscale(100%) opacity(0.6);
       }
     }
 
@@ -623,9 +623,11 @@ const goToFollowers = () => {
 
     &.unlocked {
       .step-circle {
+        border-color: $primary; // Primary green border for unlocked
+        background-color: #e6f4f0; // Slightly darker green for unlocked
 
         .step-image {
-          filter: grayscale(0%) opacity(1); // Full color when unlocked
+          filter: grayscale(0%) opacity(1);
         }
       }
       .step-label {
