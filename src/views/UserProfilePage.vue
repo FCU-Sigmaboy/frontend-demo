@@ -207,7 +207,7 @@ import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 
 // --- 徽章圖片 ---
-// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
+// 請確保您將上傳的圖片放置在 'src/assets/' 路徑下
 import badgeRookie from '../assets/1badge.png';
 import badgeAdept from '../assets/2badge.png';
 import badgeExpert from '../assets/3badge.png';
