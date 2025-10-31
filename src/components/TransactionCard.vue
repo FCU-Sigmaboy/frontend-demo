@@ -3,9 +3,14 @@
     <!-- Product Name -->
     <h3 class="product-name">{{ productName }}</h3>
 
+    <!-- Unlisted Status Warning -->
+    <div v-if="!listingStatus" class="unlisted-warning">
+      <i class="bi bi-exclamation-circle-fill"></i>
+      <span>此物品已下架</span>
+    </div>
+
     <!-- Badges -->
     <div class="badges">
-      <span v-if="isFree" class="badge free-badge">免費贈送</span>
       <span v-for="tag in tags" :key="tag" class="badge tag-badge">{{ tag }}</span>
     </div>
 
@@ -20,7 +25,7 @@
     <!-- Posted Time -->
     <div class="info-row">
       <i class="bi bi-clock-fill"></i>
-      <span>發布於 {{ postedTime }}</span>
+      <span>發布於 {{ formattedPostedTime }}</span>
     </div>
 
     <!-- Description Section -->
@@ -40,7 +45,7 @@
           <p class="seller-name">{{ sellerName }}</p>
           <div class="seller-rating">
             <i class="bi bi-star-fill"></i>
-            <span>{{ rating }}</span>
+            <span>{{ formattedRating }}</span>
             <span class="rating-text">平均評價星數</span>
           </div>
         </div>
@@ -51,18 +56,21 @@
 
     <!-- Action Buttons -->
     <div class="actions">
-      <button class="btn-primary" @click="handleTransaction">
-        {{ isFree ? '立即索取' : '立即交易' }}
-      </button>
-      <button class="btn-secondary" @click="handleMessage">
-        私訊詢問
+      <button
+        class="btn-primary"
+        :disabled="!listingStatus"
+        @click="handleMessage"
+      >
+        {{ listingStatus ? '私訊詢問' : '物品已下架' }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatRelativeTime } from '@/utils/timeFormat';
 
 const router = useRouter();
 
@@ -71,9 +79,9 @@ const props = defineProps({
     type: String,
     default: '物品名稱'
   },
-  isFree: {
+  listingStatus: {
     type: Boolean,
-    default: false
+    default: true
   },
   tags: {
     type: Array,
@@ -104,20 +112,28 @@ const props = defineProps({
     default: 'https://placehold.co/49/1e1e1e/ffffff?text=A'
   },
   sellerId: {
-    type: Number,
-    default: 1
+    type: String,
+    default: ''
   },
   rating: {
-    type: Number,
-    default: 4.5
+    type: [String, Number],
+    default: 0
   }
 });
 
-const emit = defineEmits(['transaction', 'message']);
+const emit = defineEmits(['message']);
 
-const handleTransaction = () => {
-  emit('transaction');
-};
+// 格式化相對時間
+const formattedPostedTime = computed(() => {
+  return formatRelativeTime(props.postedTime);
+});
+
+// 格式化評分顯示
+const formattedRating = computed(() => {
+  if (!props.rating) return '0.0';
+  const ratingNum = typeof props.rating === 'string' ? parseFloat(props.rating) : props.rating;
+  return ratingNum.toFixed(1);
+});
 
 const handleMessage = () => {
   emit('message');
@@ -150,6 +166,25 @@ const goToSellerProfile = () => {
   margin: 0;
 }
 
+.unlisted-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #856404;
+
+  i {
+    font-size: 18px;
+    color: #ffc107;
+  }
+}
+
 .badges {
   display: flex;
   gap: 8px;
@@ -163,11 +198,6 @@ const goToSellerProfile = () => {
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
-}
-
-.free-badge {
-  background-color: $primary;
-  color: white;
 }
 
 .tag-badge {
@@ -281,8 +311,7 @@ const goToSellerProfile = () => {
   margin-top: 8px;
 }
 
-.btn-primary,
-.btn-secondary {
+.btn-primary {
   width: 100%;
   padding: 12px 24px;
   border-radius: 5px;
@@ -292,26 +321,21 @@ const goToSellerProfile = () => {
   cursor: pointer;
   transition: all 0.3s;
   border: none;
-}
-
-.btn-primary {
   background-color: $primary;
   color: white;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #5fa795;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
   }
-}
 
-.btn-secondary {
-  background-color: white;
-  color: $primary;
-  border: 1px solid $primary;
-
-  &:hover {
-    background-color: #f5f5f5;
+  &:disabled {
+    background-color: #d0d0d0;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 }
 
@@ -324,6 +348,15 @@ const goToSellerProfile = () => {
 
   .product-name {
     font-size: 22px;
+  }
+
+  .unlisted-warning {
+    padding: 8px 14px;
+    font-size: 13px;
+
+    i {
+      font-size: 16px;
+    }
   }
 
   .badge {
@@ -359,8 +392,7 @@ const goToSellerProfile = () => {
     }
   }
 
-  .btn-primary,
-  .btn-secondary {
+  .btn-primary {
     font-size: 15px;
     padding: 11px 22px;
   }
@@ -374,6 +406,15 @@ const goToSellerProfile = () => {
 
   .product-name {
     font-size: 20px;
+  }
+
+  .unlisted-warning {
+    padding: 8px 12px;
+    font-size: 12px;
+
+    i {
+      font-size: 15px;
+    }
   }
 
   .badge {
@@ -414,8 +455,7 @@ const goToSellerProfile = () => {
     }
   }
 
-  .btn-primary,
-  .btn-secondary {
+  .btn-primary {
     font-size: 14px;
     padding: 10px 20px;
   }
