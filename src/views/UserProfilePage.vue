@@ -21,70 +21,70 @@
               </button>
             </div>
 
-            <div class="user-info-section">
-              <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
-              <p class="user-email">{{ authStore.userEmail }}</p>
+            <div class="profile-details-wrapper row">
+              <div class="user-info-section col-xl-5 col-lg-12">
+                <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
+                <p class="user-email">{{ authStore.userEmail }}</p>
 
-              <!-- Followers/Following Stats -->
-              <div class="follow-stats">
-                <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">100</span>
-                  <span class="stat-text">追蹤中</span>
-                </button>
-                <span class="stat-divider">|</span>
-                <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">80</span>
-                  <span class="stat-text">追蹤者</span>
-                </button>
-              </div>
-
-              <div class="user-stats">
-                <div class="stat-item">
-                  <i class="bi bi-leaf"></i>
-                  <span class="stat-value">{{ userPoints }}</span>
-                  <span class="stat-label">點數</span>
+                <!-- Followers/Following Stats -->
+                <div class="follow-stats">
+                  <button class="follow-stat-btn" @click="goToFollowers">
+                    <span class="stat-number">100</span>
+                    <span class="stat-text">追蹤中</span>
+                  </button>
+                  <span class="stat-divider">|</span>
+                  <button class="follow-stat-btn" @click="goToFollowers">
+                    <span class="stat-number">80</span>
+                    <span class="stat-text">追蹤者</span>
+                  </button>
                 </div>
-                <div class="stat-item">
-                  <i class="bi bi-box-seam"></i>
-                  <span class="stat-value">{{ userStats.listings }}</span>
-                  <span class="stat-label">刊登中</span>
-                </div>
-                <div class="stat-item">
-                  <i class="bi bi-heart"></i>
-                  <span class="stat-value">{{ userStats.favorites }}</span>
-                  <span class="stat-label">收藏</span>
-                </div>
-              </div>
 
-              <div class="action-buttons">
-                <button class="edit-profile-btn" @click="goToEditProfile">
-                  <i class="bi bi-pencil"></i>
-                  編輯個人資料
-                </button>
-                <button class="review-btn" @click="goToReviews">
-                  <i class="bi bi-star"></i>
-                  查看評價
-                </button>
-              </div>
-
-              <!-- Achievement Badges Section (REMOVED FROM HERE) -->
-            </div>
-
-            <!-- Achievement Badges Section (MOVED HERE) -->
-            <div class="achievements-section">
-              <h3 class="achievements-title">成就徽章</h3>
-              <div class="achievements-stepper">
-                <div
-                    v-for="badge in achievements"
-                    :key="badge.id"
-                    :class="['step-item', { 'unlocked': badge.unlocked }]"
-                    @click="openBadgeModal(badge)"
-                >
-                  <div class="step-circle">
-                    <!-- 使用 <img> 顯示徽章圖片 -->
-                    <img :src="badge.image" :alt="badge.label" class="step-image" />
+                <div class="user-stats">
+                  <div class="stat-item">
+                    <i class="bi bi-leaf"></i>
+                    <span class="stat-value">{{ userPoints }}</span>
+                    <span class="stat-label">點數</span>
                   </div>
-                  <span class="step-label">{{ badge.label }}</span>
+                  <div class="stat-item">
+                    <i class="bi bi-box-seam"></i>
+                    <span class="stat-value">{{ userStats.listings }}</span>
+                    <span class="stat-label">刊登中</span>
+                  </div>
+                  <div class="stat-item">
+                    <i class="bi bi-heart"></i>
+                    <span class="stat-value">{{ userStats.favorites }}</span>
+                    <span class="stat-label">收藏</span>
+                  </div>
+                </div>
+
+                <div class="action-buttons">
+                  <button class="edit-profile-btn" @click="goToEditProfile">
+                    <i class="bi bi-pencil"></i>
+                    編輯個人資料
+                  </button>
+                  <button class="review-btn" @click="goToReviews">
+                    <i class="bi bi-star"></i>
+                    查看評價
+                  </button>
+                </div>
+              </div>
+
+              <!-- Achievement Badges Section -->
+              <div class="achievements-section col-xl-7 col-lg-12 mt-md-4 mt-xl-0">
+                <h3 class="achievements-title">成就徽章</h3>
+                <div class="achievements-stepper">
+                  <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
+                  <div
+                      v-for="badge in achievements"
+                      :key="badge.id"
+                      :class="['step-item', { 'unlocked': badge.unlocked }]"
+                      @click="openBadgeModal(badge)"
+                  >
+                    <div class="step-circle">
+                      <img :src="badge.image" :alt="badge.label" class="step-image" />
+                    </div>
+                    <span class="step-label">{{ badge.label }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -194,14 +194,20 @@
 
     <AppFooter />
 
-    <!-- Badge Modal -->
-    <div v-if="isModalVisible" class="badge-modal-overlay" @click="closeBadgeModal">
-      <div class="badge-modal-content" @click.stop>
-        <button class="close-btn" @click="closeBadgeModal">&times;</button>
-        <div v-if="selectedBadge">
-          <img :src="selectedBadge.image" :alt="selectedBadge.label" class="modal-badge-image" />
-          <h3 class="modal-badge-title">{{ selectedBadge.label }}</h3>
-          <p class="modal-badge-description">{{ selectedBadge.description }}</p>
+    <!-- Bootstrap Badge Modal -->
+    <div class="modal fade" id="badgeModal" ref="badgeModalRef" tabindex="-1" aria-labelledby="badgeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title w-100 text-center" id="badgeModalLabel">{{ selectedBadge?.label }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <div v-if="selectedBadge">
+              <img :src="selectedBadge.image" :alt="selectedBadge.label" class="img-fluid mb-3" style="max-height: 150px;" />
+              <p>{{ selectedBadge.description }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -210,7 +216,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
@@ -218,6 +224,7 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
+import { Modal } from 'bootstrap';
 
 // --- 徽章圖片 ---
 // 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
@@ -234,8 +241,9 @@ const favoritesStore = useFavoritesStore();
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
-const isModalVisible = ref(false);
 const selectedBadge = ref(null);
+const badgeModalRef = ref(null);
+const badgeModalInstance = ref(null);
 
 const userStats = computed(() => ({
   listings: 12,
@@ -310,11 +318,9 @@ const salesHistory = ref([]);
 // Methods
 const openBadgeModal = (badge) => {
   selectedBadge.value = badge;
-  isModalVisible.value = true;
-};
-
-const closeBadgeModal = () => {
-  isModalVisible.value = false;
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.show();
+  }
 };
 
 const goToEditProfile = () => {
@@ -348,6 +354,20 @@ const goToReviews = () => {
 const goToFollowers = () => {
   router.push({ name: 'MyFollowers' });
 };
+
+// Lifecycle Hooks
+onMounted(() => {
+  if (badgeModalRef.value) {
+    badgeModalInstance.value = new Modal(badgeModalRef.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.dispose();
+  }
+});
+
 </script>
 
 <style scoped lang="scss">
@@ -430,10 +450,12 @@ const goToFollowers = () => {
   }
 }
 
-.user-info-section {
-  flex: 2;
+.profile-details-wrapper {
+  flex: 1;
   min-width: 0;
+}
 
+.user-info-section {
   .user-name {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 32px;
@@ -557,12 +579,6 @@ const goToFollowers = () => {
 
 // Achievement Badges (Updated)
 .achievements-section {
-  flex: 3;
-  min-width: 0;
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-
   .achievements-title {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 18px;
@@ -573,20 +589,41 @@ const goToFollowers = () => {
 }
 
 .achievements-stepper {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
   position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50px;
+    left: 12.5%;
+    width: 75%;
+    height: 4px;
+    background: #e9ecef;
+    z-index: 0;
+    transform: translateY(-50%);
+  }
+
+  .unlocked-line {
+    position: absolute;
+    top: 50px;
+    left: 12.5%;
+    height: 4px;
+    background: $primary;
+    z-index: 1;
+    transform: translateY(-50%);
+    transition: width 0.5s ease;
+  }
 
   .step-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     position: relative;
-    z-index: 2; // Above lines
-    flex-basis: 25%;
+    z-index: 2;
     text-align: center;
-    padding: 0 4px;
     cursor: pointer;
 
     .step-circle {
@@ -597,17 +634,17 @@ const goToFollowers = () => {
       align-items: center;
       justify-content: center;
       margin-bottom: 8px;
-      background-color: #f0f7f5; // Light green background
-      border: 2px solid #e0e0e0; // Light grey border
+      background-color: #f0f7f5;
+      border: 2px solid #e0e0e0;
       transition: all 0.3s;
-      padding: 10px; // Add padding
+      padding: 10px;
       box-sizing: border-box;
       overflow: hidden;
 
       .step-image {
         width: 100%;
         height: 100%;
-        object-fit: contain; // Changed to contain
+        object-fit: contain;
         transition: filter 0.3s;
         filter: grayscale(100%) opacity(0.6);
       }
@@ -623,8 +660,8 @@ const goToFollowers = () => {
 
     &.unlocked {
       .step-circle {
-        border-color: $primary; // Primary green border for unlocked
-        background-color: #e6f4f0; // Slightly darker green for unlocked
+        border-color: $primary;
+        background-color: #e6f4f0;
 
         .step-image {
           filter: grayscale(0%) opacity(1);
@@ -829,88 +866,21 @@ const goToFollowers = () => {
   }
 }
 
-// Badge Modal Styles
-.badge-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  transition: opacity 0.3s ease;
-}
+// Responsive
+@media (max-width: 1200px) {
+  .profile-details-wrapper {
+    grid-template-columns: 1fr;
+  }
 
-.badge-modal-content {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  text-align: center;
-  position: relative;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  transform: scale(0.95);
-  transition: transform 0.3s ease;
-
-  .close-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: transparent;
-    border: none;
-    font-size: 28px;
-    color: #999;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0;
-
-    &:hover {
-      color: #333;
+  .achievements-stepper {
+    grid-template-columns: repeat(4, 1fr);
+    &::before, .unlocked-line {
+      display: block;
     }
   }
-
-  .modal-badge-image {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 20px;
-  }
-
-  .modal-badge-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: #1e1e1e;
-    margin: 0 0 12px 0;
-  }
-
-  .modal-badge-description {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #666;
-    line-height: 1.6;
-    margin: 0;
-  }
-}
-
-.badge-modal-overlay.v-enter-active, .badge-modal-overlay.v-leave-active {
-  transition: opacity 0.3s ease;
-}
-.badge-modal-overlay.v-enter-from, .badge-modal-overlay.v-leave-to {
-  opacity: 0;
-}
-.badge-modal-overlay.v-enter-active .badge-modal-content, .badge-modal-overlay.v-leave-active .badge-modal-content {
-  transition: transform 0.3s ease;
-}
-.badge-modal-overlay.v-enter-from .badge-modal-content, .badge-modal-overlay.v-leave-to .badge-modal-content {
-  transform: scale(0.95);
 }
 
 
-// Responsive
 @media (max-width: 991.98px) {
   .main-content {
     padding: 20px 0 50px;
@@ -925,7 +895,13 @@ const goToFollowers = () => {
   }
 
   .header-content {
+    flex-direction: column;
+    align-items: center;
     gap: 30px;
+  }
+
+  .profile-details-wrapper {
+    width: 100%;
   }
 
   .user-avatar-section {
@@ -961,42 +937,16 @@ const goToFollowers = () => {
   }
 
   .achievements-stepper {
-    &::before {
-      top: 50px; 
-    }
-    .unlocked-line {
-      top: 50px; 
-    }
-    .step-item {
-      .step-circle {
-        width: 100px; 
-        height: 100px; 
-      }
-      .step-label {
-        font-size: 13px;
-      }
+    grid-template-columns: repeat(2, 1fr);
+    &::before, .unlocked-line {
+      display: none;
     }
   }
 }
 
 @media (max-width: 767.98px) {
   .header-content {
-    flex-direction: column;
-    align-items: center;
     text-align: center;
-    gap: 24px;
-  }
-
-  .user-avatar-section {
-    .user-avatar,
-    .default-avatar {
-      width: 100px;
-      height: 100px;
-    }
-
-    .default-avatar {
-      font-size: 100px;
-    }
   }
 
   .user-info-section {
@@ -1050,21 +1000,7 @@ const goToFollowers = () => {
   }
 
   .achievements-stepper {
-    &::before {
-      top: 50px; 
-    }
-    .unlocked-line {
-      top: 50px; 
-    }
-    .step-item {
-      .step-circle {
-        width: 100px; 
-        height: 100px; 
-      }
-      .step-label {
-        font-size: 12px;
-      }
-    }
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1122,26 +1058,7 @@ const goToFollowers = () => {
 
   // Stepper on mobile
   .achievements-stepper {
-    &::before {
-      left: 10%;
-      width: 80%;
-      top: 50px; 
-    }
-    .unlocked-line {
-      left: 10%;
-      top: 50px; 
-      width: v-bind(unlockedLineWidthMobile); // 直接使用計算好的手機版寬度
-    }
-    .step-item {
-      padding: 0 2px;
-      .step-circle {
-        width: 100px; 
-        height: 100px; 
-      }
-      .step-label {
-        font-size: 11px;
-      }
-    }
+    grid-template-columns: repeat(1, 1fr);
   }
 
 }
