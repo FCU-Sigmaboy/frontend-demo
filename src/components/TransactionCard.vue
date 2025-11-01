@@ -9,6 +9,24 @@
       <span>此物品已下架</span>
     </div>
 
+    <!-- Price and Condition -->
+    <div class="price-condition-row">
+      <div v-if="price !== null && price !== undefined" class="price-info">
+        <i class="bi bi-currency-dollar"></i>
+        <span class="price">{{ price }} 點數</span>
+      </div>
+      <div v-if="condition" class="condition-badge">
+        <i class="bi bi-box-seam"></i>
+        <span>{{ condition }}</span>
+      </div>
+    </div>
+
+    <!-- Carbon Value -->
+    <div v-if="carbonValue !== null && carbonValue !== undefined" class="carbon-info">
+      <i class="bi bi-tree-fill"></i>
+      <span>減碳 {{ carbonValue }} kg CO₂</span>
+    </div>
+
     <!-- Badges -->
     <div class="badges">
       <span v-for="tag in tags" :key="tag" class="badge tag-badge">{{ tag }}</span>
@@ -78,6 +96,18 @@ const props = defineProps({
   productName: {
     type: String,
     default: '物品名稱'
+  },
+  price: {
+    type: Number,
+    default: null
+  },
+  condition: {
+    type: String,
+    default: null
+  },
+  carbonValue: {
+    type: Number,
+    default: null
   },
   listingStatus: {
     type: Boolean,
@@ -204,6 +234,68 @@ const goToSellerProfile = () => {
   background-color: #f5f5f5;
   color: #1e1e1e;
   border: 1px solid #d0d0d0;
+}
+
+.price-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.price-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+
+  i {
+    font-size: 20px;
+    color: $primary;
+  }
+
+  .price {
+    font-size: 20px;
+    font-weight: 600;
+    color: $primary;
+  }
+}
+
+.condition-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #e8f5f1;
+  border: 1px solid $primary;
+  border-radius: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: $primary;
+
+  i {
+    font-size: 14px;
+  }
+}
+
+.carbon-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #e8f5e9;
+  border: 1px solid #4caf50;
+  border-radius: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2e7d32;
+
+  i {
+    font-size: 16px;
+    color: #4caf50;
+  }
 }
 
 .info-row {
@@ -359,6 +451,22 @@ const goToSellerProfile = () => {
     }
   }
 
+  .price-info {
+    i {
+      font-size: 18px;
+    }
+
+    .price {
+      font-size: 18px;
+    }
+  }
+
+  .condition-badge,
+  .carbon-info {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
   .badge {
     font-size: 11px;
     padding: 4px 10px;
@@ -406,6 +514,30 @@ const goToSellerProfile = () => {
 
   .product-name {
     font-size: 20px;
+  }
+
+  .price-condition-row {
+    gap: 12px;
+  }
+
+  .price-info {
+    i {
+      font-size: 16px;
+    }
+
+    .price {
+      font-size: 16px;
+    }
+  }
+
+  .condition-badge,
+  .carbon-info {
+    font-size: 11px;
+    padding: 4px 8px;
+
+    i {
+      font-size: 13px;
+    }
   }
 
   .unlisted-warning {

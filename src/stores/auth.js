@@ -65,6 +65,9 @@ export const useAuthStore = defineStore('auth', () => {
   // 初始化認證狀態
   async function initAuth() {
     try {
+      console.log(
+        await supabase.auth.getUser()
+      );
       // 獲取當前 session
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       setSession(currentSession)

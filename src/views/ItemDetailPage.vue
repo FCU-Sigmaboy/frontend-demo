@@ -118,10 +118,13 @@
             <div class="transaction-card-wrapper">
               <TransactionCard
                 :product-name="product.title"
+                :price="product.price"
+                :condition="product.condition"
+                :carbon-value="product.carbon_value"
                 :listing-status="product.listing_status"
                 :tags="product.tags"
                 :location="product.location?.formatted_address"
-                :distance="`${product.distance_km}km`"
+                :distance="product.distance_km ? `${product.distance_km}km` : '距離未知'"
                 :posted-time="product.created_at"
                 :description="product.description"
                 :seller-name="product.user?.nickname"
@@ -156,9 +159,9 @@
           <div v-else class="products-grid">
             <ProductCard
               v-for="product in relatedProducts"
-              :key="product.item_id"
+              :key="product.item_id || product.id"
               :product="product"
-              @click="goToProduct(product.item_id)"
+              @click="goToProduct(product.item_id || product.id)"
               @favorite-toggle="handleFavoriteToggle"
               @contact-seller="handleContactSeller"
             />
@@ -179,8 +182,11 @@ import AppFooter from '../components/AppFooter.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import ProductCard from '../components/ProductCard.vue';
 
+import { useAuthStore } from '../stores/auth';
 import { getItemDetails } from '@/api/get_oneItemDetailAPI.js';
 import { searchItems } from '@/api/get_searchItemsAPI.js';
+
+const authStore = useAuthStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -240,7 +246,10 @@ const handleMessage = () => {
 };
 
 const goToProduct = (productId) => {
+  // 重新載入頁面以顯示新的商品詳情
   router.push({ name: 'ItemDetail', params: { id: productId } });
+  // 頁面切換後重新載入商品資料
+  loadProductDetails();
 };
 
 const handleFavoriteToggle = (data) => {
@@ -265,7 +274,8 @@ const loadRelatedProducts = async (subCategoryId, currentItemId) => {
 
     // Filter out the current item from related products
     if (data) {
-      relatedProducts.value = data.filter(item => item.item_id !== currentItemId);
+      // 使用新的 API 格式中的 id 欄位
+      relatedProducts.value = data.filter(item => (item.item_id || item.id) !== currentItemId);
       // Limit to 4 items if there are more
       if (relatedProducts.value.length > 4) {
         relatedProducts.value = relatedProducts.value.slice(0, 4);
@@ -294,21 +304,27 @@ const loadProductDetails = async () => {
       longitude: 120.645
     };
 
-    const data = await getItemDetails(itemId, userLocation);
-    console.log('Fetched item details:', data);
+    const options = {
+      headers: { Authorization: `Bearer ${authStore.session.access_token}` }
+    }
+    console.log(options);
+    
+    const response = await getItemDetails(itemId, options);
+    console.log('Fetched item details:', response);
 
-    if (data) {
-      product.value = data;
+    // 新的 API 回傳格式包含 success, message, data 等欄位
+    if (response && response.success && response.data) {
+      product.value = response.data;
       // 重置圖片索引
       currentImageIndex.value = 0;
 
       // Load related products based on sub-category
-      if (data.category?.sub_category_id) {
-        await loadRelatedProducts(data.category.sub_category_id, data.id);
+      if (response.data.category?.sub_category_id) {
+        await loadRelatedProducts(response.data.category.sub_category_id, response.data.id);
       }
     } else {
       // Handle item not found or unavailable
-      error.value = '找不到此物品，可能已下架或不存在';
+      error.value = response?.message || '找不到此物品，可能已下架或不存在';
       console.error('Item not found');
     }
   } catch (err) {
@@ -324,7 +340,8 @@ const retryLoadProduct = () => {
   loadProductDetails();
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await authStore.initAuth();
   loadProductDetails();
 });
 </script>
