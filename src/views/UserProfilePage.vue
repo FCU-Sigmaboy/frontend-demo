@@ -21,7 +21,7 @@
               </button>
             </div>
 
-            <div class="profile-details-wrapper row">
+            <div class="profile-details-wrapper row align-items-start">
               <div class="user-info-section col-xl-5 col-lg-12">
                 <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
                 <p class="user-email">{{ authStore.userEmail }}</p>
