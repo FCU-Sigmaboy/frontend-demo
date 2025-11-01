@@ -55,49 +55,36 @@
               </div>
             </div>
 
-            <!-- Name Field -->
+            <!-- Nickname Field -->
             <div class="form-section">
-              <label for="name" class="form-label">
-                姓名 <span class="required">*</span>
+              <label for="nickname" class="form-label">
+                暱稱 <span class="required">*</span>
               </label>
               <input
-                id="name"
-                v-model="formData.name"
+                id="nickname"
+                v-model="formData.nickname"
                 type="text"
                 class="form-input"
-                placeholder="請輸入姓名"
+                placeholder="請輸入暱稱"
                 required
               />
+              <p class="field-hint">Google 帳戶預設顯示名稱，可隨時修改</p>
             </div>
 
-            <!-- Email Field (Read-only) -->
+            <!-- Login Method Field (Read-only) -->
             <div class="form-section">
-              <label for="email" class="form-label">
-                電子信箱
+              <label for="loginMethod" class="form-label">
+                登入方式
               </label>
               <input
-                id="email"
-                v-model="formData.email"
-                type="email"
+                id="loginMethod"
+                v-model="formData.loginMethod"
+                type="text"
                 class="form-input"
-                placeholder="請輸入電子信箱"
+                placeholder="Google"
                 disabled
               />
               <p class="field-hint">電子信箱無法修改</p>
-            </div>
-
-            <!-- Phone Field -->
-            <div class="form-section">
-              <label for="phone" class="form-label">
-                聯絡電話
-              </label>
-              <input
-                id="phone"
-                v-model="formData.phone"
-                type="tel"
-                class="form-input"
-                placeholder="請輸入聯絡電話"
-              />
             </div>
 
             <!-- Location Field -->
@@ -122,51 +109,34 @@
               </select>
             </div>
 
-            <!-- Bio Field -->
-            <div class="form-section">
-              <label for="bio" class="form-label">
-                個人簡介
+            <!-- Office Address Field (Optional) -->
+            <div v-if="showOfficeAddress" class="form-section">
+              <label for="officeAddress" class="form-label">
+                公司地址
               </label>
-              <textarea
-                id="bio"
-                v-model="formData.bio"
-                class="form-textarea"
-                rows="5"
-                placeholder="介紹一下自己..."
-                maxlength="500"
-              ></textarea>
-              <p class="char-count">{{ formData.bio.length }}/500</p>
+              <select id="officeAddress" v-model="formData.officeAddress" class="form-select">
+                <option value="">請選擇地區</option>
+                <option value="中區">台中市中區</option>
+                <option value="東區">台中市東區</option>
+                <option value="南區">台中市南區</option>
+                <option value="西區">台中市西區</option>
+                <option value="北區">台中市北區</option>
+                <option value="西屯區">台中市西屯區</option>
+                <option value="南屯區">台中市南屯區</option>
+                <option value="北屯區">台中市北屯區</option>
+                <option value="豐原區">台中市豐原區</option>
+                <option value="大里區">台中市大里區</option>
+                <option value="太平區">台中市太平區</option>
+                <option value="沙鹿區">台中市沙鹿區</option>
+              </select>
             </div>
 
-            <!-- Notification Settings -->
-            <div class="form-section">
-              <label class="section-label">通知設定</label>
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.notifications.email"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">接收電子郵件通知</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.notifications.messages"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">接收訊息通知</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.notifications.promotions"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">接收優惠活動通知</span>
-                </label>
-              </div>
+            <!-- Add Office Address Button -->
+            <div v-if="!showOfficeAddress" class="form-section">
+              <button type="button" class="add-address-btn" @click="toggleOfficeAddress">
+                <i class="bi bi-plus-circle"></i>
+                新增公司地址
+              </button>
             </div>
 
             <!-- Form Actions -->
@@ -205,19 +175,14 @@ const authStore = useAuthStore();
 const userPoints = ref(500);
 const isSaving = ref(false);
 const fileInput = ref(null);
+const showOfficeAddress = ref(false);
 
 const formData = ref({
   avatar: authStore.userAvatar || '',
-  name: authStore.userName || '',
-  email: authStore.userEmail || '',
-  phone: '',
+  nickname: authStore.userName || '',
+  loginMethod: 'Google',
   location: '',
-  bio: '',
-  notifications: {
-    email: true,
-    messages: true,
-    promotions: false
-  }
+  officeAddress: ''
 });
 
 // Methods
@@ -245,6 +210,10 @@ const removeAvatar = () => {
   if (fileInput.value) {
     fileInput.value.value = '';
   }
+};
+
+const toggleOfficeAddress = () => {
+  showOfficeAddress.value = !showOfficeAddress.value;
 };
 
 const handleSubmit = async () => {
@@ -458,7 +427,8 @@ const handleSubmit = async () => {
 }
 
 .upload-btn,
-.remove-btn {
+.remove-btn,
+.add-address-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -493,6 +463,17 @@ const handleSubmit = async () => {
   &:hover {
     background: #dc3545;
     color: white;
+  }
+}
+
+.add-address-btn {
+  background: white;
+  color: $primary;
+  border: 1px dashed $primary;
+
+  &:hover {
+    background: #f0f9f7;
+    border-style: solid;
   }
 }
 

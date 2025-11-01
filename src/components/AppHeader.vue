@@ -273,8 +273,7 @@ const mobileMenuItems = [
   { id: 1, name: '個人檔案', icon: 'bi-person', route: 'UserProfile' },
   { id: 2, name: '刊登物品', icon: 'bi-plus-circle', route: 'CreateListing' },
   { id: 3, name: '我的收藏', icon: 'bi-heart', route: 'Favorites' },
-  { id: 4, name: '聊天訊息', icon: 'bi-chat-left', route: 'Messages' },
-  { id: 5, name: '帳號設定', icon: 'bi-gear', route: 'AccountSettings' }
+  { id: 4, name: '聊天訊息', icon: 'bi-chat-left', route: 'Messages' }
 ];
 
 // Methods
