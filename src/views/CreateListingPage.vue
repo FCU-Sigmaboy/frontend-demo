@@ -92,15 +92,13 @@
                 required
               >
                 <option value="">請選擇分類</option>
-                <option value="1">流行服飾</option>
-                <option value="2">鞋包配件</option>
-                <option value="3">美妝保養</option>
-                <option value="4">電子 3C</option>
-                <option value="5">家電用品</option>
-                <option value="6">家具家飾</option>
-                <option value="7">親子婦幼</option>
-                <option value="8">生活娛樂</option>
-                <option value="9">圖書影音</option>
+                <option
+                  v-for="subCat in subCategories"
+                  :key="subCat.id"
+                  :value="subCat.id"
+                >
+                  {{ subCat.name }}
+                </option>
               </select>
             </div>
 
@@ -259,8 +257,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { supabase } from '@/lib/supabase';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
@@ -272,6 +271,7 @@ const userPoints = ref(500);
 const isEdit = ref(!!route.params.id);
 const isSubmitting = ref(false);
 const imageInput = ref(null);
+const subCategories = ref([]);
 
 const formData = ref({
   images: [],
@@ -290,12 +290,39 @@ const formData = ref({
 });
 
 const conditions = [
-  { value: 'new', label: '全新' },
-  { value: 'like-new', label: '近全新' },
-  { value: 'good', label: '良好' },
-  { value: 'fair', label: '普通' },
-  { value: 'poor', label: '有瑕疵' }
+  { value: '全新', label: '全新' },
+  { value: '近全新', label: '近全新' },
+  { value: '良好', label: '良好' },
+  { value: '普通', label: '普通' },
+  { value: '需修理', label: '需修理' }
 ];
+
+// Fetch categories from database
+const fetchCategories = async () => {
+  try {
+    console.log('🔍 Fetching sub_categories from database...');
+
+    const { data, error } = await supabase
+      .from('sub_categories')
+      .select('id, name')
+      .order('id');
+
+    if (error) {
+      console.error('❌ Error fetching sub_categories:', error);
+      return;
+    }
+
+    subCategories.value = data || [];
+    console.log('✅ Loaded sub_categories:', subCategories.value);
+  } catch (error) {
+    console.error('❌ Failed to fetch categories:', error);
+  }
+};
+
+// Load categories on mount
+onMounted(() => {
+  fetchCategories();
+});
 
 // Methods
 const goBack = () => {
@@ -350,19 +377,22 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('📝 Submitting listing:', formData.value);
 
-    console.log('Listing created:', formData.value);
+    // Call the real API
+    const { createItem } = await import('../api/create_myItemAPI');
+    const result = await createItem(formData.value);
+
+    console.log('✅ Listing created successfully:', result);
 
     // Show success message
-    alert(isEdit.value ? '刊登已更新！' : '刊登成功！');
+    alert(isEdit.value ? '刊登已更新！' : `刊登成功！物品 ID: ${result.id}`);
 
-    // Navigate to profile or listing detail
+    // Navigate to profile
     router.push({ name: 'UserProfile' });
   } catch (error) {
-    console.error('Error creating listing:', error);
-    alert('刊登失敗，請稍後再試');
+    console.error('❌ Error creating listing:', error);
+    alert('刊登失敗：' + error.message);
   } finally {
     isSubmitting.value = false;
   }

@@ -162,9 +162,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
+import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
@@ -176,6 +178,7 @@ const userPoints = ref(500);
 const isSaving = ref(false);
 const fileInput = ref(null);
 const showOfficeAddress = ref(false);
+const originalProfile = ref(null); // Store original profile data
 
 const formData = ref({
   avatar: authStore.userAvatar || '',
@@ -184,6 +187,22 @@ const formData = ref({
   location: '',
   officeAddress: ''
 });
+
+// District coordinate mapping (Taichung districts)
+const districtCoordinates = {
+  '中區': { latitude: 24.1438, longitude: 120.6794 },
+  '東區': { latitude: 24.1378, longitude: 120.6947 },
+  '南區': { latitude: 24.1168, longitude: 120.6637 },
+  '西區': { latitude: 24.1393, longitude: 120.6739 },
+  '北區': { latitude: 24.1635, longitude: 120.6821 },
+  '西屯區': { latitude: 24.1812, longitude: 120.6396 },
+  '南屯區': { latitude: 24.1398, longitude: 120.6471 },
+  '北屯區': { latitude: 24.1810, longitude: 120.7150 },
+  '豐原區': { latitude: 24.2569, longitude: 120.7230 },
+  '大里區': { latitude: 24.0990, longitude: 120.6772 },
+  '太平區': { latitude: 24.1264, longitude: 120.7209 },
+  '沙鹿區': { latitude: 24.2364, longitude: 120.5686 }
+};
 
 // Methods
 const goBack = () => {
@@ -216,30 +235,129 @@ const toggleOfficeAddress = () => {
   showOfficeAddress.value = !showOfficeAddress.value;
 };
 
+const loadProfileData = async () => {
+  try {
+    const profile = await getMyProfileForEdit();
+    console.log('📋 Loaded profile data:', profile);
+
+    if (profile) {
+      originalProfile.value = profile;
+
+      // Populate form data
+      formData.value.avatar = profile.profile_picture_url || '';
+      formData.value.nickname = profile.nickname || '';
+
+      // Extract primary location district name
+      if (profile.locations && profile.locations.length > 0) {
+        const primaryLoc = profile.locations.find(loc => loc.is_primary);
+        if (primaryLoc && primaryLoc.formatted_address) {
+          // Extract district from address (e.g., "台中市西屯區福星路" -> "西屯區")
+          const match = primaryLoc.formatted_address.match(/台中市(.+?區)/);
+          if (match) {
+            formData.value.location = match[1];
+          }
+        }
+
+        // Check if there's an office address
+        const officeAddr = profile.locations.find(loc => !loc.is_primary && loc.type.includes('公司'));
+        if (officeAddr && officeAddr.formatted_address) {
+          showOfficeAddress.value = true;
+          const match = officeAddr.formatted_address.match(/台中市(.+?區)/);
+          if (match) {
+            formData.value.officeAddress = match[1];
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load profile:', error);
+    alert('載入個人資料失敗，請稍後再試');
+  }
+};
+
 const handleSubmit = async () => {
   isSaving.value = true;
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Prepare userData (only changed fields)
+    const userData = {};
+    if (formData.value.nickname !== originalProfile.value?.nickname) {
+      userData.nickname = formData.value.nickname;
+    }
+    if (formData.value.avatar !== originalProfile.value?.profile_picture_url) {
+      userData.profile_picture_url = formData.value.avatar;
+    }
 
-    // Update auth store (if needed)
-    // authStore.updateProfile(formData.value);
+    // Prepare profileData (empty for now, no balance/carbon changes from this page)
+    const profileData = {};
 
-    console.log('Profile updated:', formData.value);
+    // Prepare locationsArray
+    const locationsArray = [];
 
-    // Show success message (you can use a toast library)
+    // Primary location (home)
+    if (formData.value.location) {
+      const coords = districtCoordinates[formData.value.location];
+      if (coords) {
+        const existingPrimaryLoc = originalProfile.value?.locations?.find(loc => loc.is_primary);
+        locationsArray.push({
+          id: existingPrimaryLoc?.id, // Include ID if updating existing location
+          coordinates: coords,
+          type: '家',
+          is_primary: true,
+          formatted_address: `台中市${formData.value.location}`
+        });
+      }
+    }
+
+    // Office location (if provided)
+    if (showOfficeAddress.value && formData.value.officeAddress) {
+      const coords = districtCoordinates[formData.value.officeAddress];
+      if (coords) {
+        const existingOfficeLoc = originalProfile.value?.locations?.find(
+          loc => !loc.is_primary && loc.type.includes('公司')
+        );
+        locationsArray.push({
+          id: existingOfficeLoc?.id, // Include ID if updating existing location
+          coordinates: coords,
+          type: '公司',
+          is_primary: false,
+          formatted_address: `台中市${formData.value.officeAddress}`
+        });
+      }
+    }
+
+    console.log('📤 Updating profile with:', { userData, profileData, locationsArray });
+
+    // Call the real update API
+    const result = await updateMyProfile(userData, profileData, locationsArray);
+
+    console.log('✅ Profile updated successfully:', result);
+
+    // Update auth store with new data
+    if (userData.nickname) {
+      authStore.userName = userData.nickname;
+    }
+    if (userData.profile_picture_url) {
+      authStore.userAvatar = userData.profile_picture_url;
+    }
+
+    // Show success message
     alert('個人資料已更新！');
 
     // Navigate back to profile
     router.push({ name: 'UserProfile' });
   } catch (error) {
-    console.error('Error updating profile:', error);
-    alert('更新失敗，請稍後再試');
+    console.error('❌ Error updating profile:', error);
+    alert(`更新失敗：${error.message}`);
   } finally {
     isSaving.value = false;
   }
 };
+
+// Load profile data on mount
+onMounted(() => {
+  loadProfileData();
+});
 </script>
 
 <style scoped lang="scss">

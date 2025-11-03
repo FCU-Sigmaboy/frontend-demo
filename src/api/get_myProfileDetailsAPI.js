@@ -1,4 +1,4 @@
-import { supabase } from 'src/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // ===================================================================
 // ### 使用者 Profile API (User Profile APIs)

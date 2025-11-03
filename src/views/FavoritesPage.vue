@@ -247,6 +247,7 @@ const loadFavorites = async () => {
   error.value = null;
 
   try {
+    // RPC 會自動從使用者主要地址取得座標，不需要提供
     await favoritesStore.loadFavorites({
       page: 1,
       size: 100,

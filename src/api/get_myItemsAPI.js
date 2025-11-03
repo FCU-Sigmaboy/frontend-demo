@@ -24,10 +24,11 @@ export async function getMyItems(options = {}) {
     }
 
     // 2. 這是您要的 DTO (欄位同之前討論)
+    // Note: Selecting image_urls as array, will extract first image in JS
     const selectQuery = `
     id,
     title,
-    cover_image_url:image_urls[1],
+    image_urls,
     condition,
     listing_status,
     price,
@@ -41,8 +42,6 @@ export async function getMyItems(options = {}) {
     const offset = (page - 1) * size;
     const sort_by = options.sort_by || 'created_at';
     const sort_dir = options.sort_direction || 'desc';
-
-    return example;
 
     // 4. 建立查詢
     const { data, error } = await supabase
@@ -59,11 +58,16 @@ export async function getMyItems(options = {}) {
         throw new Error(error.message);
     }
 
-    // 6. data 就是您要的 JSON 陣列
-    return data;
+    // 6. Extract first image from image_urls array
+    const processedData = data.map(item => ({
+        ...item,
+        cover_image_url: item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : null
+    }));
+
+    return processedData;
 }
 
-// data 範例
+/* ===== 範例資料 (Example Data) =====
 const example = [
   {
     "item_id": 101,
@@ -86,3 +90,4 @@ const example = [
   }
   // ... 其他屬於 user123 的物品
 ]
+*/

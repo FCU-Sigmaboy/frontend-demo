@@ -16,10 +16,17 @@
                 referrerpolicy="no-referrer"
               />
               <i v-else class="bi bi-person-circle default-avatar"></i>
-              <button class="edit-avatar-btn">
+              <button class="edit-avatar-btn" @click="goToEditProfile" title="編輯大頭貼">
                 <i class="bi bi-camera"></i>
               </button>
             </div>
+            <input
+              ref="avatarFileInput"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="handleAvatarUpload"
+            />
 
             <div class="user-info-section">
               <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
@@ -92,12 +99,27 @@
           <div v-show="activeTab === 'listings'" class="content-section">
             <div class="section-header">
               <h2 class="section-title">我的刊登</h2>
-              <button class="manage-btn" @click="goToManageListings">
-                <i class="bi bi-gear"></i>
-                管理刊登
-              </button>
+              <div class="header-actions">
+                <button class="refresh-btn" @click="fetchMyListings" title="重新整理">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button class="manage-btn" @click="goToManageListings">
+                  <i class="bi bi-gear"></i>
+                  管理刊登
+                </button>
+              </div>
             </div>
-            <div v-if="myListings.length > 0" class="listings-grid">
+
+            <!-- Loading State -->
+            <div v-if="isLoadingListings" class="loading-state">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">載入中...</span>
+              </div>
+              <p>載入中...</p>
+            </div>
+
+            <!-- Listings Grid -->
+            <div v-else-if="myListings.length > 0" class="listings-grid">
               <ProductCard
                 v-for="product in myListings"
                 :key="product.id"
@@ -105,6 +127,8 @@
                 @click="goToProductDetail(product.id)"
               />
             </div>
+
+            <!-- Empty State -->
             <div v-else class="empty-state">
               <i class="bi bi-box-seam"></i>
               <p>尚無刊登物品</p>
@@ -176,10 +200,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
+import { getMyItems } from '../api/get_myItemsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
@@ -192,9 +217,11 @@ const favoritesStore = useFavoritesStore();
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
+const myListings = ref([]);
+const isLoadingListings = ref(false);
 
 const userStats = computed(() => ({
-  listings: 12,
+  listings: myListings.value.length,
   favorites: favoritesStore.count,
   purchases: 5,
   sales: 3
@@ -207,29 +234,119 @@ const tabs = computed(() => [
   { id: 'sales', label: '銷售紀錄', icon: 'bi-cash-stack', count: userStats.value.sales }
 ]);
 
-// Mock data
-const myListings = ref([
-  {
-    "item_id": 101,
-    "title": "（全新）IKEA 檯燈",
-    "image_url": "https://.../item101_cover.jpg",
-    "price": 500,
-    "distance_km": "1.254",
-    "formatted_address": "台中市西屯區福星路",
-    "created_at": "2025-10-18T10:30:00.123+00:00",
-    "updated_at": "2025-10-18T10:30:00.123+00:00",
-    "favorites_count": 15,
-    "user": {
-      "id": "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
-      "nickname": "Joseph",
-      "profile_picture_url": "https://.../joseph.jpg"
-    }
-  }
-]);
-
-const favoriteItems = computed(() => []); // favoritesStore.favoriteItems
+const favoriteItems = computed(() => {
+  console.log('🎯 Favorites from store:', favoritesStore.favoriteItems.length);
+  return favoritesStore.favoriteItems;
+});
 const purchaseHistory = ref([]);
 const salesHistory = ref([]);
+
+// Define fetchMyListings FIRST before using it
+const fetchMyListings = async () => {
+  if (!authStore.isLoggedIn) {
+    console.warn('⚠️ Not logged in, skipping fetch');
+    return;
+  }
+
+  try {
+    isLoadingListings.value = true;
+
+    console.log('🔍 Fetching my items for user:', authStore.user?.id || 'unknown');
+
+    const items = await getMyItems({
+      page: 1,
+      size: 20,
+      sort_by: 'created_at',
+      sort_direction: 'desc'
+    });
+
+    console.log('📦 Raw API response:', items);
+
+    if (items) {
+      // Transform API data to match ProductCard expectations
+      myListings.value = items.map(item => ({
+        item_id: item.id, // ProductCard expects item_id, not id
+        title: item.title,
+        image_url: item.cover_image_url,
+        price: item.price,
+        condition: item.condition,
+        listing_status: item.listing_status,
+        distance_km: 0, // My own items, no distance needed
+        formatted_address: item.location || '台中市', // Default location
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        user: {
+          // My own items, use current user info
+          id: authStore.user?.id || '',
+          nickname: authStore.userName || '我',
+          profile_picture_url: authStore.userAvatar || ''
+        }
+      }));
+
+      console.log('✅ My listings transformed:', myListings.value.length, 'items');
+      console.log('First item:', myListings.value[0]);
+    }
+  } catch (error) {
+    console.error('Failed to fetch my listings:', error);
+  } finally {
+    isLoadingListings.value = false;
+  }
+};
+
+// NOW watch for auth state changes
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  console.log('🔐 Auth state changed, logged in:', isLoggedIn);
+  if (isLoggedIn) {
+    fetchMyListings();
+
+    // Load favorites
+    if (favoritesStore.count === 0) {
+      favoritesStore.loadFavorites({
+        page: 1,
+        size: 100,
+        sort_by: 'favorited_at',
+        sort_direction: 'desc'
+      }).then(() => {
+        console.log('✅ Favorites loaded:', favoritesStore.count);
+      }).catch((error) => {
+        console.error('Failed to load favorites:', error);
+      });
+    }
+  }
+}, { immediate: true }); // Run immediately on mount
+
+// Also fetch on mount (for case where auth is already ready)
+onMounted(async () => {
+  if (authStore.isLoggedIn) {
+    await fetchMyListings();
+
+    if (favoritesStore.count === 0) {
+      try {
+        await favoritesStore.loadFavorites({
+          page: 1,
+          size: 100,
+          sort_by: 'favorited_at',
+          sort_direction: 'desc'
+        });
+        console.log('✅ Favorites loaded on mount:', favoritesStore.count);
+      } catch (error) {
+        console.error('Failed to load favorites:', error);
+      }
+    }
+  }
+});
+
+// Avatar upload
+const avatarFileInput = ref(null);
+
+const handleAvatarUpload = (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  // For now, just redirect to edit profile page
+  // In future, could upload directly here
+  router.push({ name: 'EditProfile' });
+};
 
 // Methods
 const goToEditProfile = () => {
@@ -559,6 +676,35 @@ const goToFollowers = () => {
     margin: 0;
   }
 
+  .header-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid $primary;
+    border-radius: 8px;
+    color: $primary;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    i {
+      font-size: 18px;
+    }
+
+    &:hover {
+      background: $primary;
+      color: white;
+      transform: rotate(180deg);
+    }
+  }
+
   .manage-btn {
     display: inline-flex;
     align-items: center;
@@ -606,6 +752,30 @@ const goToFollowers = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+  }
 }
 
 .empty-state {

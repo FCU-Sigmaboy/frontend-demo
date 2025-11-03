@@ -6,10 +6,8 @@ import { supabase } from '@/lib/supabase'; // 假設您已在 src/supabaseClient
 
 /**
  * 【更新版】獲取 "當前登入者" 收藏的所有物品
- * (使用 RPC 實現，回傳結構與 searchItems 相同，並額外包含 favorited_at)
+ * (使用 RPC 實現，自動計算距離，回傳結構與 searchItems 相同)
  * @param {object} options - (可選) 排序與分頁
- * @param {number} [options.latitude] - (必填) 當前使用者緯度
- * @param {number} [options.longitude] - (必填) 當前使用者經度
  * @param {number} [options.page=1] - 頁碼
  * @param {number} [options.size=20] - 每頁筆數
  * @param {string} [options.sort_by='favorited_at'] - 排序 ('favorited_at', 'created_at', 'distance', 'price')
@@ -17,49 +15,36 @@ import { supabase } from '@/lib/supabase'; // 假設您已在 src/supabaseClient
  * @returns {Promise<Array | null>} - 回傳收藏物品陣列, 未登入回傳 null
  */
 export async function getMyFavoriteItems(options = {}) {
-    // 1. 檢查是否已登入 (RPC 內部也會檢查，但前端先檢查可提升體驗)
+    // 1. 檢查是否已登入 (RPC 內部也會檢查)
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
         console.warn('getMyFavoriteItems: User not logged in.');
         return null;
     }
 
-    return example;
-
-    // 2. 處理必要的位置資訊
-    let latitude = options.latitude;
-    let longitude = options.longitude;
-    if (latitude == null || longitude == null) {
-        // 在真實應用中，您應該在這裡呼叫瀏覽器 API 獲取位置，或使用預設位置
-        // 為簡化範例，先拋出錯誤
-        throw new Error("獲取收藏列表時必須提供使用者經緯度以計算距離。");
-    }
-
-
-    // 3. 準備 RPC 參數
+    // 2. *** 關鍵修改：不再需要 latitude/longitude ***
+    //    RPC 會自動從登入者抓取主要地點
     const rpcParams = {
-        p_user_latitude: latitude,
-        p_user_longitude: longitude,
         p_page: options.page || 1,
         p_size: options.size || 20,
         p_sort_by: options.sort_by || 'favorited_at',
         p_sort_direction: options.sort_direction || 'desc'
     };
 
-    // 4. 呼叫 RPC 函式
+    // 3. 呼叫 RPC 函式
     const { data, error } = await supabase.rpc('get_my_favorite_items', rpcParams);
 
-    // 5. 錯誤處理
+    // 4. 錯誤處理
     if (error) {
         console.error('Supabase 獲取 "我的收藏" 失敗:', error);
         throw new Error(error.message);
     }
 
-    // 6. RPC 回傳的 data 就是完美的 DTO，直接回傳
+    // 5. RPC 回傳的 data 就是完美的 DTO，直接回傳
     return data;
 }
 
-// data 範例
+/* ===== 範例資料 (Example Data) =====
 const example = [
   {
     "item_id": 101,
@@ -96,3 +81,4 @@ const example = [
     }
   }
 ]
+*/
