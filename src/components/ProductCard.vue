@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '@/stores/favorites';
 import { formatRelativeTime } from '@/utils/timeFormat';
@@ -88,9 +88,12 @@ const props = defineProps({
 
 const emit = defineEmits(['contact-seller']);
 
-// 檢查是否已收藏
+// 收藏狀態 - 用於立即更新 UI
+const localFavoriteState = ref(props.product.favorited_at !== null);
+
+// 已收藏狀態
 const isFavorite = computed(() => {
-  return props.product.favorited_at !== undefined;
+  return localFavoriteState.value;
 });
 
 // 格式化時間
@@ -99,8 +102,22 @@ const formattedTime = computed(() => {
 });
 
 // 切換收藏狀態
+let timeoutId = null;
 const toggleFavorite = () => {
-  favoritesStore.toggleFavorite(props.product);
+  // 立即更新狀態,提供即時視覺回饋
+  localFavoriteState.value = !localFavoriteState.value;
+  
+  const func = localFavoriteState.value 
+    ? favoritesStore.addFavorite 
+    : favoritesStore.removeFavorite;
+
+  // 防抖處理 - 延遲實際的 API 呼叫
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+  timeoutId = setTimeout(() => {
+    func(props.product);
+  }, 500);
 };
 
 const handleContact = () => {
@@ -241,22 +258,38 @@ const goToSellerProfile = () => {
       padding: 0;
       cursor: pointer;
       transition: all 0.3s;
-    
+
       i {
         font-size: 16px;
         color: #1e1e1e;
       }
-    
+
       &.active i,
       &:hover i {
         color: #ff6b6b;
       }
-    
+
       &:hover {
         background-color: #fff;
         transform: scale(1.1);
       }
+
+      &:active {
+        animation: scale-bounce 0.3s ease-in-out;
+      }
     }
+}
+
+@keyframes scale-bounce {
+  0% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .product-name {

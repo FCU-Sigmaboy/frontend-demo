@@ -23,20 +23,22 @@ export const useFavoritesStore = defineStore('favorites', () => {
         console.error('(store) Failed to add favorite:', error)
       }).then(() => {
         item.favorited_at = new Date().toISOString();
+        item.favorites_count += 1;
         favoriteItems.value.push(item)
       })
     }
   }
 
-  async function removeFavorite(itemId) {
-    if (isFavorite(itemId)) {
-      await removeFavoriteItem(itemId).catch((error) => {
+  async function removeFavorite(item) {
+    if (isFavorite(item.item_id)) {
+      await removeFavoriteItem(item.item_id).catch((error) => {
         console.error('(store) Failed to remove favorite:', error)
       }).then(() => {
-        favoriteItems.value = favoriteItems.value.filter(item => item.item_id !== itemId)
-        favoriteItems.value.map(item => {
-          if (item.item_id === itemId) {
-            item.favorited_at = undefined;
+        favoriteItems.value = favoriteItems.value.filter(favItem => favItem.item_id !== item.item_id)
+        favoriteItems.value.map(favItem => {
+          if (favItem.item_id === item.item_id) {
+            favItem.favorited_at = null;
+            favItem.favorites_count -= 1;
           }
         })
       })
