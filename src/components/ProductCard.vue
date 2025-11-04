@@ -3,8 +3,8 @@
     <!-- Card Header -->
     <div class="card-header">
       <div class="seller-info" @click.stop="goToSellerProfile">
-        <img :src="product.user.profile_picture_url" :alt="product.user.nickname" class="seller-avatar" />
-        <span class="seller-name">{{ product.user.nickname }}</span>
+        <img :src="sellerAvatar" :alt="sellerName" class="seller-avatar" />
+        <span class="seller-name">{{ sellerName }}</span>
       </div>
       <button v-if="!isOwner" class="contact-btn" @click.stop="handleContact">
         私訊此商品
@@ -65,10 +65,6 @@ const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const authStore = useAuthStore();
 
-const isOwner = computed(() => {
-  return authStore.user && authStore.user.id === props.product.user.id;
-});
-
 const props = defineProps({
   product: {
     type: Object,
@@ -94,6 +90,24 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['contact-seller']);
+
+// Handle both data structures (with nested user or flat seller data)
+const sellerName = computed(() => {
+  return props.product.user?.nickname || props.product.sellerName || '使用者';
+});
+
+const sellerAvatar = computed(() => {
+  return props.product.user?.profile_picture_url || props.product.sellerAvatar || 'https://placehold.co/50x50/6fb8a5/ffffff?text=User';
+});
+
+const sellerId = computed(() => {
+  return props.product.user?.id || props.product.seller_id || null;
+});
+
+const isOwner = computed(() => {
+  if (!authStore.user || !sellerId.value) return false;
+  return authStore.user.id === sellerId.value;
+});
 
 // 收藏狀態 - 用於立即更新 UI
 const localFavoriteState = ref(props.product.favorited_at !== null);
@@ -132,7 +146,9 @@ const handleContact = () => {
 };
 
 const goToSellerProfile = () => {
-  router.push({ name: 'PublicUserProfile', params: { id: props.product.user.id } });
+  if (sellerId.value) {
+    router.push({ name: 'PublicUserProfile', params: { id: sellerId.value } });
+  }
 };
 </script>
 

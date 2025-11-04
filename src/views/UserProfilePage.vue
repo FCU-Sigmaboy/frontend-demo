@@ -118,9 +118,6 @@
             <div class="section-header">
               <h2 class="section-title">我的刊登</h2>
               <div class="header-actions">
-                <button class="refresh-btn" @click="fetchMyListings" title="重新整理">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
                 <button class="manage-btn" @click="goToManageListings">
                   <i class="bi bi-gear"></i>
                   管理刊登
@@ -1118,30 +1115,6 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 12px;
   }
 
-  .refresh-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 8px;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    i {
-      font-size: 18px;
-    }
-
-    &:hover {
-      background: $primary;
-      color: white;
-      transform: rotate(180deg);
-    }
-  }
-
   .manage-btn {
     display: inline-flex;
     align-items: center;
@@ -1386,6 +1359,33 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 30px;
   }
 
+  .achievements-stepper {
+    gap: 10px;
+
+    &::before {
+      left: 9%;
+      width: 82%;
+      top: 45px;
+    }
+
+    .unlocked-line {
+      left: 9%;
+      top: 45px;
+    }
+
+    .step-item {
+      .step-circle {
+        width: 80px;
+        height: 80px;
+        padding: 10px;
+      }
+
+      .step-label {
+        font-size: 11px;
+      }
+    }
+  }
+
   .listings-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 18px;
@@ -1420,9 +1420,40 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
+  .follow-stats {
+    justify-content: center;
+  }
+
   .user-stats {
     justify-content: center;
     gap: 24px;
+  }
+
+  .achievements-stepper {
+    gap: 12px;
+
+    &::before {
+      left: 10%;
+      width: 80%;
+      top: 45px;
+    }
+
+    .unlocked-line {
+      left: 10%;
+      top: 45px;
+    }
+
+    .step-item {
+      .step-circle {
+        width: 70px;
+        height: 70px;
+        padding: 8px;
+      }
+
+      .step-label {
+        font-size: 12px;
+      }
+    }
   }
 
   .edit-profile-btn {
@@ -1458,6 +1489,20 @@ const scrollCarousel = (carouselRef, index) => {
     margin-bottom: 20px;
   }
 
+  .follow-stats {
+    gap: 8px;
+
+    .follow-stat-btn {
+      .stat-number {
+        font-size: 14px;
+      }
+
+      .stat-text {
+        font-size: 12px;
+      }
+    }
+  }
+
   .user-stats {
     gap: 20px;
     flex-wrap: wrap;
@@ -1476,6 +1521,50 @@ const scrollCarousel = (carouselRef, index) => {
       .stat-label {
         font-size: 12px;
       }
+    }
+  }
+
+  .achievements-stepper {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+
+    &::before {
+      top: 40px;
+      left: 8%;
+      width: 84%;
+      height: 3px;
+    }
+
+    .unlocked-line {
+      top: 40px;
+      left: 8%;
+      height: 3px;
+    }
+
+    .step-item {
+      .step-circle {
+        width: 55px;
+        height: 55px;
+        padding: 6px;
+      }
+
+      .step-label {
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 60px;
+      }
+    }
+  }
+
+  .action-buttons {
+    flex-direction: column;
+
+    .edit-profile-btn,
+    .review-btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 

@@ -76,7 +76,7 @@
                 <th class="col-date">發布日期</th>
                 <th class="col-date">更新日期</th>
                 <th class="col-price">點數</th>
-                <th class="col-stats">瀏覽</th>
+                <th class="col-stats">被收藏</th>
                 <th class="col-actions">操作</th>
               </tr>
             </thead>
@@ -111,11 +111,7 @@
                 <td class="col-stats">
                   <div class="stats-cell">
                     <span class="stat-item">
-                      <i class="bi bi-eye"></i>
-                      {{ listing.views }}
-                    </span>
-                    <span class="stat-item">
-                      <i class="bi bi-heart"></i>
+                      <i class="bi bi-heart-fill"></i>
                       {{ listing.likes }}
                     </span>
                   </div>

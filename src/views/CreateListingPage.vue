@@ -262,6 +262,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
 import { getItemById } from '../api/get_itemByIdAPI';
 import { updateMyItem } from '../api/update_myItemAPI';
+import imageCompression from 'browser-image-compression';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
@@ -414,18 +415,41 @@ const triggerImageInput = () => {
   imageInput.value.click();
 };
 
-const handleImageUpload = (event) => {
+// Compress image before converting to base64
+const compressImage = async (file) => {
+  const options = {
+    maxSizeMB: 0.3,              // 限制 300KB
+    maxWidthOrHeight: 1000,      // 最大解析度
+    useWebWorker: true,          // 使用多執行緒
+    fileType: 'image/webp'       // 轉換為 WebP
+  };
+
+  try {
+    const compressedFile = await imageCompression(file, options);
+    console.log(`Compressed: ${(file.size / 1024).toFixed(2)}KB -> ${(compressedFile.size / 1024).toFixed(2)}KB`);
+    return compressedFile;
+  } catch (error) {
+    console.error('Image compression failed:', error);
+    return file; // Fallback to original file
+  }
+};
+
+const handleImageUpload = async (event) => {
   const files = Array.from(event.target.files);
   const remainingSlots = 8 - formData.value.images.length;
   const filesToProcess = files.slice(0, remainingSlots);
 
-  filesToProcess.forEach((file) => {
+  for (const file of filesToProcess) {
+    // Compress image first
+    const compressedFile = await compressImage(file);
+
+    // Convert to base64
     const reader = new FileReader();
     reader.onload = (e) => {
       formData.value.images.push(e.target.result);
     };
-    reader.readAsDataURL(file);
-  });
+    reader.readAsDataURL(compressedFile);
+  }
 
   // Clear input
   event.target.value = '';
@@ -447,7 +471,7 @@ const handleDragLeave = (event) => {
   }
 };
 
-const handleDrop = (event) => {
+const handleDrop = async (event) => {
   isDragging.value = false;
 
   const files = Array.from(event.dataTransfer.files);
@@ -467,13 +491,17 @@ const handleDrop = (event) => {
     alert(`最多只能上傳 8 張照片，已自動選取前 ${remainingSlots} 張`);
   }
 
-  filesToProcess.forEach((file) => {
+  for (const file of filesToProcess) {
+    // Compress image first
+    const compressedFile = await compressImage(file);
+
+    // Convert to base64
     const reader = new FileReader();
     reader.onload = (e) => {
       formData.value.images.push(e.target.result);
     };
-    reader.readAsDataURL(file);
-  });
+    reader.readAsDataURL(compressedFile);
+  }
 };
 
 const handleFreeChange = () => {
@@ -523,7 +551,6 @@ const handleSubmit = async () => {
       const result = await updateMyItem(itemId.value, updateData);
 
       console.log('✅ Item updated successfully:', result);
-      alert('刊登已更新！');
     } else {
       // Create new item
       console.log('📝 Creating new listing:', formData.value);
@@ -538,7 +565,6 @@ const handleSubmit = async () => {
       const result = await createItem(itemData);
 
       console.log('✅ Listing created successfully:', result);
-      alert(`刊登成功！物品 ID: ${result.id}`);
     }
 
     // Navigate to manage listings page
