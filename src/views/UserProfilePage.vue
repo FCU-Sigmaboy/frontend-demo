@@ -19,17 +19,7 @@
                 referrerpolicy="no-referrer"
               />
               <i v-else class="bi bi-person-circle default-avatar"></i>
-              <button class="edit-avatar-btn" @click="triggerAvatarUpload" title="編輯大頭貼">
-                <i class="bi bi-camera"></i>
-              </button>
             </div>
-            <input
-              ref="avatarFileInput"
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              style="display: none"
-              @change="handleAvatarUpload"
-            />
 
             <div class="user-info-section">
               <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
@@ -384,7 +374,6 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { getMyItems } from '../api/get_myItemsAPI';
-import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
 import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -654,82 +643,6 @@ onBeforeUnmount(() => {
   }
 });
 
-
-// Avatar upload
-const avatarFileInput = ref(null);
-const isUploadingAvatar = ref(false);
-
-const triggerAvatarUpload = () => {
-  avatarFileInput.value?.click();
-};
-
-const handleAvatarUpload = async (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-
-  // Validate file type
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  if (!validTypes.includes(file.type)) {
-    alert('僅支援 JPG、PNG、WEBP 格式的圖片');
-    event.target.value = ''; // Clear input
-    return;
-  }
-
-  // Validate file size (max 5MB)
-  const maxSize = 5 * 1024 * 1024; // 5MB
-  if (file.size > maxSize) {
-    alert('圖片大小不能超過 5MB');
-    event.target.value = '';
-    return;
-  }
-
-  try {
-    isUploadingAvatar.value = true;
-    console.log('📤 Uploading avatar:', file.name);
-
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64Image = e.target.result;
-
-      try {
-        // Call update API with only avatar change
-        const result = await updateMyProfile(
-          { profile_picture_url: base64Image }, // userData
-          {}, // profileData (no changes)
-          [] // locationsArray (no changes)
-        );
-
-        console.log('✅ Avatar updated successfully:', result);
-
-        // Update auth store with new avatar
-        authStore.updateCustomProfile({ avatar_url: base64Image });
-
-        // Show success message
-        alert('大頭貼更新成功！');
-      } catch (error) {
-        console.error('❌ Failed to update avatar:', error);
-        alert(`更新失敗：${error.message}`);
-      } finally {
-        isUploadingAvatar.value = false;
-        event.target.value = ''; // Clear input
-      }
-    };
-
-    reader.readAsDataURL(file);
-  } catch (error) {
-    console.error('❌ Error reading file:', error);
-    alert('讀取圖片失敗，請重試');
-    isUploadingAvatar.value = false;
-    event.target.value = '';
-  }
-};
-
-// Reload custom profile from database
-const reloadProfile = async () => {
-  await authStore.loadCustomProfile();
-};
-
 // Methods
 const openBadgeModal = (badge) => {
   selectedBadge.value = badge;
@@ -863,32 +776,6 @@ const scrollCarousel = (carouselRef, index) => {
   .default-avatar {
     font-size: 150px;
     color: #e0e0e0;
-  }
-
-  .edit-avatar-btn {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: $primary;
-    border: 3px solid white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    i {
-      font-size: 18px;
-      color: white;
-    }
-
-    &:hover {
-      background: #5fa795;
-      transform: scale(1.05);
-    }
   }
 }
 
@@ -1584,17 +1471,6 @@ const scrollCarousel = (carouselRef, index) => {
     .default-avatar {
       font-size: 100px;
     }
-
-    .edit-avatar-btn {
-      width: 36px;
-      height: 36px;
-      bottom: 5px;
-      right: 5px;
-
-      i {
-        font-size: 16px;
-      }
-    }
   }
 
   .user-info-section {
@@ -1685,17 +1561,6 @@ const scrollCarousel = (carouselRef, index) => {
 
     .default-avatar {
       font-size: 90px;
-    }
-
-    .edit-avatar-btn {
-      width: 32px;
-      height: 32px;
-      bottom: 0;
-      right: 0;
-
-      i {
-        font-size: 14px;
-      }
     }
   }
 
@@ -1839,15 +1704,6 @@ const scrollCarousel = (carouselRef, index) => {
 
     .default-avatar {
       font-size: 80px;
-    }
-
-    .edit-avatar-btn {
-      width: 28px;
-      height: 28px;
-
-      i {
-        font-size: 12px;
-      }
     }
   }
 
