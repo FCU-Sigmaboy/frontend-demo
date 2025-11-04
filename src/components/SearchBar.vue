@@ -95,7 +95,7 @@ const selectedDistanceLabel = computed(() => {
 // ];
 
 const distance_options = [
-  { label: '不限距離', value: '-1' },
+  { label: '不限距離', value: '' },
   { label: '5 km 以內', value: '5' },
   { label: '10 km 以內', value: '10' },
   { label: '20 km 以內', value: '20' },

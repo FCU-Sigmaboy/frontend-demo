@@ -404,9 +404,9 @@ const fetchMyListings = async () => {
     if (items) {
       // Transform API data to match ProductCard expectations
       myListings.value = items.map(item => ({
-        item_id: item.id, // ProductCard expects item_id, not id
+        item_id: item.item_id, // ProductCard expects item_id, not id
         title: item.title,
-        image_url: item.cover_image_url,
+        image_url: item.image_url,
         price: item.price,
         condition: item.condition,
         listing_status: item.listing_status,

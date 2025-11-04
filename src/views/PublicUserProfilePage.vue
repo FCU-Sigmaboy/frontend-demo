@@ -129,9 +129,9 @@
               <div v-if="userListings.length > 0" class="listings-grid">
                 <ProductCard
                   v-for="product in userListings"
-                  :key="product.id"
+                  :key="product.item_id"
                   :product="product"
-                  @click="goToProductDetail(product.id)"
+                  @click="goToProductDetail(product.item_id)"
                 />
               </div>
               <div v-else class="empty-state">
