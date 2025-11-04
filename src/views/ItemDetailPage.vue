@@ -117,6 +117,7 @@
             <!-- Right Side: Transaction Card -->
             <div class="transaction-card-wrapper">
               <TransactionCard
+                :product-id="product.id"
                 :product-name="product.title"
                 :price="product.price"
                 :condition="product.condition"

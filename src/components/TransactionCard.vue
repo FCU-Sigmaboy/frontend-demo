@@ -75,11 +75,21 @@
     <!-- Action Buttons -->
     <div class="actions">
       <button
+        v-if="!isOwner"
         class="btn-primary"
         :disabled="!listingStatus"
         @click="handleMessage"
       >
         {{ listingStatus ? '私訊詢問' : '物品已下架' }}
+      </button>
+         <!-- /listing/44/edit -->
+
+      <button
+        v-else
+        class="btn-primary"
+        @click="router.push({ name: 'EditListing', params: { id: props.productId } })"
+      >
+        編輯物品
       </button>
     </div>
   </div>
@@ -89,10 +99,21 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
+
+const isOwner = computed(() => {
+  return authStore.user && authStore.user.id === props.sellerId;
+});
 
 const router = useRouter();
 
 const props = defineProps({
+  productId: {
+    type: String,
+    default: ''
+  },
   productName: {
     type: String,
     default: '物品名稱'
