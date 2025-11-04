@@ -9,17 +9,24 @@
           <div class="header-content">
             <div class="user-avatar-section">
               <img
-                  v-if="authStore.userAvatar"
-                  :src="authStore.userAvatar"
-                  alt="User Avatar"
-                  class="user-avatar"
-                  referrerpolicy="no-referrer"
+                v-if="authStore.userAvatar"
+                :src="authStore.userAvatar"
+                alt="User Avatar"
+                class="user-avatar"
+                referrerpolicy="no-referrer"
               />
               <i v-else class="bi bi-person-circle default-avatar"></i>
-              <button class="edit-avatar-btn">
+              <button class="edit-avatar-btn" @click="triggerAvatarUpload" title="編輯大頭貼">
                 <i class="bi bi-camera"></i>
               </button>
             </div>
+            <input
+              ref="avatarFileInput"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              style="display: none"
+              @change="handleAvatarUpload"
+            />
 
             <div class="profile-details-wrapper row align-items-start">
               <div class="user-info-section col-xl-5 col-lg-12">
@@ -68,25 +75,6 @@
                   </button>
                 </div>
               </div>
-
-              <!-- Achievement Badges Section -->
-              <div class="achievements-section col-xl-7 col-lg-12 mt-md-4 mt-xl-0">
-                <h3 class="achievements-title">成就徽章</h3>
-                <div class="achievements-stepper">
-                  <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
-                  <div
-                      v-for="badge in achievements"
-                      :key="badge.id"
-                      :class="['step-item', { 'unlocked': badge.unlocked }]"
-                      @click="openBadgeModal(badge)"
-                  >
-                    <div class="step-circle">
-                      <img :src="badge.image" :alt="badge.label" class="step-image" />
-                    </div>
-                    <span class="step-label">{{ badge.label }}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -95,10 +83,10 @@
         <section class="profile-tabs">
           <div class="tabs-container">
             <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                :class="['tab-btn', { active: activeTab === tab.id }]"
-                @click="activeTab = tab.id"
+              v-for="tab in tabs"
+              :key="tab.id"
+              :class="['tab-btn', { active: activeTab === tab.id }]"
+              @click="activeTab = tab.id"
             >
               <i :class="['bi', tab.icon]"></i>
               <span>{{ tab.label }}</span>
@@ -113,19 +101,143 @@
           <div v-show="activeTab === 'listings'" class="content-section">
             <div class="section-header">
               <h2 class="section-title">我的刊登</h2>
-              <button class="manage-btn" @click="goToManageListings">
-                <i class="bi bi-gear"></i>
-                管理刊登
-              </button>
+              <div class="header-actions">
+                <button class="refresh-btn" @click="fetchMyListings" title="重新整理">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button class="manage-btn" @click="goToManageListings">
+                  <i class="bi bi-gear"></i>
+                  管理刊登
+                </button>
+              </div>
             </div>
-            <div v-if="myListings.length > 0" class="listings-grid">
-              <ProductCard
-                  v-for="product in myListings"
-                  :key="product.id"
-                  :product="product"
-                  @click="goToProductDetail(product.id)"
-              />
+
+            <!-- Loading State -->
+            <div v-if="isLoadingListings" class="loading-state">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">載入中...</span>
+              </div>
+              <p>載入中...</p>
             </div>
+
+            <!-- Has Listings -->
+            <div v-else-if="myListings.length > 0" class="listings-sections">
+              <!-- Active Listings Section (已上架) -->
+              <div v-if="activeListings.length > 0" class="listing-section">
+                <div class="subsection-header">
+                  <h3 class="subsection-title">已上架</h3>
+                  <span class="subsection-count">{{ activeListings.length }} 件</span>
+                </div>
+
+                <!-- Desktop: Grid with Show More -->
+                <div class="desktop-grid">
+                  <div class="listings-grid">
+                    <ProductCard
+                      v-for="product in displayedActiveListings"
+                      :key="product.item_id"
+                      :product="product"
+                      @click="goToProductDetail(product.item_id)"
+                    />
+                  </div>
+                  <button
+                    v-if="activeListings.length > activeDisplayLimit"
+                    class="show-more-btn"
+                    @click="activeDisplayLimit += 4"
+                  >
+                    <i class="bi bi-chevron-down"></i>
+                    顯示更多
+                  </button>
+                </div>
+
+                <!-- Mobile: Swipeable Carousel -->
+                <div class="mobile-carousel">
+                  <button
+                    class="carousel-arrow prev"
+                    @click="scrollActivePrev"
+                    :disabled="activeScrollIndex === 0"
+                  >
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <div ref="activeCarousel" class="carousel-container">
+                    <div class="carousel-track">
+                      <ProductCard
+                        v-for="product in activeListings"
+                        :key="product.item_id"
+                        :product="product"
+                        class="carousel-item"
+                        @click="goToProductDetail(product.item_id)"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    class="carousel-arrow next"
+                    @click="scrollActiveNext"
+                    :disabled="activeScrollIndex >= activeListings.length - 1"
+                  >
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Inactive Listings Section (已下架) -->
+              <div v-if="inactiveListings.length > 0" class="listing-section">
+                <div class="subsection-header">
+                  <h3 class="subsection-title">已下架</h3>
+                  <span class="subsection-count">{{ inactiveListings.length }} 件</span>
+                </div>
+
+                <!-- Desktop: Grid with Show More -->
+                <div class="desktop-grid">
+                  <div class="listings-grid">
+                    <ProductCard
+                      v-for="product in displayedInactiveListings"
+                      :key="product.item_id"
+                      :product="product"
+                      @click="goToProductDetail(product.item_id)"
+                    />
+                  </div>
+                  <button
+                    v-if="inactiveListings.length > inactiveDisplayLimit"
+                    class="show-more-btn"
+                    @click="inactiveDisplayLimit += 4"
+                  >
+                    <i class="bi bi-chevron-down"></i>
+                    顯示更多
+                  </button>
+                </div>
+
+                <!-- Mobile: Swipeable Carousel -->
+                <div class="mobile-carousel">
+                  <button
+                    class="carousel-arrow prev"
+                    @click="scrollInactivePrev"
+                    :disabled="inactiveScrollIndex === 0"
+                  >
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <div ref="inactiveCarousel" class="carousel-container">
+                    <div class="carousel-track">
+                      <ProductCard
+                        v-for="product in inactiveListings"
+                        :key="product.item_id"
+                        :product="product"
+                        class="carousel-item"
+                        @click="goToProductDetail(product.item_id)"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    class="carousel-arrow next"
+                    @click="scrollInactiveNext"
+                    :disabled="inactiveScrollIndex >= inactiveListings.length - 1"
+                  >
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
             <div v-else class="empty-state">
               <i class="bi bi-box-seam"></i>
               <p>尚無刊登物品</p>
@@ -140,10 +252,10 @@
           <div v-show="activeTab === 'favorites'" class="content-section">
             <div v-if="favoriteItems.length > 0" class="listings-grid">
               <ProductCard
-                  v-for="product in favoriteItems"
-                  :key="product.id"
-                  :product="product"
-                  @click="goToProductDetail(product.id)"
+                v-for="product in favoriteItems"
+                :key="product.id"
+                :product="product"
+                @click="goToProductDetail(product.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -160,10 +272,10 @@
           <div v-show="activeTab === 'purchases'" class="content-section">
             <div v-if="purchaseHistory.length > 0" class="transactions-list">
               <TransactionCard
-                  v-for="transaction in purchaseHistory"
-                  :key="transaction.id"
-                  :transaction="transaction"
-                  @click="goToTransactionDetail(transaction.id)"
+                v-for="transaction in purchaseHistory"
+                :key="transaction.id"
+                :transaction="transaction"
+                @click="goToTransactionDetail(transaction.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -176,11 +288,11 @@
           <div v-show="activeTab === 'sales'" class="content-section">
             <div v-if="salesHistory.length > 0" class="transactions-list">
               <TransactionCard
-                  v-for="transaction in salesHistory"
-                  :key="transaction.id"
-                  :transaction="transaction"
-                  type="sale"
-                  @click="goToTransactionDetail(transaction.id)"
+                v-for="transaction in salesHistory"
+                :key="transaction.id"
+                :transaction="transaction"
+                type="sale"
+                @click="goToTransactionDetail(transaction.id)"
               />
             </div>
             <div v-else class="empty-state">
@@ -193,46 +305,22 @@
     </main>
 
     <AppFooter />
-
-    <!-- Bootstrap Badge Modal -->
-    <div class="modal fade" id="badgeModal" ref="badgeModalRef" tabindex="-1" aria-labelledby="badgeModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header border-0">
-            <h5 class="modal-title w-100 text-center" id="badgeModalLabel">{{ selectedBadge?.label }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body text-center">
-            <div v-if="selectedBadge">
-              <img :src="selectedBadge.image" :alt="selectedBadge.label" class="img-fluid mb-3" style="max-height: 150px;" />
-              <p>{{ selectedBadge.description }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
+import { getMyItems } from '../api/get_myItemsAPI';
+import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
+import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import { Modal } from 'bootstrap';
-
-// --- 徽章圖片 ---
-// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
-import badgeRookie from '../assets/1badge.png';
-import badgeAdept from '../assets/2badge.png';
-import badgeExpert from '../assets/3badge.png';
-import badgeMaster from '../assets/4badge.png';
-
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -241,48 +329,27 @@ const favoritesStore = useFavoritesStore();
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
-const selectedBadge = ref(null);
-const badgeModalRef = ref(null);
-const badgeModalInstance = ref(null);
+const myListings = ref([]);
+const isLoadingListings = ref(false);
+
+// Display limits for "Show More"
+const activeDisplayLimit = ref(4);
+const inactiveDisplayLimit = ref(4);
+
+// Carousel scroll indices for mobile
+const activeScrollIndex = ref(0);
+const inactiveScrollIndex = ref(0);
+
+// Refs for carousel containers
+const activeCarousel = ref(null);
+const inactiveCarousel = ref(null);
 
 const userStats = computed(() => ({
-  listings: 12,
+  listings: myListings.value.length,
   favorites: favoritesStore.count,
   purchases: 5,
   sales: 3
 }));
-
-// Achievement Badges (Updated with images and descriptions)
-const achievements = ref([
-  { id: 1, label: '環保新手', unlocked: true, image: badgeRookie, description: '完成首次物品刊登，開啟您的環保旅程！' },
-  { id: 2, label: '環保達人', unlocked: true, image: badgeAdept, description: '累積完成 10 次交易，感謝您為地球的貢獻！' },
-  { id: 3, label: '環保高手', unlocked: false, image: badgeExpert, description: '累積完成 50 次交易，您是環保的實踐家！' },
-  { id: 4, label: '環保大師', unlocked: false, image: badgeMaster, description: '累積完成 100 次交易，您的環保精神值得敬佩！' },
-]);
-
-// Computed property for unlocked line width (Added)
-const unlockedSteps = computed(() => {
-  return achievements.value.filter(b => b.unlocked).length;
-});
-
-const unlockedLineWidth = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) {
-    return '0%';
-  }
-  // 寬度是 (已解鎖 - 1) / (總數 - 1) * 75% (線條總寬度)
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 75}%`;
-});
-
-// 給手機版使用的寬度計算 (Added)
-const unlockedLineWidthMobile = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) return '0%';
-  // 在手機版，線條總寬度是 80%
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 80}%`;
-});
 
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
@@ -291,38 +358,202 @@ const tabs = computed(() => [
   { id: 'sales', label: '銷售紀錄', icon: 'bi-cash-stack', count: userStats.value.sales }
 ]);
 
-// Mock data
-const myListings = ref([
-  {
-    "item_id": 101,
-    "title": "（全新）IKEA 檯燈",
-    "image_url": "https://.../item101_cover.jpg",
-    "price": 500,
-    "distance_km": "1.254",
-    "formatted_address": "台中市西屯區福星路",
-    "created_at": "2025-10-18T10:30:00.123+00:00",
-    "updated_at": "2025-10-18T10:30:00.123+00:00",
-    "favorites_count": 15,
-    "user": {
-      "id": "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
-      "nickname": "Joseph",
-      "profile_picture_url": "https://.../joseph.jpg"
-    }
-  }
-]);
-
-const favoriteItems = computed(() => []); // favoritesStore.favoriteItems
+const favoriteItems = computed(() => {
+  console.log('🎯 Favorites from store:', favoritesStore.favoriteItems.length);
+  return favoritesStore.favoriteItems;
+});
 const purchaseHistory = ref([]);
 const salesHistory = ref([]);
 
-// Methods
-const openBadgeModal = (badge) => {
-  selectedBadge.value = badge;
-  if (badgeModalInstance.value) {
-    badgeModalInstance.value.show();
+// Split listings into active/inactive
+const activeListings = computed(() => {
+  return myListings.value.filter(item => item.listing_status === true);
+});
+
+const inactiveListings = computed(() => {
+  return myListings.value.filter(item => item.listing_status === false);
+});
+
+// Display limited versions for desktop
+const displayedActiveListings = computed(() => {
+  return activeListings.value.slice(0, activeDisplayLimit.value);
+});
+
+const displayedInactiveListings = computed(() => {
+  return inactiveListings.value.slice(0, inactiveDisplayLimit.value);
+});
+
+// Define fetchMyListings FIRST before using it
+const fetchMyListings = async () => {
+  if (!authStore.isLoggedIn) {
+    console.warn('⚠️ Not logged in, skipping fetch');
+    return;
+  }
+
+  try {
+    isLoadingListings.value = true;
+
+    console.log('🔍 Fetching my items for user:', authStore.user?.id || 'unknown');
+
+    const items = await getMyItems({
+      page: 1,
+      size: 20,
+      sort_by: 'created_at',
+      sort_direction: 'desc'
+    });
+
+    console.log('📦 Raw API response:', items);
+
+    if (items) {
+      // Transform API data to match ProductCard expectations
+      myListings.value = items.map(item => ({
+        item_id: item.id, // ProductCard expects item_id, not id
+        title: item.title,
+        image_url: item.cover_image_url,
+        price: item.price,
+        condition: item.condition,
+        listing_status: item.listing_status,
+        distance_km: 0, // My own items, no distance needed
+        formatted_address: item.location || '台中市', // Default location
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        user: {
+          // My own items, use current user info
+          id: authStore.user?.id || '',
+          nickname: authStore.userName || '我',
+          profile_picture_url: authStore.userAvatar || ''
+        }
+      }));
+
+      console.log('✅ My listings transformed:', myListings.value.length, 'items');
+      console.log('First item:', myListings.value[0]);
+    }
+  } catch (error) {
+    console.error('Failed to fetch my listings:', error);
+  } finally {
+    isLoadingListings.value = false;
   }
 };
 
+// NOW watch for auth state changes
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  console.log('🔐 Auth state changed, logged in:', isLoggedIn);
+  if (isLoggedIn) {
+    fetchMyListings();
+
+    // Load favorites
+    if (favoritesStore.count === 0) {
+      favoritesStore.loadFavorites({
+        page: 1,
+        size: 100,
+        sort_by: 'favorited_at',
+        sort_direction: 'desc'
+      }).then(() => {
+        console.log('✅ Favorites loaded:', favoritesStore.count);
+      }).catch((error) => {
+        console.error('Failed to load favorites:', error);
+      });
+    }
+  }
+}, { immediate: true }); // Run immediately on mount
+
+// Also fetch on mount (for case where auth is already ready)
+onMounted(async () => {
+  if (authStore.isLoggedIn) {
+    await fetchMyListings();
+
+    if (favoritesStore.count === 0) {
+      try {
+        await favoritesStore.loadFavorites({
+          page: 1,
+          size: 100,
+          sort_by: 'favorited_at',
+          sort_direction: 'desc'
+        });
+        console.log('✅ Favorites loaded on mount:', favoritesStore.count);
+      } catch (error) {
+        console.error('Failed to load favorites:', error);
+      }
+    }
+  }
+});
+
+// Avatar upload
+const avatarFileInput = ref(null);
+const isUploadingAvatar = ref(false);
+
+const triggerAvatarUpload = () => {
+  avatarFileInput.value?.click();
+};
+
+const handleAvatarUpload = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    alert('僅支援 JPG、PNG、WEBP 格式的圖片');
+    event.target.value = ''; // Clear input
+    return;
+  }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    alert('圖片大小不能超過 5MB');
+    event.target.value = '';
+    return;
+  }
+
+  try {
+    isUploadingAvatar.value = true;
+    console.log('📤 Uploading avatar:', file.name);
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Image = e.target.result;
+
+      try {
+        // Call update API with only avatar change
+        const result = await updateMyProfile(
+          { profile_picture_url: base64Image }, // userData
+          {}, // profileData (no changes)
+          [] // locationsArray (no changes)
+        );
+
+        console.log('✅ Avatar updated successfully:', result);
+
+        // Update auth store with new avatar
+        authStore.updateCustomProfile({ avatar_url: base64Image });
+
+        // Show success message
+        alert('大頭貼更新成功！');
+      } catch (error) {
+        console.error('❌ Failed to update avatar:', error);
+        alert(`更新失敗：${error.message}`);
+      } finally {
+        isUploadingAvatar.value = false;
+        event.target.value = ''; // Clear input
+      }
+    };
+
+    reader.readAsDataURL(file);
+  } catch (error) {
+    console.error('❌ Error reading file:', error);
+    alert('讀取圖片失敗，請重試');
+    isUploadingAvatar.value = false;
+    event.target.value = '';
+  }
+};
+
+// Reload custom profile from database
+const reloadProfile = async () => {
+  await authStore.loadCustomProfile();
+};
+
+// Methods
 const goToEditProfile = () => {
   router.push({ name: 'EditProfile' });
 };
@@ -355,19 +586,46 @@ const goToFollowers = () => {
   router.push({ name: 'MyFollowers' });
 };
 
-// Lifecycle Hooks
-onMounted(() => {
-  if (badgeModalRef.value) {
-    badgeModalInstance.value = new Modal(badgeModalRef.value);
+// Carousel scroll functions for mobile
+const scrollActivePrev = () => {
+  if (activeScrollIndex.value > 0) {
+    activeScrollIndex.value--;
+    scrollCarousel(activeCarousel.value, activeScrollIndex.value);
   }
-});
+};
 
-onBeforeUnmount(() => {
-  if (badgeModalInstance.value) {
-    badgeModalInstance.value.dispose();
+const scrollActiveNext = () => {
+  if (activeScrollIndex.value < activeListings.value.length - 1) {
+    activeScrollIndex.value++;
+    scrollCarousel(activeCarousel.value, activeScrollIndex.value);
   }
-});
+};
 
+const scrollInactivePrev = () => {
+  if (inactiveScrollIndex.value > 0) {
+    inactiveScrollIndex.value--;
+    scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
+  }
+};
+
+const scrollInactiveNext = () => {
+  if (inactiveScrollIndex.value < inactiveListings.value.length - 1) {
+    inactiveScrollIndex.value++;
+    scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
+  }
+};
+
+const scrollCarousel = (carouselRef, index) => {
+  if (carouselRef) {
+    const track = carouselRef.querySelector('.carousel-track');
+    if (track) {
+      const itemWidth = track.querySelector('.carousel-item')?.offsetWidth || 0;
+      const gap = 16; // gap between items
+      const scrollPosition = index * (itemWidth + gap);
+      track.style.transform = `translateX(-${scrollPosition}px)`;
+    }
+  }
+};
 </script>
 
 <style scoped lang="scss">
@@ -450,10 +708,8 @@ onBeforeUnmount(() => {
   }
 }
 
-.profile-details-wrapper {
+.user-info-section {
   flex: 1;
-  min-width: 0;
-}
 
 .user-info-section {
   .user-name {
@@ -577,104 +833,6 @@ onBeforeUnmount(() => {
   }
 }
 
-// Achievement Badges (Updated)
-.achievements-section {
-  .achievements-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 20px 0;
-  }
-}
-
-.achievements-stepper {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50px;
-    left: 12.5%;
-    width: 75%;
-    height: 4px;
-    background: #e9ecef;
-    z-index: 0;
-    transform: translateY(-50%);
-  }
-
-  .unlocked-line {
-    position: absolute;
-    top: 50px;
-    left: 12.5%;
-    height: 4px;
-    background: $primary;
-    z-index: 1;
-    transform: translateY(-50%);
-    transition: width 0.5s ease;
-  }
-
-  .step-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-    text-align: center;
-    cursor: pointer;
-
-    .step-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 8px;
-      background-color: #f0f7f5;
-      border: 2px solid #e0e0e0;
-      transition: all 0.3s;
-      padding: 10px;
-      box-sizing: border-box;
-      overflow: hidden;
-
-      .step-image {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        transition: filter 0.3s;
-        filter: grayscale(100%) opacity(0.6);
-      }
-    }
-
-    .step-label {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      color: #999;
-      font-weight: 500;
-      transition: all 0.3s;
-    }
-
-    &.unlocked {
-      .step-circle {
-        border-color: $primary;
-        background-color: #e6f4f0;
-
-        .step-image {
-          filter: grayscale(0%) opacity(1);
-        }
-      }
-      .step-label {
-        color: #1e1e1e;
-      }
-    }
-  }
-}
-
-
 // Profile Tabs
 .profile-tabs {
   background: white;
@@ -765,6 +923,35 @@ onBeforeUnmount(() => {
     margin: 0;
   }
 
+  .header-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid $primary;
+    border-radius: 8px;
+    color: $primary;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    i {
+      font-size: 18px;
+    }
+
+    &:hover {
+      background: $primary;
+      color: white;
+      transform: rotate(180deg);
+    }
+  }
+
   .manage-btn {
     display: inline-flex;
     align-items: center;
@@ -791,6 +978,85 @@ onBeforeUnmount(() => {
   }
 }
 
+// Listings Sections
+.listings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.listing-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+
+  .subsection-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+  }
+
+  .subsection-count {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    background: #f5f5f5;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+}
+
+// Desktop grid (default)
+.desktop-grid {
+  display: block;
+}
+
+.mobile-carousel {
+  display: none;
+}
+
+.show-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px auto 0;
+  padding: 12px 32px;
+  background: white;
+  border: 1px solid $primary;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: $primary;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 16px;
+    transition: transform 0.3s;
+  }
+
+  &:hover {
+    background: $primary;
+    color: white;
+
+    i {
+      transform: translateY(3px);
+    }
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -812,6 +1078,30 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+  }
 }
 
 .empty-state {
@@ -867,20 +1157,6 @@ onBeforeUnmount(() => {
 }
 
 // Responsive
-@media (max-width: 1200px) {
-  .profile-details-wrapper {
-    grid-template-columns: 1fr;
-  }
-
-  .achievements-stepper {
-    grid-template-columns: repeat(4, 1fr);
-    &::before, .unlocked-line {
-      display: block;
-    }
-  }
-}
-
-
 @media (max-width: 991.98px) {
   .main-content {
     padding: 20px 0 50px;
@@ -930,18 +1206,6 @@ onBeforeUnmount(() => {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 18px;
   }
-
-  // Adjust achievement section for tablet
-  .achievements-section {
-    min-width: 280px;
-  }
-
-  .achievements-stepper {
-    grid-template-columns: repeat(2, 1fr);
-    &::before, .unlocked-line {
-      display: none;
-    }
-  }
 }
 
 @media (max-width: 767.98px) {
@@ -967,25 +1231,6 @@ onBeforeUnmount(() => {
     justify-content: center;
   }
 
-  .review-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  // Adjust achievement section for mobile
-  .achievements-section {
-    width: 100%;
-    flex-basis: auto; // Reset flex-basis
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid #f0f0f0; // Re-add border for mobile stacking
-    min-width: unset; // Unset min-width
-  }
-
   .tab-btn {
     padding: 16px 20px;
     font-size: 14px;
@@ -997,10 +1242,6 @@ onBeforeUnmount(() => {
     span:not(.tab-count) {
       display: none;
     }
-  }
-
-  .achievements-stepper {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1044,6 +1285,72 @@ onBeforeUnmount(() => {
     gap: 15px;
   }
 
+  // Mobile: Hide desktop grid, show carousel
+  .desktop-grid {
+    display: none;
+  }
+
+  .mobile-carousel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+
+  .carousel-container {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .carousel-track {
+    display: flex;
+    gap: 16px;
+    transition: transform 0.3s ease;
+  }
+
+  .carousel-item {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .carousel-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: white;
+    border: 1px solid $primary;
+    border-radius: 50%;
+    color: $primary;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+
+    i {
+      font-size: 18px;
+    }
+
+    &:hover:not(:disabled) {
+      background: $primary;
+      color: white;
+      transform: scale(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    &.prev {
+      order: -1;
+    }
+
+    &.next {
+      order: 1;
+    }
+  }
+
   .empty-state {
     padding: 60px 20px;
 
@@ -1055,11 +1362,5 @@ onBeforeUnmount(() => {
       font-size: 16px;
     }
   }
-
-  // Stepper on mobile
-  .achievements-stepper {
-    grid-template-columns: repeat(1, 1fr);
-  }
-
 }
 </style>

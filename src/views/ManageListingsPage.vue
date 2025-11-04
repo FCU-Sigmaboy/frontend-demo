@@ -13,23 +13,39 @@
           <span class="breadcrumb-current">管理刊登</span>
         </nav>
 
-        <!-- Stats Cards -->
+        <!-- Stats Cards (Filter Buttons) -->
         <div class="stats-grid">
-          <div class="stat-card">
+          <div
+            class="stat-card"
+            :class="{ active: activeFilter === 'all' }"
+            @click="setFilter('all')"
+          >
+            <div class="stat-number">{{ stats.all }}</div>
+            <div class="stat-label">全部商品</div>
+          </div>
+          <div
+            class="stat-card"
+            :class="{ active: activeFilter === 'active' }"
+            @click="setFilter('active')"
+          >
             <div class="stat-number">{{ stats.active }}</div>
             <div class="stat-label">上架中</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ stats.pending }}</div>
-            <div class="stat-label">待審核</div>
+          <div
+            class="stat-card"
+            :class="{ active: activeFilter === 'inactive' }"
+            @click="setFilter('inactive')"
+          >
+            <div class="stat-number">{{ stats.inactive }}</div>
+            <div class="stat-label">已下架</div>
           </div>
-          <div class="stat-card">
+          <div
+            class="stat-card"
+            :class="{ active: activeFilter === 'sold' }"
+            @click="setFilter('sold')"
+          >
             <div class="stat-number">{{ stats.sold }}</div>
             <div class="stat-label">已售出</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ stats.hidden }}</div>
-            <div class="stat-label">隱藏</div>
           </div>
         </div>
 
@@ -109,33 +125,41 @@
                 <td class="col-actions">
                   <div class="action-buttons">
                     <button
-                      v-if="listing.status === 'active'"
-                      class="btn-sm btn-view"
-                      @click="viewListing(listing.id)"
-                      title="查看"
-                    >
-                      查看
-                    </button>
-                    <button
-                      v-if="listing.status === 'active' || listing.status === 'pending'"
+                      v-if="listing.status !== 'sold'"
                       class="btn-sm btn-edit"
                       @click="editListing(listing.id)"
-                      title="管理"
+                      title="編輯"
                     >
-                      管理
+                      編輯
+                    </button>
+                    <button
+                      v-if="listing.status === 'inactive'"
+                      class="btn-sm btn-toggle"
+                      @click="toggleStatus(listing.id, true)"
+                      title="上架"
+                    >
+                      上架
                     </button>
                     <button
                       v-if="listing.status === 'active'"
-                      class="btn-sm btn-hide"
-                      @click="hideListing(listing.id)"
-                      title="隱藏"
+                      class="btn-sm btn-toggle"
+                      @click="toggleStatus(listing.id, false)"
+                      title="下架"
                     >
-                      隱藏
+                      下架
+                    </button>
+                    <button
+                      v-if="listing.status !== 'sold'"
+                      class="btn-sm btn-delete"
+                      @click="deleteListing(listing.id)"
+                      title="刪除"
+                    >
+                      刪除
                     </button>
                     <button
                       v-if="listing.status === 'sold'"
-                      class="btn-sm btn-relist"
-                      @click="markAsAvailable(listing.id)"
+                      class="btn-sm btn-view"
+                      @click="viewTransaction(listing.id)"
                       title="查看交易"
                     >
                       查看交易
@@ -160,88 +184,130 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import { getMyItems } from '../api/get_myItemsAPI';
+import { toggleItemStatus, deleteMyItem } from '../api/update_myItemAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 // State
 const userPoints = ref(500);
 const searchQuery = ref('');
+const activeFilter = ref('all');
+const listings = ref([]);
+const isLoading = ref(false);
 
-const stats = ref({
-  active: 2,
-  pending: 1,
-  sold: 1,
-  hidden: 4
+// Computed stats
+const stats = computed(() => {
+  const all = listings.value.length;
+  const active = listings.value.filter(item => item.status === 'active').length;
+  const inactive = listings.value.filter(item => item.status === 'inactive').length;
+  const sold = listings.value.filter(item => item.status === 'sold').length;
+
+  return { all, active, inactive, sold };
 });
 
-// Mock listings data
-const listings = ref([
-  {
-    id: 1,
-    name: 'Comell復刻機械鍵盤',
-    image: 'https://placehold.co/60x60/6fb8a5/ffffff?text=KB',
-    status: 'active',
-    publishedDate: '2025/08/27',
-    updatedDate: '2025/08/27',
-    price: 100,
-    views: 127,
-    likes: 15
-  },
-  {
-    id: 2,
-    name: '兒童綜本套書20本',
-    image: 'https://placehold.co/60x60/5a9d8c/ffffff?text=Books',
-    status: 'active',
-    publishedDate: '2025/08/27',
-    updatedDate: '2025/08/27',
-    price: 100,
-    views: 127,
-    likes: 15
-  },
-  {
-    id: 3,
-    name: '木質書桌 120×60cm',
-    image: 'https://placehold.co/60x60/4a8b7d/ffffff?text=Desk',
-    status: 'pending',
-    publishedDate: '2025/08/27',
-    updatedDate: '2025/08/27',
-    price: 100,
-    views: 127,
-    likes: 15
-  },
-  {
-    id: 4,
-    name: '不鏽鋼餐具組',
-    image: 'https://placehold.co/60x60/3a7a6e/ffffff?text=Set',
-    status: 'sold',
-    publishedDate: '2025/08/27',
-    updatedDate: '2025/08/27',
-    price: 101,
-    views: 127,
-    likes: 15
-  }
-]);
-
-// Computed
+// Computed filtered listings
 const filteredListings = computed(() => {
-  if (!searchQuery.value) return listings.value;
+  let filtered = listings.value;
 
-  return listings.value.filter(listing =>
-    listing.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  // Filter by status
+  if (activeFilter.value !== 'all') {
+    filtered = filtered.filter(item => item.status === activeFilter.value);
+  }
+
+  // Filter by search query
+  if (searchQuery.value) {
+    filtered = filtered.filter(item =>
+      item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    );
+  }
+
+  return filtered;
 });
+
+// Load listings from API
+const loadListings = async () => {
+  if (!authStore.isLoggedIn) {
+    console.warn('⚠️ Not logged in, cannot load listings');
+    return;
+  }
+
+  try {
+    isLoading.value = true;
+    console.log('🔍 Fetching my items...');
+
+    const items = await getMyItems({
+      page: 1,
+      size: 100,
+      sort_by: 'updated_at',
+      sort_direction: 'desc'
+    });
+
+    if (items) {
+      // Transform API data to match component expectations
+      listings.value = items.map(item => {
+        // Determine status based on listing_status and other factors
+        let status = 'inactive'; // default to inactive (off shelf)
+
+        if (item.listing_status === true) {
+          status = 'active'; // on shelf
+        } else if (item.listing_status === false) {
+          // Check if it's sold or just inactive
+          // For now, assume false = inactive (you may need additional field to mark as sold)
+          status = 'inactive';
+        }
+
+        return {
+          id: item.id,
+          name: item.title,
+          image: item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item',
+          status: status,
+          publishedDate: formatDate(item.created_at),
+          updatedDate: formatDate(item.updated_at),
+          price: item.price || 0,
+          views: 0, // API doesn't return views yet
+          likes: 0  // API doesn't return likes yet
+        };
+      });
+
+      console.log('✅ Loaded listings:', listings.value.length);
+    }
+  } catch (error) {
+    console.error('❌ Failed to load listings:', error);
+    alert('載入刊登失敗，請稍後再試');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Format date helper
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).replace(/\//g, '/');
+};
+
+// Set filter
+const setFilter = (filter) => {
+  activeFilter.value = filter;
+};
 
 // Methods
 const getStatusIcon = (status) => {
   const icons = {
     active: 'bi bi-circle-fill',
-    pending: 'bi bi-clock',
-    sold: 'bi bi-check-circle',
-    hidden: 'bi bi-eye-slash'
+    inactive: 'bi bi-dash-circle',
+    sold: 'bi bi-check-circle'
   };
   return icons[status] || 'bi-circle';
 };
@@ -249,9 +315,8 @@ const getStatusIcon = (status) => {
 const getStatusText = (status) => {
   const texts = {
     active: '上架中',
-    pending: '待審核中',
-    sold: '已售出',
-    hidden: '已隱藏'
+    inactive: '已下架',
+    sold: '已售出'
   };
   return texts[status] || status;
 };
@@ -260,28 +325,62 @@ const goToCreateListing = () => {
   router.push({ name: 'CreateListing' });
 };
 
-const viewListing = (id) => {
-  router.push({ name: 'ItemDetail', params: { id } });
-};
-
 const editListing = (id) => {
-  router.push({ name: 'EditListing', params: { id } });
+  router.push({ name: 'EditListing', params: { id: String(id) } });
 };
 
-const hideListing = (id) => {
-  if (confirm('確定要隱藏此刊登嗎？')) {
+const viewTransaction = (id) => {
+  router.push({ name: 'TransactionDetails', params: { id } });
+};
+
+// Toggle listing status (上架/下架)
+const toggleStatus = async (id, newStatus) => {
+  const action = newStatus ? '上架' : '下架';
+  if (!confirm(`確定要${action}此商品嗎？`)) return;
+
+  try {
+    console.log(`🔄 Toggling item #${id} status to ${newStatus}`);
+
+    await toggleItemStatus(id, newStatus);
+
+    // Update local state
     const listing = listings.value.find(l => l.id === id);
     if (listing) {
-      listing.status = 'hidden';
-      stats.value.active--;
-      stats.value.hidden++;
+      listing.status = newStatus ? 'active' : 'inactive';
     }
+
+    alert(`${action}成功！`);
+  } catch (error) {
+    console.error(`❌ Failed to toggle status:`, error);
+    alert(`${action}失敗：${error.message}`);
   }
 };
 
-const markAsAvailable = (id) => {
-  router.push({ name: 'TransactionDetails', params: { id } });
+// Delete listing
+const deleteListing = async (id) => {
+  if (!confirm('確定要刪除此刊登嗎？刪除後無法復原。')) return;
+
+  try {
+    console.log(`🗑️ Deleting item #${id}`);
+
+    await deleteMyItem(id);
+
+    // Remove from local state
+    listings.value = listings.value.filter(l => l.id !== id);
+
+    alert('刪除成功！');
+  } catch (error) {
+    console.error('❌ Failed to delete item:', error);
+    alert(`刪除失敗：${error.message}`);
+  }
 };
+
+// Load listings on mount
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    loadListings();
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -348,6 +447,28 @@ const markAsAvailable = (id) => {
   padding: 24px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  &.active {
+    border-color: $primary;
+    background: #f0f9f7;
+
+    .stat-number {
+      color: $primary;
+    }
+
+    .stat-label {
+      color: $primary;
+      font-weight: 600;
+    }
+  }
 
   .stat-number {
     font-family: 'Noto Sans TC', sans-serif;
@@ -355,12 +476,14 @@ const markAsAvailable = (id) => {
     font-weight: 700;
     color: #1e1e1e;
     margin-bottom: 8px;
+    transition: color 0.3s;
   }
 
   .stat-label {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
     color: #666;
+    transition: all 0.3s;
   }
 }
 
@@ -531,12 +654,12 @@ const markAsAvailable = (id) => {
     }
   }
 
-  &.status-pending {
-    background: #fff3e0;
-    color: #f39c12;
+  &.status-inactive {
+    background: #f5f5f5;
+    color: #999;
 
     i {
-      color: #f39c12;
+      color: #999;
     }
   }
 
@@ -546,15 +669,6 @@ const markAsAvailable = (id) => {
 
     i {
       color: #2196f3;
-    }
-  }
-
-  &.status-hidden {
-    background: #f5f5f5;
-    color: #999;
-
-    i {
-      color: #999;
     }
   }
 }
@@ -617,24 +731,24 @@ const markAsAvailable = (id) => {
     }
   }
 
-  &.btn-hide {
-    background: white;
-    border-color: #999;
-    color: #999;
-
-    &:hover {
-      background: #999;
-      color: white;
-    }
-  }
-
-  &.btn-relist {
+  &.btn-toggle {
     background: white;
     border-color: $primary;
     color: $primary;
 
     &:hover {
       background: $primary;
+      color: white;
+    }
+  }
+
+  &.btn-delete {
+    background: white;
+    border-color: #dc3545;
+    color: #dc3545;
+
+    &:hover {
+      background: #dc3545;
       color: white;
     }
   }

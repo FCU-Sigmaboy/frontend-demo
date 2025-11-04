@@ -18,6 +18,7 @@ import ManageListingsPage from '../views/ManageListingsPage.vue';
 import MyReviewsPage from '../views/MyReviewsPage.vue';
 import MyFollowersPage from '../views/MyFollowersPage.vue';
 import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
+import TransactionRecordsPage from '../views/TransactionRecordsPage.vue';
 
 const routes = [
   {
@@ -115,6 +116,11 @@ const routes = [
     path: '/user/:id',
     name: 'PublicUserProfile',
     component: PublicUserProfilePage
+  },
+  {
+    path: '/transactions',
+    name: 'TransactionRecords',
+    component: TransactionRecordsPage
   }
 ];
 
