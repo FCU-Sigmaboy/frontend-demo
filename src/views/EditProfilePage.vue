@@ -47,7 +47,7 @@
                   <input
                     ref="fileInput"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
                     style="display: none"
                     @change="handleFileUpload"
                   />
@@ -55,49 +55,36 @@
               </div>
             </div>
 
-            <!-- Name Field -->
+            <!-- Nickname Field -->
             <div class="form-section">
-              <label for="name" class="form-label">
-                姓名 <span class="required">*</span>
+              <label for="nickname" class="form-label">
+                暱稱 <span class="required">*</span>
               </label>
               <input
-                id="name"
-                v-model="formData.name"
+                id="nickname"
+                v-model="formData.nickname"
                 type="text"
                 class="form-input"
-                placeholder="請輸入姓名"
+                placeholder="請輸入暱稱"
                 required
               />
+              <p class="field-hint">Google 帳戶預設顯示名稱，可隨時修改</p>
             </div>
 
-            <!-- Email Field (Read-only) -->
+            <!-- Login Method Field (Read-only) -->
             <div class="form-section">
-              <label for="email" class="form-label">
-                電子信箱
+              <label for="loginMethod" class="form-label">
+                登入方式
               </label>
               <input
-                id="email"
-                v-model="formData.email"
-                type="email"
+                id="loginMethod"
+                v-model="formData.loginMethod"
+                type="text"
                 class="form-input"
-                placeholder="請輸入電子信箱"
+                placeholder="Google"
                 disabled
               />
               <p class="field-hint">電子信箱無法修改</p>
-            </div>
-
-            <!-- Phone Field -->
-            <div class="form-section">
-              <label for="phone" class="form-label">
-                聯絡電話
-              </label>
-              <input
-                id="phone"
-                v-model="formData.phone"
-                type="tel"
-                class="form-input"
-                placeholder="請輸入聯絡電話"
-              />
             </div>
 
             <!-- Location Field -->
@@ -122,51 +109,34 @@
               </select>
             </div>
 
-            <!-- Bio Field -->
-            <div class="form-section">
-              <label for="bio" class="form-label">
-                個人簡介
+            <!-- Office Address Field (Optional) -->
+            <div v-if="showOfficeAddress" class="form-section">
+              <label for="officeAddress" class="form-label">
+                公司地址
               </label>
-              <textarea
-                id="bio"
-                v-model="formData.bio"
-                class="form-textarea"
-                rows="5"
-                placeholder="介紹一下自己..."
-                maxlength="500"
-              ></textarea>
-              <p class="char-count">{{ formData.bio.length }}/500</p>
+              <select id="officeAddress" v-model="formData.officeAddress" class="form-select">
+                <option value="">請選擇地區</option>
+                <option value="中區">台中市中區</option>
+                <option value="東區">台中市東區</option>
+                <option value="南區">台中市南區</option>
+                <option value="西區">台中市西區</option>
+                <option value="北區">台中市北區</option>
+                <option value="西屯區">台中市西屯區</option>
+                <option value="南屯區">台中市南屯區</option>
+                <option value="北屯區">台中市北屯區</option>
+                <option value="豐原區">台中市豐原區</option>
+                <option value="大里區">台中市大里區</option>
+                <option value="太平區">台中市太平區</option>
+                <option value="沙鹿區">台中市沙鹿區</option>
+              </select>
             </div>
 
-            <!-- Notification Settings -->
-            <div class="form-section">
-              <label class="section-label">通知設定</label>
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.notifications.email"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">接收電子郵件通知</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.notifications.messages"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">接收訊息通知</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.notifications.promotions"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">接收優惠活動通知</span>
-                </label>
-              </div>
+            <!-- Add Office Address Button -->
+            <div v-if="!showOfficeAddress" class="form-section">
+              <button type="button" class="add-address-btn" @click="toggleOfficeAddress">
+                <i class="bi bi-plus-circle"></i>
+                新增公司地址
+              </button>
             </div>
 
             <!-- Form Actions -->
@@ -192,9 +162,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
+import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
@@ -205,20 +177,32 @@ const authStore = useAuthStore();
 const userPoints = ref(500);
 const isSaving = ref(false);
 const fileInput = ref(null);
+const showOfficeAddress = ref(false);
+const originalProfile = ref(null); // Store original profile data
 
 const formData = ref({
   avatar: authStore.userAvatar || '',
-  name: authStore.userName || '',
-  email: authStore.userEmail || '',
-  phone: '',
+  nickname: authStore.userName || '',
+  loginMethod: 'Google',
   location: '',
-  bio: '',
-  notifications: {
-    email: true,
-    messages: true,
-    promotions: false
-  }
+  officeAddress: ''
 });
+
+// District coordinate mapping (Taichung districts)
+const districtCoordinates = {
+  '中區': { latitude: 24.1438, longitude: 120.6794 },
+  '東區': { latitude: 24.1378, longitude: 120.6947 },
+  '南區': { latitude: 24.1168, longitude: 120.6637 },
+  '西區': { latitude: 24.1393, longitude: 120.6739 },
+  '北區': { latitude: 24.1635, longitude: 120.6821 },
+  '西屯區': { latitude: 24.1812, longitude: 120.6396 },
+  '南屯區': { latitude: 24.1398, longitude: 120.6471 },
+  '北屯區': { latitude: 24.1810, longitude: 120.7150 },
+  '豐原區': { latitude: 24.2569, longitude: 120.7230 },
+  '大里區': { latitude: 24.0990, longitude: 120.6772 },
+  '太平區': { latitude: 24.1264, longitude: 120.7209 },
+  '沙鹿區': { latitude: 24.2364, longitude: 120.5686 }
+};
 
 // Methods
 const goBack = () => {
@@ -231,13 +215,29 @@ const triggerFileInput = () => {
 
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      formData.value.avatar = e.target.result;
-    };
-    reader.readAsDataURL(file);
+  if (!file) return;
+
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    alert('僅支援 JPG、PNG、WEBP 格式的圖片');
+    event.target.value = '';
+    return;
   }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    alert('圖片大小不能超過 5MB');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    formData.value.avatar = e.target.result;
+  };
+  reader.readAsDataURL(file);
 };
 
 const removeAvatar = () => {
@@ -247,30 +247,131 @@ const removeAvatar = () => {
   }
 };
 
+const toggleOfficeAddress = () => {
+  showOfficeAddress.value = !showOfficeAddress.value;
+};
+
+const loadProfileData = async () => {
+  try {
+    const profile = await getMyProfileForEdit();
+    console.log('📋 Loaded profile data:', profile);
+
+    if (profile) {
+      originalProfile.value = profile;
+
+      // Populate form data
+      formData.value.avatar = profile.profile_picture_url || '';
+      formData.value.nickname = profile.nickname || '';
+
+      // Extract primary location district name
+      if (profile.locations && profile.locations.length > 0) {
+        const primaryLoc = profile.locations.find(loc => loc.is_primary);
+        if (primaryLoc && primaryLoc.formatted_address) {
+          // Extract district from address (e.g., "台中市西屯區福星路" -> "西屯區")
+          const match = primaryLoc.formatted_address.match(/台中市(.+?區)/);
+          if (match) {
+            formData.value.location = match[1];
+          }
+        }
+
+        // Check if there's an office address
+        const officeAddr = profile.locations.find(loc => !loc.is_primary && loc.type.includes('公司'));
+        if (officeAddr && officeAddr.formatted_address) {
+          showOfficeAddress.value = true;
+          const match = officeAddr.formatted_address.match(/台中市(.+?區)/);
+          if (match) {
+            formData.value.officeAddress = match[1];
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load profile:', error);
+    alert('載入個人資料失敗，請稍後再試');
+  }
+};
+
 const handleSubmit = async () => {
   isSaving.value = true;
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Prepare userData (only changed fields)
+    const userData = {};
+    if (formData.value.nickname !== originalProfile.value?.nickname) {
+      userData.nickname = formData.value.nickname;
+    }
+    if (formData.value.avatar !== originalProfile.value?.profile_picture_url) {
+      userData.profile_picture_url = formData.value.avatar;
+    }
 
-    // Update auth store (if needed)
-    // authStore.updateProfile(formData.value);
+    // Prepare profileData (empty for now, no balance/carbon changes from this page)
+    const profileData = {};
 
-    console.log('Profile updated:', formData.value);
+    // Prepare locationsArray
+    const locationsArray = [];
 
-    // Show success message (you can use a toast library)
+    // Primary location (home)
+    if (formData.value.location) {
+      const coords = districtCoordinates[formData.value.location];
+      if (coords) {
+        const existingPrimaryLoc = originalProfile.value?.locations?.find(loc => loc.is_primary);
+        locationsArray.push({
+          id: existingPrimaryLoc?.id, // Include ID if updating existing location
+          coordinates: coords,
+          type: '家',
+          is_primary: true,
+          formatted_address: `台中市${formData.value.location}`
+        });
+      }
+    }
+
+    // Office location (if provided)
+    if (showOfficeAddress.value && formData.value.officeAddress) {
+      const coords = districtCoordinates[formData.value.officeAddress];
+      if (coords) {
+        const existingOfficeLoc = originalProfile.value?.locations?.find(
+          loc => !loc.is_primary && loc.type.includes('公司')
+        );
+        locationsArray.push({
+          id: existingOfficeLoc?.id, // Include ID if updating existing location
+          coordinates: coords,
+          type: '公司',
+          is_primary: false,
+          formatted_address: `台中市${formData.value.officeAddress}`
+        });
+      }
+    }
+
+    console.log('📤 Updating profile with:', { userData, profileData, locationsArray });
+
+    // Call the real update API
+    const result = await updateMyProfile(userData, profileData, locationsArray);
+
+    console.log('✅ Profile updated successfully:', result);
+
+    // Update auth store with new data
+    authStore.updateCustomProfile({
+      nickname: userData.nickname,
+      avatar_url: userData.profile_picture_url
+    });
+
+    // Show success message
     alert('個人資料已更新！');
 
     // Navigate back to profile
     router.push({ name: 'UserProfile' });
   } catch (error) {
-    console.error('Error updating profile:', error);
-    alert('更新失敗，請稍後再試');
+    console.error('❌ Error updating profile:', error);
+    alert(`更新失敗：${error.message}`);
   } finally {
     isSaving.value = false;
   }
 };
+
+// Load profile data on mount
+onMounted(() => {
+  loadProfileData();
+});
 </script>
 
 <style scoped lang="scss">
@@ -458,7 +559,8 @@ const handleSubmit = async () => {
 }
 
 .upload-btn,
-.remove-btn {
+.remove-btn,
+.add-address-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -493,6 +595,17 @@ const handleSubmit = async () => {
   &:hover {
     background: #dc3545;
     color: white;
+  }
+}
+
+.add-address-btn {
+  background: white;
+  color: $primary;
+  border: 1px dashed $primary;
+
+  &:hover {
+    background: #f0f9f7;
+    border-style: solid;
   }
 }
 

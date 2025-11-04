@@ -13,44 +13,66 @@
           <div class="spacer"></div>
         </div>
 
+        <!-- Loading State -->
+        <div v-if="isLoading" class="loading-overlay">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">載入中...</span>
+          </div>
+          <p>載入中...</p>
+        </div>
+
         <!-- Create Form -->
-        <div class="form-card">
+        <div v-else class="form-card">
           <form @submit.prevent="handleSubmit">
             <!-- Image Upload Section -->
             <div class="form-section">
               <label class="section-label">
                 商品照片 <span class="required">*</span>
               </label>
-              <p class="section-hint">最多上傳 8 張照片，第一張為封面照片</p>
+              <p class="section-hint">最多上傳 8 張照片，第一張為封面照片。支援拖曳上傳</p>
 
-              <div class="image-upload-grid">
-                <!-- Uploaded Images -->
-                <div
-                  v-for="(image, index) in formData.images"
-                  :key="index"
-                  class="image-item"
-                >
-                  <img :src="image" alt="Product Image" class="uploaded-image" />
-                  <button
-                    type="button"
-                    class="remove-image-btn"
-                    @click="removeImage(index)"
+              <div
+                class="image-upload-dropzone"
+                :class="{ 'is-dragging': isDragging }"
+                @dragover.prevent="handleDragOver"
+                @dragleave.prevent="handleDragLeave"
+                @drop.prevent="handleDrop"
+              >
+                <div class="image-upload-grid">
+                  <!-- Uploaded Images -->
+                  <div
+                    v-for="(image, index) in formData.images"
+                    :key="index"
+                    class="image-item"
                   >
-                    <i class="bi bi-x-circle-fill"></i>
+                    <img :src="image" alt="Product Image" class="uploaded-image" />
+                    <button
+                      type="button"
+                      class="remove-image-btn"
+                      @click="removeImage(index)"
+                    >
+                      <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                    <span v-if="index === 0" class="cover-badge">封面</span>
+                  </div>
+
+                  <!-- Upload Button -->
+                  <button
+                    v-if="formData.images.length < 8"
+                    type="button"
+                    class="upload-placeholder"
+                    @click="triggerImageInput"
+                  >
+                    <i class="bi bi-plus-circle"></i>
+                    <span>上傳照片</span>
                   </button>
-                  <span v-if="index === 0" class="cover-badge">封面</span>
                 </div>
 
-                <!-- Upload Button -->
-                <button
-                  v-if="formData.images.length < 8"
-                  type="button"
-                  class="upload-placeholder"
-                  @click="triggerImageInput"
-                >
-                  <i class="bi bi-plus-circle"></i>
-                  <span>上傳照片</span>
-                </button>
+                <!-- Drag Overlay -->
+                <div v-if="isDragging" class="drag-overlay">
+                  <i class="bi bi-cloud-upload"></i>
+                  <p>拖曳圖片到這裡上傳</p>
+                </div>
               </div>
 
               <input
@@ -92,15 +114,13 @@
                 required
               >
                 <option value="">請選擇分類</option>
-                <option value="1">流行服飾</option>
-                <option value="2">鞋包配件</option>
-                <option value="3">美妝保養</option>
-                <option value="4">電子 3C</option>
-                <option value="5">家電用品</option>
-                <option value="6">家具家飾</option>
-                <option value="7">親子婦幼</option>
-                <option value="8">生活娛樂</option>
-                <option value="9">圖書影音</option>
+                <option
+                  v-for="subCat in subCategories"
+                  :key="subCat.id"
+                  :value="subCat.id"
+                >
+                  {{ subCat.name }}
+                </option>
               </select>
             </div>
 
@@ -189,49 +209,27 @@
               </label>
               <select
                 id="location"
-                v-model="formData.location"
+                v-model="formData.locationId"
                 class="form-select"
                 required
               >
-                <option value="">請選擇地區</option>
-                <option value="中區">台中市中區</option>
-                <option value="東區">台中市東區</option>
-                <option value="南區">台中市南區</option>
-                <option value="西區">台中市西區</option>
-                <option value="北區">台中市北區</option>
-                <option value="西屯區">台中市西屯區</option>
-                <option value="南屯區">台中市南屯區</option>
-                <option value="北屯區">台中市北屯區</option>
-                <option value="豐原區">台中市豐原區</option>
-                <option value="大里區">台中市大里區</option>
-                <option value="太平區">台中市太平區</option>
-                <option value="沙鹿區">台中市沙鹿區</option>
+                <option :value="null">請選擇地區</option>
+                <option
+                  v-for="location in userLocations"
+                  :key="location.id"
+                  :value="location.id"
+                >
+                  {{ location.formatted_address }}
+                  <span v-if="location.is_primary"> (預設)</span>
+                  <span v-if="location.type"> - {{ location.type }}</span>
+                </option>
               </select>
-            </div>
-
-            <!-- Trade Method Field -->
-            <div class="form-section">
-              <label class="form-label">
-                交易方式 <span class="required">*</span>
-              </label>
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.tradeMethods.meetup"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">面交</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.tradeMethods.delivery"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">郵寄/宅配</span>
-                </label>
-              </div>
+              <p class="form-hint">
+                沒有您想要的地區？
+                <router-link :to="{ name: 'UserProfile' }" class="link-text">
+                  前往個人資料新增地區
+                </router-link>
+              </p>
             </div>
 
             <!-- Form Actions -->
@@ -259,8 +257,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { supabase } from '@/lib/supabase';
+import { getItemById } from '../api/get_itemByIdAPI';
+import { updateMyItem } from '../api/update_myItemAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
@@ -269,9 +270,14 @@ const router = useRouter();
 
 // State
 const userPoints = ref(500);
-const isEdit = ref(!!route.params.id);
+const itemId = computed(() => route.params.id ? Number(route.params.id) : null);
+const isEdit = computed(() => !!itemId.value);
 const isSubmitting = ref(false);
+const isLoading = ref(false);
+const isDragging = ref(false);
 const imageInput = ref(null);
+const subCategories = ref([]);
+const userLocations = ref([]);
 
 const formData = ref({
   images: [],
@@ -282,20 +288,122 @@ const formData = ref({
   isFree: false,
   isNegotiable: false,
   condition: '',
-  location: '',
-  tradeMethods: {
-    meetup: false,
-    delivery: false
-  }
+  locationId: null
 });
 
 const conditions = [
-  { value: 'new', label: '全新' },
-  { value: 'like-new', label: '近全新' },
-  { value: 'good', label: '良好' },
-  { value: 'fair', label: '普通' },
-  { value: 'poor', label: '有瑕疵' }
+  { value: '全新', label: '全新' },
+  { value: '近全新', label: '近全新' },
+  { value: '良好', label: '良好' },
+  { value: '普通', label: '普通' },
+  { value: '需修理', label: '需修理' }
 ];
+
+// Fetch categories from database
+const fetchCategories = async () => {
+  try {
+    console.log('🔍 Fetching sub_categories from database...');
+
+    const { data, error } = await supabase
+      .from('sub_categories')
+      .select('id, name')
+      .order('id');
+
+    if (error) {
+      console.error('❌ Error fetching sub_categories:', error);
+      return;
+    }
+
+    subCategories.value = data || [];
+    console.log('✅ Loaded sub_categories:', subCategories.value);
+  } catch (error) {
+    console.error('❌ Failed to fetch categories:', error);
+  }
+};
+
+// Fetch user's locations from database
+const fetchUserLocations = async () => {
+  try {
+    console.log('📍 Fetching user locations...');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ User not authenticated');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, formatted_address, type, is_primary')
+      .eq('user_id', user.id)
+      .order('is_primary', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error fetching locations:', error);
+      return;
+    }
+
+    userLocations.value = data || [];
+    console.log('✅ Loaded user locations:', userLocations.value);
+
+    // If no locations, warn user
+    if (userLocations.value.length === 0) {
+      alert('請先在個人資料頁面設定您的所在地區');
+      router.push({ name: 'UserProfile' });
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch user locations:', error);
+  }
+};
+
+// Load item data for editing
+const loadItemData = async () => {
+  if (!itemId.value) return;
+
+  try {
+    isLoading.value = true;
+    console.log('📝 Loading item data for editing...');
+
+    const item = await getItemById(itemId.value);
+
+    if (!item) {
+      alert('找不到該物品');
+      router.push({ name: 'ManageListings' });
+      return;
+    }
+
+    // Populate form with item data
+    formData.value = {
+      images: item.image_urls || [],
+      title: item.title || '',
+      category: item.sub_category_id || '',
+      description: item.description || '',
+      price: item.price || 0,
+      isFree: item.price === 0,
+      isNegotiable: false, // This field doesn't exist in DB
+      condition: item.condition || '',
+      locationId: item.location_id || null
+    };
+
+    console.log('✅ Item data loaded:', formData.value);
+  } catch (error) {
+    console.error('❌ Failed to load item:', error);
+    alert(`載入失敗：${error.message}`);
+    router.push({ name: 'ManageListings' });
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Load categories and item data on mount
+onMounted(async () => {
+  await fetchCategories();
+  await fetchUserLocations();
+
+  if (isEdit.value) {
+    await loadItemData();
+  }
+});
 
 // Methods
 const goBack = () => {
@@ -327,6 +435,47 @@ const removeImage = (index) => {
   formData.value.images.splice(index, 1);
 };
 
+// Drag and Drop handlers
+const handleDragOver = (event) => {
+  isDragging.value = true;
+};
+
+const handleDragLeave = (event) => {
+  // Only set to false if leaving the dropzone entirely
+  if (event.target.classList.contains('image-upload-dropzone')) {
+    isDragging.value = false;
+  }
+};
+
+const handleDrop = (event) => {
+  isDragging.value = false;
+
+  const files = Array.from(event.dataTransfer.files);
+
+  // Filter only image files
+  const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+  if (imageFiles.length === 0) {
+    alert('請拖曳圖片檔案');
+    return;
+  }
+
+  const remainingSlots = 8 - formData.value.images.length;
+  const filesToProcess = imageFiles.slice(0, remainingSlots);
+
+  if (imageFiles.length > remainingSlots) {
+    alert(`最多只能上傳 8 張照片，已自動選取前 ${remainingSlots} 張`);
+  }
+
+  filesToProcess.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      formData.value.images.push(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 const handleFreeChange = () => {
   if (formData.value.isFree) {
     formData.value.price = 0;
@@ -341,28 +490,62 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Validate trade methods
-  if (!formData.value.tradeMethods.meetup && !formData.value.tradeMethods.delivery) {
-    alert('請至少選擇一種交易方式');
+  // Validate location
+  if (!formData.value.locationId) {
+    alert('請選擇交易地點');
+    return;
+  }
+
+  // Validate location belongs to user
+  const isValidLocation = userLocations.value.some(loc => loc.id === formData.value.locationId);
+  if (!isValidLocation) {
+    alert('請選擇您在個人資料中設定的地區。如需新增地區，請先前往個人資料頁面設定。');
     return;
   }
 
   isSubmitting.value = true;
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (isEdit.value) {
+      // Update existing item
+      console.log('📝 Updating item:', formData.value);
 
-    console.log('Listing created:', formData.value);
+      const updateData = {
+        title: formData.value.title,
+        description: formData.value.description,
+        condition: formData.value.condition,
+        price: formData.value.price,
+        sub_category_id: formData.value.category,
+        image_urls: formData.value.images,
+        location_id: formData.value.locationId
+      };
 
-    // Show success message
-    alert(isEdit.value ? '刊登已更新！' : '刊登成功！');
+      const result = await updateMyItem(itemId.value, updateData);
 
-    // Navigate to profile or listing detail
-    router.push({ name: 'UserProfile' });
+      console.log('✅ Item updated successfully:', result);
+      alert('刊登已更新！');
+    } else {
+      // Create new item
+      console.log('📝 Creating new listing:', formData.value);
+
+      const itemData = {
+        ...formData.value,
+        user_location_id: formData.value.locationId,
+        category: formData.value.category
+      };
+
+      const { createItem } = await import('../api/create_myItemAPI');
+      const result = await createItem(itemData);
+
+      console.log('✅ Listing created successfully:', result);
+      alert(`刊登成功！物品 ID: ${result.id}`);
+    }
+
+    // Navigate to manage listings page
+    router.push({ name: 'ManageListings' });
   } catch (error) {
-    console.error('Error creating listing:', error);
-    alert('刊登失敗，請稍後再試');
+    console.error('❌ Error submitting listing:', error);
+    alert((isEdit.value ? '更新' : '刊登') + '失敗：' + error.message);
   } finally {
     isSubmitting.value = false;
   }
@@ -388,6 +571,25 @@ const handleSubmit = async () => {
   max-width: 900px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+// Loading Overlay
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin-top: 16px;
+  }
 }
 
 // Page Header
@@ -521,11 +723,71 @@ const handleSubmit = async () => {
   margin: 6px 0 0 0;
 }
 
+.form-hint {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0 0 0;
+
+  .link-text {
+    color: $primary;
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 // Image Upload
+.image-upload-dropzone {
+  position: relative;
+  padding: 16px;
+  border: 2px dashed #d0d0d0;
+  border-radius: 12px;
+  background: #fafafa;
+  transition: all 0.3s;
+
+  &.is-dragging {
+    border-color: $primary;
+    background: rgba(111, 184, 165, 0.05);
+  }
+}
+
 .image-upload-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
+}
+
+.drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(111, 184, 165, 0.95);
+  border-radius: 12px;
+  color: white;
+  pointer-events: none;
+  z-index: 10;
+
+  i {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
 }
 
 .image-item {

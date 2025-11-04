@@ -26,7 +26,7 @@
             </div>
             <span class="rating-score">{{ averageRating.toFixed(1) }}</span>
           </div>
-          <button class="action-btn" @click="showAllReviews">
+          <button class="action-btn" @click="goToTransactionRecords">
             交易紀錄
           </button>
         </div>
@@ -141,9 +141,8 @@ const averageRating = computed(() => {
 });
 
 // Methods
-const showAllReviews = () => {
-  console.log('Show all reviews');
-  // Navigate to transaction history or filter reviews
+const goToTransactionRecords = () => {
+  router.push({ name: 'TransactionRecords' });
 };
 
 const goToUserProfile = (userId) => {

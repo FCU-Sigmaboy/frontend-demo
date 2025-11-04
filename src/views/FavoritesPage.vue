@@ -211,15 +211,18 @@ const toggleEditMode = () => {
 };
 
 const isSelected = (id) => {
-  return selectedItems.value.includes(id);
+  return selectedItems.value.some(item => item.item_id === id);
 };
 
 const toggleSelection = (id) => {
-  const index = selectedItems.value.indexOf(id);
+  const index = selectedItems.value.findIndex(item => item.item_id === id);
   if (index > -1) {
     selectedItems.value.splice(index, 1);
   } else {
-    selectedItems.value.push(id);
+    const item = displayedFavorites.value.find(item => item.item_id === id);
+    if (item) {
+      selectedItems.value.push(item);
+    }
   }
 };
 
@@ -227,14 +230,14 @@ const selectAll = () => {
   if (selectedItems.value.length === displayedFavorites.value.length) {
     selectedItems.value = [];
   } else {
-    selectedItems.value = displayedFavorites.value.map(item => item.item_id);
+    selectedItems.value = [...displayedFavorites.value];
   }
 };
 
 const deleteSelected = () => {
   if (confirm(`確定要移除 ${selectedItems.value.length} 個收藏？`)) {
-    selectedItems.value.forEach(itemId => {
-      favoritesStore.removeFavorite(itemId);
+    selectedItems.value.forEach(item => {
+      favoritesStore.removeFavorite(item);
     });
     selectedItems.value = [];
     isEditMode.value = false;
@@ -247,6 +250,7 @@ const loadFavorites = async () => {
   error.value = null;
 
   try {
+    // RPC 會自動從使用者主要地址取得座標，不需要提供
     await favoritesStore.loadFavorites({
       page: 1,
       size: 100,
