@@ -4,31 +4,7 @@
 
     <main class="main-content">
       <!-- Breadcrumb -->
-      <div class="breadcrumb-section">
-        <div class="container">
-          <nav class="breadcrumb">
-            <router-link to="/" class="breadcrumb-link">首頁</router-link>
-            <template v-if="product.category">
-              <span class="breadcrumb-separator">&gt;</span>
-              <router-link
-                :to="`/items?category=${product.category.main_category_id}`"
-                class="breadcrumb-link"
-              >
-                {{ product.category.main_category_name }}
-              </router-link>
-              <span class="breadcrumb-separator">&gt;</span>
-              <router-link
-                :to="`/items?subCategory=${product.category.sub_category_id}`"
-                class="breadcrumb-link"
-              >
-                {{ product.category.sub_category_name }}
-              </router-link>
-            </template>
-            <span class="breadcrumb-separator">&gt;</span>
-            <span class="breadcrumb-current">{{ product.title || '物品資訊' }}</span>
-          </nav>
-        </div>
-      </div>
+      <Breadcrumb :items="breadcrumbItems" />
 
       <!-- Product Detail Section -->
       <section class="product-detail-section">
@@ -247,6 +223,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import ProductCard from '../components/ProductCard.vue';
 
@@ -278,6 +255,28 @@ const loadingRelated = ref(true);
 // Image preview modal
 const showImagePreview = ref(false);
 const previewImageIndex = ref(0);
+
+// Breadcrumb items
+const breadcrumbItems = computed(() => {
+  const items = [];
+
+  if (product.value.category) {
+    items.push({
+      label: product.value.category.main_category_name,
+      to: `/items?category=${product.value.category.main_category_id}`
+    });
+    items.push({
+      label: product.value.category.sub_category_name,
+      to: `/items?subCategory=${product.value.category.sub_category_id}`
+    });
+  }
+
+  items.push({
+    label: product.value.title || '物品資訊'
+  });
+
+  return items;
+});
 
 // Computed
 const currentImage = computed(() => {

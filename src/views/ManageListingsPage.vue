@@ -3,16 +3,10 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
-      <div class="manage-container">
-        <!-- Breadcrumb -->
-        <nav class="breadcrumb">
-          <a href="/" class="breadcrumb-link">首頁</a>
-          <i class="bi bi-chevron-right"></i>
-          <a href="/profile" class="breadcrumb-link">個人檔案</a>
-          <i class="bi bi-chevron-right"></i>
-          <span class="breadcrumb-current">管理刊登</span>
-        </nav>
+      <!-- Breadcrumb -->
+      <Breadcrumb :items="breadcrumbItems" />
 
+      <div class="manage-container">
         <!-- Stats Cards (Filter Buttons) -->
         <div class="stats-grid">
           <div
@@ -191,9 +185,16 @@ import { getMyItems } from '../api/get_myItemsAPI';
 import { toggleItemStatus, deleteMyItem } from '../api/update_myItemAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
+
+// Breadcrumb items
+const breadcrumbItems = [
+  { label: '個人檔案', to: '/profile' },
+  { label: '管理刊登' }
+];
 
 // State
 const userPoints = ref(500);

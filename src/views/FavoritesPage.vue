@@ -4,15 +4,7 @@
 
     <main class="main-content">
       <!-- Breadcrumb -->
-      <div class="breadcrumb-section">
-        <div class="breadcrumb-container">
-          <nav class="breadcrumb">
-            <router-link to="/" class="breadcrumb-link">首頁</router-link>
-            <span class="breadcrumb-separator">&gt;</span>
-            <span class="breadcrumb-current">我的收藏</span>
-          </nav>
-        </div>
-      </div>
+      <Breadcrumb :items="[{ label: '我的收藏' }]" />
 
       <div class="favorites-container">
         <!-- Page Header -->
@@ -147,6 +139,7 @@ import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '../stores/favorites';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 

@@ -3,6 +3,9 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
+      <!-- Breadcrumb -->
+      <Breadcrumb :items="[{ label: '個人資料' }]" />
+
       <div class="profile-container">
         <!-- Profile Header Section -->
         <section class="profile-header">
@@ -353,6 +356,7 @@ import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
 import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import { Modal } from 'bootstrap';
@@ -734,7 +738,7 @@ const scrollCarousel = (carouselRef, index) => {
 
 .main-content {
   flex: 1;
-  padding: 30px 0 60px;
+  padding-bottom: 60px;
 }
 
 .profile-container {
@@ -1348,10 +1352,6 @@ const scrollCarousel = (carouselRef, index) => {
 
 // Responsive
 @media (max-width: 991.98px) {
-  .main-content {
-    padding: 20px 0 50px;
-  }
-
   .profile-container {
     padding: 0 15px;
   }
@@ -1445,10 +1445,6 @@ const scrollCarousel = (carouselRef, index) => {
 }
 
 @media (max-width: 575.98px) {
-  .main-content {
-    padding: 15px 0 40px;
-  }
-
   .profile-container {
     padding: 0 10px;
   }
