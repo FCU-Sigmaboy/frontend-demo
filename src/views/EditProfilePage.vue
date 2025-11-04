@@ -3,6 +3,9 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
+      <!-- Breadcrumb -->
+      <Breadcrumb :items="breadcrumbItems" />
+
       <div class="edit-container">
         <!-- Page Header -->
         <div class="page-header">
@@ -169,9 +172,16 @@ import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
+
+// Breadcrumb items
+const breadcrumbItems = [
+  { label: '個人檔案', to: '/profile' },
+  { label: '編輯個人資料' }
+];
 
 // State
 const userPoints = ref(500);
