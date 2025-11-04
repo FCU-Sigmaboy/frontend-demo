@@ -315,12 +315,10 @@ import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { getMyItems } from '../api/get_myItemsAPI';
 import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
-import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
-import { Modal } from 'bootstrap';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -548,11 +546,6 @@ const handleAvatarUpload = async (event) => {
   }
 };
 
-// Reload custom profile from database
-const reloadProfile = async () => {
-  await authStore.loadCustomProfile();
-};
-
 // Methods
 const goToEditProfile = () => {
   router.push({ name: 'EditProfile' });
@@ -711,7 +704,6 @@ const scrollCarousel = (carouselRef, index) => {
 .user-info-section {
   flex: 1;
 
-.user-info-section {
   .user-name {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 32px;
