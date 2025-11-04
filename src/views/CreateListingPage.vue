@@ -13,8 +13,16 @@
           <div class="spacer"></div>
         </div>
 
+        <!-- Loading State -->
+        <div v-if="isLoading" class="loading-overlay">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">載入中...</span>
+          </div>
+          <p>載入中...</p>
+        </div>
+
         <!-- Create Form -->
-        <div class="form-card">
+        <div v-else class="form-card">
           <form @submit.prevent="handleSubmit">
             <!-- Image Upload Section -->
             <div class="form-section">
@@ -257,9 +265,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
+import { getItemById } from '../api/get_itemByIdAPI';
+import { updateMyItem } from '../api/update_myItemAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
@@ -268,8 +278,10 @@ const router = useRouter();
 
 // State
 const userPoints = ref(500);
-const isEdit = ref(!!route.params.id);
+const itemId = computed(() => route.params.id ? Number(route.params.id) : null);
+const isEdit = computed(() => !!itemId.value);
 const isSubmitting = ref(false);
+const isLoading = ref(false);
 const imageInput = ref(null);
 const subCategories = ref([]);
 
@@ -319,9 +331,56 @@ const fetchCategories = async () => {
   }
 };
 
-// Load categories on mount
-onMounted(() => {
-  fetchCategories();
+// Load item data for editing
+const loadItemData = async () => {
+  if (!itemId.value) return;
+
+  try {
+    isLoading.value = true;
+    console.log('📝 Loading item data for editing...');
+
+    const item = await getItemById(itemId.value);
+
+    if (!item) {
+      alert('找不到該物品');
+      router.push({ name: 'ManageListings' });
+      return;
+    }
+
+    // Populate form with item data
+    formData.value = {
+      images: item.image_urls || [],
+      title: item.title || '',
+      category: item.sub_category_id || '',
+      description: item.description || '',
+      price: item.price || 0,
+      isFree: item.price === 0,
+      isNegotiable: false, // This field doesn't exist in DB
+      condition: item.condition || '',
+      location: '', // We'll need to fetch location separately
+      tradeMethods: {
+        meetup: false, // These fields don't exist in current DB schema
+        delivery: false
+      }
+    };
+
+    console.log('✅ Item data loaded:', formData.value);
+  } catch (error) {
+    console.error('❌ Failed to load item:', error);
+    alert(`載入失敗：${error.message}`);
+    router.push({ name: 'ManageListings' });
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Load categories and item data on mount
+onMounted(async () => {
+  await fetchCategories();
+
+  if (isEdit.value) {
+    await loadItemData();
+  }
 });
 
 // Methods
@@ -368,8 +427,8 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Validate trade methods
-  if (!formData.value.tradeMethods.meetup && !formData.value.tradeMethods.delivery) {
+  // Validate trade methods (skip for edit mode if not needed)
+  if (!isEdit.value && !formData.value.tradeMethods.meetup && !formData.value.tradeMethods.delivery) {
     alert('請至少選擇一種交易方式');
     return;
   }
@@ -377,22 +436,39 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    console.log('📝 Submitting listing:', formData.value);
+    if (isEdit.value) {
+      // Update existing item
+      console.log('📝 Updating item:', formData.value);
 
-    // Call the real API
-    const { createItem } = await import('../api/create_myItemAPI');
-    const result = await createItem(formData.value);
+      const updateData = {
+        title: formData.value.title,
+        description: formData.value.description,
+        condition: formData.value.condition,
+        price: formData.value.price,
+        sub_category_id: formData.value.category,
+        image_urls: formData.value.images
+      };
 
-    console.log('✅ Listing created successfully:', result);
+      const result = await updateMyItem(itemId.value, updateData);
 
-    // Show success message
-    alert(isEdit.value ? '刊登已更新！' : `刊登成功！物品 ID: ${result.id}`);
+      console.log('✅ Item updated successfully:', result);
+      alert('刊登已更新！');
+    } else {
+      // Create new item
+      console.log('📝 Creating new listing:', formData.value);
 
-    // Navigate to profile
-    router.push({ name: 'UserProfile' });
+      const { createItem } = await import('../api/create_myItemAPI');
+      const result = await createItem(formData.value);
+
+      console.log('✅ Listing created successfully:', result);
+      alert(`刊登成功！物品 ID: ${result.id}`);
+    }
+
+    // Navigate to manage listings page
+    router.push({ name: 'ManageListings' });
   } catch (error) {
-    console.error('❌ Error creating listing:', error);
-    alert('刊登失敗：' + error.message);
+    console.error('❌ Error submitting listing:', error);
+    alert((isEdit.value ? '更新' : '刊登') + '失敗：' + error.message);
   } finally {
     isSubmitting.value = false;
   }
@@ -418,6 +494,25 @@ const handleSubmit = async () => {
   max-width: 900px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+// Loading Overlay
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin-top: 16px;
+  }
 }
 
 // Page Header
