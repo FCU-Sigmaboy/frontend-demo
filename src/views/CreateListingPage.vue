@@ -29,36 +29,50 @@
               <label class="section-label">
                 商品照片 <span class="required">*</span>
               </label>
-              <p class="section-hint">最多上傳 8 張照片，第一張為封面照片</p>
+              <p class="section-hint">最多上傳 8 張照片，第一張為封面照片。支援拖曳上傳</p>
 
-              <div class="image-upload-grid">
-                <!-- Uploaded Images -->
-                <div
-                  v-for="(image, index) in formData.images"
-                  :key="index"
-                  class="image-item"
-                >
-                  <img :src="image" alt="Product Image" class="uploaded-image" />
-                  <button
-                    type="button"
-                    class="remove-image-btn"
-                    @click="removeImage(index)"
+              <div
+                class="image-upload-dropzone"
+                :class="{ 'is-dragging': isDragging }"
+                @dragover.prevent="handleDragOver"
+                @dragleave.prevent="handleDragLeave"
+                @drop.prevent="handleDrop"
+              >
+                <div class="image-upload-grid">
+                  <!-- Uploaded Images -->
+                  <div
+                    v-for="(image, index) in formData.images"
+                    :key="index"
+                    class="image-item"
                   >
-                    <i class="bi bi-x-circle-fill"></i>
+                    <img :src="image" alt="Product Image" class="uploaded-image" />
+                    <button
+                      type="button"
+                      class="remove-image-btn"
+                      @click="removeImage(index)"
+                    >
+                      <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                    <span v-if="index === 0" class="cover-badge">封面</span>
+                  </div>
+
+                  <!-- Upload Button -->
+                  <button
+                    v-if="formData.images.length < 8"
+                    type="button"
+                    class="upload-placeholder"
+                    @click="triggerImageInput"
+                  >
+                    <i class="bi bi-plus-circle"></i>
+                    <span>上傳照片</span>
                   </button>
-                  <span v-if="index === 0" class="cover-badge">封面</span>
                 </div>
 
-                <!-- Upload Button -->
-                <button
-                  v-if="formData.images.length < 8"
-                  type="button"
-                  class="upload-placeholder"
-                  @click="triggerImageInput"
-                >
-                  <i class="bi bi-plus-circle"></i>
-                  <span>上傳照片</span>
-                </button>
+                <!-- Drag Overlay -->
+                <div v-if="isDragging" class="drag-overlay">
+                  <i class="bi bi-cloud-upload"></i>
+                  <p>拖曳圖片到這裡上傳</p>
+                </div>
               </div>
 
               <input
@@ -260,6 +274,7 @@ const itemId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isEdit = computed(() => !!itemId.value);
 const isSubmitting = ref(false);
 const isLoading = ref(false);
+const isDragging = ref(false);
 const imageInput = ref(null);
 const subCategories = ref([]);
 const userLocations = ref([]);
@@ -418,6 +433,47 @@ const handleImageUpload = (event) => {
 
 const removeImage = (index) => {
   formData.value.images.splice(index, 1);
+};
+
+// Drag and Drop handlers
+const handleDragOver = (event) => {
+  isDragging.value = true;
+};
+
+const handleDragLeave = (event) => {
+  // Only set to false if leaving the dropzone entirely
+  if (event.target.classList.contains('image-upload-dropzone')) {
+    isDragging.value = false;
+  }
+};
+
+const handleDrop = (event) => {
+  isDragging.value = false;
+
+  const files = Array.from(event.dataTransfer.files);
+
+  // Filter only image files
+  const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+  if (imageFiles.length === 0) {
+    alert('請拖曳圖片檔案');
+    return;
+  }
+
+  const remainingSlots = 8 - formData.value.images.length;
+  const filesToProcess = imageFiles.slice(0, remainingSlots);
+
+  if (imageFiles.length > remainingSlots) {
+    alert(`最多只能上傳 8 張照片，已自動選取前 ${remainingSlots} 張`);
+  }
+
+  filesToProcess.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      formData.value.images.push(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
 const handleFreeChange = () => {
@@ -685,10 +741,53 @@ const handleSubmit = async () => {
 }
 
 // Image Upload
+.image-upload-dropzone {
+  position: relative;
+  padding: 16px;
+  border: 2px dashed #d0d0d0;
+  border-radius: 12px;
+  background: #fafafa;
+  transition: all 0.3s;
+
+  &.is-dragging {
+    border-color: $primary;
+    background: rgba(111, 184, 165, 0.05);
+  }
+}
+
 .image-upload-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
+}
+
+.drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(111, 184, 165, 0.95);
+  border-radius: 12px;
+  color: white;
+  pointer-events: none;
+  z-index: 10;
+
+  i {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
 }
 
 .image-item {

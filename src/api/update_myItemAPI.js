@@ -68,7 +68,9 @@ export async function toggleItemStatus(itemId, listingStatus) {
 }
 
 /**
- * 【功能】軟刪除物品 (設定 deleted_at)
+ * 【功能】刪除物品 (Hard delete - 直接從資料庫移除)
+ * NOTE: 資料庫目前沒有 deleted_at 欄位，所以使用硬刪除
+ * 如需軟刪除，請通知後端團隊新增 deleted_at TIMESTAMPTZ 欄位
  * @param {number} itemId - 物品 ID
  * @returns {Promise<object>} - 回傳刪除結果
  */
@@ -81,10 +83,10 @@ export async function deleteMyItem(itemId) {
     console.log(`🗑️ Deleting item #${itemId}`);
 
     try {
-        // Soft delete: set deleted_at to current timestamp
+        // Hard delete: permanently remove the row
         const { data, error } = await supabase
             .from('items')
-            .update({ deleted_at: new Date().toISOString() })
+            .delete()
             .eq('id', itemId)
             .eq('user_id', user.id)
             .select()
@@ -95,7 +97,7 @@ export async function deleteMyItem(itemId) {
             throw new Error(error.message);
         }
 
-        console.log(`✅ Item #${itemId} deleted`);
+        console.log(`✅ Item #${itemId} permanently deleted`);
         return data;
     } catch (error) {
         console.error('Error deleting item:', error);
