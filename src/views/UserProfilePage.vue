@@ -118,9 +118,6 @@
             <div class="section-header">
               <h2 class="section-title">我的刊登</h2>
               <div class="header-actions">
-                <button class="refresh-btn" @click="fetchMyListings" title="重新整理">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
                 <button class="manage-btn" @click="goToManageListings">
                   <i class="bi bi-gear"></i>
                   管理刊登
@@ -589,48 +586,55 @@ const fetchMyListings = async () => {
   }
 };
 
-// NOW watch for auth state changes
-watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+// Keep track of whether data has been loaded to prevent duplicates
+let dataLoaded = false;
+
+// Watch for auth state changes
+watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
   console.log('🔐 Auth state changed, logged in:', isLoggedIn);
-  if (isLoggedIn) {
-    fetchUserCarbonData();
-    fetchMyListings();
-
-    // Load favorites
-    if (favoritesStore.count === 0) {
-      favoritesStore.loadFavorites({
-        page: 1,
-        size: 100,
-        sort_by: 'favorited_at',
-        sort_direction: 'desc'
-      }).then(() => {
-        console.log('✅ Favorites loaded:', favoritesStore.count);
-      }).catch((error) => {
-        console.error('Failed to load favorites:', error);
-      });
-    }
-  }
-}, { immediate: true }); // Run immediately on mount
-
-// Also fetch on mount (for case where auth is already ready)
-onMounted(async () => {
-  if (authStore.isLoggedIn) {
-    await fetchUserCarbonData();
-    await fetchMyListings();
-
-    if (favoritesStore.count === 0) {
-      try {
-        await favoritesStore.loadFavorites({
+  if (isLoggedIn && !dataLoaded) {
+    dataLoaded = true;
+    // Load all data in parallel to improve performance
+    await Promise.allSettled([
+      fetchUserCarbonData(),
+      fetchMyListings(),
+      favoritesStore.count === 0 ? 
+        favoritesStore.loadFavorites({
           page: 1,
           size: 100,
           sort_by: 'favorited_at',
           sort_direction: 'desc'
-        });
-        console.log('✅ Favorites loaded on mount:', favoritesStore.count);
-      } catch (error) {
-        console.error('Failed to load favorites:', error);
-      }
-    }
+        }).then(() => {
+          console.log('✅ Favorites loaded:', favoritesStore.count);
+        }).catch((error) => {
+          console.error('Failed to load favorites:', error);
+        })
+      : Promise.resolve()
+    ]);
+  }
+}, { immediate: true }); // Run immediately on mount
+
+// Fetch data on mount if user is already logged in and data hasn't been loaded yet
+onMounted(async () => {
+  if (authStore.isLoggedIn && !dataLoaded) {
+    dataLoaded = true;
+    // Load all data in parallel to improve performance
+    await Promise.allSettled([
+      fetchUserCarbonData(),
+      fetchMyListings(),
+      favoritesStore.count === 0 ? 
+        favoritesStore.loadFavorites({
+          page: 1,
+          size: 100,
+          sort_by: 'favorited_at',
+          sort_direction: 'desc'
+        }).then(() => {
+          console.log('✅ Favorites loaded on mount:', favoritesStore.count);
+        }).catch((error) => {
+          console.error('Failed to load favorites:', error);
+        })
+      : Promise.resolve()
+    ]);
   }
   if (badgeModalRef.value) {
     badgeModalInstance.value = new Modal(badgeModalRef.value);
@@ -1172,29 +1176,7 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 12px;
   }
 
-  .refresh-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 8px;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
 
-    i {
-      font-size: 18px;
-    }
-
-    &:hover {
-      background: $primary;
-      color: white;
-      transform: rotate(180deg);
-    }
-  }
 
   .manage-btn {
     display: inline-flex;
