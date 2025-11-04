@@ -19,6 +19,7 @@ export async function getItemById(itemId) {
                 id,
                 user_id,
                 sub_category_id,
+                location_id,
                 title,
                 description,
                 condition,
@@ -27,7 +28,12 @@ export async function getItemById(itemId) {
                 image_urls,
                 tags,
                 created_at,
-                updated_at
+                updated_at,
+                locations!inner (
+                    id,
+                    formatted_address,
+                    type
+                )
             `)
             .eq('id', itemId)
             .single();

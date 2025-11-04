@@ -21,7 +21,21 @@ export async function updateMyItem(itemId, updateData) {
     console.log(`📝 Updating item #${itemId}:`, updateData);
 
     try {
-        // 2. 更新物品 (使用 direct query - RPC may not exist)
+        // 2. 如果要更新 location_id，先驗證該地點屬於當前使用者
+        if (updateData.location_id) {
+            const { data: locationCheck, error: locationError } = await supabase
+                .from('locations')
+                .select('id')
+                .eq('id', updateData.location_id)
+                .eq('user_id', user.id)
+                .single();
+
+            if (locationError || !locationCheck) {
+                throw new Error('無效的地點 ID，或該地點不屬於當前使用者。請先在個人資料中新增此地區。');
+            }
+        }
+
+        // 3. 更新物品 (使用 direct query - RPC may not exist)
         const { data, error } = await supabase
             .from('items')
             .update(updateData)

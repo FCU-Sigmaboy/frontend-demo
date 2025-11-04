@@ -195,49 +195,27 @@
               </label>
               <select
                 id="location"
-                v-model="formData.location"
+                v-model="formData.locationId"
                 class="form-select"
                 required
               >
-                <option value="">請選擇地區</option>
-                <option value="中區">台中市中區</option>
-                <option value="東區">台中市東區</option>
-                <option value="南區">台中市南區</option>
-                <option value="西區">台中市西區</option>
-                <option value="北區">台中市北區</option>
-                <option value="西屯區">台中市西屯區</option>
-                <option value="南屯區">台中市南屯區</option>
-                <option value="北屯區">台中市北屯區</option>
-                <option value="豐原區">台中市豐原區</option>
-                <option value="大里區">台中市大里區</option>
-                <option value="太平區">台中市太平區</option>
-                <option value="沙鹿區">台中市沙鹿區</option>
+                <option :value="null">請選擇地區</option>
+                <option
+                  v-for="location in userLocations"
+                  :key="location.id"
+                  :value="location.id"
+                >
+                  {{ location.formatted_address }}
+                  <span v-if="location.is_primary"> (預設)</span>
+                  <span v-if="location.type"> - {{ location.type }}</span>
+                </option>
               </select>
-            </div>
-
-            <!-- Trade Method Field -->
-            <div class="form-section">
-              <label class="form-label">
-                交易方式 <span class="required">*</span>
-              </label>
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.tradeMethods.meetup"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">面交</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.tradeMethods.delivery"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">郵寄/宅配</span>
-                </label>
-              </div>
+              <p class="form-hint">
+                沒有您想要的地區？
+                <router-link :to="{ name: 'UserProfile' }" class="link-text">
+                  前往個人資料新增地區
+                </router-link>
+              </p>
             </div>
 
             <!-- Form Actions -->
@@ -284,6 +262,7 @@ const isSubmitting = ref(false);
 const isLoading = ref(false);
 const imageInput = ref(null);
 const subCategories = ref([]);
+const userLocations = ref([]);
 
 const formData = ref({
   images: [],
@@ -294,11 +273,7 @@ const formData = ref({
   isFree: false,
   isNegotiable: false,
   condition: '',
-  location: '',
-  tradeMethods: {
-    meetup: false,
-    delivery: false
-  }
+  locationId: null
 });
 
 const conditions = [
@@ -331,6 +306,41 @@ const fetchCategories = async () => {
   }
 };
 
+// Fetch user's locations from database
+const fetchUserLocations = async () => {
+  try {
+    console.log('📍 Fetching user locations...');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ User not authenticated');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, formatted_address, type, is_primary')
+      .eq('user_id', user.id)
+      .order('is_primary', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error fetching locations:', error);
+      return;
+    }
+
+    userLocations.value = data || [];
+    console.log('✅ Loaded user locations:', userLocations.value);
+
+    // If no locations, warn user
+    if (userLocations.value.length === 0) {
+      alert('請先在個人資料頁面設定您的所在地區');
+      router.push({ name: 'UserProfile' });
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch user locations:', error);
+  }
+};
+
 // Load item data for editing
 const loadItemData = async () => {
   if (!itemId.value) return;
@@ -357,11 +367,7 @@ const loadItemData = async () => {
       isFree: item.price === 0,
       isNegotiable: false, // This field doesn't exist in DB
       condition: item.condition || '',
-      location: '', // We'll need to fetch location separately
-      tradeMethods: {
-        meetup: false, // These fields don't exist in current DB schema
-        delivery: false
-      }
+      locationId: item.location_id || null
     };
 
     console.log('✅ Item data loaded:', formData.value);
@@ -377,6 +383,7 @@ const loadItemData = async () => {
 // Load categories and item data on mount
 onMounted(async () => {
   await fetchCategories();
+  await fetchUserLocations();
 
   if (isEdit.value) {
     await loadItemData();
@@ -427,9 +434,16 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Validate trade methods (skip for edit mode if not needed)
-  if (!isEdit.value && !formData.value.tradeMethods.meetup && !formData.value.tradeMethods.delivery) {
-    alert('請至少選擇一種交易方式');
+  // Validate location
+  if (!formData.value.locationId) {
+    alert('請選擇交易地點');
+    return;
+  }
+
+  // Validate location belongs to user
+  const isValidLocation = userLocations.value.some(loc => loc.id === formData.value.locationId);
+  if (!isValidLocation) {
+    alert('請選擇您在個人資料中設定的地區。如需新增地區，請先前往個人資料頁面設定。');
     return;
   }
 
@@ -446,7 +460,8 @@ const handleSubmit = async () => {
         condition: formData.value.condition,
         price: formData.value.price,
         sub_category_id: formData.value.category,
-        image_urls: formData.value.images
+        image_urls: formData.value.images,
+        location_id: formData.value.locationId
       };
 
       const result = await updateMyItem(itemId.value, updateData);
@@ -457,8 +472,14 @@ const handleSubmit = async () => {
       // Create new item
       console.log('📝 Creating new listing:', formData.value);
 
+      const itemData = {
+        ...formData.value,
+        user_location_id: formData.value.locationId,
+        category: formData.value.category
+      };
+
       const { createItem } = await import('../api/create_myItemAPI');
-      const result = await createItem(formData.value);
+      const result = await createItem(itemData);
 
       console.log('✅ Listing created successfully:', result);
       alert(`刊登成功！物品 ID: ${result.id}`);
@@ -644,6 +665,23 @@ const handleSubmit = async () => {
   color: #999;
   text-align: right;
   margin: 6px 0 0 0;
+}
+
+.form-hint {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0 0 0;
+
+  .link-text {
+    color: $primary;
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 // Image Upload
