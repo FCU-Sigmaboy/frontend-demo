@@ -74,6 +74,24 @@
                 </button>
               </div>
             </div>
+
+            <div class="achievements-section col-xl-6 col-lg-12 mt-md-4 mt-xl-0">
+              <h3 class="achievements-title">成就徽章</h3>
+              <div class="achievements-stepper">
+                <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
+                <div
+                    v-for="badge in achievements"
+                    :key="badge.id"
+                    :class="['step-item', { 'unlocked': badge.unlocked }]"
+                    @click="openBadgeModal(badge)"
+                >
+                  <div class="step-circle">
+                    <img :src="badge.image" :alt="badge.label" class="step-image" />
+                  </div>
+                  <span class="step-label">{{ badge.label }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -303,11 +321,30 @@
     </main>
 
     <AppFooter />
+
+    <!-- Bootstrap Badge Modal -->
+    <div class="modal fade" id="badgeModal" ref="badgeModalRef" tabindex="-1" aria-labelledby="badgeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title w-100 text-center" id="badgeModalLabel">{{ selectedBadge?.label }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <div v-if="selectedBadge">
+              <img :src="selectedBadge.image" :alt="selectedBadge.label" class="img-fluid mb-3" style="max-height: 150px;" />
+              <p>{{ selectedBadge.description }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
@@ -318,6 +355,14 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
+import { Modal } from 'bootstrap';
+
+// --- 徽章圖片 ---
+// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
+import badgeRookie from '../assets/1badge.png';
+import badgeAdept from '../assets/2badge.png';
+import badgeExpert from '../assets/3badge.png';
+import badgeMaster from '../assets/4badge.png';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -328,6 +373,9 @@ const userPoints = ref(500);
 const activeTab = ref('listings');
 const myListings = ref([]);
 const isLoadingListings = ref(false);
+const selectedBadge = ref(null);
+const badgeModalRef = ref(null);
+const badgeModalInstance = ref(null);
 
 // Display limits for "Show More"
 const activeDisplayLimit = ref(4);
@@ -347,6 +395,38 @@ const userStats = computed(() => ({
   purchases: 5,
   sales: 3
 }));
+
+// Achievement Badges (Updated with images and descriptions)
+const achievements = ref([
+  { id: 1, label: '環保新手', unlocked: true, image: badgeRookie, description: '完成首次物品刊登，開啟您的環保旅程！' },
+  { id: 2, label: '環保達人', unlocked: true, image: badgeAdept, description: '累積完成 10 次交易，感謝您為地球的貢獻！' },
+  { id: 3, label: '環保高手', unlocked: false, image: badgeExpert, description: '累積完成 50 次交易，您是環保的實踐家！' },
+  { id: 4, label: '環保大師', unlocked: false, image: badgeMaster, description: '累積完成 100 次交易，您的環保精神值得敬佩！' },
+]);
+
+// Computed property for unlocked line width (Added)
+const unlockedSteps = computed(() => {
+  return achievements.value.filter(b => b.unlocked).length;
+});
+
+const unlockedLineWidth = computed(() => {
+  const totalSteps = achievements.value.length;
+  if (unlockedSteps.value <= 1) {
+    return '0%';
+  }
+  // 寬度是 (已解鎖 - 1) / (總數 - 1) * 75% (線條總寬度)
+  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
+  return `${percentage * 75}%`;
+});
+
+// 給手機版使用的寬度計算 (Added)
+const unlockedLineWidthMobile = computed(() => {
+  const totalSteps = achievements.value.length;
+  if (unlockedSteps.value <= 1) return '0%';
+  // 在手機版，線條總寬度是 80%
+  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
+  return `${percentage * 80}%`;
+});
 
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
@@ -473,7 +553,17 @@ onMounted(async () => {
       }
     }
   }
+  if (badgeModalRef.value) {
+    badgeModalInstance.value = new Modal(badgeModalRef.value);
+  }
 });
+
+onBeforeUnmount(() => {
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.dispose();
+  }
+});
+
 
 // Avatar upload
 const avatarFileInput = ref(null);
@@ -551,6 +641,13 @@ const reloadProfile = async () => {
 };
 
 // Methods
+const openBadgeModal = (badge) => {
+  selectedBadge.value = badge;
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.show();
+  }
+};
+
 const goToEditProfile = () => {
   router.push({ name: 'EditProfile' });
 };
@@ -826,6 +923,103 @@ const scrollCarousel = (carouselRef, index) => {
   &:hover {
     background: $primary;
     color: white;
+  }
+}
+
+// Achievement Badges (Updated)
+.achievements-section {
+  .achievements-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0 0 20px 0;
+  }
+}
+
+.achievements-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50px;
+    left: 12.5%;
+    width: 75%;
+    height: 4px;
+    background: #e9ecef;
+    z-index: 0;
+    transform: translateY(-50%);
+  }
+
+  .unlocked-line {
+    position: absolute;
+    top: 50px;
+    left: 12.5%;
+    height: 4px;
+    background: $primary;
+    z-index: 1;
+    transform: translateY(-50%);
+    transition: width 0.5s ease;
+  }
+
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    cursor: pointer;
+
+    .step-circle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      background-color: #f0f7f5;
+      border: 2px solid #e0e0e0;
+      transition: all 0.3s;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow: hidden;
+
+      .step-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transition: filter 0.3s;
+        filter: grayscale(100%) opacity(0.6);
+      }
+    }
+
+    .step-label {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #999;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+
+    &.unlocked {
+      .step-circle {
+        border-color: $primary;
+        background-color: #e6f4f0;
+
+        .step-image {
+          filter: grayscale(0%) opacity(1);
+        }
+      }
+      .step-label {
+        color: #1e1e1e;
+      }
+    }
   }
 }
 
