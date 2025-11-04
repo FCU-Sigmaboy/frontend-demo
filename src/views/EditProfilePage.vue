@@ -47,7 +47,7 @@
                   <input
                     ref="fileInput"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
                     style="display: none"
                     @change="handleFileUpload"
                   />
@@ -215,13 +215,29 @@ const triggerFileInput = () => {
 
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      formData.value.avatar = e.target.result;
-    };
-    reader.readAsDataURL(file);
+  if (!file) return;
+
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    alert('僅支援 JPG、PNG、WEBP 格式的圖片');
+    event.target.value = '';
+    return;
   }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    alert('圖片大小不能超過 5MB');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    formData.value.avatar = e.target.result;
+  };
+  reader.readAsDataURL(file);
 };
 
 const removeAvatar = () => {
@@ -334,12 +350,10 @@ const handleSubmit = async () => {
     console.log('✅ Profile updated successfully:', result);
 
     // Update auth store with new data
-    if (userData.nickname) {
-      authStore.userName = userData.nickname;
-    }
-    if (userData.profile_picture_url) {
-      authStore.userAvatar = userData.profile_picture_url;
-    }
+    authStore.updateCustomProfile({
+      nickname: userData.nickname,
+      avatar_url: userData.profile_picture_url
+    });
 
     // Show success message
     alert('個人資料已更新！');

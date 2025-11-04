@@ -16,14 +16,14 @@
                 referrerpolicy="no-referrer"
               />
               <i v-else class="bi bi-person-circle default-avatar"></i>
-              <button class="edit-avatar-btn" @click="goToEditProfile" title="編輯大頭貼">
+              <button class="edit-avatar-btn" @click="triggerAvatarUpload" title="編輯大頭貼">
                 <i class="bi bi-camera"></i>
               </button>
             </div>
             <input
               ref="avatarFileInput"
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
               style="display: none"
               @change="handleAvatarUpload"
             />
@@ -205,6 +205,8 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { getMyItems } from '../api/get_myItemsAPI';
+import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
+import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
@@ -338,14 +340,77 @@ onMounted(async () => {
 
 // Avatar upload
 const avatarFileInput = ref(null);
+const isUploadingAvatar = ref(false);
 
-const handleAvatarUpload = (event) => {
+const triggerAvatarUpload = () => {
+  avatarFileInput.value?.click();
+};
+
+const handleAvatarUpload = async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  // For now, just redirect to edit profile page
-  // In future, could upload directly here
-  router.push({ name: 'EditProfile' });
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    alert('僅支援 JPG、PNG、WEBP 格式的圖片');
+    event.target.value = ''; // Clear input
+    return;
+  }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    alert('圖片大小不能超過 5MB');
+    event.target.value = '';
+    return;
+  }
+
+  try {
+    isUploadingAvatar.value = true;
+    console.log('📤 Uploading avatar:', file.name);
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Image = e.target.result;
+
+      try {
+        // Call update API with only avatar change
+        const result = await updateMyProfile(
+          { profile_picture_url: base64Image }, // userData
+          {}, // profileData (no changes)
+          [] // locationsArray (no changes)
+        );
+
+        console.log('✅ Avatar updated successfully:', result);
+
+        // Update auth store with new avatar
+        authStore.updateCustomProfile({ avatar_url: base64Image });
+
+        // Show success message
+        alert('大頭貼更新成功！');
+      } catch (error) {
+        console.error('❌ Failed to update avatar:', error);
+        alert(`更新失敗：${error.message}`);
+      } finally {
+        isUploadingAvatar.value = false;
+        event.target.value = ''; // Clear input
+      }
+    };
+
+    reader.readAsDataURL(file);
+  } catch (error) {
+    console.error('❌ Error reading file:', error);
+    alert('讀取圖片失敗，請重試');
+    isUploadingAvatar.value = false;
+    event.target.value = '';
+  }
+};
+
+// Reload custom profile from database
+const reloadProfile = async () => {
+  await authStore.loadCustomProfile();
 };
 
 // Methods
