@@ -3,6 +3,9 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
+      <!-- Breadcrumb -->
+      <Breadcrumb :items="breadcrumbItems" />
+
       <div class="create-container">
         <!-- Page Header -->
         <div class="page-header">
@@ -13,12 +16,55 @@
           <div class="spacer"></div>
         </div>
 
-        <!-- Loading State -->
-        <div v-if="isLoading" class="loading-overlay">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">載入中...</span>
+        <!-- Loading State - Skeleton -->
+        <div v-if="isLoading" class="form-card skeleton-loading">
+          <!-- Skeleton Header -->
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-hint"></div>
+            <div class="skeleton-image-grid">
+              <div v-for="i in 4" :key="`skeleton-img-${i}`" class="skeleton-image-box"></div>
+            </div>
           </div>
-          <p>載入中...</p>
+
+          <!-- Skeleton Input Fields -->
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-input"></div>
+          </div>
+
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-select"></div>
+          </div>
+
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-textarea"></div>
+          </div>
+
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-input short"></div>
+          </div>
+
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-options">
+              <div v-for="i in 5" :key="`skeleton-opt-${i}`" class="skeleton-option"></div>
+            </div>
+          </div>
+
+          <div class="skeleton-section">
+            <div class="skeleton-label"></div>
+            <div class="skeleton-select"></div>
+          </div>
+
+          <!-- Skeleton Actions -->
+          <div class="skeleton-actions">
+            <div class="skeleton-button"></div>
+            <div class="skeleton-button primary"></div>
+          </div>
         </div>
 
         <!-- Create Form -->
@@ -265,6 +311,7 @@ import { updateMyItem } from '../api/update_myItemAPI';
 import imageCompression from 'browser-image-compression';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -273,8 +320,19 @@ const router = useRouter();
 const userPoints = ref(500);
 const itemId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isEdit = computed(() => !!itemId.value);
+
+// Breadcrumb items
+const breadcrumbItems = computed(() => {
+  if (isEdit.value) {
+    return [
+      { label: '我的刊登', to: '/manage-listings' },
+      { label: '編輯刊登' }
+    ];
+  }
+  return [{ label: '刊登物品' }];
+});
 const isSubmitting = ref(false);
-const isLoading = ref(false);
+const isLoading = ref(!!route.params.id); // 如果是編輯模式，初始為 true
 const isDragging = ref(false);
 const imageInput = ref(null);
 const subCategories = ref([]);
@@ -590,7 +648,7 @@ const handleSubmit = async () => {
 
 .main-content {
   flex: 1;
-  padding: 30px 0 60px;
+  padding-bottom: 60px;
 }
 
 .create-container {
@@ -599,22 +657,128 @@ const handleSubmit = async () => {
   padding: 0 20px;
 }
 
-// Loading Overlay
-.loading-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 100px 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+// Skeleton Loading
+.skeleton-loading {
+  padding: 40px;
 
-  p {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #666;
-    margin-top: 16px;
+  .skeleton-section {
+    margin-bottom: 32px;
+
+    &:last-of-type {
+      margin-bottom: 0;
+    }
+  }
+
+  .skeleton-label {
+    width: 120px;
+    height: 20px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-hint {
+    width: 250px;
+    height: 14px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-image-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .skeleton-image-box {
+    aspect-ratio: 1;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-input {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s ease-in-out infinite;
+
+    &.short {
+      width: 40%;
+    }
+  }
+
+  .skeleton-select {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-textarea {
+    width: 100%;
+    height: 140px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .skeleton-option {
+    flex: 1;
+    min-width: 100px;
+    height: 48px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .skeleton-button {
+    width: 120px;
+    height: 50px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s ease-in-out infinite;
+
+    &.primary {
+      opacity: 0.8;
+    }
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }
 
@@ -1066,10 +1230,6 @@ const handleSubmit = async () => {
 
 // Responsive
 @media (max-width: 767.98px) {
-  .main-content {
-    padding: 20px 0 50px;
-  }
-
   .create-container {
     padding: 0 15px;
   }
@@ -1084,6 +1244,24 @@ const handleSubmit = async () => {
 
   .form-card {
     padding: 30px 24px;
+  }
+
+  .skeleton-loading {
+    padding: 30px 24px;
+
+    .skeleton-image-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .skeleton-actions {
+      flex-direction: column-reverse;
+      gap: 12px;
+
+      .skeleton-button {
+        width: 100%;
+      }
+    }
   }
 
   .image-upload-grid {
@@ -1111,10 +1289,6 @@ const handleSubmit = async () => {
 }
 
 @media (max-width: 575.98px) {
-  .main-content {
-    padding: 15px 0 40px;
-  }
-
   .create-container {
     padding: 0 10px;
   }
@@ -1142,6 +1316,23 @@ const handleSubmit = async () => {
 
   .form-card {
     padding: 24px 16px;
+  }
+
+  .skeleton-loading {
+    padding: 24px 16px;
+
+    .skeleton-image-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .skeleton-options {
+      flex-direction: column;
+    }
+
+    .skeleton-option {
+      min-width: 100%;
+    }
   }
 
   .section-label {
