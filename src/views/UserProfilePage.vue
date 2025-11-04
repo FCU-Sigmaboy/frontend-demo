@@ -22,7 +22,7 @@
             </div>
 
             <div class="profile-details-wrapper row align-items-start">
-              <div class="user-info-section col-xl-5 col-lg-12">
+              <div class="user-info-section col-xl-6 col-lg-12">
                 <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
                 <p class="user-email">{{ authStore.userEmail }}</p>
 
@@ -70,7 +70,7 @@
               </div>
 
               <!-- Achievement Badges Section -->
-              <div class="achievements-section col-xl-7 col-lg-12 mt-md-4 mt-xl-0">
+              <div class="achievements-section col-xl-6 col-lg-12 mt-md-4 mt-xl-0">
                 <h3 class="achievements-title">成就徽章</h3>
                 <div class="achievements-stepper">
                   <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
@@ -917,9 +917,16 @@ onBeforeUnmount(() => {
   }
 
   .user-info-section {
+    text-align: center;
     .user-name {
       font-size: 28px;
     }
+  }
+
+  .follow-stats,
+  .user-stats,
+  .action-buttons {
+    justify-content: center;
   }
 
   .user-stats {
