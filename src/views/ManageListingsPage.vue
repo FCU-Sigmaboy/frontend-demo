@@ -326,7 +326,7 @@ const goToCreateListing = () => {
 };
 
 const editListing = (id) => {
-  router.push({ name: 'CreateListing', params: { id } });
+  router.push({ name: 'EditListing', params: { id: String(id) } });
 };
 
 const viewTransaction = (id) => {
