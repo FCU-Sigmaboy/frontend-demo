@@ -6,7 +6,7 @@
         <img :src="product.user.profile_picture_url" :alt="product.user.nickname" class="seller-avatar" />
         <span class="seller-name">{{ product.user.nickname }}</span>
       </div>
-      <button class="contact-btn" @click.stop="handleContact">
+      <button v-if="!isOwner" class="contact-btn" @click.stop="handleContact">
         私訊此商品
       </button>
     </div>
@@ -25,6 +25,7 @@
 
         <!-- Favorite Button -->
         <button
+          v-if="!isOwner"
           class="favorite-btn"
           :class="{ active: isFavorite }"
           @click.stop="toggleFavorite"
@@ -34,7 +35,7 @@
       </div>
 
       <!-- Price -->
-      <p class="product-price"><i class="bi bi-leaf points-icon" style="font-size: 1rem;"></i> {{ product.price }} </p>
+      <p class="product-price"><i class="bi bi-leaf points-icon" style="font-size: 1rem;"></i> {{ new Intl.NumberFormat().format(product.price) }} </p>
 
       <!-- Location and Distance -->
       <div class="product-meta">
@@ -57,10 +58,16 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '@/stores/favorites';
+import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
+const authStore = useAuthStore();
+
+const isOwner = computed(() => {
+  return authStore.user && authStore.user.id === props.product.user.id;
+});
 
 const props = defineProps({
   product: {
