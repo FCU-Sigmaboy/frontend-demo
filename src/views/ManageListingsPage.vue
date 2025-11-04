@@ -264,15 +264,15 @@ const loadListings = async () => {
         }
 
         return {
-          id: item.id,
+          id: item.item_id,
           name: item.title,
-          image: item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item',
+          image: item.image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item',
           status: status,
           publishedDate: formatDate(item.created_at),
           updatedDate: formatDate(item.updated_at),
           price: item.price || 0,
-          views: 0, // API doesn't return views yet
-          likes: 0  // API doesn't return likes yet
+          views: 0, // API doesn't return view_count yet
+          likes: item.favorites_count || 0
         };
       });
 
