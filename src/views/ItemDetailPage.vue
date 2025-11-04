@@ -89,7 +89,13 @@
             <div class="image-gallery">
               <!-- Main Image -->
               <div class="main-image-wrapper">
-                <img :src="currentImage" alt="Product Image" class="main-image" />
+                <img
+                  :src="currentImage"
+                  alt="Product Image"
+                  class="main-image"
+                  @click="openImagePreview(currentImageIndex)"
+                  style="cursor: pointer;"
+                />
 
                 <!-- Navigation Arrows for Mobile -->
                 <button class="nav-arrow nav-prev" @click="previousImage">
@@ -178,11 +184,66 @@
     </main>
 
     <AppFooter />
+
+    <!-- Image Preview Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showImagePreview" class="image-preview-modal" @click="closeImagePreview">
+        <!-- Close Button -->
+        <button class="modal-close-btn" @click="closeImagePreview">
+          <i class="bi bi-x-lg"></i>
+        </button>
+
+        <!-- Image Counter -->
+        <div class="image-counter">
+          {{ previewImageIndex + 1 }} / {{ product.image_urls.length }}
+        </div>
+
+        <!-- Previous Button -->
+        <button
+          class="modal-nav-btn modal-prev-btn"
+          @click.stop="previousPreviewImage"
+          :disabled="product.image_urls.length <= 1"
+        >
+          <i class="bi bi-chevron-left"></i>
+        </button>
+
+        <!-- Next Button -->
+        <button
+          class="modal-nav-btn modal-next-btn"
+          @click.stop="nextPreviewImage"
+          :disabled="product.image_urls.length <= 1"
+        >
+          <i class="bi bi-chevron-right"></i>
+        </button>
+
+        <!-- Main Preview Image -->
+        <div class="modal-image-container" @click.stop>
+          <img
+            :src="product.image_urls[previewImageIndex]"
+            :alt="`Product Image ${previewImageIndex + 1}`"
+            class="modal-image"
+          />
+        </div>
+
+        <!-- Thumbnail Strip -->
+        <div class="modal-thumbnail-strip" @click.stop>
+          <button
+            v-for="(image, index) in product.image_urls"
+            :key="index"
+            class="modal-thumbnail"
+            :class="{ active: previewImageIndex === index }"
+            @click="previewImageIndex = index"
+          >
+            <img :src="image" :alt="`Thumbnail ${index + 1}`" />
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -213,6 +274,10 @@ const product = ref({
 // Related products
 const relatedProducts = ref([]);
 const loadingRelated = ref(true);
+
+// Image preview modal
+const showImagePreview = ref(false);
+const previewImageIndex = ref(0);
 
 // Computed
 const currentImage = computed(() => {
@@ -265,6 +330,50 @@ const handleFavoriteToggle = (data) => {
 
 const handleContactSeller = (productId) => {
   console.log('Contact seller for product:', productId);
+};
+
+// Image preview methods
+const openImagePreview = (index) => {
+  previewImageIndex.value = index;
+  showImagePreview.value = true;
+  document.body.style.overflow = 'hidden'; // Prevent body scroll
+};
+
+const closeImagePreview = () => {
+  showImagePreview.value = false;
+  document.body.style.overflow = ''; // Restore body scroll
+};
+
+const previousPreviewImage = () => {
+  if (!product.value.image_urls || product.value.image_urls.length === 0) return;
+
+  if (previewImageIndex.value > 0) {
+    previewImageIndex.value--;
+  } else {
+    previewImageIndex.value = product.value.image_urls.length - 1;
+  }
+};
+
+const nextPreviewImage = () => {
+  if (!product.value.image_urls || product.value.image_urls.length === 0) return;
+
+  if (previewImageIndex.value < product.value.image_urls.length - 1) {
+    previewImageIndex.value++;
+  } else {
+    previewImageIndex.value = 0;
+  }
+};
+
+const handleKeyDown = (event) => {
+  if (!showImagePreview.value) return;
+
+  if (event.key === 'Escape') {
+    closeImagePreview();
+  } else if (event.key === 'ArrowLeft') {
+    previousPreviewImage();
+  } else if (event.key === 'ArrowRight') {
+    nextPreviewImage();
+  }
 };
 
 // Load related products based on sub-category
@@ -350,6 +459,12 @@ const retryLoadProduct = () => {
 onMounted(async () => {
   await authStore.initAuth();
   loadProductDetails();
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+  document.body.style.overflow = ''; // Ensure scroll is restored
 });
 </script>
 
@@ -1014,6 +1129,285 @@ onMounted(async () => {
   .container {
     min-width: 360px;
     padding: 0 10px;
+  }
+}
+
+// Image Preview Modal Styles
+.image-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.95);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10001;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: rotate(90deg);
+  }
+}
+
+.image-counter {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  z-index: 10001;
+}
+
+.modal-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 30px;
+  cursor: pointer;
+  z-index: 10001;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &.modal-prev-btn {
+    left: 30px;
+  }
+
+  &.modal-next-btn {
+    right: 30px;
+  }
+}
+
+.modal-image-container {
+  max-width: 90%;
+  max-height: calc(100vh - 200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+
+  .modal-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.modal-thumbnail-strip {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border-radius: 12px;
+  max-width: 90%;
+  overflow-x: auto;
+  z-index: 10001;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+}
+
+.modal-thumbnail {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: none;
+  padding: 0;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+  }
+
+  &.active {
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba(111, 184, 165, 0.3);
+  }
+}
+
+// Modal Transition
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+// Responsive styles for modal
+@media (max-width: 991.98px) {
+  .modal-nav-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+
+    &.modal-prev-btn {
+      left: 20px;
+    }
+
+    &.modal-next-btn {
+      right: 20px;
+    }
+  }
+
+  .image-counter {
+    top: 20px;
+    font-size: 14px;
+    padding: 6px 16px;
+  }
+
+  .modal-close-btn {
+    top: 15px;
+    right: 15px;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .modal-image-container {
+    max-height: calc(100vh - 180px);
+  }
+
+  .modal-thumbnail-strip {
+    bottom: 20px;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .modal-thumbnail {
+    width: 70px;
+    height: 70px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .image-preview-modal {
+    padding: 10px;
+  }
+
+  .modal-nav-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+
+    &.modal-prev-btn {
+      left: 10px;
+    }
+
+    &.modal-next-btn {
+      right: 10px;
+    }
+  }
+
+  .image-counter {
+    top: 15px;
+    font-size: 13px;
+    padding: 5px 14px;
+  }
+
+  .modal-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .modal-image-container {
+    max-height: calc(100vh - 160px);
+  }
+
+  .modal-thumbnail-strip {
+    bottom: 15px;
+    padding: 10px;
+    gap: 8px;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+  }
+
+  .modal-thumbnail {
+    width: 60px;
+    height: 60px;
+    border-width: 2px;
   }
 }
 </style>
