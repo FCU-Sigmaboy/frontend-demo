@@ -118,14 +118,121 @@
               <p>載入中...</p>
             </div>
 
-            <!-- Listings Grid -->
-            <div v-else-if="myListings.length > 0" class="listings-grid">
-              <ProductCard
-                v-for="product in myListings"
-                :key="product.id"
-                :product="product"
-                @click="goToProductDetail(product.id)"
-              />
+            <!-- Has Listings -->
+            <div v-else-if="myListings.length > 0" class="listings-sections">
+              <!-- Active Listings Section (已上架) -->
+              <div v-if="activeListings.length > 0" class="listing-section">
+                <div class="subsection-header">
+                  <h3 class="subsection-title">已上架</h3>
+                  <span class="subsection-count">{{ activeListings.length }} 件</span>
+                </div>
+
+                <!-- Desktop: Grid with Show More -->
+                <div class="desktop-grid">
+                  <div class="listings-grid">
+                    <ProductCard
+                      v-for="product in displayedActiveListings"
+                      :key="product.item_id"
+                      :product="product"
+                      @click="goToProductDetail(product.item_id)"
+                    />
+                  </div>
+                  <button
+                    v-if="activeListings.length > activeDisplayLimit"
+                    class="show-more-btn"
+                    @click="activeDisplayLimit += 4"
+                  >
+                    <i class="bi bi-chevron-down"></i>
+                    顯示更多
+                  </button>
+                </div>
+
+                <!-- Mobile: Swipeable Carousel -->
+                <div class="mobile-carousel">
+                  <button
+                    class="carousel-arrow prev"
+                    @click="scrollActivePrev"
+                    :disabled="activeScrollIndex === 0"
+                  >
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <div ref="activeCarousel" class="carousel-container">
+                    <div class="carousel-track">
+                      <ProductCard
+                        v-for="product in activeListings"
+                        :key="product.item_id"
+                        :product="product"
+                        class="carousel-item"
+                        @click="goToProductDetail(product.item_id)"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    class="carousel-arrow next"
+                    @click="scrollActiveNext"
+                    :disabled="activeScrollIndex >= activeListings.length - 1"
+                  >
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Inactive Listings Section (已下架) -->
+              <div v-if="inactiveListings.length > 0" class="listing-section">
+                <div class="subsection-header">
+                  <h3 class="subsection-title">已下架</h3>
+                  <span class="subsection-count">{{ inactiveListings.length }} 件</span>
+                </div>
+
+                <!-- Desktop: Grid with Show More -->
+                <div class="desktop-grid">
+                  <div class="listings-grid">
+                    <ProductCard
+                      v-for="product in displayedInactiveListings"
+                      :key="product.item_id"
+                      :product="product"
+                      @click="goToProductDetail(product.item_id)"
+                    />
+                  </div>
+                  <button
+                    v-if="inactiveListings.length > inactiveDisplayLimit"
+                    class="show-more-btn"
+                    @click="inactiveDisplayLimit += 4"
+                  >
+                    <i class="bi bi-chevron-down"></i>
+                    顯示更多
+                  </button>
+                </div>
+
+                <!-- Mobile: Swipeable Carousel -->
+                <div class="mobile-carousel">
+                  <button
+                    class="carousel-arrow prev"
+                    @click="scrollInactivePrev"
+                    :disabled="inactiveScrollIndex === 0"
+                  >
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <div ref="inactiveCarousel" class="carousel-container">
+                    <div class="carousel-track">
+                      <ProductCard
+                        v-for="product in inactiveListings"
+                        :key="product.item_id"
+                        :product="product"
+                        class="carousel-item"
+                        @click="goToProductDetail(product.item_id)"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    class="carousel-arrow next"
+                    @click="scrollInactiveNext"
+                    :disabled="inactiveScrollIndex >= inactiveListings.length - 1"
+                  >
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Empty State -->
@@ -222,6 +329,18 @@ const activeTab = ref('listings');
 const myListings = ref([]);
 const isLoadingListings = ref(false);
 
+// Display limits for "Show More"
+const activeDisplayLimit = ref(4);
+const inactiveDisplayLimit = ref(4);
+
+// Carousel scroll indices for mobile
+const activeScrollIndex = ref(0);
+const inactiveScrollIndex = ref(0);
+
+// Refs for carousel containers
+const activeCarousel = ref(null);
+const inactiveCarousel = ref(null);
+
 const userStats = computed(() => ({
   listings: myListings.value.length,
   favorites: favoritesStore.count,
@@ -242,6 +361,24 @@ const favoriteItems = computed(() => {
 });
 const purchaseHistory = ref([]);
 const salesHistory = ref([]);
+
+// Split listings into active/inactive
+const activeListings = computed(() => {
+  return myListings.value.filter(item => item.listing_status === true);
+});
+
+const inactiveListings = computed(() => {
+  return myListings.value.filter(item => item.listing_status === false);
+});
+
+// Display limited versions for desktop
+const displayedActiveListings = computed(() => {
+  return activeListings.value.slice(0, activeDisplayLimit.value);
+});
+
+const displayedInactiveListings = computed(() => {
+  return inactiveListings.value.slice(0, inactiveDisplayLimit.value);
+});
 
 // Define fetchMyListings FIRST before using it
 const fetchMyListings = async () => {
@@ -444,6 +581,47 @@ const goToReviews = () => {
 
 const goToFollowers = () => {
   router.push({ name: 'MyFollowers' });
+};
+
+// Carousel scroll functions for mobile
+const scrollActivePrev = () => {
+  if (activeScrollIndex.value > 0) {
+    activeScrollIndex.value--;
+    scrollCarousel(activeCarousel.value, activeScrollIndex.value);
+  }
+};
+
+const scrollActiveNext = () => {
+  if (activeScrollIndex.value < activeListings.value.length - 1) {
+    activeScrollIndex.value++;
+    scrollCarousel(activeCarousel.value, activeScrollIndex.value);
+  }
+};
+
+const scrollInactivePrev = () => {
+  if (inactiveScrollIndex.value > 0) {
+    inactiveScrollIndex.value--;
+    scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
+  }
+};
+
+const scrollInactiveNext = () => {
+  if (inactiveScrollIndex.value < inactiveListings.value.length - 1) {
+    inactiveScrollIndex.value++;
+    scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
+  }
+};
+
+const scrollCarousel = (carouselRef, index) => {
+  if (carouselRef) {
+    const track = carouselRef.querySelector('.carousel-track');
+    if (track) {
+      const itemWidth = track.querySelector('.carousel-item')?.offsetWidth || 0;
+      const gap = 16; // gap between items
+      const scrollPosition = index * (itemWidth + gap);
+      track.style.transform = `translateX(-${scrollPosition}px)`;
+    }
+  }
 };
 </script>
 
@@ -796,6 +974,85 @@ const goToFollowers = () => {
   }
 }
 
+// Listings Sections
+.listings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.listing-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+
+  .subsection-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+  }
+
+  .subsection-count {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    background: #f5f5f5;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+}
+
+// Desktop grid (default)
+.desktop-grid {
+  display: block;
+}
+
+.mobile-carousel {
+  display: none;
+}
+
+.show-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px auto 0;
+  padding: 12px 32px;
+  background: white;
+  border: 1px solid $primary;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: $primary;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 16px;
+    transition: transform 0.3s;
+  }
+
+  &:hover {
+    background: $primary;
+    color: white;
+
+    i {
+      transform: translateY(3px);
+    }
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1031,6 +1288,72 @@ const goToFollowers = () => {
   .listings-grid {
     grid-template-columns: 1fr;
     gap: 15px;
+  }
+
+  // Mobile: Hide desktop grid, show carousel
+  .desktop-grid {
+    display: none;
+  }
+
+  .mobile-carousel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+
+  .carousel-container {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .carousel-track {
+    display: flex;
+    gap: 16px;
+    transition: transform 0.3s ease;
+  }
+
+  .carousel-item {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .carousel-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: white;
+    border: 1px solid $primary;
+    border-radius: 50%;
+    color: $primary;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+
+    i {
+      font-size: 18px;
+    }
+
+    &:hover:not(:disabled) {
+      background: $primary;
+      color: white;
+      transform: scale(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    &.prev {
+      order: -1;
+    }
+
+    &.next {
+      order: 1;
+    }
   }
 
   .empty-state {
