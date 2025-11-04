@@ -86,7 +86,7 @@
                 <td class="col-image">
                   <div class="product-info">
                     <img :src="listing.image" :alt="listing.name" class="product-image" />
-                    <span class="product-name">{{ listing.name }}</span>
+                    <a class="product-name" :href="`/items/${listing.id}`">{{ listing.name }}</a>
                   </div>
                 </td>
 
@@ -628,7 +628,14 @@ onMounted(() => {
   .product-name {
     font-weight: 500;
     color: #1e1e1e;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
+
+
 }
 
 .status-badge {
