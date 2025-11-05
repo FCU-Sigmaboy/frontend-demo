@@ -162,9 +162,11 @@ const goToSellerProfile = () => {
   overflow: hidden;
   transition: all 0.3s;
   height: 100%;
+  width: 100%;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 
   &:hover {
     transform: translateY(-5px);

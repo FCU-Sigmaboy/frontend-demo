@@ -167,7 +167,7 @@
                   <button
                     class="carousel-arrow prev"
                     @click="scrollActivePrev"
-                    :disabled="activeScrollIndex === 0"
+                    :disabled="isActivePrevDisabled"
                   >
                     <i class="bi bi-chevron-left"></i>
                   </button>
@@ -185,7 +185,7 @@
                   <button
                     class="carousel-arrow next"
                     @click="scrollActiveNext"
-                    :disabled="activeScrollIndex >= activeListings.length - 1"
+                    :disabled="isActiveNextDisabled"
                   >
                     <i class="bi bi-chevron-right"></i>
                   </button>
@@ -224,7 +224,7 @@
                   <button
                     class="carousel-arrow prev"
                     @click="scrollInactivePrev"
-                    :disabled="inactiveScrollIndex === 0"
+                    :disabled="isInactivePrevDisabled"
                   >
                     <i class="bi bi-chevron-left"></i>
                   </button>
@@ -242,7 +242,7 @@
                   <button
                     class="carousel-arrow next"
                     @click="scrollInactiveNext"
-                    :disabled="inactiveScrollIndex >= inactiveListings.length - 1"
+                    :disabled="isInactiveNextDisabled"
                   >
                     <i class="bi bi-chevron-right"></i>
                   </button>
@@ -510,6 +510,25 @@ const displayedInactiveListings = computed(() => {
   return inactiveListings.value.slice(0, inactiveDisplayLimit.value);
 });
 
+// Computed properties for carousel arrow disabled states
+const isActivePrevDisabled = computed(() => {
+  return activeScrollIndex.value === 0;
+});
+
+const isActiveNextDisabled = computed(() => {
+  const visibleCards = getVisibleCardsCount();
+  return activeScrollIndex.value >= activeListings.value.length - visibleCards;
+});
+
+const isInactivePrevDisabled = computed(() => {
+  return inactiveScrollIndex.value === 0;
+});
+
+const isInactiveNextDisabled = computed(() => {
+  const visibleCards = getVisibleCardsCount();
+  return inactiveScrollIndex.value >= inactiveListings.value.length - visibleCards;
+});
+
 // Fetch user's carbon footprint data
 const fetchUserCarbonData = async () => {
   if (!authStore.isLoggedIn) {
@@ -614,6 +633,20 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
   }
 }, { immediate: true }); // Run immediately on mount
 
+// Reset carousel scroll positions when window is resized
+const handleResize = () => {
+  activeScrollIndex.value = 0;
+  inactiveScrollIndex.value = 0;
+
+  // Re-scroll to ensure proper positioning
+  if (activeCarousel.value) {
+    scrollCarousel(activeCarousel.value, 0);
+  }
+  if (inactiveCarousel.value) {
+    scrollCarousel(inactiveCarousel.value, 0);
+  }
+};
+
 // Fetch data on mount if user is already logged in and data hasn't been loaded yet
 onMounted(async () => {
   if (authStore.isLoggedIn && !dataLoaded) {
@@ -622,7 +655,7 @@ onMounted(async () => {
     await Promise.allSettled([
       fetchUserCarbonData(),
       fetchMyListings(),
-      favoritesStore.count === 0 ? 
+      favoritesStore.count === 0 ?
         favoritesStore.loadFavorites({
           page: 1,
           size: 100,
@@ -639,12 +672,18 @@ onMounted(async () => {
   if (badgeModalRef.value) {
     badgeModalInstance.value = new Modal(badgeModalRef.value);
   }
+
+  // Add window resize listener to reset carousel positions
+  window.addEventListener('resize', handleResize);
 });
 
 onBeforeUnmount(() => {
   if (badgeModalInstance.value) {
     badgeModalInstance.value.dispose();
   }
+
+  // Remove resize listener
+  window.removeEventListener('resize', handleResize);
 });
 
 // Methods
@@ -687,31 +726,45 @@ const goToFollowers = () => {
   router.push({ name: 'MyFollowers' });
 };
 
-// Carousel scroll functions for mobile
+// Get number of visible cards based on screen width
+const getVisibleCardsCount = () => {
+  const width = window.innerWidth;
+  if (width < 768) return 1; // Mobile: 1 card
+  if (width < 1200) return 2; // Tablet: 2 cards
+  return 1; // This shouldn't be used since desktop uses grid, but default to 1
+};
+
+// Carousel scroll functions for mobile and tablet
 const scrollActivePrev = () => {
+  const visibleCards = getVisibleCardsCount();
   if (activeScrollIndex.value > 0) {
-    activeScrollIndex.value--;
+    activeScrollIndex.value = Math.max(0, activeScrollIndex.value - visibleCards);
     scrollCarousel(activeCarousel.value, activeScrollIndex.value);
   }
 };
 
 const scrollActiveNext = () => {
-  if (activeScrollIndex.value < activeListings.value.length - 1) {
-    activeScrollIndex.value++;
+  const visibleCards = getVisibleCardsCount();
+  const maxIndex = Math.max(0, activeListings.value.length - visibleCards);
+  if (activeScrollIndex.value < maxIndex) {
+    activeScrollIndex.value = Math.min(maxIndex, activeScrollIndex.value + visibleCards);
     scrollCarousel(activeCarousel.value, activeScrollIndex.value);
   }
 };
 
 const scrollInactivePrev = () => {
+  const visibleCards = getVisibleCardsCount();
   if (inactiveScrollIndex.value > 0) {
-    inactiveScrollIndex.value--;
+    inactiveScrollIndex.value = Math.max(0, inactiveScrollIndex.value - visibleCards);
     scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
   }
 };
 
 const scrollInactiveNext = () => {
-  if (inactiveScrollIndex.value < inactiveListings.value.length - 1) {
-    inactiveScrollIndex.value++;
+  const visibleCards = getVisibleCardsCount();
+  const maxIndex = Math.max(0, inactiveListings.value.length - visibleCards);
+  if (inactiveScrollIndex.value < maxIndex) {
+    inactiveScrollIndex.value = Math.min(maxIndex, inactiveScrollIndex.value + visibleCards);
     scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
   }
 };
@@ -720,8 +773,13 @@ const scrollCarousel = (carouselRef, index) => {
   if (carouselRef) {
     const track = carouselRef.querySelector('.carousel-track');
     if (track) {
-      const itemWidth = track.querySelector('.carousel-item')?.offsetWidth || 0;
-      const gap = 16; // gap between items
+      const items = track.querySelectorAll('.carousel-item');
+      if (items.length === 0) return;
+
+      const itemWidth = items[0].offsetWidth;
+      const trackStyles = window.getComputedStyle(track);
+      const gap = parseFloat(trackStyles.gap) || 12;
+
       const scrollPosition = index * (itemWidth + gap);
       track.style.transform = `translateX(-${scrollPosition}px)`;
     }
@@ -1296,8 +1354,23 @@ const scrollCarousel = (carouselRef, index) => {
 
 .listings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(4, 1fr); // Default: 4 columns for large screens
   gap: 20px;
+
+  // 1200-1399px: 3 columns
+  @media (max-width: 1399.98px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  // 768-1199px: 2 columns
+  @media (max-width: 1199.98px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  // <768px: 1 column (but carousel will be shown instead)
+  @media (max-width: 767.98px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .transactions-list {
@@ -1429,6 +1502,97 @@ const scrollCarousel = (carouselRef, index) => {
   }
 }
 
+// Specific fix for carousel layout issues
+.listing-section {
+  // Desktop Grid Layout (1200px+)
+  .desktop-grid {
+    display: block;
+
+    @media (max-width: 1199.98px) {
+      display: none; // Hide desktop grid on smaller screens
+    }
+  }
+
+  // Mobile Carousel Layout
+  .mobile-carousel {
+    display: none; // Default: hide mobile carousel
+
+    // Tablet Layout (768px - 1199px): Show 2 cards with arrows
+    @media (max-width: 1199.98px) and (min-width: 768px) {
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+
+      .carousel-container {
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .carousel-track {
+        display: flex;
+        gap: 20px; // Consistent gap
+        transition: transform 0.3s ease;
+      }
+
+      .carousel-item {
+        flex: 0 0 calc(50% - 10px) !important; // 2 cards per view (50% each - half gap)
+        max-width: calc(50% - 10px) !important;
+        min-width: calc(50% - 10px) !important;
+        box-sizing: border-box !important;
+
+        // Ensure ProductCard doesn't get overridden by global styles
+        .product-card {
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          border: 0.1px solid $primary !important; // Maintain original border
+        }
+      }
+
+      .carousel-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: white !important;
+        border: 1px solid $primary !important;
+        border-radius: 50% !important;
+        color: $primary !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        flex-shrink: 0 !important;
+        z-index: 10 !important;
+
+        i {
+          font-size: 16px !important;
+        }
+
+        &:hover:not(:disabled) {
+          background: $primary !important;
+          color: white !important;
+        }
+
+        &:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        &.prev {
+          order: -1;
+        }
+
+        &.next {
+          order: 1;
+        }
+      }
+    }
+  }
+}
+
 // Tablets (768px - 991px)
 @media (max-width: 991.98px) {
   .profile-container {
@@ -1513,11 +1677,6 @@ const scrollCarousel = (carouselRef, index) => {
     .unlocked-line {
       top: 42px;
     }
-  }
-
-  .listings-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 18px;
   }
 }
 
@@ -1660,6 +1819,82 @@ const scrollCarousel = (carouselRef, index) => {
       display: none;
     }
   }
+
+  // Mobile Layout: Show carousel with 1 card at a time
+  .listing-section {
+    .mobile-carousel {
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+
+      .carousel-container {
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .carousel-track {
+        display: flex;
+        gap: 15px; // Smaller gap for mobile
+        transition: transform 0.3s ease;
+      }
+
+      .carousel-item {
+        flex: 0 0 100% !important; // 1 card per view
+        max-width: 100% !important;
+        min-width: 100% !important;
+        box-sizing: border-box !important;
+
+        // Ensure ProductCard doesn't get overridden by global styles
+        .product-card {
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          border: 0.1px solid $primary !important;
+        }
+      }
+
+      .carousel-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: white !important;
+        border: 1px solid $primary !important;
+        border-radius: 50% !important;
+        color: $primary !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        flex-shrink: 0 !important;
+        z-index: 10 !important;
+
+        i {
+          font-size: 16px !important;
+        }
+
+        &:hover:not(:disabled) {
+          background: $primary !important;
+          color: white !important;
+        }
+
+        &:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        &.prev {
+          order: -1;
+        }
+
+        &.next {
+          order: 1;
+        }
+      }
+    }
+  }
 }
 
 // Small mobile devices (< 576px)
@@ -1771,74 +2006,13 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .listings-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  // Mobile: Hide desktop grid, show carousel
-  .desktop-grid {
-    display: none;
-  }
-
-  .mobile-carousel {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    position: relative;
-  }
-
-  .carousel-container {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .carousel-track {
-    display: flex;
-    gap: 12px;
-    transition: transform 0.3s ease;
-  }
-
-  .carousel-item {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-
+  // Adjust carousel arrow size for smaller screens
   .carousel-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 32px;
     height: 32px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 50%;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
-    flex-shrink: 0;
 
     i {
       font-size: 16px;
-    }
-
-    &:hover:not(:disabled) {
-      background: $primary;
-      color: white;
-      transform: scale(1.1);
-    }
-
-    &:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    &.prev {
-      order: -1;
-    }
-
-    &.next {
-      order: 1;
     }
   }
 
@@ -1853,5 +2027,13 @@ const scrollCarousel = (carouselRef, index) => {
       font-size: 15px;
     }
   }
+}
+
+/* Override global card styles that interfere with ProductCard */
+.listings-sections .product-card,
+.mobile-carousel .product-card {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0.1px solid $primary !important; // Preserve original border
 }
 </style>
