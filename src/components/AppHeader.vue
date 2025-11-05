@@ -21,10 +21,10 @@
               </BNavItem>
 
             </BNav>
-            <!-- All Categories Button -->
+            <!-- All Categories Button (Desktop Only) -->
             <BButton
               variant="link"
-              class="all-categories-btn"
+              class="all-categories-btn d-none d-lg-flex"
               @click="toggleAllCategories"
             >
               <i class="bi bi-grid-3x3-gap"></i>
@@ -35,7 +35,7 @@
           <!-- Right Side Actions -->
           <div class="header-right">
 
-            
+
             <!-- 已登入：顯示使用者資訊 -->
             <template v-if="authStore.isLoggedIn">
 
@@ -67,7 +67,7 @@
                 <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
                 <span class="points-value">{{ userPoints }}</span>
               </div>
-              
+
               <!-- Post Button (Desktop) -->
              <BButton class="post-button d-none d-lg-flex" @click="router.push({ name: 'CreateListing' })">
                刊登
@@ -78,6 +78,23 @@
                 登出
               </BButton>
 
+              <!-- Mobile: Points + Avatar (Always Visible) -->
+              <div class="mobile-user-section d-lg-none">
+                <div class="mobile-points">
+                  <i class="bi bi-leaf"></i>
+                  <span>{{ userPoints }}</span>
+                </div>
+                <img
+                  v-if="authStore.userAvatar"
+                  :src="authStore.userAvatar"
+                  alt="User Avatar"
+                  class="mobile-avatar"
+                  @click="router.push({ name: 'UserProfile' })"
+                  referrerpolicy="no-referrer"
+                />
+                <i v-else class="bi bi-person-circle mobile-avatar-icon" @click="router.push({ name: 'UserProfile' })"></i>
+              </div>
+
             </template>
 
             <!-- 未登入：顯示 Google 登入按鈕 -->
@@ -86,13 +103,18 @@
                 <i class="bi bi-google"></i>
                 <span>使用 Google 登入</span>
               </BButton>
+
+              <!-- Mobile: Login Button -->
+              <BButton class="mobile-login-btn d-lg-none" @click="handleGoogleLogin">
+                登入
+              </BButton>
             </template>
 
             <!-- Hamburger Menu (Mobile) -->
             <BButton
               variant="link"
               class="hamburger-button d-lg-none"
-              @click="toggleMobileMenu"
+              @click="toggleUnifiedMenu"
             >
               <i class="bi bi-list"></i>
             </BButton>
@@ -101,39 +123,72 @@
       </BContainer>
     </BNavbar>
 
-    <!-- Mobile Menu Overlay -->
+    <!-- Unified Mobile Menu (Categories + User Menu) -->
     <Transition name="menu">
-      <div v-if="showMobileMenu" class="mobile-menu-overlay d-lg-none" @click="closeMobileMenu">
-        <div class="mobile-menu-content" @click.stop>
-          <div class="mobile-menu-header">
-            <div class="menu-user-section">
-              <img
-                v-if="authStore.userAvatar"
-                :src="authStore.userAvatar"
-                alt="User Avatar"
-                class="user-icon-img"
-                referrerpolicy="no-referrer"
-              />
-              <i v-else class="bi bi-person-circle user-icon"></i>
-              <span class="user-greeting">Hi, {{ authStore.userName }}</span>
-            </div>
-            <BButton variant="link" class="close-button" @click="closeMobileMenu">
+      <div v-if="showUnifiedMenu" class="unified-menu-overlay d-lg-none" @click="closeUnifiedMenu">
+        <div class="unified-menu-content" @click.stop>
+          <!-- Header -->
+          <div class="unified-menu-header">
+            <h3 class="menu-title">所有分類</h3>
+            <BButton variant="link" class="close-button" @click="closeUnifiedMenu">
               <i class="bi bi-x-lg"></i>
             </BButton>
           </div>
 
-          <div class="mobile-menu-body">
-            <!-- 已登入狀態 -->
-            <template v-if="authStore.isLoggedIn">
-              <div class="menu-user-section">
-                <span class="user-greeting">我的點數</span>
-                <span class="menu-points"><i class="bi bi-leaf"></i> {{ userPoints }}</span>
+          <div class="unified-menu-body">
+            <!-- Category Search -->
+            <div class="category-search">
+              <i class="bi bi-search"></i>
+              <input type="text" placeholder="搜尋分類..." v-model="categorySearch" />
+            </div>
+
+            <!-- Categories Section -->
+            <div class="categories-section">
+              <div v-for="cat in categories" :key="cat.id" class="category-section">
+                <div class="category-item expandable" @click="toggleCategory(cat.id)">
+                  <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
+                    <i :class="['bi', cat.icon]"></i>
+                  </div>
+                  <span class="category-name">{{ cat.name }}</span>
+                  <i
+                    :class="['bi', expandedCategories.includes(cat.id) ? 'bi-chevron-up' : 'bi-chevron-down']"
+                    class="expand-icon"
+                  ></i>
+                </div>
+
+                <!-- Subcategories -->
+                <Transition name="subcategory">
+                  <div v-if="expandedCategories.includes(cat.id)" class="subcategory-list">
+                    <div
+                      v-for="sub in cat.sub_categories"
+                      :key="sub.id"
+                      class="subcategory-item"
+                      @click="navigateToCategory(cat.id, sub.id)"
+                    >
+                      {{ sub.name }}
+                    </div>
+                  </div>
+                </Transition>
               </div>
-              
-              <ul class="menu-list">
-                <li v-for="item in mobileMenuItems" :key="item.id" @click="handleMobileMenuClick(item)">
-                  <i :class="['bi', item.icon]"></i>
-                  <span>{{ item.name }}</span>
+            </div>
+
+            <!-- Divider -->
+            <div class="menu-divider"></div>
+
+            <!-- User Menu Items -->
+            <template v-if="authStore.isLoggedIn">
+              <ul class="user-menu-list">
+                <li @click="handleMenuAction('UserProfile')">
+                  <i class="bi bi-person"></i>
+                  <span>個人檔案</span>
+                </li>
+                <li @click="handleMenuAction('Favorites')">
+                  <i class="bi bi-heart"></i>
+                  <span>我的收藏</span>
+                </li>
+                <li @click="handleMenuAction('Messages')">
+                  <i class="bi bi-chat-left"></i>
+                  <span>聊天訊息</span>
                 </li>
                 <li @click="handleLogout" class="logout-item">
                   <i class="bi bi-box-arrow-right"></i>
@@ -142,11 +197,11 @@
               </ul>
             </template>
 
-            <!-- 未登入狀態 -->
+            <!-- Not logged in prompt -->
             <template v-else>
-              <div class="menu-login-section">
-                <p class="login-prompt">請先登入以使用完整功能</p>
-                <BButton class="google-login-button-mobile" @click="handleGoogleLogin">
+              <div class="menu-login-prompt">
+                <p>登入以使用完整功能</p>
+                <BButton class="login-prompt-btn" @click="handleGoogleLogin">
                   <i class="bi bi-google"></i>
                   <span>使用 Google 登入</span>
                 </BButton>
@@ -157,7 +212,18 @@
       </div>
     </Transition>
 
-    <!-- All Categories Offcanvas -->
+    <!-- Floating Action Button (Mobile Only) -->
+    <Transition name="fab">
+      <BButton
+        v-if="authStore.isLoggedIn"
+        class="floating-action-btn d-lg-none"
+        @click="router.push({ name: 'CreateListing' })"
+      >
+        <i class="bi bi-plus-lg"></i>
+      </BButton>
+    </Transition>
+
+    <!-- All Categories Offcanvas (Desktop Only) -->
     <Transition name="offcanvas">
       <div v-if="showAllCategories" class="all-categories-offcanvas" @click="closeAllCategories">
         <div class="offcanvas-content" @click.stop>
@@ -254,7 +320,7 @@ const props = defineProps({
 });
 
 // State
-const showMobileMenu = ref(false);
+const showUnifiedMenu = ref(false);
 const showAllCategories = ref(false);
 const categorySearch = ref('');
 const expandedCategories = ref([]);
@@ -270,34 +336,24 @@ if (!categoriesStore.isLoaded) {
 
 const categories = computed(() => categoriesStore.categories);
 
-const mobileMenuItems = [
-  { id: 1, name: '個人檔案', icon: 'bi-person', route: 'UserProfile' },
-  { id: 2, name: '刊登物品', icon: 'bi-plus-circle', route: 'CreateListing' },
-  { id: 3, name: '我的收藏', icon: 'bi-heart', route: 'Favorites' },
-  { id: 4, name: '聊天訊息', icon: 'bi-chat-left', route: 'Messages' }
-];
-
 // Methods
-const toggleMobileMenu = () => {
-  showMobileMenu.value = !showMobileMenu.value;
-  if (showMobileMenu.value) {
+const toggleUnifiedMenu = () => {
+  showUnifiedMenu.value = !showUnifiedMenu.value;
+  if (showUnifiedMenu.value) {
     document.body.style.overflow = 'hidden';
   } else {
     document.body.style.overflow = '';
   }
 };
 
-const closeMobileMenu = () => {
-  showMobileMenu.value = false;
+const closeUnifiedMenu = () => {
+  showUnifiedMenu.value = false;
   document.body.style.overflow = '';
 };
 
-const handleMobileMenuClick = (item) => {
-  console.log('Menu item clicked:', item.name);
-  closeMobileMenu();
-  if (item.route) {
-    router.push({ name: item.route });
-  }
+const handleMenuAction = (routeName) => {
+  closeUnifiedMenu();
+  router.push({ name: routeName });
 };
 
 // 使用 Supabase Google Login
@@ -316,7 +372,7 @@ const handleGoogleLogin = async () => {
 const handleLogout = async () => {
   await authStore.signOut();
   console.log('已登出');
-  closeMobileMenu();
+  closeUnifiedMenu();
 };
 
 // All Categories Toggle
@@ -351,6 +407,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     query: { category: categoryId, subCategory: subCategoryId }
   });
   closeAllCategories();
+  closeUnifiedMenu();
 };
 </script>
 
@@ -589,8 +646,76 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   }
 }
 
-// Mobile Menu Overlay
-.mobile-menu-overlay {
+// Mobile User Section (Points + Avatar)
+.mobile-user-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-points {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #e8f5f1;
+  border-radius: 12px;
+  padding: 4px 10px;
+
+  i {
+    font-size: 16px;
+    color: $primary;
+  }
+
+  span {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: $primary;
+  }
+}
+
+.mobile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.mobile-avatar-icon {
+  font-size: 32px;
+  color: #1e1e1e;
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.mobile-login-btn {
+  background-color: $primary;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 16px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #5fa795;
+  }
+}
+
+// Unified Mobile Menu (Categories + User Menu)
+.unified-menu-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -602,9 +727,9 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   justify-content: flex-end;
 }
 
-.mobile-menu-content {
-  width: 80%;
-  max-width: 300px;
+.unified-menu-content {
+  width: 85%;
+  max-width: 380px;
   background: white;
   height: 100%;
   display: flex;
@@ -612,16 +737,20 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
 }
 
-.mobile-menu-header {
+.unified-menu-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 20px;
+  padding: 20px 20px;
   border-bottom: 1px solid #e0e0e0;
+  background: white;
 
-  .menu-logo {
-    height: 30px;
-    width: auto;
+  .menu-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0;
   }
 
   .close-button {
@@ -636,106 +765,73 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   }
 }
 
-.mobile-menu-body {
+.unified-menu-body {
   flex: 1;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
-.menu-user-section {
+.category-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 15px;
+  gap: 12px;
+  background: #f5f5f5;
   border-radius: 8px;
-
-  .user-icon-img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .user-icon {
-    font-size: 32px;
-    color: #1e1e1e;
-  }
-
-  .user-greeting {
-    flex: 1;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    color: #1e1e1e;
-  }
-}
-
-.menu-login-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 30px 15px;
-  text-align: center;
-
-  .login-prompt {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #666;
-    margin: 0;
-  }
-}
-
-.google-login-button-mobile {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background-color: white;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  font-family: 'Noto Sans TC', 'Roboto', sans-serif;
-  font-size: 16px;
-  font-weight: 500;
-  color: #3c4043;
-  padding: 12px 24px;
-  width: 100%;
-  transition: all 0.3s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 12px 16px;
+  margin: 20px 20px 15px;
 
   i {
-    font-size: 20px;
-    color: #4285f4;
+    font-size: 18px;
+    color: #666;
   }
 
-  &:hover {
-    background-color: #f8f9fa;
-    border-color: #d2d4d7;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #1e1e1e;
+    outline: none;
+
+    &::placeholder {
+      color: #999;
+    }
   }
 }
 
-.menu-list {
+.categories-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-divider {
+  height: 8px;
+  background-color: #f5f5f5;
+  margin: 15px 0;
+}
+
+.user-menu-list {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 20px;
 
   li {
     display: flex;
     align-items: center;
     gap: 15px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
+    font-size: 16px;
     color: #1e1e1e;
-    padding: 18px 10px;
+    padding: 14px 10px;
     cursor: pointer;
     transition: background-color 0.3s;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #f0f0f0;
 
     i {
-      font-size: 22px;
+      font-size: 20px;
       color: #1e1e1e;
-      width: 24px;
+      width: 22px;
       text-align: center;
     }
 
@@ -744,7 +840,8 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     }
 
     &:hover {
-      background-color: #f5f5f5;
+      background-color: #f9f9f9;
+      border-radius: 8px;
     }
 
     &:last-child {
@@ -765,20 +862,94 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   }
 }
 
-.menu-points {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 20px;
-  font-weight: 400;
+.menu-login-prompt {
   display: flex;
-  gap: 5px;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-around;
-  background: transparent;
-  color: $primary;
+  gap: 15px;
+  padding: 30px 20px;
+  text-align: center;
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #666;
+    margin: 0;
+  }
+
+  .login-prompt-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: white;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', 'Roboto', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: #3c4043;
+    padding: 12px 24px;
+    width: 100%;
+    transition: all 0.3s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    i {
+      font-size: 18px;
+      color: #4285f4;
+    }
+
+    &:hover {
+      background-color: #f8f9fa;
+      border-color: #d2d4d7;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+// Floating Action Button (FAB)
+.floating-action-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: $primary;
+  border: none;
+  box-shadow: 0 4px 12px rgba(111, 184, 165, 0.4);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 
   i {
-    font-size: 24px;
+    font-size: 28px;
+    color: white;
   }
+
+  &:hover {
+    background-color: #5fa795;
+    box-shadow: 0 6px 16px rgba(111, 184, 165, 0.5);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// FAB Transition
+.fab-enter-active,
+.fab-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fab-enter-from,
+.fab-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
 }
 
 // Menu Transition
@@ -786,7 +957,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 .menu-leave-active {
   transition: opacity 0.3s ease;
 
-  .mobile-menu-content {
+  .unified-menu-content {
     transition: transform 0.3s ease;
   }
 }
@@ -795,7 +966,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 .menu-leave-to {
   opacity: 0;
 
-  .mobile-menu-content {
+  .unified-menu-content {
     transform: translateX(100%);
   }
 }
