@@ -21,10 +21,10 @@
               </BNavItem>
 
             </BNav>
-            <!-- All Categories Button -->
+            <!-- All Categories Button (Desktop Only) -->
             <BButton
               variant="link"
-              class="all-categories-btn"
+              class="all-categories-btn d-none d-lg-flex"
               @click="toggleAllCategories"
             >
               <i class="bi bi-grid-3x3-gap"></i>

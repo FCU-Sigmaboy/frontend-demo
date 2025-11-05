@@ -1296,8 +1296,20 @@ const scrollCarousel = (carouselRef, index) => {
 
 .listings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+
+  @media (min-width: 1400px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (min-width: 1200px) and (max-width: 1399.98px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: 768px) and (max-width: 1199.98px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .transactions-list {
@@ -1660,6 +1672,72 @@ const scrollCarousel = (carouselRef, index) => {
       display: none;
     }
   }
+
+  // Mobile: Hide desktop grid, show carousel when 2 cards or less
+  .desktop-grid {
+    display: none;
+  }
+
+  .mobile-carousel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+  }
+
+  .carousel-container {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .carousel-track {
+    display: flex;
+    gap: 12px;
+    transition: transform 0.3s ease;
+  }
+
+  .carousel-item {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .carousel-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: white;
+    border: 1px solid $primary;
+    border-radius: 50%;
+    color: $primary;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+
+    i {
+      font-size: 18px;
+    }
+
+    &:hover:not(:disabled) {
+      background: $primary;
+      color: white;
+      transform: scale(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    &.prev {
+      order: -1;
+    }
+
+    &.next {
+      order: 1;
+    }
+  }
 }
 
 // Small mobile devices (< 576px)
@@ -1774,72 +1852,6 @@ const scrollCarousel = (carouselRef, index) => {
   .listings-grid {
     grid-template-columns: 1fr;
     gap: 15px;
-  }
-
-  // Mobile: Hide desktop grid, show carousel
-  .desktop-grid {
-    display: none;
-  }
-
-  .mobile-carousel {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    position: relative;
-  }
-
-  .carousel-container {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .carousel-track {
-    display: flex;
-    gap: 12px;
-    transition: transform 0.3s ease;
-  }
-
-  .carousel-item {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-
-  .carousel-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 50%;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
-    flex-shrink: 0;
-
-    i {
-      font-size: 16px;
-    }
-
-    &:hover:not(:disabled) {
-      background: $primary;
-      color: white;
-      transform: scale(1.1);
-    }
-
-    &:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    &.prev {
-      order: -1;
-    }
-
-    &.next {
-      order: 1;
-    }
   }
 
   .empty-state {
