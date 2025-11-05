@@ -37,6 +37,8 @@ jobs:
       - name: Build project
         run: npm run build
         env:
+          # 自動從 GitHub 儲存庫名稱設定 base path
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
           # 從 GitHub Secrets 讀取環境變數
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
