@@ -190,10 +190,10 @@
             <!-- Price Field -->
             <div class="form-section">
               <label for="price" class="form-label">
-                價格 <span class="required">*</span>
+                點數 <span class="required">*</span>
               </label>
               <div class="price-input-wrapper">
-                <span class="currency-symbol">NT$</span>
+                <span class="currency-symbol">點數</span>
                 <input
                   id="price"
                   v-model.number="formData.price"
@@ -1050,7 +1050,7 @@ const handleSubmit = async () => {
   }
 
   .price-input {
-    padding-left: 48px;
+    padding-left: 64px;
   }
 }
 

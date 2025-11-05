@@ -34,8 +34,11 @@
         </button>
       </div>
 
-      <!-- Price -->
-      <p class="product-price"><i class="bi bi-leaf points-icon" style="font-size: 1rem;"></i> {{ new Intl.NumberFormat().format(product.price) }} </p>
+      <!-- Price - Carousell-style Minimal Design -->
+      <div class="product-price">
+        <i class="bi bi-leaf"></i>
+        <span class="price-amount">{{ new Intl.NumberFormat().format(product.price) }}</span>
+      </div>
 
       <!-- Location and Distance -->
       <div class="product-meta">
@@ -331,12 +334,30 @@ const goToSellerProfile = () => {
   -webkit-box-orient: vertical;
 }
 
-.product-price {
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  color: #1e1e1e;
-  margin: 0;
-  font-weight: 400;
+// Price Section - Carousell-Inspired Minimal Design (Bootstrap 5 Compatible)
+// Using high specificity to override any existing styles
+.product-card .product-body .product-price {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 6px 0 !important;
+
+  // Leaf Icon - Prominent but clean
+  i.bi-leaf {
+    font-size: 18px !important;
+    color: $primary !important;
+    flex-shrink: 0 !important;
+  }
+
+  // Price Amount - Clear and Bold (Bootstrap 5 sizing)
+  .price-amount,
+  span.price-amount {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #1e1e1e !important;
+    line-height: 1.2 !important;
+  }
 }
 
 .product-meta {
@@ -358,13 +379,23 @@ const goToSellerProfile = () => {
   }
 }
 
+// Bootstrap 5 lg breakpoint
 @media (max-width: 991.98px) {
   .product-name {
     font-size: 14px;
   }
 
-  .product-price {
-    font-size: 14px;
+  .product-card .product-body .product-price {
+    gap: 7px !important;
+
+    i.bi-leaf {
+      font-size: 17px !important;
+    }
+
+    .price-amount,
+    span.price-amount {
+      font-size: 19px !important;
+    }
   }
 
   .seller-name {
@@ -380,6 +411,7 @@ const goToSellerProfile = () => {
   }
 }
 
+// Bootstrap 5 sm breakpoint
 @media (max-width: 575.98px) {
   .card-header {
     padding: 8px;
@@ -399,8 +431,17 @@ const goToSellerProfile = () => {
     font-size: 13px;
   }
 
-  .product-price {
-    font-size: 13px;
+  .product-card .product-body .product-price {
+    gap: 6px !important;
+
+    i.bi-leaf {
+      font-size: 16px !important;
+    }
+
+    .price-amount,
+    span.price-amount {
+      font-size: 18px !important;
+    }
   }
 
   .seller-name {

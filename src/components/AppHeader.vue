@@ -26,6 +26,8 @@
               variant="link"
               class="all-categories-btn d-none d-lg-flex"
               @click="toggleAllCategories"
+              v-b-tooltip.hover.bottom.html
+              :title="'瀏覽所有商品分類'"
             >
               <i class="bi bi-grid-3x3-gap"></i>
               <span>所有分類</span>
@@ -40,17 +42,35 @@
             <template v-if="authStore.isLoggedIn">
 
               <!-- Favorites/Liked Icon (Desktop) -->
-              <BButton variant="link" class="icon-button d-none d-lg-flex" @click="router.push({ name: 'Favorites' })">
+              <BButton
+                variant="link"
+                class="icon-button d-none d-lg-flex"
+                @click="router.push({ name: 'Favorites' })"
+                v-b-tooltip.hover.bottom.html
+                :title="'我的收藏'"
+              >
                 <i class="bi bi-heart"></i>
               </BButton>
 
               <!-- Message/Chat Icon (Desktop) -->
-              <BButton variant="link" class="icon-button d-none d-lg-flex" @click="router.push({ name: 'Messages' })">
+              <BButton
+                variant="link"
+                class="icon-button d-none d-lg-flex"
+                @click="router.push({ name: 'Messages' })"
+                v-b-tooltip.hover.bottom.html
+                :title="'聊天訊息'"
+              >
                 <i class="bi bi-chat-left"></i>
               </BButton>
 
               <!-- User Profile (Desktop) -->
-              <div class="user-info d-none d-lg-flex" @click="router.push({ name: 'UserProfile' })" style="cursor: pointer;">
+              <div
+                class="user-info d-none d-lg-flex"
+                @click="router.push({ name: 'UserProfile' })"
+                style="cursor: pointer;"
+                v-b-tooltip.hover.bottom.html
+                :title="'個人檔案'"
+              >
                 <img
                   v-if="authStore.userAvatar"
                   :src="authStore.userAvatar"
@@ -63,18 +83,33 @@
               </div>
 
               <!-- Points Display (Desktop) -->
-              <div class="points-display d-none d-lg-flex">
+              <div
+                class="points-display d-none d-lg-flex"
+                v-b-tooltip.hover.bottom.html
+                :title="'我的環保點數'"
+              >
                 <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
                 <span class="points-value">{{ userPoints }}</span>
               </div>
 
               <!-- Post Button (Desktop) -->
-             <BButton class="post-button d-none d-lg-flex" @click="router.push({ name: 'CreateListing' })">
+             <BButton
+               class="post-button d-none d-lg-flex"
+               @click="router.push({ name: 'CreateListing' })"
+               v-b-tooltip.hover.bottom.html
+               :title="'刊登新物品'"
+             >
                刊登
              </BButton>
 
               <!-- Logout Button -->
-              <BButton variant="outline" class="logout-button d-none d-lg-flex" @click="handleLogout">
+              <BButton
+                variant="outline"
+                class="logout-button d-none d-lg-flex"
+                @click="handleLogout"
+                v-b-tooltip.hover.bottom.html
+                :title="'登出帳號'"
+              >
                 登出
               </BButton>
 
@@ -417,7 +452,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 9000; // High enough to be above search components
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -521,6 +556,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: 80px; // Ensure consistent spacing
 
   .points-icon {
     background: #f2efeb;
@@ -535,9 +571,10 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 20px; // Increased from 16px
+    font-weight: 700; // Bolder to make it more prominent
     color: $primary;
+    min-width: 30px; // Ensure consistent width
   }
 }
 
@@ -1231,6 +1268,8 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   max-height: 500px;
   opacity: 1;
 }
+
+
 
 // Progressive responsive breakpoints
 @media (max-width: 1400px) {
