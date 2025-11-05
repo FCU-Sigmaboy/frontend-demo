@@ -53,6 +53,7 @@
         <p class="description">
           {{ displayedDescription }}
           <span v-if="shouldTruncate && !isExpanded" class="expand-trigger" @click="toggleExpand">...展開更多</span>
+          <span v-if="shouldTruncate && isExpanded" class="expand-trigger" @click="toggleExpand"> 顯示更少</span>
         </p>
       </div>
     </div>
