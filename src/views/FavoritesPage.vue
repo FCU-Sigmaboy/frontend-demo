@@ -100,10 +100,6 @@
             >
               <!-- Selection Checkbox (Edit Mode) -->
               <div v-if="isEditMode" class="selection-overlay" @click="toggleSelection(product.item_id)">
-                <div class="selection-checkbox">
-                  <i v-if="isSelected(product.item_id)" class="bi bi-check-circle-fill"></i>
-                  <i v-else class="bi bi-circle"></i>
-                </div>
               </div>
 
               <!-- Product Card -->
@@ -500,14 +496,18 @@ onMounted(() => {
 
     &:hover {
       .selection-overlay {
-        background: rgba(0, 0, 0, 0.1);
+        background: rgba(111, 184, 165, 0.5);
       }
     }
   }
 
   &.selected {
     .selection-overlay {
-      background: rgba(111, 184, 165, 0.1);
+      background: rgba(111, 184, 165, 0.3);
+      border-width: 5px !important;
+      border-color: rgba(111, 184, 165, 1);
+      border-style: solid;
+      transform: scale(1.01);
     }
   }
 }
@@ -527,7 +527,7 @@ onMounted(() => {
   transition: all 0.3s;
   border-radius: 12px;
 
-  .selection-checkbox {
+  i {
     width: 32px;
     height: 32px;
     display: flex;
@@ -536,15 +536,8 @@ onMounted(() => {
     background: white;
     border-radius: 50%;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-
-    i {
-      font-size: 24px;
-      color: $primary;
-
-      &.bi-circle {
-        color: #d0d0d0;
-      }
-    }
+    font-size: 24px;
+    color: $primary;
   }
 }
 
