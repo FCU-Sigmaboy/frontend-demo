@@ -204,25 +204,6 @@
                   required
                 />
               </div>
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.isFree"
-                    type="checkbox"
-                    class="checkbox-input"
-                    @change="handleFreeChange"
-                  />
-                  <span class="checkbox-text">免費贈送</span>
-                </label>
-                <label class="checkbox-label">
-                  <input
-                    v-model="formData.isNegotiable"
-                    type="checkbox"
-                    class="checkbox-input"
-                  />
-                  <span class="checkbox-text">可議價</span>
-                </label>
-              </div>
             </div>
 
             <!-- Condition Field -->
@@ -308,7 +289,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
 import { getItemById } from '../api/get_itemByIdAPI';
 import { updateMyItem } from '../api/update_myItemAPI';
-import imageCompression from 'browser-image-compression';
+import { compressImage } from '../api/upload_imageAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -339,13 +320,12 @@ const subCategories = ref([]);
 const userLocations = ref([]);
 
 const formData = ref({
-  images: [],
+  images: [],        // 預覽用的 base64 URLs
+  imageFiles: [],    // 實際的 File 物件
   title: '',
   category: '',
   description: '',
   price: 0,
-  isFree: false,
-  isNegotiable: false,
   condition: '',
   locationId: null
 });
@@ -434,12 +414,11 @@ const loadItemData = async () => {
     // Populate form with item data
     formData.value = {
       images: item.image_urls || [],
+      imageFiles: [], // Edit mode uses existing URLs, no files
       title: item.title || '',
       category: item.sub_category_id || '',
       description: item.description || '',
       price: item.price || 0,
-      isFree: item.price === 0,
-      isNegotiable: false, // This field doesn't exist in DB
       condition: item.condition || '',
       locationId: item.location_id || null
     };
@@ -473,25 +452,6 @@ const triggerImageInput = () => {
   imageInput.value.click();
 };
 
-// Compress image before converting to base64
-const compressImage = async (file) => {
-  const options = {
-    maxSizeMB: 0.3,              // 限制 300KB
-    maxWidthOrHeight: 1000,      // 最大解析度
-    useWebWorker: true,          // 使用多執行緒
-    fileType: 'image/webp'       // 轉換為 WebP
-  };
-
-  try {
-    const compressedFile = await imageCompression(file, options);
-    console.log(`Compressed: ${(file.size / 1024).toFixed(2)}KB -> ${(compressedFile.size / 1024).toFixed(2)}KB`);
-    return compressedFile;
-  } catch (error) {
-    console.error('Image compression failed:', error);
-    return file; // Fallback to original file
-  }
-};
-
 const handleImageUpload = async (event) => {
   const files = Array.from(event.target.files);
   const remainingSlots = 8 - formData.value.images.length;
@@ -501,7 +461,10 @@ const handleImageUpload = async (event) => {
     // Compress image first
     const compressedFile = await compressImage(file);
 
-    // Convert to base64
+    // Save File object for upload
+    formData.value.imageFiles.push(compressedFile);
+
+    // Convert to base64 for preview
     const reader = new FileReader();
     reader.onload = (e) => {
       formData.value.images.push(e.target.result);
@@ -515,6 +478,7 @@ const handleImageUpload = async (event) => {
 
 const removeImage = (index) => {
   formData.value.images.splice(index, 1);
+  formData.value.imageFiles.splice(index, 1);
 };
 
 // Drag and Drop handlers
@@ -553,7 +517,10 @@ const handleDrop = async (event) => {
     // Compress image first
     const compressedFile = await compressImage(file);
 
-    // Convert to base64
+    // Save File object for upload
+    formData.value.imageFiles.push(compressedFile);
+
+    // Convert to base64 for preview
     const reader = new FileReader();
     reader.onload = (e) => {
       formData.value.images.push(e.target.result);
@@ -562,12 +529,6 @@ const handleDrop = async (event) => {
   }
 };
 
-const handleFreeChange = () => {
-  if (formData.value.isFree) {
-    formData.value.price = 0;
-    formData.value.isNegotiable = false;
-  }
-};
 
 const handleSubmit = async () => {
   // Validate images
@@ -614,13 +575,19 @@ const handleSubmit = async () => {
       console.log('📝 Creating new listing:', formData.value);
 
       const itemData = {
-        ...formData.value,
+        sub_category_id: formData.value.category,
         user_location_id: formData.value.locationId,
-        category: formData.value.category
+        title: formData.value.title,
+        description: formData.value.description,
+        condition: formData.value.condition,
+        price: formData.value.price,
+        tags: []
       };
 
-      const { createItem } = await import('../api/create_myItemAPI');
-      const result = await createItem(itemData);
+      // Use createItemWithImages to upload images and create item
+      // 傳入 true 表示檔案已經在前端壓縮過，避免重複壓縮
+      const { createItemWithImages } = await import('../api/create_myItemAPI');
+      const result = await createItemWithImages(itemData, formData.value.imageFiles, true);
 
       console.log('✅ Listing created successfully:', result);
     }
