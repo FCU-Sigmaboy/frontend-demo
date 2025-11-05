@@ -5,13 +5,10 @@
     <main class="main-content">
       <div class="records-container">
         <!-- Breadcrumb -->
-        <nav class="breadcrumb">
-          <a href="/" class="breadcrumb-link">首頁</a>
-          <i class="bi bi-chevron-right"></i>
-          <a href="/profile" class="breadcrumb-link">個人檔案</a>
-          <i class="bi bi-chevron-right"></i>
-          <span class="breadcrumb-current">交易紀錄</span>
-        </nav>
+        <Breadcrumb :items="[
+          { label: '個人檔案', to: { name: 'UserProfile' } },
+          { label: '交易紀錄' }
+        ]" />
 
         <!-- Page Header -->
         <div class="page-header">
@@ -220,6 +217,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 
 const router = useRouter();
 

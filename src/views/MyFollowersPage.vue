@@ -5,11 +5,7 @@
     <main class="main-content">
       <div class="followers-container">
         <!-- Breadcrumb -->
-        <nav class="breadcrumb">
-          <a href="/" class="breadcrumb-link">首頁</a>
-          <i class="bi bi-chevron-right"></i>
-          <span class="breadcrumb-current">我的追蹤</span>
-        </nav>
+        <Breadcrumb :items="[{ label: '我的追蹤' }]" />
 
         <!-- Tabs -->
         <div class="tabs-section">
@@ -118,6 +114,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 
 const router = useRouter();
 

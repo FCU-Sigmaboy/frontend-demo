@@ -179,7 +179,7 @@ const authStore = useAuthStore();
 
 // Breadcrumb items
 const breadcrumbItems = [
-  { label: '個人檔案', to: '/profile' },
+  { label: '個人檔案', to: { name: 'UserProfile' } },
   { label: '編輯個人資料' }
 ];
 

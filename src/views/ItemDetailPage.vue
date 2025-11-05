@@ -263,11 +263,11 @@ const breadcrumbItems = computed(() => {
   if (product.value.category) {
     items.push({
       label: product.value.category.main_category_name,
-      to: `/items?category=${product.value.category.main_category_id}`
+      to: { name: 'ItemList', query: { category: product.value.category.main_category_id } }
     });
     items.push({
       label: product.value.category.sub_category_name,
-      to: `/items?subCategory=${product.value.category.sub_category_id}`
+      to: { name: 'ItemList', query: { subCategory: product.value.category.sub_category_id } }
     });
   }
 

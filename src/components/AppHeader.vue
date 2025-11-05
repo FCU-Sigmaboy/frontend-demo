@@ -5,16 +5,17 @@
         <div class="header-content">
           <!-- Left Side: Logo & Navigation -->
           <div class="header-left">
-            <a href="/" class="logo-link">
+            <div class="logo-link" @click="router.push({ name: 'Home' })" style="cursor: pointer;">
               <img :src="logoImage" alt="台中易起來" class="header-logo" />
-            </a>
+            </div>
 
             <BNav class="category-nav d-none d-lg-flex">
               <BNavItem
                 v-for="category in categories.slice(0, 4)"
                 :key="category.id"
-                :href="`/items?category=${category.id}`"
+                @click="router.push({ name: 'ItemList', query: { category: category.id } })"
                 class="category-link"
+                style="cursor: pointer;"
               >
                 {{ category.name }}
               </BNavItem>
@@ -209,15 +210,15 @@
                 <!-- Subcategories -->
                 <Transition name="subcategory">
                   <div v-if="expandedCategories.includes(cat.id)" class="subcategory-list">
-                    <a
+                    <div
                       v-for="sub in cat.sub_categories"
                       :key="sub.id"
-                      :href="`/items?category=${cat.id}&subCategory=${sub.id}`"
                       class="subcategory-item"
-                      @click="closeAllCategories"
+                      @click="navigateToCategory(cat.id, sub.id)"
+                      style="cursor: pointer;"
                     >
                       {{ sub.name }}
-                    </a>
+                    </div>
                   </div>
                 </Transition>
               </div>
@@ -341,6 +342,15 @@ const toggleCategory = (categoryId) => {
   } else {
     expandedCategories.value.push(categoryId);
   }
+};
+
+// Navigate to category with subcategory
+const navigateToCategory = (categoryId, subCategoryId) => {
+  router.push({
+    name: 'ItemList',
+    query: { category: categoryId, subCategory: subCategoryId }
+  });
+  closeAllCategories();
 };
 </script>
 

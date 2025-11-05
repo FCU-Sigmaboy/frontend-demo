@@ -4,17 +4,10 @@
 
     <main class="main-content">
       <!-- Breadcrumb -->
-      <div class="breadcrumb-section">
-        <div class="container">
-          <nav class="breadcrumb">
-            <a href="/" class="breadcrumb-link">首頁</a>
-            <span class="breadcrumb-separator">&gt;</span>
-            <a href="#" class="breadcrumb-link" @click.prevent="goBack">物品詳情</a>
-            <span class="breadcrumb-separator">&gt;</span>
-            <span class="breadcrumb-current">交易</span>
-          </nav>
-        </div>
-      </div>
+      <Breadcrumb :items="[
+        { label: '物品詳情', to: '#' },
+        { label: '交易' }
+      ]" />
 
       <!-- Transaction Form Section -->
       <section class="transaction-form-section">
@@ -97,11 +90,11 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 
-const route = useRoute();
 const router = useRouter();
 
 // State
@@ -135,10 +128,6 @@ const isFormValid = computed(() => {
 });
 
 // Methods
-const goBack = () => {
-  router.back();
-};
-
 const handleSubmit = () => {
   if (!isFormValid.value) {
     alert('請填寫必填欄位');

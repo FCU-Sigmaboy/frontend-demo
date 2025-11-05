@@ -80,7 +80,7 @@
                 <td class="col-image">
                   <div class="product-info">
                     <img :src="listing.image" :alt="listing.name" class="product-image" />
-                    <a class="product-name" :href="`/items/${listing.id}`">{{ listing.name }}</a>
+                    <div class="product-name" @click="router.push({ name: 'ItemDetail', params: { id: listing.id } })" style="cursor: pointer;">{{ listing.name }}</div>
                   </div>
                 </td>
 
@@ -188,7 +188,7 @@ const authStore = useAuthStore();
 
 // Breadcrumb items
 const breadcrumbItems = [
-  { label: '個人檔案', to: '/profile' },
+  { label: '個人檔案', to: { name: 'UserProfile' } },
   { label: '管理刊登' }
 ];
 

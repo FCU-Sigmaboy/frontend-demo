@@ -306,7 +306,7 @@ const isEdit = computed(() => !!itemId.value);
 const breadcrumbItems = computed(() => {
   if (isEdit.value) {
     return [
-      { label: '我的刊登', to: '/manage-listings' },
+      { label: '我的刊登', to: { name: 'ManageListings' } },
       { label: '編輯刊登' }
     ];
   }
