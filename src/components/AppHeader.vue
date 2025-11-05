@@ -439,6 +439,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   width: 100%;
   height: 50px;
   margin: auto;
+  overflow: hidden; // Prevent content from breaking out
 }
 
 // Left Side
@@ -446,11 +447,14 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 30px;
+  flex-shrink: 1; // Allow shrinking if needed
+  min-width: 0; // Allow content to shrink below content size
 
   .logo-link {
     display: flex;
     align-items: center;
     text-decoration: none;
+    flex-shrink: 0; // Logo should never shrink
   }
 
   .header-logo {
@@ -464,8 +468,12 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   gap: 30px;
   margin: 0;
+  flex-shrink: 1; // Allow shrinking at medium screens
+  min-width: 0;
 
   .category-link {
+    white-space: nowrap; // Prevent text wrapping
+
     :deep(a) {
       font-family: 'Noto Sans TC', 'Inter', sans-serif;
       font-size: 16px;
@@ -485,6 +493,8 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0; // Right side buttons should not shrink
+  white-space: nowrap; // Prevent wrapping
 }
 
 .icon-button {
@@ -1222,10 +1232,49 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   opacity: 1;
 }
 
+// Progressive responsive breakpoints
+@media (max-width: 1400px) {
+  .header-left {
+    gap: 20px; // Reduce gap from 30px
+  }
+
+  .category-nav {
+    gap: 20px; // Reduce gap from 30px
+  }
+
+  .header-right {
+    gap: 15px; // Reduce gap from 20px
+  }
+}
+
 @media (max-width: 1300px) {
+  .header-left {
+    gap: 15px;
+  }
+
+  .category-nav {
+    gap: 15px;
+  }
+
+  .header-right {
+    gap: 12px;
+  }
+
+  // Hide user name text to save space
+  .user-name {
+    display: none;
+  }
+}
+
+@media (max-width: 1200px) {
+  // Hide category nav and all categories button
   .category-nav {
     display: none !important;
     width: 0;
+  }
+
+  .all-categories-btn {
+    display: none !important;
   }
 }
 
