@@ -88,7 +88,7 @@
                 class="points-display d-none d-lg-flex"
               >
                 <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
-                <span class="points-value">{{ userPoints }}</span>
+                <span class="points-value">{{ userBalance }}</span>
               </div>
               <BTooltip target="points-display" placement="bottom">我的環保點數</BTooltip>
 
@@ -117,7 +117,7 @@
               <div class="mobile-user-section d-lg-none">
                 <div class="mobile-points">
                   <i class="bi bi-leaf"></i>
-                  <span>{{ userPoints }}</span>
+                  <span>{{ userBalance }}</span>
                 </div>
                 <img
                   v-if="authStore.userAvatar"
@@ -352,6 +352,14 @@ const props = defineProps({
     type: Number,
     default: 500
   }
+});
+
+// Computed: 從 profileData 獲取使用者的點數（balance）
+const userBalance = computed(() => {
+  if (authStore.profileData?.profile_details?.balance) {
+    return authStore.profileData.profile_details.balance;
+  }
+  return props.userPoints; // 使用預設值
 });
 
 // State
