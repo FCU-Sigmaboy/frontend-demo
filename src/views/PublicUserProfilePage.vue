@@ -70,11 +70,13 @@
 
                 <!-- Action Button -->
                 <button
-                  :class="['follow-btn', { following: isFollowing }]"
+                  :class="['follow-btn', { following: isFollowing, loading: isLoadingFollow }]"
                   @click="toggleFollow"
+                  :disabled="isLoadingFollow"
                 >
-                  <i :class="['bi', isFollowing ? 'bi-check' : 'bi-plus']"></i>
-                  {{ isFollowing ? '追蹤中' : '追蹤' }}
+                  <i v-if="!isLoadingFollow" :class="['bi', isFollowing ? 'bi-check' : 'bi-plus']"></i>
+                  <span v-if="isLoadingFollow" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  {{ isLoadingFollow ? '處理中...' : (isFollowing ? '' : '追蹤') }}
                 </button>
               </div>
             </div>
@@ -257,6 +259,7 @@ import ProductCard from '../components/ProductCard.vue';
 import AchievementBadges from '../components/AchievementBadges.vue';
 import { searchItems } from '../api/get_searchItemsAPI';
 import { getPublicUserProfile } from '../api/get_userProfileAPI';
+import { followUser, unfollowUser, checkIfFollowing } from '../api/followAPI';
 
 const route = useRoute();
 const router = useRouter();
@@ -267,6 +270,7 @@ const activeTab = ref('listings');
 const isFollowing = ref(false);
 const isLoadingListings = ref(false);
 const isLoadingProfile = ref(false);
+const isLoadingFollow = ref(false);
 
 // User data (from API)
 const userData = ref({
@@ -360,8 +364,37 @@ const getRatingPercentage = (rating) => {
   return (getRatingCount(rating) / reviews.value.length) * 100;
 };
 
-const toggleFollow = () => {
-  isFollowing.value = !isFollowing.value;
+const toggleFollow = async () => {
+  // 防止重複點擊
+  if (isLoadingFollow.value) return;
+
+  try {
+    isLoadingFollow.value = true;
+
+    if (isFollowing.value) {
+      // 取消追蹤
+      await unfollowUser(userData.value.id);
+      isFollowing.value = false;
+      // 更新追蹤者數量
+      if (userData.value.stats.followers > 0) {
+        userData.value.stats.followers--;
+      }
+      console.log('✅ 成功取消追蹤');
+    } else {
+      // 追蹤使用者
+      const result = await followUser(userData.value.id);
+      isFollowing.value = true;
+      // 更新追蹤者數量
+      userData.value.stats.followers++;
+      console.log('✅ 成功追蹤:', result);
+    }
+  } catch (error) {
+    console.error('追蹤操作失敗:', error);
+    // 可以在這裡加入 Toast 提示或其他錯誤處理
+    alert(error.message || '操作失敗，請稍後再試');
+  } finally {
+    isLoadingFollow.value = false;
+  }
 };
 
 const goToProductDetail = (id) => {
@@ -384,7 +417,11 @@ const fetchUserProfile = async (userId) => {
     isLoadingProfile.value = true;
     console.log('Fetching profile for user:', userId);
 
-    const profile = await getPublicUserProfile(userId);
+    // 同時獲取個人資料和追蹤狀態
+    const [profile, isFollowingUser] = await Promise.all([
+      getPublicUserProfile(userId),
+      checkIfFollowing(userId)
+    ]);
 
     if (profile) {
       // Format the join date
@@ -410,7 +447,11 @@ const fetchUserProfile = async (userId) => {
         }
       };
 
+      // 設定追蹤狀態
+      isFollowing.value = isFollowingUser;
+
       console.log('✅ User profile loaded:', profile);
+      console.log('✅ Following status:', isFollowingUser);
     } else {
       console.warn('Profile not found for user:', userId);
     }
@@ -599,10 +640,25 @@ onMounted(async () => {
     font-size: 18px;
   }
 
-  &:hover {
+  .spinner-border-sm {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+  }
+
+  &:hover:not(:disabled) {
     background: #5fa795;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  &.loading {
+    pointer-events: none;
   }
 
   &.following {
@@ -610,7 +666,7 @@ onMounted(async () => {
     border: 2px solid $primary;
     color: $primary;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: #dc3545;
       border-color: #dc3545;
       color: white;
