@@ -104,7 +104,7 @@ const sellerAvatar = computed(() => {
 });
 
 const sellerId = computed(() => {
-  return props.product.user?.id || props.product.seller_id || null;
+  return props.product.user?.id;
 });
 
 const isOwner = computed(() => {
@@ -113,7 +113,7 @@ const isOwner = computed(() => {
 });
 
 // 收藏狀態 - 用於立即更新 UI
-const localFavoriteState = ref(props.product.favorited_at !== null);
+const localFavoriteState = ref(props.product.favorited_at);
 
 // 已收藏狀態
 const isFavorite = computed(() => {
