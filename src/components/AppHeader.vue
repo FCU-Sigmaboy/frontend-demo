@@ -23,15 +23,15 @@
             </BNav>
             <!-- All Categories Button (Desktop Only) -->
             <BButton
+              id="all-categories-btn"
               variant="link"
               class="all-categories-btn d-none d-lg-flex"
               @click="toggleAllCategories"
-              v-b-tooltip.hover.bottom.html
-              :title="'瀏覽所有商品分類'"
             >
               <i class="bi bi-grid-3x3-gap"></i>
               <span>所有分類</span>
             </BButton>
+            <BTooltip target="all-categories-btn" placement="bottom">瀏覽所有商品分類</BTooltip>
           </div>
 
           <!-- Right Side Actions -->
@@ -43,33 +43,32 @@
 
               <!-- Favorites/Liked Icon (Desktop) -->
               <BButton
+                id="favorites-btn"
                 variant="link"
                 class="icon-button d-none d-lg-flex"
                 @click="router.push({ name: 'Favorites' })"
-                v-b-tooltip.hover.bottom.html
-                :title="'我的收藏'"
               >
                 <i class="bi bi-heart"></i>
               </BButton>
+              <BTooltip target="favorites-btn" placement="bottom">我的收藏</BTooltip>
 
               <!-- Message/Chat Icon (Desktop) -->
               <BButton
+                id="messages-btn"
                 variant="link"
                 class="icon-button d-none d-lg-flex"
                 @click="router.push({ name: 'Messages' })"
-                v-b-tooltip.hover.bottom.html
-                :title="'聊天訊息'"
               >
                 <i class="bi bi-chat-left"></i>
               </BButton>
+              <BTooltip target="messages-btn" placement="bottom">聊天訊息</BTooltip>
 
               <!-- User Profile (Desktop) -->
               <div
+                id="user-profile-info"
                 class="user-info d-none d-lg-flex"
                 @click="router.push({ name: 'UserProfile' })"
                 style="cursor: pointer;"
-                v-b-tooltip.hover.bottom.html
-                :title="'個人檔案'"
               >
                 <img
                   v-if="authStore.userAvatar"
@@ -81,37 +80,38 @@
                 <i v-else class="bi bi-person-circle user-avatar-icon"></i>
                 <span class="user-name">Hi, {{ authStore.userName }}</span>
               </div>
+              <BTooltip target="user-profile-info" placement="bottom">個人檔案</BTooltip>
 
               <!-- Points Display (Desktop) -->
               <div
+                id="points-display"
                 class="points-display d-none d-lg-flex"
-                v-b-tooltip.hover.bottom.html
-                :title="'我的環保點數'"
               >
                 <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
                 <span class="points-value">{{ userPoints }}</span>
               </div>
+              <BTooltip target="points-display" placement="bottom">我的環保點數</BTooltip>
 
               <!-- Post Button (Desktop) -->
              <BButton
+               id="post-btn"
                class="post-button d-none d-lg-flex"
                @click="router.push({ name: 'CreateListing' })"
-               v-b-tooltip.hover.bottom.html
-               :title="'刊登新物品'"
              >
                刊登
              </BButton>
+             <BTooltip target="post-btn" placement="bottom">刊登新物品</BTooltip>
 
               <!-- Logout Button -->
               <BButton
+                id="logout-btn"
                 variant="outline"
                 class="logout-button d-none d-lg-flex"
                 @click="handleLogout"
-                v-b-tooltip.hover.bottom.html
-                :title="'登出帳號'"
               >
                 登出
               </BButton>
+              <BTooltip target="logout-btn" placement="bottom">登出帳號</BTooltip>
 
               <!-- Mobile: Points + Avatar (Always Visible) -->
               <div class="mobile-user-section d-lg-none">
@@ -334,7 +334,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { BNavbar, BContainer, BNav, BNavItem, BButton } from 'bootstrap-vue-next';
+import { BNavbar, BContainer, BNav, BNavItem, BButton, BTooltip } from 'bootstrap-vue-next';
 import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
