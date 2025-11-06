@@ -92,8 +92,11 @@ import ProductCard from '../components/ProductCard.vue';
 import { supabase } from '@/lib/supabase';
 import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
+import { startChat } from '@/api/conversationsAPI.js';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 // State
 const userPoints = ref(500);
@@ -158,9 +161,26 @@ const handleFavoriteToggle = (data) => {
   // Implement favorite logic
 };
 
-const handleContactSeller = (productId) => {
-  console.log('Contact seller for product:', productId);
-  // Implement contact logic
+const handleContactSeller = async (productId) => {
+  // Check if user is logged in
+  if (!authStore.user) {
+    alert('請先登入才能發送訊息');
+    router.push('/login');
+    return;
+  }
+
+  try {
+    console.log('Starting chat for item:', productId);
+    // Start or find conversation
+    const result = await startChat(productId);
+    console.log('Chat started, conversation ID:', result.conversation_id);
+
+    // Navigate to messages page
+    router.push('/messages');
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+    alert('無法開始聊天，請稍後再試');
+  }
 };
 
 const goToProductDetail = (productId) => {

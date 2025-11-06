@@ -41,7 +41,7 @@
             <!-- Conversations List -->
             <div class="conversations-list">
               <div
-                v-for="conversation in filteredConversations"
+                v-for="conversation in displayConversations"
                 :key="conversation.id"
                 :class="['conversation-item', { active: selectedConversation?.id === conversation.id }]"
                 @click="selectConversation(conversation)"
@@ -69,8 +69,16 @@
                 </div>
               </div>
 
+              <!-- Loading State -->
+              <div v-if="loading" class="empty-state">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">載入中...</span>
+                </div>
+                <p>載入對話中...</p>
+              </div>
+
               <!-- Empty State -->
-              <div v-if="filteredConversations.length === 0" class="empty-state">
+              <div v-else-if="displayConversations.length === 0" class="empty-state">
                 <i class="bi bi-chat-left-text"></i>
                 <p>尚無對話</p>
               </div>
@@ -178,10 +186,17 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import { supabase } from '@/lib/supabase';
+import {
+  getMyConversations,
+  getConversationMessages,
+  sendMessage as sendMessageAPI,
+  markMessagesAsRead
+} from '@/api/conversationsAPI';
 
 const router = useRouter();
 
@@ -193,73 +208,19 @@ const selectedConversation = ref(null);
 const messageInput = ref('');
 const messagesArea = ref(null);
 const showFilterMenu = ref(false);
+const loading = ref(false);
+const error = ref(null);
+const currentUser = ref(null);
 
-const filters = [
-  { id: 'all', label: '全部', count: 5 },
-  { id: 'unread', label: '未讀', count: 2 },
-  { id: 'buying', label: '購買中', count: 2 },
-  { id: 'selling', label: '出售中', count: 3 }
-];
-
-// Mock conversations
-const conversations = ref([
-  {
-    id: 1,
-    user: {
-      name: '王小明',
-      avatar: 'https://placehold.co/48/6fb8a5/ffffff?text=WM',
-      online: true
-    },
-    product: {
-      id: 1,
-      name: 'iPhone 13 Pro',
-      price: 25000,
-      image: 'https://placehold.co/60x60/6fb8a5/ffffff?text=Phone'
-    },
-    lastMessage: {
-      text: '你好，請問這個還在嗎？',
-      time: '10:30'
-    },
-    unreadCount: 2,
-    type: 'buying'
-  },
-  {
-    id: 2,
-    user: {
-      name: '李美麗',
-      avatar: 'https://placehold.co/48/5a9d8c/ffffff?text=LM',
-      online: false
-    },
-    product: {
-      id: 2,
-      name: '二手沙發',
-      price: 5000,
-      image: 'https://placehold.co/60x60/5a9d8c/ffffff?text=Sofa'
-    },
-    lastMessage: {
-      text: '好的，謝謝！',
-      time: '昨天'
-    },
-    unreadCount: 0,
-    type: 'selling'
-  },
-  {
-    id: 3,
-    user: {
-      name: '陳大明',
-      avatar: 'https://placehold.co/48/4a8b7d/ffffff?text=CD',
-      online: true
-    },
-    product: null,
-    lastMessage: {
-      text: '下午3點可以面交嗎？',
-      time: '2天前'
-    },
-    unreadCount: 0,
-    type: 'buying'
-  }
+const filters = ref([
+  { id: 'all', label: '全部', count: 0 },
+  { id: 'unread', label: '未讀', count: 0 },
+  { id: 'buyer', label: '購買中', count: 0 },
+  { id: 'seller', label: '出售中', count: 0 }
 ]);
 
+// Real conversations from Supabase
+const conversations = ref([]);
 const messages = ref([]);
 
 // Computed
@@ -271,103 +232,239 @@ const filteredConversations = computed(() => {
     if (activeFilter.value === 'unread') {
       filtered = filtered.filter(c => c.unreadCount > 0);
     } else {
-      filtered = filtered.filter(c => c.type === activeFilter.value);
+      filtered = filtered.filter(c => c.role === activeFilter.value);
     }
   }
 
   // Filter by search
   if (searchQuery.value) {
     filtered = filtered.filter(c =>
-      c.user.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+      c.other_user.nickname.toLowerCase().includes(searchQuery.value.toLowerCase())
     );
   }
 
   return filtered;
 });
 
-// Methods
-const selectConversation = (conversation) => {
-  selectedConversation.value = conversation;
-
-  // Mark as read
-  conversation.unreadCount = 0;
-
-  // Load messages (mock data)
-  messages.value = [
-    {
-      id: 1,
-      text: '你好！',
-      time: '10:25',
-      isSent: false,
-      showDate: true,
-      date: '今天'
+// Transform conversations for display
+const displayConversations = computed(() => {
+  return filteredConversations.value.map(convo => ({
+    id: convo.id,
+    user: {
+      name: convo.other_user.nickname,
+      avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
+      online: false // We don't have online status yet
     },
-    {
-      id: 2,
-      text: '嗨！有什麼可以幫忙的嗎？',
-      time: '10:26',
-      isSent: true,
-      showDate: false
+    product: convo.item.id ? {
+      id: convo.item.id,
+      name: convo.item.title,
+      price: 0, // Will need to fetch from items if needed
+      image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
+    } : null,
+    lastMessage: {
+      text: convo.last_message_preview || '開始對話...',
+      time: formatTime(convo.last_updated_at)
     },
-    {
-      id: 3,
-      text: '請問這個還在嗎？',
-      time: '10:30',
-      isSent: false,
-      showDate: false
-    }
-  ];
+    unreadCount: convo.unread_count || 0,
+    type: convo.role,
+    _raw: convo
+  }));
+});
 
-  // Scroll to bottom
-  nextTick(() => {
-    if (messagesArea.value) {
-      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-    }
-  });
-};
+// Helper functions
+function formatTime(timestamp) {
+  if (!timestamp) return '';
 
-const deselectConversation = () => {
-  selectedConversation.value = null;
-};
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
 
-const sendMessage = () => {
-  if (!messageInput.value.trim()) return;
-
-  const newMessage = {
-    id: messages.value.length + 1,
-    text: messageInput.value,
-    time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-    isSent: true,
-    showDate: false
-  };
-
-  messages.value.push(newMessage);
-  messageInput.value = '';
-
-  // Update conversation last message
-  if (selectedConversation.value) {
-    selectedConversation.value.lastMessage = {
-      text: newMessage.text,
-      time: newMessage.time
-    };
+  // Less than 1 day
+  if (diff < 24 * 60 * 60 * 1000) {
+    return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
   }
 
+  // Less than 2 days
+  if (diff < 48 * 60 * 60 * 1000) {
+    return '昨天';
+  }
+
+  // Less than 7 days
+  if (diff < 7 * 24 * 60 * 60 * 1000) {
+    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`;
+  }
+
+  // Show date
+  return date.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+}
+
+function formatMessageTime(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+}
+
+// API Methods
+async function loadConversations() {
+  loading.value = true;
+  error.value = null;
+
+  try {
+    const role = activeFilter.value === 'all' ? 'all' : activeFilter.value;
+    const data = await getMyConversations(role, { page: 1, size: 50 });
+
+    if (data) {
+      conversations.value = data;
+      updateFilterCounts();
+    }
+  } catch (err) {
+    console.error('Failed to load conversations:', err);
+    error.value = '載入對話失敗';
+  } finally {
+    loading.value = false;
+  }
+}
+
+function updateFilterCounts() {
+  const all = conversations.value;
+  filters.value[0].count = all.length;
+  filters.value[1].count = all.filter(c => c.unread_count > 0).length;
+  filters.value[2].count = all.filter(c => c.role === 'buyer').length;
+  filters.value[3].count = all.filter(c => c.role === 'seller').length;
+}
+
+async function loadMessages(conversationId) {
+  try {
+    const data = await getConversationMessages(conversationId, { limit: 50 });
+
+    if (data) {
+      // Transform messages for display
+      let lastDate = '';
+      messages.value = data.map((msg, index) => {
+        const msgDate = new Date(msg.sent_at).toLocaleDateString('zh-TW');
+        const showDate = msgDate !== lastDate;
+        lastDate = msgDate;
+
+        return {
+          id: msg.id,
+          text: msg.content,
+          time: formatMessageTime(msg.sent_at),
+          isSent: msg.sender_id === currentUser.value?.id,
+          showDate,
+          date: showDate ? formatDateDivider(msg.sent_at) : ''
+        };
+      });
+
+      // Mark messages as read
+      await markMessagesAsRead(conversationId);
+    }
+  } catch (err) {
+    console.error('Failed to load messages:', err);
+  }
+}
+
+function formatDateDivider(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
+
+  if (diff < 24 * 60 * 60 * 1000) {
+    return '今天';
+  }
+  if (diff < 48 * 60 * 60 * 1000) {
+    return '昨天';
+  }
+  return date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' });
+}
+
+// Methods
+async function selectConversation(conversation) {
+  selectedConversation.value = conversation;
+
+  // Load messages from API
+  await loadMessages(conversation.id);
+
+  // Mark as read locally
+  conversation.unreadCount = 0;
+
   // Scroll to bottom
   nextTick(() => {
     if (messagesArea.value) {
       messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
     }
   });
-};
+}
 
-const handleAttachment = () => {
+function deselectConversation() {
+  selectedConversation.value = null;
+  messages.value = [];
+}
+
+async function sendMessage() {
+  if (!messageInput.value.trim() || !selectedConversation.value) return;
+
+  const content = messageInput.value.trim();
+  messageInput.value = '';
+
+  try {
+    // Send message via API
+    const newMessage = await sendMessageAPI(selectedConversation.value.id, content);
+
+    // Add to messages list
+    messages.value.push({
+      id: newMessage.id,
+      text: newMessage.content,
+      time: formatMessageTime(newMessage.sent_at),
+      isSent: true,
+      showDate: false
+    });
+
+    // Update conversation last message
+    if (selectedConversation.value) {
+      selectedConversation.value.lastMessage = {
+        text: newMessage.content,
+        time: formatTime(newMessage.sent_at)
+      };
+    }
+
+    // Scroll to bottom
+    nextTick(() => {
+      if (messagesArea.value) {
+        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+      }
+    });
+  } catch (err) {
+    console.error('Failed to send message:', err);
+    alert('發送訊息失敗，請稍後再試');
+    messageInput.value = content; // Restore message
+  }
+}
+
+function handleAttachment() {
   console.log('Handle attachment');
-  // Implement file attachment logic
-};
+  alert('檔案附件功能尚未實作');
+}
 
-const goToProduct = (productId) => {
+function goToProduct(productId) {
   router.push({ name: 'ItemDetail', params: { id: productId } });
-};
+}
+
+// Initialize
+async function initialize() {
+  // Check authentication
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    router.push('/login');
+    return;
+  }
+
+  currentUser.value = user;
+  await loadConversations();
+}
+
+// Lifecycle
+onMounted(() => {
+  initialize();
+});
 </script>
 
 <style scoped lang="scss">

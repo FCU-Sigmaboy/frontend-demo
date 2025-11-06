@@ -230,6 +230,7 @@ import ProductCard from '../components/ProductCard.vue';
 import { useAuthStore } from '../stores/auth';
 import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
 import { searchItems } from '@/api/get_searchItemsAPI.js';
+import { startChat } from '@/api/conversationsAPI.js';
 
 const authStore = useAuthStore();
 
@@ -311,9 +312,32 @@ const nextImage = () => {
   }
 };
 
-const handleMessage = () => {
-  console.log('Message seller');
-  // Implement messaging logic
+const handleMessage = async () => {
+  // Check if user is logged in
+  if (!authStore.user) {
+    alert('請先登入才能發送訊息');
+    router.push('/login');
+    return;
+  }
+
+  // Don't allow messaging yourself
+  if (product.value.user?.id === authStore.user.id) {
+    alert('無法向自己發送訊息');
+    return;
+  }
+
+  try {
+    console.log('Starting chat for item:', product.value.id);
+    // Start or find conversation
+    const result = await startChat(product.value.id);
+    console.log('Chat started, conversation ID:', result.conversation_id);
+
+    // Navigate to messages page
+    router.push('/messages');
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+    alert('無法開始聊天，請稍後再試');
+  }
 };
 
 const goToProduct = (productId) => {
@@ -327,8 +351,26 @@ const handleFavoriteToggle = (data) => {
   console.log('Favorite toggled:', data);
 };
 
-const handleContactSeller = (productId) => {
-  console.log('Contact seller for product:', productId);
+const handleContactSeller = async (productId) => {
+  // Check if user is logged in
+  if (!authStore.user) {
+    alert('請先登入才能發送訊息');
+    router.push('/login');
+    return;
+  }
+
+  try {
+    console.log('Starting chat for item:', productId);
+    // Start or find conversation
+    const result = await startChat(productId);
+    console.log('Chat started, conversation ID:', result.conversation_id);
+
+    // Navigate to messages page
+    router.push('/messages');
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+    alert('無法開始聊天，請稍後再試');
+  }
 };
 
 // Image preview methods
