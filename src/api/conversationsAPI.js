@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 
 /**
- * Get conversations for current logged-in user
+ * Get conversations for current logged-in user with enhanced data
  * @param {'buyer' | 'seller' | 'all'} role - Filter by role
  * @param {object} options - Pagination options
  * @param {number} [options.page=1] - Page number
@@ -24,7 +24,7 @@ export async function getMyConversations(role = 'all', options = {}) {
     buyer_id,
     seller_id,
     updated_at,
-    items ( title, image_urls ),
+    items ( id, title, image_urls, listing_status ),
     buyer:users!conversations_buyer_id_fkey ( id, nickname, profile_picture_url ),
     seller:users!conversations_seller_id_fkey ( id, nickname, profile_picture_url )
   `
@@ -60,16 +60,58 @@ export async function getMyConversations(role = 'all', options = {}) {
     throw new Error(error.message)
   }
 
-  // 8. Transform data for frontend
+  // 8. Get last messages and unread counts for all conversations
+  const conversationIds = data.map(c => c.id)
+
+  // Fetch last messages
+  const lastMessagesPromises = conversationIds.map(async (convId) => {
+    const { data: lastMsg } = await supabase
+      .from('conversation_messages')
+      .select('content, sent_at, sender_id')
+      .eq('conversation_id', convId)
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    return { convId, lastMsg }
+  })
+
+  // Fetch unread counts
+  const unreadCountsPromises = conversationIds.map(async (convId) => {
+    const { count } = await supabase
+      .from('conversation_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', convId)
+      .neq('sender_id', myUserId)
+      .eq('is_read', false)
+
+    return { convId, count: count || 0 }
+  })
+
+  const lastMessagesResults = await Promise.all(lastMessagesPromises)
+  const unreadCountsResults = await Promise.all(unreadCountsPromises)
+
+  // Create lookup maps
+  const lastMessageMap = Object.fromEntries(
+    lastMessagesResults.map(r => [r.convId, r.lastMsg])
+  )
+  const unreadCountMap = Object.fromEntries(
+    unreadCountsResults.map(r => [r.convId, r.count])
+  )
+
+  // 9. Transform data for frontend
   return data.map(convo => {
     // Determine who is the other user
     const otherUser = convo.buyer_id === myUserId ? convo.seller : convo.buyer
+    const lastMessage = lastMessageMap[convo.id]
+
     return {
       id: convo.id,
       item: {
         id: convo.item_id,
         title: convo.items?.title || '物品已刪除',
-        cover_image_url: convo.items?.image_urls?.[0] || null
+        cover_image_url: convo.items?.image_urls?.[0] || null,
+        listing_status: convo.items?.listing_status || 'deleted'
       },
       other_user: {
         id: otherUser?.id || null,
@@ -77,7 +119,9 @@ export async function getMyConversations(role = 'all', options = {}) {
         profile_picture_url: otherUser?.profile_picture_url
       },
       last_updated_at: convo.updated_at,
-      // Note: For "last message preview" and "unread count", will need RPC function
+      last_message_preview: lastMessage?.content || '',
+      last_message_time: lastMessage?.sent_at || convo.updated_at,
+      unread_count: unreadCountMap[convo.id] || 0,
       role: convo.buyer_id === myUserId ? 'buyer' : 'seller'
     }
   })
@@ -182,7 +226,7 @@ export async function startChat(itemId) {
   }
 
   // 4. Check if conversation already exists
-  const { data: existingConvo, error: findError } = await supabase
+  const { data: existingConvo } = await supabase
     .from('conversations')
     .select('id')
     .eq('item_id', itemId)
@@ -275,3 +319,62 @@ export async function markMessagesAsRead(conversationId) {
     console.error(`Supabase markMessagesAsRead failed (Conversation #${conversationId}):`, error)
   }
 }
+
+/**
+ * Subscribe to new messages in a conversation (real-time)
+ * @param {number} conversationId - Conversation ID
+ * @param {Function} onNewMessage - Callback when new message arrives
+ * @returns {object} Subscription object with unsubscribe method
+ */
+export function subscribeToMessages(conversationId, onNewMessage) {
+  const channel = supabase
+    .channel(`conversation:${conversationId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'conversation_messages',
+        filter: `conversation_id=eq.${conversationId}`
+      },
+      (payload) => {
+        onNewMessage(payload.new)
+      }
+    )
+    .subscribe()
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel)
+    }
+  }
+}
+
+/**
+ * Subscribe to conversation updates (real-time)
+ * @param {Function} onConversationUpdate - Callback when conversation updates
+ * @returns {object} Subscription object with unsubscribe method
+ */
+export function subscribeToConversations(onConversationUpdate) {
+  const channel = supabase
+    .channel('conversations')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversations'
+      },
+      (payload) => {
+        onConversationUpdate(payload)
+      }
+    )
+    .subscribe()
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel)
+    }
+  }
+}
+

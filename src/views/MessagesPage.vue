@@ -122,20 +122,11 @@
               </div>
 
               <!-- Product Context (if applicable) -->
-              <div v-if="selectedConversation.product" class="product-context">
-                <img
-                  :src="selectedConversation.product.image"
-                  :alt="selectedConversation.product.name"
-                  class="product-image"
-                />
-                <div class="product-info">
-                  <h4 class="product-name">{{ selectedConversation.product.name }}</h4>
-                  <p class="product-price">NT$ {{ selectedConversation.product.price }}</p>
-                </div>
-                <button class="view-product-btn" @click="goToProduct(selectedConversation.product.id)">
-                  查看
-                </button>
-              </div>
+              <ItemContextBar
+                v-if="selectedConversation.product"
+                :items="[selectedConversation.product]"
+                @item-click="goToProduct"
+              />
 
               <!-- Messages Area -->
               <div ref="messagesArea" class="messages-area">
@@ -186,16 +177,19 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import ItemContextBar from '../components/ItemContextBar.vue';
 import { supabase } from '@/lib/supabase';
 import {
   getMyConversations,
   getConversationMessages,
   sendMessage as sendMessageAPI,
-  markMessagesAsRead
+  markMessagesAsRead,
+  subscribeToMessages,
+  subscribeToConversations
 } from '@/api/conversationsAPI';
 
 const router = useRouter();
@@ -222,6 +216,8 @@ const filters = ref([
 // Real conversations from Supabase
 const conversations = ref([]);
 const messages = ref([]);
+const messageSubscription = ref(null);
+const conversationSubscription = ref(null);
 
 // Computed
 const filteredConversations = computed(() => {
@@ -339,7 +335,7 @@ async function loadMessages(conversationId) {
     if (data) {
       // Transform messages for display
       let lastDate = '';
-      messages.value = data.map((msg, index) => {
+      messages.value = data.map((msg) => {
         const msgDate = new Date(msg.sent_at).toLocaleDateString('zh-TW');
         const showDate = msgDate !== lastDate;
         lastDate = msgDate;
@@ -380,11 +376,20 @@ function formatDateDivider(timestamp) {
 async function selectConversation(conversation) {
   selectedConversation.value = conversation;
 
+  // Unsubscribe from previous conversation
+  if (messageSubscription.value) {
+    messageSubscription.value.unsubscribe();
+    messageSubscription.value = null;
+  }
+
   // Load messages from API
   await loadMessages(conversation.id);
 
   // Mark as read locally
   conversation.unreadCount = 0;
+
+  // Subscribe to real-time messages
+  messageSubscription.value = subscribeToMessages(conversation.id, handleRealtimeMessage);
 
   // Scroll to bottom
   nextTick(() => {
@@ -397,6 +402,44 @@ async function selectConversation(conversation) {
 function deselectConversation() {
   selectedConversation.value = null;
   messages.value = [];
+
+  // Unsubscribe from messages
+  if (messageSubscription.value) {
+    messageSubscription.value.unsubscribe();
+    messageSubscription.value = null;
+  }
+}
+
+// Real-time message handler
+function handleRealtimeMessage(newMessage) {
+  if (!selectedConversation.value || newMessage.conversation_id !== selectedConversation.value.id) {
+    return;
+  }
+
+  // Check if message already exists (avoid duplicates)
+  const exists = messages.value.some(m => m.id === newMessage.id);
+  if (exists) return;
+
+  // Add message to list
+  messages.value.push({
+    id: newMessage.id,
+    text: newMessage.content,
+    time: formatMessageTime(newMessage.sent_at),
+    isSent: newMessage.sender_id === currentUser.value?.id,
+    showDate: false
+  });
+
+  // Auto-scroll to bottom
+  nextTick(() => {
+    if (messagesArea.value) {
+      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+    }
+  });
+
+  // Mark as read if received
+  if (newMessage.sender_id !== currentUser.value?.id) {
+    markMessagesAsRead(selectedConversation.value.id);
+  }
 }
 
 async function sendMessage() {
@@ -444,7 +487,8 @@ function handleAttachment() {
   alert('檔案附件功能尚未實作');
 }
 
-function goToProduct(productId) {
+function goToProduct(itemOrId) {
+  const productId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
   router.push({ name: 'ItemDetail', params: { id: productId } });
 }
 
@@ -464,6 +508,16 @@ async function initialize() {
 // Lifecycle
 onMounted(() => {
   initialize();
+});
+
+onBeforeUnmount(() => {
+  // Clean up subscriptions
+  if (messageSubscription.value) {
+    messageSubscription.value.unsubscribe();
+  }
+  if (conversationSubscription.value) {
+    conversationSubscription.value.unsubscribe();
+  }
 });
 </script>
 
@@ -852,64 +906,6 @@ onMounted(() => {
   }
 }
 
-// Product Context
-.product-context {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #e0e0e0;
-
-  .product-image {
-    width: 60px;
-    height: 60px;
-    border-radius: 8px;
-    object-fit: cover;
-  }
-
-  .product-info {
-    flex: 1;
-    min-width: 0;
-
-    .product-name {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: #1e1e1e;
-      margin: 0 0 4px 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .product-price {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: $primary;
-      margin: 0;
-    }
-  }
-
-  .view-product-btn {
-    padding: 8px 16px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 6px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    &:hover {
-      background: $primary;
-      color: white;
-    }
-  }
-}
 
 // Messages Area
 .messages-area {
