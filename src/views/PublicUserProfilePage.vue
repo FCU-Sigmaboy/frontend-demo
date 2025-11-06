@@ -4,71 +4,90 @@
 
     <main class="main-content">
       <div class="profile-container">
-        <!-- User Profile Card -->
-        <section class="profile-card">
-          <div class="profile-left">
-            <!-- User Avatar -->
-            <div class="user-avatar-section">
-              <img
-                :src="userData.avatar"
-                :alt="userData.name"
-                class="user-avatar"
-              />
+        <!-- Loading Skeleton for Profile Card -->
+        <section v-if="isLoadingProfile" class="profile-card">
+          <div class="profile-header-row">
+            <div class="profile-left col-xl-6 col-lg-6">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-user-info">
+                <div class="skeleton-name"></div>
+                <div class="skeleton-meta"></div>
+                <div class="skeleton-stats">
+                  <div class="skeleton-stat"></div>
+                  <div class="skeleton-stat"></div>
+                </div>
+                <div class="skeleton-button"></div>
+              </div>
             </div>
-
-            <!-- User Info -->
-            <div class="user-info">
-              <h1 class="user-name">{{ userData.name }}</h1>
-              <p class="user-handle">@{{ userData.handle }}</p>
-              <div class="user-meta">
-                <span class="join-date">
-                  <i class="bi bi-calendar"></i>
-                  加入時間：{{ userData.joinDate }}
-                </span>
+            <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
+              <div class="skeleton-badges">
+                <div class="skeleton-badge" v-for="i in 3" :key="`badge-${i}`"></div>
               </div>
-
-              <!-- Bio -->
-              <p v-if="userData.bio" class="user-bio">{{ userData.bio }}</p>
-
-              <!-- Stats -->
-              <div class="user-stats-compact">
-                <div class="stat-item">
-                  <span class="stat-number">{{ userData.stats.followers }}</span>
-                  <span class="stat-label">追蹤者</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-number">{{ userData.stats.following }}</span>
-                  <span class="stat-label">追蹤中</span>
-                </div>
-              </div>
-
-              <!-- Action Button -->
-              <button
-                :class="['follow-btn', { following: isFollowing }]"
-                @click="toggleFollow"
-              >
-                <i :class="['bi', isFollowing ? 'bi-check' : 'bi-plus']"></i>
-                {{ isFollowing ? '追蹤中' : '追蹤' }}
-              </button>
             </div>
           </div>
+          <div class="statistics-section">
+            <div class="skeleton-section-title"></div>
+            <div class="stats-grid">
+              <div class="skeleton-stat-card" v-for="i in 3" :key="`stat-${i}`"></div>
+            </div>
+          </div>
+        </section>
 
-          <!-- Achievement Badges -->
-          <div class="achievements-section">
-            <h3 class="section-title">成就徽章</h3>
-            <div class="badges-grid">
-              <div
-                v-for="badge in achievements"
-                :key="badge.id"
-                :class="['badge-item', { unlocked: badge.unlocked }]"
-                :title="badge.description"
-              >
-                <div class="badge-icon">
-                  <i :class="['bi', badge.icon]"></i>
-                </div>
-                <span class="badge-label">{{ badge.label }}</span>
-                <span v-if="badge.unlocked" class="badge-date">{{ badge.unlockedDate }}</span>
+        <!-- User Profile Card -->
+        <section v-else class="profile-card">
+          <div class="profile-header-row">
+            <div class="profile-left col-xl-6 col-lg-6">
+              <!-- User Avatar -->
+              <div class="user-avatar-section">
+                <img
+                  :src="userData.avatar"
+                  :alt="userData.name"
+                  class="user-avatar"
+                />
               </div>
+
+              <!-- User Info -->
+              <div class="user-info">
+                <h1 class="user-name">{{ userData.name }}</h1>
+                <div class="user-meta">
+                  <span class="join-date">
+                    <i class="bi bi-calendar"></i>
+                    加入時間：{{ userData.joinDate }}
+                  </span>
+                </div>
+
+                <!-- Stats -->
+                <div class="user-stats-compact">
+                  <div class="stat-item">
+                    <span class="stat-number">{{ userData.stats.followers }}</span>
+                    <span class="stat-label">追蹤者</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-number">{{ userData.stats.following }}</span>
+                    <span class="stat-label">追蹤中</span>
+                  </div>
+                </div>
+
+                <!-- Action Button -->
+                <button
+                  :class="['follow-btn', { following: isFollowing }]"
+                  @click="toggleFollow"
+                >
+                  <i :class="['bi', isFollowing ? 'bi-check' : 'bi-plus']"></i>
+                  {{ isFollowing ? '追蹤中' : '追蹤' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Achievement Badges -->
+            <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
+              <AchievementBadges
+                :total-carbon="userData.carbonSaved"
+                :show-carbon-total="false"
+                :show-progress="false"
+                :show-threshold="false"
+                @badge-click="openBadgeModal"
+              />
             </div>
           </div>
 
@@ -97,13 +116,6 @@
                   <span class="stat-name">平均評分</span>
                 </div>
               </div>
-              <div class="stat-card">
-                <i class="bi bi-clock-history stat-icon"></i>
-                <div class="stat-info">
-                  <span class="stat-value">{{ userData.stats.responseTime }}</span>
-                  <span class="stat-name">回應時間</span>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -117,8 +129,9 @@
               :class="['tab-btn', { active: activeTab === tab.id }]"
               @click="activeTab = tab.id"
             >
-              {{ tab.label }}
-              <span v-if="tab.count" class="tab-count">({{ tab.count }})</span>
+              <i :class="['bi', tab.icon]"></i>
+              <span>{{ tab.label }}</span>
+              <span v-if="tab.count !== undefined" class="tab-count">{{ tab.count }}</span>
             </button>
           </div>
 
@@ -126,7 +139,19 @@
           <div class="tabs-content">
             <!-- Listings Tab -->
             <div v-show="activeTab === 'listings'" class="tab-pane">
-              <div v-if="userListings.length > 0" class="listings-grid">
+              <!-- Loading Skeleton -->
+              <div v-if="isLoadingListings" class="listings-grid">
+                <div v-for="i in 6" :key="`skeleton-${i}`" class="skeleton-product-card">
+                  <div class="skeleton-image"></div>
+                  <div class="skeleton-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text short"></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Listings Grid -->
+              <div v-else-if="userListings.length > 0" class="listings-grid">
                 <ProductCard
                   v-for="product in userListings"
                   :key="product.item_id"
@@ -134,6 +159,7 @@
                   @click="goToProductDetail(product.item_id)"
                 />
               </div>
+              <!-- Empty State -->
               <div v-else class="empty-state">
                 <i class="bi bi-inbox"></i>
                 <p>此使用者尚無刊登物品</p>
@@ -223,11 +249,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
+import AchievementBadges from '../components/AchievementBadges.vue';
+import { searchItems } from '../api/get_searchItemsAPI';
+import { getPublicUserProfile } from '../api/get_userProfileAPI';
 
 const route = useRoute();
 const router = useRouter();
@@ -236,91 +265,36 @@ const router = useRouter();
 const userPoints = ref(500);
 const activeTab = ref('listings');
 const isFollowing = ref(false);
+const isLoadingListings = ref(false);
+const isLoadingProfile = ref(false);
 
-// Mock user data
+// User data (from API)
 const userData = ref({
-  id: route.params.id || 1,
-  name: '使用者名稱',
-  handle: '使用者帳號',
+  id: route.params.id || '',
+  name: '載入中...',
+  handle: '',
   avatar: 'https://placehold.co/150/6fb8a5/ffffff?text=User',
-  bio: '熱愛環保，喜歡透過二手交易延續物品的生命，讓資源得到更好的利用。',
-  joinDate: 'November 2010',
+  joinDate: '',
+  avgRating: 0,
+  carbonSaved: 0, // Added for badge progress calculation
   stats: {
-    followers: 80,
-    following: 100,
-    totalListings: 45,
-    completedDeals: 32,
-    responseTime: '2小時內'
+    followers: 0,
+    following: 0,
+    totalListings: 0,
+    completedDeals: 0
   }
 });
 
-// Achievement badges
-const achievements = ref([
-  {
-    id: 1,
-    label: '新手交易',
-    icon: 'bi-1-circle',
-    description: '完成第一筆交易',
-    unlocked: true,
-    unlockedDate: '2024-01-15'
-  },
-  {
-    id: 2,
-    label: '交易達人',
-    icon: 'bi-2-circle',
-    description: '完成10筆交易',
-    unlocked: true,
-    unlockedDate: '2024-03-20'
-  },
-  {
-    id: 3,
-    label: '環保戰士',
-    icon: 'bi-3-circle',
-    description: '完成50筆交易',
-    unlocked: false,
-    unlockedDate: null
-  },
-  {
-    id: 4,
-    label: '綠色大師',
-    icon: 'bi-4-circle',
-    description: '完成100筆交易',
-    unlocked: false,
-    unlockedDate: null
-  }
-]);
+// Achievement badges are now calculated inside AchievementBadges component
 
 // Tabs
 const tabs = computed(() => [
-  { id: 'listings', label: '刊登物品', count: userListings.value.length },
-  { id: 'reviews', label: '評價', count: reviews.value.length }
+  { id: 'listings', label: '刊登物品', icon: 'bi-box-seam', count: userListings.value.length },
+  { id: 'reviews', label: '評價', icon: 'bi-star', count: reviews.value.length }
 ]);
 
-// Mock listings
-const userListings = ref([
-  {
-    id: 1,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/6fb8a5/ffffff?text=Product+1',
-    sellerName: userData.value.name,
-    sellerAvatar: userData.value.avatar,
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前'
-  },
-  {
-    id: 2,
-    name: '物品名稱',
-    price: 700,
-    image: 'https://placehold.co/330x250/5a9d8c/ffffff?text=Product+2',
-    sellerName: userData.value.name,
-    sellerAvatar: userData.value.avatar,
-    location: '台中市西屯區',
-    distance: '500m',
-    postedTime: '3天前'
-  }
-]);
+// User listings (from API)
+const userListings = ref([]);
 
 // Mock reviews
 const reviews = ref([
@@ -367,6 +341,10 @@ const reviews = ref([
 
 // Computed
 const averageRating = computed(() => {
+  // Use API average rating if available, otherwise calculate from reviews
+  if (userData.value.avgRating > 0) {
+    return userData.value.avgRating;
+  }
   if (reviews.value.length === 0) return 0;
   const sum = reviews.value.reduce((acc, review) => acc + review.rating, 0);
   return sum / reviews.value.length;
@@ -389,6 +367,104 @@ const toggleFollow = () => {
 const goToProductDetail = (id) => {
   router.push({ name: 'ItemDetail', params: { id } });
 };
+
+const openBadgeModal = (badge) => {
+  // TODO: 可以在這裡加入 Modal 顯示邏輯
+  console.log('Badge clicked:', badge);
+};
+
+// Fetch user's profile
+const fetchUserProfile = async (userId) => {
+  if (!userId) {
+    console.warn('No user ID provided');
+    return;
+  }
+
+  try {
+    isLoadingProfile.value = true;
+    console.log('Fetching profile for user:', userId);
+
+    const profile = await getPublicUserProfile(userId);
+
+    if (profile) {
+      // Format the join date
+      const joinDate = new Date(profile.created_at);
+      const formattedDate = joinDate.toLocaleDateString('zh-TW', {
+        year: 'numeric',
+        month: 'long'
+      });
+
+      userData.value = {
+        id: profile.id,
+        name: profile.nickname || '使用者',
+        handle: profile.nickname || 'user',
+        avatar: profile.profile_picture_url || 'https://placehold.co/150/6fb8a5/ffffff?text=User',
+        joinDate: formattedDate,
+        avgRating: profile.avg_rating || 0,
+        carbonSaved: profile.carbon_saved_kg || 0, // Added for badge progress calculation
+        stats: {
+          followers: profile.followers_count || 0,
+          following: profile.following_count || 0,
+          totalListings: 0, // Will be updated from listings
+          completedDeals: 0  // TODO: Add this to API if available
+        }
+      };
+
+      console.log('✅ User profile loaded:', profile);
+    } else {
+      console.warn('Profile not found for user:', userId);
+    }
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+  } finally {
+    isLoadingProfile.value = false;
+  }
+};
+
+// Fetch user's listings
+const fetchUserListings = async (userId) => {
+  if (!userId) {
+    console.warn('No user ID provided');
+    return;
+  }
+
+  try {
+    isLoadingListings.value = true;
+    console.log('Fetching listings for user:', userId);
+
+    const items = await searchItems({
+      user_id: userId,
+      page: 1,
+      size: 20,
+      sort_by: 'created_at',
+      sort_direction: 'desc'
+    });
+
+    if (items) {
+      userListings.value = items;
+      // Update total listings count
+      userData.value.stats.totalListings = items.length;
+      console.log('✅ User listings loaded:', items.length, 'items');
+    }
+  } catch (error) {
+    console.error('Failed to fetch user listings:', error);
+    userListings.value = [];
+  } finally {
+    isLoadingListings.value = false;
+  }
+};
+
+// Fetch data when component mounts
+onMounted(async () => {
+  const userId = route.params.id;
+  if (userId) {
+    // Fetch profile and listings in parallel
+    await Promise.all([
+      fetchUserProfile(userId),
+      fetchUserListings(userId)
+    ]);
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -419,8 +495,14 @@ const goToProductDetail = (id) => {
   padding: 40px;
   margin-bottom: 30px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.profile-header-row {
+  display: flex;
+  flex-wrap: wrap;
   gap: 40px;
 }
 
@@ -428,6 +510,8 @@ const goToProductDetail = (id) => {
   display: flex;
   gap: 30px;
   align-items: flex-start;
+  flex: 1;
+  min-width: 300px;
 }
 
 .user-avatar-section {
@@ -452,13 +536,6 @@ const goToProductDetail = (id) => {
     margin: 0 0 8px 0;
   }
 
-  .user-handle {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #999;
-    margin: 0 0 12px 0;
-  }
-
   .user-meta {
     margin-bottom: 16px;
 
@@ -476,13 +553,6 @@ const goToProductDetail = (id) => {
     }
   }
 
-  .user-bio {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 15px;
-    line-height: 1.6;
-    color: #1e1e1e;
-    margin: 0 0 20px 0;
-  }
 }
 
 .user-stats-compact {
@@ -565,86 +635,6 @@ const goToProductDetail = (id) => {
   }
 }
 
-// Achievements Section
-.achievements-section {
-  .section-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 20px 0;
-  }
-}
-
-.badges-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.badge-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 12px;
-  transition: all 0.3s;
-
-  &.unlocked {
-    background: #e8f5f3;
-    cursor: pointer;
-
-    .badge-icon {
-      background: $primary;
-
-      i {
-        color: white;
-      }
-    }
-
-    .badge-label {
-      color: #1e1e1e;
-    }
-
-    &:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.2);
-    }
-  }
-
-  .badge-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-
-    i {
-      font-size: 28px;
-      color: #999;
-    }
-  }
-
-  .badge-label {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: #999;
-    text-align: center;
-  }
-
-  .badge-date {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 11px;
-    color: #999;
-    margin-top: 4px;
-  }
-}
-
 // Statistics Section
 .statistics-section {
   .section-title {
@@ -658,13 +648,14 @@ const goToProductDetail = (id) => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 16px;
   padding: 20px;
   background: #f9f9f9;
@@ -720,7 +711,7 @@ const goToProductDetail = (id) => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 20px;
+  padding: 20px 30px;
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
@@ -731,9 +722,24 @@ const goToProductDetail = (id) => {
   cursor: pointer;
   transition: all 0.3s;
   margin-bottom: -2px;
+  white-space: nowrap;
+
+  i {
+    font-size: 20px;
+  }
 
   .tab-count {
-    color: #999;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    background: #e0e0e0;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
   }
 
   &:hover {
@@ -746,7 +752,8 @@ const goToProductDetail = (id) => {
     border-bottom-color: $primary;
 
     .tab-count {
-      color: $primary;
+      background: $primary;
+      color: white;
     }
   }
 }
@@ -773,6 +780,28 @@ const goToProductDetail = (id) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+}
+
+// Loading State
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+  }
 }
 
 // Rating Summary
@@ -987,7 +1016,165 @@ const goToProductDetail = (id) => {
   }
 }
 
+// Skeleton Loading Styles
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-name {
+  width: 200px;
+  height: 28px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-meta {
+  width: 150px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.skeleton-stat {
+  width: 80px;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-button {
+  width: 120px;
+  height: 44px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badges {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skeleton-badge {
+  width: 100px;
+  height: 120px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-section-title {
+  width: 120px;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 20px;
+}
+
+.skeleton-stat-card {
+  height: 80px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-product-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.short {
+    width: 60%;
+  }
+}
+
 // Responsive
+@media (max-width: 1199.98px) {
+  .profile-header-row {
+    flex-wrap: wrap;
+    gap: 32px;
+  }
+
+  .profile-left {
+    flex: 1;
+    min-width: 300px;
+  }
+}
+
 @media (max-width: 991.98px) {
   .main-content {
     padding: 20px 0 50px;
@@ -999,12 +1186,19 @@ const goToProductDetail = (id) => {
 
   .profile-card {
     padding: 30px 24px;
+    gap: 30px;
+  }
+
+  .profile-header-row {
+    flex-direction: column;
+    gap: 30px;
   }
 
   .profile-left {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    width: 100%;
   }
 
   .user-avatar-section .user-avatar {
@@ -1016,10 +1210,6 @@ const goToProductDetail = (id) => {
     justify-content: center;
   }
 
-  .badges-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1027,6 +1217,28 @@ const goToProductDetail = (id) => {
   .rating-summary {
     grid-template-columns: 1fr;
     gap: 30px;
+  }
+
+  // Skeleton responsive
+  .skeleton-avatar {
+    width: 120px;
+    height: 120px;
+  }
+
+  .skeleton-user-info {
+    align-items: center;
+  }
+
+  .skeleton-name {
+    width: 180px;
+  }
+
+  .skeleton-meta {
+    width: 130px;
+  }
+
+  .skeleton-stats {
+    justify-content: center;
   }
 }
 
@@ -1044,11 +1256,15 @@ const goToProductDetail = (id) => {
   }
 
   .tab-btn {
-    padding: 16px;
+    padding: 16px 20px;
     font-size: 14px;
 
-    .tab-count {
-      font-size: 13px;
+    i {
+      font-size: 18px;
+    }
+
+    span:not(.tab-count) {
+      display: none;
     }
   }
 }
@@ -1076,26 +1292,9 @@ const goToProductDetail = (id) => {
     font-size: 20px;
   }
 
-  .badges-grid,
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 12px;
-  }
-
-  .badge-item {
-    flex-direction: row;
-    justify-content: flex-start;
-    text-align: left;
-
-    .badge-icon {
-      width: 50px;
-      height: 50px;
-      margin-bottom: 0;
-
-      i {
-        font-size: 24px;
-      }
-    }
   }
 
   .listings-grid {
@@ -1113,6 +1312,31 @@ const goToProductDetail = (id) => {
 
   .review-card {
     padding: 16px;
+  }
+
+  // Skeleton responsive for small screens
+  .skeleton-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .skeleton-name {
+    width: 150px;
+    height: 24px;
+  }
+
+  .skeleton-meta {
+    width: 120px;
+  }
+
+  .skeleton-button {
+    width: 100px;
+    height: 40px;
+  }
+
+  .skeleton-badge {
+    width: 80px;
+    height: 100px;
   }
 }
 </style>

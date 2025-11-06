@@ -7,8 +7,35 @@
       <Breadcrumb :items="[{ label: '個人資料' }]" />
 
       <div class="profile-container">
+        <!-- Loading Skeleton for Profile Header -->
+        <section v-if="isLoadingProfile" class="profile-header">
+          <div class="header-content">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-user-info-section">
+              <div class="skeleton-name"></div>
+              <div class="skeleton-email"></div>
+              <div class="skeleton-follow-stats">
+                <div class="skeleton-follow-stat"></div>
+                <div class="skeleton-follow-stat"></div>
+              </div>
+              <div class="skeleton-user-stats">
+                <div class="skeleton-stat-item" v-for="i in 3" :key="`stat-${i}`"></div>
+              </div>
+              <div class="skeleton-action-buttons">
+                <div class="skeleton-button"></div>
+                <div class="skeleton-button"></div>
+              </div>
+            </div>
+            <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
+              <div class="skeleton-badges">
+                <div class="skeleton-badge" v-for="i in 3" :key="`badge-${i}`"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Profile Header Section -->
-        <section class="profile-header">
+        <section v-else class="profile-header">
           <div class="header-content">
             <div class="user-avatar-section">
               <img
@@ -68,29 +95,14 @@
               </div>
             </div>
 
-            <div class="achievements-section col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
-              <h3 class="achievements-title">
-                成就徽章
-                <span class="carbon-total">總碳足跡節省: {{ userCarbonSaved.toFixed(1) }} kg</span>
-              </h3>
-              <div class="achievements-stepper">
-                <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
-                <div
-                    v-for="badge in achievements"
-                    :key="badge.id"
-                    :class="['step-item', { 'unlocked': badge.unlocked }]"
-                    @click="openBadgeModal(badge)"
-                >
-                  <div class="step-circle">
-                    <img :src="badge.image" :alt="badge.label" class="step-image" />
-                    <div v-if="!badge.unlocked" class="progress-overlay">
-                      <span class="progress-text">{{ badge.progress }}%</span>
-                    </div>
-                  </div>
-                  <span class="step-label">{{ badge.label }}</span>
-                  <span v-if="!badge.unlocked" class="step-requirement">{{ badge.threshold }} kg</span>
-                </div>
-              </div>
+            <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
+              <AchievementBadges
+                :total-carbon="userCarbonSaved"
+                :show-carbon-total="true"
+                :show-progress="true"
+                :show-threshold="true"
+                @badge-click="openBadgeModal"
+              />
             </div>
           </div>
         </section>
@@ -125,12 +137,26 @@
               </div>
             </div>
 
-            <!-- Loading State -->
-            <div v-if="isLoadingListings" class="loading-state">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">載入中...</span>
+            <!-- Loading Skeleton -->
+            <div v-if="isLoadingListings" class="listings-sections">
+              <div class="listing-section">
+                <div class="subsection-header">
+                  <div class="skeleton-subsection-title"></div>
+                  <div class="skeleton-subsection-count"></div>
+                </div>
+                <div class="desktop-grid">
+                  <div class="listings-grid">
+                    <div v-for="i in 4" :key="`skeleton-${i}`" class="skeleton-product-card">
+                      <div class="skeleton-image"></div>
+                      <div class="skeleton-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p>載入中...</p>
             </div>
 
             <!-- Has Listings -->
@@ -377,14 +403,10 @@ import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
+import AchievementBadges from '../components/AchievementBadges.vue';
 import { Modal } from 'bootstrap';
 
-// --- 徽章圖片 ---
-// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
-import badgeRookie from '../assets/1badge.png';
-import badgeAdept from '../assets/2badge.png';
-import badgeExpert from '../assets/3badge.png';
-import badgeMaster from '../assets/4badge.png';
+// Badge images are now imported inside AchievementBadges component
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -396,6 +418,7 @@ const userCarbonSaved = ref(0); // 使用者節省的碳足跡 (kg)
 const activeTab = ref('listings');
 const myListings = ref([]);
 const isLoadingListings = ref(false);
+const isLoadingProfile = ref(false);
 const selectedBadge = ref(null);
 const badgeModalRef = ref(null);
 const badgeModalInstance = ref(null);
@@ -419,64 +442,7 @@ const userStats = computed(() => ({
   sales: 3
 }));
 
-// Achievement Badges (Updated with carbon footprint thresholds)
-const achievementThresholds = [
-  { id: 1, label: '環保新手', threshold: 10, image: badgeRookie, description: '節省 10kg 碳足跡，開啟您的環保旅程！' },
-  { id: 2, label: '環保達人', threshold: 50, image: badgeAdept, description: '節省 50kg 碳足跡，感謝您為地球的貢獻！' },
-  { id: 3, label: '環保高手', threshold: 100, image: badgeExpert, description: '節省 100kg 碳足跡，您是環保的實踐家！' },
-  { id: 4, label: '環保大師', threshold: 200, image: badgeMaster, description: '節省 200kg 碳足跡，您的環保精神值得敬佩！' },
-];
-
-// Computed achievements with unlock status and progress
-const achievements = computed(() => {
-  return achievementThresholds.map((badge, index) => {
-    const unlocked = userCarbonSaved.value >= badge.threshold;
-    const nextThreshold = badge.threshold;
-    const prevThreshold = index > 0 ? achievementThresholds[index - 1].threshold : 0;
-
-    // Calculate progress to next badge (0-100%)
-    let progress = 0;
-    if (unlocked) {
-      progress = 100;
-    } else {
-      const rangeSize = nextThreshold - prevThreshold;
-      const currentProgress = userCarbonSaved.value - prevThreshold;
-      progress = Math.max(0, Math.min(100, (currentProgress / rangeSize) * 100));
-    }
-
-    return {
-      ...badge,
-      unlocked,
-      progress: Math.round(progress),
-      currentKg: userCarbonSaved.value,
-      remainingKg: Math.max(0, nextThreshold - userCarbonSaved.value)
-    };
-  });
-});
-
-// Computed property for unlocked line width (Added)
-const unlockedSteps = computed(() => {
-  return achievements.value.filter(b => b.unlocked).length;
-});
-
-const unlockedLineWidth = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) {
-    return '0%';
-  }
-  // 寬度是 (已解鎖 - 1) / (總數 - 1) * 75% (線條總寬度)
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 75}%`;
-});
-
-// 給手機版使用的寬度計算 (Added)
-const unlockedLineWidthMobile = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) return '0%';
-  // 在手機版，線條總寬度是 80%
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 80}%`;
-});
+// Achievement badges are now calculated inside AchievementBadges component
 
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
@@ -518,6 +484,7 @@ const fetchUserCarbonData = async () => {
   }
 
   try {
+    isLoadingProfile.value = true;
     console.log('[Carbon] Fetching user carbon data');
     const profileData = await getMyProfileForEdit();
 
@@ -531,6 +498,8 @@ const fetchUserCarbonData = async () => {
   } catch (error) {
     console.error('[Carbon] Failed to fetch:', error);
     userCarbonSaved.value = 0;
+  } finally {
+    isLoadingProfile.value = false;
   }
 };
 
@@ -913,144 +882,6 @@ const scrollCarousel = (carouselRef, index) => {
   }
 }
 
-// Achievement Badges (Updated)
-.achievements-section {
-  .achievements-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 20px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .carbon-total {
-      font-size: 14px;
-      font-weight: 500;
-      color: $primary;
-      background: #e6f4f0;
-      padding: 6px 12px;
-      border-radius: 20px;
-    }
-  }
-}
-
-.achievements-stepper {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50px;
-    left: 12.5%;
-    width: 75%;
-    height: 4px;
-    background: #e9ecef;
-    z-index: 0;
-    transform: translateY(-50%);
-  }
-
-  .unlocked-line {
-    position: absolute;
-    top: 50px;
-    left: 12.5%;
-    height: 4px;
-    background: $primary;
-    z-index: 1;
-    transform: translateY(-50%);
-    transition: width 0.5s ease;
-  }
-
-  .step-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-    text-align: center;
-    cursor: pointer;
-
-    .step-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 8px;
-      background-color: #f0f7f5;
-      border: 2px solid #e0e0e0;
-      transition: all 0.3s;
-      padding: 10px;
-      box-sizing: border-box;
-      overflow: hidden;
-      position: relative;
-
-      .step-image {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        transition: filter 0.3s;
-        filter: grayscale(100%) opacity(0.6);
-      }
-
-      .progress-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(111, 184, 165, 0.9);
-        padding: 4px 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        .progress-text {
-          font-family: 'Noto Sans TC', sans-serif;
-          font-size: 11px;
-          font-weight: 700;
-          color: white;
-        }
-      }
-    }
-
-    .step-label {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      color: #999;
-      font-weight: 500;
-      transition: all 0.3s;
-    }
-
-    .step-requirement {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 11px;
-      color: #999;
-      margin-top: 2px;
-    }
-
-    &.unlocked {
-      .step-circle {
-        border-color: $primary;
-        background-color: #e6f4f0;
-
-        .step-image {
-          filter: grayscale(0%) opacity(1);
-        }
-      }
-      .step-label {
-        color: #1e1e1e;
-      }
-    }
-  }
-}
-
 // Badge Modal Styles
 .badge-status {
   margin-top: 16px;
@@ -1399,34 +1230,6 @@ const scrollCarousel = (carouselRef, index) => {
     min-width: 300px;
   }
 
-  .achievements-section {
-    width: 100%;
-    margin-top: 0 !important;
-  }
-
-  .achievements-stepper {
-    gap: 18px;
-
-    .step-item {
-      .step-circle {
-        width: 90px;
-        height: 90px;
-        padding: 9px;
-      }
-
-      .step-label {
-        font-size: 13px;
-      }
-    }
-
-    &::before {
-      top: 45px;
-    }
-
-    .unlocked-line {
-      top: 45px;
-    }
-  }
 }
 
 // Tablets (768px - 991px)
@@ -1488,30 +1291,6 @@ const scrollCarousel = (carouselRef, index) => {
     .review-btn {
       font-size: 15px;
       padding: 10px 20px;
-    }
-  }
-
-  .achievements-stepper {
-    gap: 16px;
-
-    .step-item {
-      .step-circle {
-        width: 85px;
-        height: 85px;
-        padding: 8px;
-      }
-
-      .step-label {
-        font-size: 13px;
-      }
-    }
-
-    &::before {
-      top: 42px;
-    }
-
-    .unlocked-line {
-      top: 42px;
     }
   }
 
@@ -1601,50 +1380,6 @@ const scrollCarousel = (carouselRef, index) => {
       justify-content: center;
       font-size: 14px;
       padding: 10px 16px;
-    }
-  }
-
-  .achievements-section {
-    width: 100%;
-  }
-
-  .achievements-title {
-    flex-direction: column;
-    align-items: flex-start !important;
-    gap: 10px;
-    font-size: 16px !important;
-
-    .carbon-total {
-      font-size: 13px;
-    }
-  }
-
-  .achievements-stepper {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px 16px;
-
-    &::before {
-      display: none;
-    }
-
-    .unlocked-line {
-      display: none;
-    }
-
-    .step-item {
-      .step-circle {
-        width: 75px;
-        height: 75px;
-        padding: 8px;
-      }
-
-      .step-label {
-        font-size: 12px;
-      }
-
-      .step-requirement {
-        font-size: 10px;
-      }
     }
   }
 
@@ -1742,35 +1477,6 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .achievements-title {
-    font-size: 15px !important;
-
-    .carbon-total {
-      font-size: 12px;
-      padding: 4px 10px;
-    }
-  }
-
-  .achievements-stepper {
-    gap: 16px 12px;
-
-    .step-item {
-      .step-circle {
-        width: 65px;
-        height: 65px;
-        padding: 6px;
-      }
-
-      .step-label {
-        font-size: 11px;
-      }
-
-      .step-requirement {
-        font-size: 9px;
-      }
-    }
-  }
-
   .listings-grid {
     grid-template-columns: 1fr;
     gap: 15px;
@@ -1852,6 +1558,174 @@ const scrollCarousel = (carouselRef, index) => {
     p {
       font-size: 15px;
     }
+  }
+}
+
+// Skeleton Loading Styles
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-user-info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-name {
+  width: 250px;
+  height: 32px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-email {
+  width: 200px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-follow-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.skeleton-follow-stat {
+  width: 80px;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-user-stats {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.skeleton-stat-item {
+  width: 100px;
+  height: 40px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.skeleton-button {
+  width: 150px;
+  height: 44px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badges {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skeleton-badge {
+  width: 100px;
+  height: 120px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-subsection-title {
+  width: 100px;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-subsection-count {
+  width: 60px;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-product-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.short {
+    width: 60%;
   }
 }
 </style>
