@@ -49,7 +49,13 @@
     <!-- Description Section -->
     <div class="section">
       <h4 class="section-title">物品描述</h4>
-      <p class="description">{{ description }}</p>
+      <div class="description-wrapper">
+        <p class="description">
+          {{ displayedDescription }}
+          <span v-if="shouldTruncate && !isExpanded" class="expand-trigger" @click="toggleExpand">...展開更多</span>
+          <span v-if="shouldTruncate && isExpanded" class="expand-trigger" @click="toggleExpand"> 顯示更少</span>
+        </p>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -96,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { useAuthStore } from '@/stores/auth';
@@ -108,6 +114,10 @@ const isOwner = computed(() => {
 });
 
 const router = useRouter();
+
+// Description expansion state
+const isExpanded = ref(false);
+const MAX_DESCRIPTION_LENGTH = 100;
 
 const props = defineProps({
   productId: {
@@ -185,6 +195,22 @@ const formattedRating = computed(() => {
   const ratingNum = typeof props.rating === 'string' ? parseFloat(props.rating) : props.rating;
   return ratingNum.toFixed(1);
 });
+
+// Description truncation logic
+const shouldTruncate = computed(() => {
+  return props.description && props.description.length > MAX_DESCRIPTION_LENGTH;
+});
+
+const displayedDescription = computed(() => {
+  if (!shouldTruncate.value || isExpanded.value) {
+    return props.description;
+  }
+  return props.description.substring(0, MAX_DESCRIPTION_LENGTH);
+});
+
+const toggleExpand = () => {
+  isExpanded.value = !isExpanded.value;
+};
 
 const handleMessage = () => {
   emit('message');
@@ -357,12 +383,31 @@ const goToSellerProfile = () => {
   margin: 0;
 }
 
+.description-wrapper {
+  position: relative;
+}
+
 .description {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: #555;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.expand-trigger {
+  color: $primary;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+  margin-left: 4px;
+
+  &:hover {
+    color: #5fa795;
+    text-decoration: underline;
+  }
 }
 
 .seller-info {
@@ -509,6 +554,10 @@ const goToSellerProfile = () => {
     font-size: 13px;
   }
 
+  .expand-trigger {
+    font-size: 13px;
+  }
+
   .seller-name {
     font-size: 15px;
   }
@@ -588,6 +637,10 @@ const goToSellerProfile = () => {
   }
 
   .description {
+    font-size: 12px;
+  }
+
+  .expand-trigger {
     font-size: 12px;
   }
 

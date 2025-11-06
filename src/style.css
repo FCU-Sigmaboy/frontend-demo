@@ -77,3 +77,10 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Add specificity to prevent global .card styling from affecting ProductCard */
+.user-profile-page .product-card,
+.user-profile-page .carousel-item .product-card {
+  padding: 0 !important;
+  margin: 0 !important;
+}
