@@ -962,28 +962,28 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background-color: $primary;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
-  box-shadow: 0 4px 12px rgba(111, 184, 165, 0.4);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
   z-index: 1500;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   i {
-    font-size: 28px;
+    font-size: 24px;
     color: white;
   }
 
   &:hover {
-    background-color: #5fa795;
-    box-shadow: 0 6px 16px rgba(111, 184, 165, 0.5);
-    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
+    transform: translateY(-2px);
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: translateY(0);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
   }
 }
 

@@ -87,11 +87,12 @@ async function initializeMap() {
         lng: props.center.longitude
       },
       zoom: props.zoom,
-      disableDefaultUI: false,
-      zoomControl: true,
+      disableDefaultUI: true, // Disable all default controls
+      zoomControl: false, // Users can pinch zoom on mobile
       mapTypeControl: false,
       streetViewControl: false,
-      fullscreenControl: true,
+      fullscreenControl: false, // Remove fullscreen control
+      gestureHandling: 'greedy', // Allow smooth gesture handling
       mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || null
     })
 

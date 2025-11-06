@@ -53,6 +53,15 @@
         @close="closeItemCard"
         @favorite-toggle="handleFavoriteToggle"
       />
+
+      <!-- List View Toggle Button -->
+      <button
+        class="view-toggle-btn"
+        @click="toggleToListView"
+      >
+        <i class="bi bi-list-ul"></i>
+        <span class="toggle-text">顯示列表</span>
+      </button>
     </div>
   </div>
 </template>
@@ -229,6 +238,11 @@ function goToLocationSetup() {
   router.push('/settings')
 }
 
+// Toggle to list view
+function toggleToListView() {
+  router.push({ name: 'Home' })
+}
+
 // Initialize page
 async function initialize() {
   initialLoading.value = true
@@ -370,6 +384,80 @@ onMounted(() => {
         font-size: 0.9rem;
       }
     }
+  }
+
+  // Map/List Toggle Button - Mobile: same size as FAB
+  .view-toggle-btn {
+    bottom: 90px !important; // Above the floating action button
+    right: 24px !important;
+    left: auto !important;
+    transform: none !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    width: 56px !important; // Match FAB size
+    height: 56px !important; // Match FAB size
+    justify-content: center;
+
+    .toggle-text {
+      display: none; // Hide text on mobile
+    }
+
+    i {
+      font-size: 22px;
+    }
+
+    &:hover {
+      transform: translateY(-3px) !important;
+    }
+
+    &:active {
+      transform: translateY(-1px) !important;
+    }
+  }
+}
+
+// Map/List View Toggle Button
+.view-toggle-btn {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 998;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  i {
+    font-size: 18px;
+    color: #1e1e1e;
+  }
+
+  .toggle-text {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e1e1e;
+    letter-spacing: 0.3px;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: translateX(-50%) translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
+  &:active {
+    transform: translateX(-50%) translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   }
 }
 </style>
