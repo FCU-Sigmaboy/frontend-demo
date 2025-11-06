@@ -19,6 +19,7 @@ import MyReviewsPage from '../views/MyReviewsPage.vue';
 import MyFollowersPage from '../views/MyFollowersPage.vue';
 import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
 import TransactionRecordsPage from '../views/TransactionRecordsPage.vue';
+import MapSearchPage from '../views/MapSearchPage.vue';
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: '/items',
     name: 'ItemList',
     component: ItemListPage
+  },
+  {
+    path: '/map-search',
+    name: 'MapSearch',
+    component: MapSearchPage
   },
   {
     path: '/items/:id',

@@ -56,8 +56,29 @@ export async function searchItems(filters = {}) {
         throw new Error(error.message);
     }
 
-    // RPC 回傳的 data 就是完美的 DTO，直接回傳
-    return data;
+    // Parse location coordinates from debug fields for map display
+    // RPC returns coordinates in POINT(longitude latitude) format
+    const parsedData = data?.map(item => {
+        let latitude = null;
+        let longitude = null;
+
+        // Parse POINT(longitude latitude) format
+        if (item.debug_item_location_wkb) {
+            const match = item.debug_item_location_wkb.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+            if (match) {
+                longitude = parseFloat(match[1]);
+                latitude = parseFloat(match[2]);
+            }
+        }
+
+        return {
+            ...item,
+            latitude,
+            longitude
+        };
+    });
+
+    return parsedData || data;
 }
 
 // data 範例
