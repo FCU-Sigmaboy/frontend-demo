@@ -67,7 +67,8 @@ const badges = computed(() => {
       description: '減少 10 公斤碳排放，開啟環保旅程',
       threshold: 10,
       unlocked: carbon >= 10,
-      progress: Math.min((carbon / 10) * 100, 100)
+      progress: Math.min((carbon / 10) * 100, 100),
+      remainingKg: Math.max(10 - carbon, 0)
     },
     {
       id: 2,
@@ -76,7 +77,8 @@ const badges = computed(() => {
       description: '減少 50 公斤碳排放，感謝您的貢獻',
       threshold: 50,
       unlocked: carbon >= 50,
-      progress: Math.min((carbon / 50) * 100, 100)
+      progress: Math.min((carbon / 50) * 100, 100),
+      remainingKg: Math.max(50 - carbon, 0)
     },
     {
       id: 3,
@@ -85,7 +87,8 @@ const badges = computed(() => {
       description: '減少 100 公斤碳排放，您是環保實踐家',
       threshold: 100,
       unlocked: carbon >= 100,
-      progress: Math.min((carbon / 100) * 100, 100)
+      progress: Math.min((carbon / 100) * 100, 100),
+      remainingKg: Math.max(100 - carbon, 0)
     },
     {
       id: 4,
@@ -94,7 +97,8 @@ const badges = computed(() => {
       description: '減少 200 公斤碳排放，環保精神值得敬佩',
       threshold: 200,
       unlocked: carbon >= 200,
-      progress: Math.min((carbon / 200) * 100, 100)
+      progress: Math.min((carbon / 200) * 100, 100),
+      remainingKg: Math.max(200 - carbon, 0)
     }
   ];
 });
