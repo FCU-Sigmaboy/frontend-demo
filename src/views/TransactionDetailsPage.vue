@@ -1,30 +1,48 @@
 <template>
   <div class="transaction-details-page">
-    <AppHeader :user-points="userPoints" />
+    <AppHeader :user-points="userBalance" />
 
     <main class="main-content">
       <!-- Breadcrumb -->
       <Breadcrumb :items="[
-        { label: '物品詳情', to: '#' },
-        { label: '交易' }
+        { label: '對話', to: { name: 'Messages' } },
+        { label: '交易確認' }
       ]" />
 
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-state">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">載入中...</span>
+        </div>
+        <p>載入交易資訊中...</p>
+      </div>
+
       <!-- Transaction Form Section -->
-      <section class="transaction-form-section">
+      <section v-else class="transaction-form-section">
         <div class="container">
           <div class="transaction-wrapper">
             <!-- Left Side: Transaction Info -->
             <div class="transaction-info">
-              <h2 class="form-title">交易資訊</h2>
+              <h2 class="form-title">交易確認</h2>
 
-              <!-- Delivery Method -->
+              <!-- Delivery Method (Read-only, always 面交) -->
               <div class="form-group">
                 <label class="form-label">取貨方式 *</label>
+                <div class="readonly-field">
+                  <i class="bi bi-people-fill"></i>
+                  <span>面交</span>
+                </div>
+                <p class="field-hint">此網站目前僅支援面對面交易</p>
+              </div>
+
+              <!-- Delivery Location -->
+              <div class="form-group">
+                <label class="form-label">面交地點</label>
                 <input
-                  v-model="form.deliveryMethod"
+                  v-model="form.deliveryLocation"
                   type="text"
                   class="form-input"
-                  placeholder="面交、7-11、全家"
+                  :placeholder="item.location || '台中市北投區...'"
                 />
               </div>
 
@@ -44,39 +62,64 @@
             <div class="order-summary">
               <h2 class="form-title">訂單摘要</h2>
 
-              <!-- Product Thumbnail -->
-              <div class="product-preview">
-                <img :src="product.image" alt="Product" class="product-thumbnail" />
+              <!-- Product Info -->
+              <div class="product-info">
+                <img :src="item.cover_image_url" :alt="item.title" class="product-thumbnail" />
+                <div class="product-details">
+                  <h3 class="product-name">{{ item.title }}</h3>
+                  <p class="product-location">
+                    <i class="bi bi-geo-alt"></i>
+                    {{ item.location }}
+                  </p>
+                </div>
               </div>
 
-              <!-- Order Details -->
+              <!-- Points Calculation -->
               <div class="order-details">
                 <div class="detail-row">
                   <span class="detail-label">交易方式</span>
-                  <span class="detail-value">{{ form.deliveryMethod || '-' }}</span>
+                  <span class="detail-value">面交</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="detail-label">取貨地點</span>
-                  <span class="detail-value">{{ product.location }}</span>
+                  <span class="detail-value">{{ form.deliveryLocation || item.location }}</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="detail-label">物品點數</span>
-                  <span class="detail-value">{{ product.points }}P</span>
+                  <span class="detail-value">{{ item.price }}P</span>
                 </div>
 
                 <div class="divider"></div>
 
-                <div class="detail-row total-row">
-                  <span class="detail-label">總計</span>
-                  <span class="detail-value total-value">{{ totalPoints }}P</span>
+                <!-- Balance Calculation -->
+                <div class="detail-row balance-row">
+                  <span class="detail-label">您的點數</span>
+                  <span class="detail-value">{{ userBalance }}P</span>
+                </div>
+
+                <div class="detail-row balance-row">
+                  <span class="detail-label">交易後剩餘</span>
+                  <span :class="['detail-value', { 'insufficient': remainingPoints < 0 }]">
+                    {{ remainingPoints }}P
+                  </span>
                 </div>
               </div>
 
+              <!-- Insufficient Points Warning -->
+              <div v-if="remainingPoints < 0" class="warning-message">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span>點數不足，請先儲值或選擇其他物品</span>
+              </div>
+
               <!-- Submit Button -->
-              <button class="submit-btn" @click="handleSubmit" :disabled="!isFormValid">
-                確認交易
+              <button
+                class="submit-btn"
+                @click="handleSubmit"
+                :disabled="!isFormValid || remainingPoints < 0"
+              >
+                確認訂單
               </button>
             </div>
           </div>
@@ -89,61 +132,106 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import { useTransactions } from '@/composables/useTransactions';
 
 const router = useRouter();
+const route = useRoute();
+const { getConfirmationDetails, confirmOrder } = useTransactions();
 
 // State
-const userPoints = ref(500);
+const loading = ref(false);
+const userBalance = ref(0);
+const item = ref({
+  id: '',
+  title: '',
+  cover_image_url: '',
+  location: '',
+  price: 0
+});
+const transaction = ref(null);
 
 const form = ref({
-  deliveryMethod: '',
+  deliveryLocation: '',
   notes: ''
 });
 
-// Mock product data
-const product = ref({
-  id: 1,
-  name: '物品名稱',
-  image: 'https://placehold.co/130x130/6fb8a5/ffffff?text=Product',
-  location: '台北市北投區',
-  points: 700,
-  isFree: false // Set to true for free items
-});
-
 // Computed
-const totalPoints = computed(() => {
-  if (product.value.isFree) {
-    return 0;
-  }
-  return product.value.points;
+const remainingPoints = computed(() => {
+  return userBalance.value - item.value.price;
 });
 
 const isFormValid = computed(() => {
-  return form.value.deliveryMethod.trim() !== '';
+  // Delivery location is optional, just needs to have valid data loaded
+  return item.value.id && userBalance.value >= 0;
 });
 
 // Methods
-const handleSubmit = () => {
-  if (!isFormValid.value) {
-    alert('請填寫必填欄位');
+async function loadTransactionData() {
+  loading.value = true;
+  try {
+    const conversationId = route.params.conversationId || route.query.conversationId;
+    if (!conversationId) {
+      alert('缺少對話 ID');
+      router.back();
+      return;
+    }
+
+    const data = await getConfirmationDetails(conversationId);
+
+    if (data) {
+      transaction.value = data.transaction;
+      item.value = data.item;
+      userBalance.value = data.user.balance;
+
+      // Pre-fill delivery location with item location
+      form.value.deliveryLocation = data.item.location || '';
+    }
+  } catch (err) {
+    console.error('Failed to load transaction data:', err);
+    alert('載入交易資訊失敗');
+    router.back();
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleSubmit() {
+  if (!isFormValid.value || remainingPoints.value < 0) {
+    if (remainingPoints.value < 0) {
+      alert('點數不足，請先儲值或選擇其他物品');
+    }
     return;
   }
 
-  console.log('Transaction submitted:', {
-    productId: product.value.id,
-    form: form.value,
-    totalPoints: totalPoints.value
-  });
+  try {
+    loading.value = true;
 
-  // Show success message and redirect
-  alert('交易成功！');
-  router.push({ name: 'Home' });
-};
+    const result = await confirmOrder(transaction.value.id, {
+      delivery_location: form.value.deliveryLocation,
+      delivery_notes: form.value.notes
+    });
+
+    if (result) {
+      alert('訂單確認成功！等待賣家最終確認');
+      router.push({ name: 'Messages' });
+    }
+  } catch (err) {
+    console.error('Failed to confirm order:', err);
+    alert('確認訂單失敗，請稍後再試');
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadTransactionData();
+});
 </script>
 
 <style scoped lang="scss">
@@ -167,39 +255,20 @@ const handleSubmit = () => {
   padding: 0 20px;
 }
 
-// Breadcrumb
-.breadcrumb-section {
-  padding: 20px 0;
-  background-color: #f9f9f9;
-}
-
-.breadcrumb {
+// Loading State
+.loading-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #555;
-}
+  justify-content: center;
+  padding: 100px 20px;
 
-.breadcrumb-link {
-  color: $primary;
-  text-decoration: none;
-  transition: all 0.3s;
-  cursor: pointer;
-
-  &:hover {
-    color: #5fa795;
-    text-decoration: underline;
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    margin-top: 16px;
   }
-}
-
-.breadcrumb-separator {
-  color: #999;
-}
-
-.breadcrumb-current {
-  color: #1e1e1e;
 }
 
 // Transaction Form Section
@@ -271,6 +340,31 @@ const handleSubmit = () => {
   min-height: 100px;
 }
 
+.readonly-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f0faf8;
+  border: 1px solid #d0ebe7;
+  border-radius: 5px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: $primary;
+  font-weight: 500;
+
+  i {
+    font-size: 18px;
+  }
+}
+
+.field-hint {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 12px;
+  color: #666;
+  margin: 4px 0 0 0;
+}
+
 // Order Summary (Right Side)
 .order-summary {
   display: flex;
@@ -284,19 +378,52 @@ const handleSubmit = () => {
   top: 80px;
 }
 
-.product-preview {
-  width: 100%;
+.product-info {
   display: flex;
-  justify-content: center;
-  padding: 20px 0;
+  gap: 12px;
+  align-items: flex-start;
+  padding-bottom: 20px;
   border-bottom: 1px solid #e0e0e0;
-}
 
-.product-thumbnail {
-  width: 130px;
-  height: 130px;
-  border-radius: 8px;
-  object-fit: cover;
+  .product-thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .product-details {
+    flex: 1;
+    min-width: 0;
+
+    .product-name {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin: 0 0 8px 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .product-location {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 13px;
+      color: #666;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      i {
+        font-size: 12px;
+      }
+    }
+  }
 }
 
 .order-details {
@@ -311,6 +438,22 @@ const handleSubmit = () => {
   align-items: center;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 14px;
+
+  &.balance-row {
+    .detail-label {
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: $primary;
+
+      &.insufficient {
+        color: #f44336;
+      }
+    }
+  }
 }
 
 .detail-label {
@@ -327,16 +470,24 @@ const handleSubmit = () => {
 .divider {
   height: 1px;
   background-color: #e0e0e0;
-  margin: 5px 0;
+  margin: 10px 0;
 }
 
-.total-row {
-  font-size: 16px;
-  font-weight: 600;
+.warning-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-radius: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  color: #f57c00;
 
-  .total-value {
-    color: $primary;
+  i {
     font-size: 18px;
+    flex-shrink: 0;
   }
 }
 

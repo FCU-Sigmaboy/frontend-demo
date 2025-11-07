@@ -136,8 +136,31 @@
                     <span>{{ message.date }}</span>
                   </div>
 
-                  <!-- Message -->
-                  <div :class="['message', { 'message-sent': message.isSent, 'message-received': !message.isSent }]">
+                  <!-- Special Message: Offer -->
+                  <OfferMessage
+                    v-if="message.message_type === 'offer' || message.message_type === 'counter_offer'"
+                    :offer="message.metadata"
+                    :current-user-id="currentUser?.id"
+                    :buyer-id="getBuyerId(selectedConversation)"
+                    :seller-id="selectedConversation._raw.item.owner_id"
+                    @accept="handleAcceptOffer"
+                    @counter="handleCounterOffer"
+                    @decline="handleDeclineOffer"
+                  />
+
+                  <!-- Special Message: Order Request -->
+                  <OrderRequestMessage
+                    v-else-if="message.message_type === 'order_request'"
+                    :order-request="message.metadata"
+                    :current-user-id="currentUser?.id"
+                    :seller-id="selectedConversation._raw.item.owner_id"
+                    @accept="handleAcceptOrderRequest"
+                    @decline="handleDeclineOrderRequest"
+                    @view-details="handleViewOrderDetails"
+                  />
+
+                  <!-- Regular Text Message -->
+                  <div v-else :class="['message', { 'message-sent': message.isSent, 'message-received': !message.isSent }]">
                     <div class="message-content">
                       <p class="message-text">{{ message.text }}</p>
                       <span class="message-time">{{ message.time }}</span>
@@ -145,6 +168,24 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Quick Action Bar -->
+              <QuickActionBar
+                v-if="selectedConversation && selectedConversation.product"
+                :conversation-id="selectedConversation.id"
+                :item-id="selectedConversation.product.id"
+                :current-user-id="currentUser?.id"
+                :seller-id="selectedConversation._raw.item.owner_id"
+                :current-price="selectedConversation.product.price || 0"
+                :transaction-state="currentTransactionState"
+                :message-count="messages.length"
+                :pending-offer="currentPendingOffer"
+                @send-quick-prompt="handleSendQuickPrompt"
+                @make-offer="handleMakeOffer"
+                @accept-offer="handleAcceptOffer"
+                @counter-offer="handleCounterOffer"
+                @request-order="handleRequestOrder"
+              />
 
               <!-- Input Area -->
               <div class="input-area">
@@ -182,6 +223,9 @@ import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ItemContextBar from '../components/ItemContextBar.vue';
+import QuickActionBar from '../components/QuickActionBar.vue';
+import OfferMessage from '../components/OfferMessage.vue';
+import OrderRequestMessage from '../components/OrderRequestMessage.vue';
 import { supabase } from '@/lib/supabase';
 import {
   getMyConversations,
@@ -191,8 +235,18 @@ import {
   subscribeToMessages,
   subscribeToConversations
 } from '@/api/conversationsAPI';
+import { useTransactions } from '@/composables/useTransactions';
 
 const router = useRouter();
+const {
+  makeOffer,
+  acceptOffer,
+  counterOffer,
+  declineOffer,
+  requestOrder,
+  acceptOrderRequest,
+  declineOrderRequest
+} = useTransactions();
 
 // State
 const userPoints = ref(500);
@@ -218,6 +272,10 @@ const conversations = ref([]);
 const messages = ref([]);
 const messageSubscription = ref(null);
 const conversationSubscription = ref(null);
+
+// Transaction state
+const currentTransactionState = ref('negotiating');
+const currentPendingOffer = ref(null);
 
 // Computed
 const filteredConversations = computed(() => {
@@ -490,6 +548,243 @@ function handleAttachment() {
 function goToProduct(itemOrId) {
   const productId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
   router.push({ name: 'ItemDetail', params: { id: productId } });
+}
+
+// Helper function to get buyer ID from conversation
+function getBuyerId(conversation) {
+  if (!conversation || !conversation._raw) return null;
+  // Buyer is the person who started the conversation (not the item owner)
+  return conversation._raw.role === 'buyer'
+    ? currentUser.value?.id
+    : conversation._raw.other_user.id;
+}
+
+// Transaction Handlers
+async function handleSendQuickPrompt(promptText) {
+  messageInput.value = promptText;
+  await sendMessage();
+}
+
+async function handleMakeOffer(offerData) {
+  if (!selectedConversation.value) return;
+
+  try {
+    const offer = await makeOffer(
+      selectedConversation.value.id,
+      offerData.amount,
+      'buyer'
+    );
+
+    // Send as special message
+    const offerMessage = await sendMessageAPI(selectedConversation.value.id, `買家出價 ${offerData.amount}P`, {
+      message_type: 'offer',
+      metadata: {
+        ...offer,
+        original_price: offerData.originalPrice
+      }
+    });
+
+    // Add to messages
+    messages.value.push({
+      id: offerMessage.id,
+      message_type: 'offer',
+      metadata: {
+        ...offer,
+        original_price: offerData.originalPrice
+      },
+      time: formatMessageTime(offerMessage.sent_at),
+      isSent: true,
+      showDate: false
+    });
+
+    // Set as current pending offer
+    currentPendingOffer.value = offer;
+
+    scrollToBottom();
+  } catch (err) {
+    console.error('Failed to make offer:', err);
+    alert('出價失敗，請稍後再試');
+  }
+}
+
+async function handleAcceptOffer(offer) {
+  try {
+    await acceptOffer(offer.id);
+
+    // Update message status
+    const messageIndex = messages.value.findIndex(
+      m => m.metadata?.id === offer.id
+    );
+    if (messageIndex >= 0) {
+      messages.value[messageIndex].metadata.status = 'accepted';
+    }
+
+    currentPendingOffer.value = null;
+    alert('已接受出價');
+  } catch (err) {
+    console.error('Failed to accept offer:', err);
+    alert('接受出價失敗，請稍後再試');
+  }
+}
+
+async function handleCounterOffer(offerData) {
+  try {
+    const result = await counterOffer(offerData.originalOfferId, offerData.amount);
+
+    // Send counter offer message
+    const counterMessage = await sendMessageAPI(selectedConversation.value.id, `賣家還價 ${offerData.amount}P`, {
+      message_type: 'counter_offer',
+      metadata: result.counter_offer
+    });
+
+    // Add to messages
+    messages.value.push({
+      id: counterMessage.id,
+      message_type: 'counter_offer',
+      metadata: result.counter_offer,
+      time: formatMessageTime(counterMessage.sent_at),
+      isSent: true,
+      showDate: false
+    });
+
+    // Update original offer status
+    const originalMessageIndex = messages.value.findIndex(
+      m => m.metadata?.id === offerData.originalOfferId
+    );
+    if (originalMessageIndex >= 0) {
+      messages.value[originalMessageIndex].metadata.status = 'countered';
+    }
+
+    currentPendingOffer.value = result.counter_offer;
+    scrollToBottom();
+  } catch (err) {
+    console.error('Failed to counter offer:', err);
+    alert('還價失敗，請稍後再試');
+  }
+}
+
+async function handleDeclineOffer(offer) {
+  try {
+    await declineOffer(offer.id);
+
+    // Update message status
+    const messageIndex = messages.value.findIndex(
+      m => m.metadata?.id === offer.id
+    );
+    if (messageIndex >= 0) {
+      messages.value[messageIndex].metadata.status = 'declined';
+    }
+
+    currentPendingOffer.value = null;
+    alert('已拒絕出價');
+  } catch (err) {
+    console.error('Failed to decline offer:', err);
+    alert('拒絕出價失敗，請稍後再試');
+  }
+}
+
+async function handleRequestOrder() {
+  if (!selectedConversation.value || !selectedConversation.value.product) return;
+
+  try {
+    const orderReq = await requestOrder(
+      selectedConversation.value.id,
+      selectedConversation.value.product.id,
+      selectedConversation.value.product.price
+    );
+
+    // Send order request message
+    const orderMessage = await sendMessageAPI(selectedConversation.value.id, '請求訂單', {
+      message_type: 'order_request',
+      metadata: {
+        ...orderReq,
+        item: selectedConversation.value.product,
+        agreed_price: selectedConversation.value.product.price,
+        delivery_method: '面交'
+      }
+    });
+
+    // Add to messages
+    messages.value.push({
+      id: orderMessage.id,
+      message_type: 'order_request',
+      metadata: {
+        ...orderReq,
+        item: selectedConversation.value.product,
+        agreed_price: selectedConversation.value.product.price,
+        delivery_method: '面交'
+      },
+      time: formatMessageTime(orderMessage.sent_at),
+      isSent: true,
+      showDate: false
+    });
+
+    currentTransactionState.value = 'order_requested';
+    scrollToBottom();
+  } catch (err) {
+    console.error('Failed to request order:', err);
+    alert('請求訂單失敗，請稍後再試');
+  }
+}
+
+async function handleAcceptOrderRequest(orderRequest) {
+  try {
+    await acceptOrderRequest(orderRequest.id);
+
+    // Update message status
+    const messageIndex = messages.value.findIndex(
+      m => m.metadata?.id === orderRequest.id
+    );
+    if (messageIndex >= 0) {
+      messages.value[messageIndex].metadata.status = 'accepted';
+    }
+
+    currentTransactionState.value = 'buyer_confirmed';
+
+    // Navigate to transaction confirmation page
+    router.push({
+      name: 'TransactionDetails',
+      query: { conversationId: selectedConversation.value.id }
+    });
+  } catch (err) {
+    console.error('Failed to accept order request:', err);
+    alert('接受訂單失敗，請稍後再試');
+  }
+}
+
+async function handleDeclineOrderRequest(orderRequest) {
+  try {
+    await declineOrderRequest(orderRequest.id);
+
+    // Update message status
+    const messageIndex = messages.value.findIndex(
+      m => m.metadata?.id === orderRequest.id
+    );
+    if (messageIndex >= 0) {
+      messages.value[messageIndex].metadata.status = 'declined';
+    }
+
+    currentTransactionState.value = 'negotiating';
+    alert('已拒絕訂單請求');
+  } catch (err) {
+    console.error('Failed to decline order request:', err);
+    alert('拒絕訂單失敗，請稍後再試');
+  }
+}
+
+function handleViewOrderDetails(orderRequest) {
+  router.push({
+    name: 'TransactionDetails',
+    query: { conversationId: selectedConversation.value.id }
+  });
+}
+
+function scrollToBottom() {
+  nextTick(() => {
+    if (messagesArea.value) {
+      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+    }
+  });
 }
 
 // Initialize

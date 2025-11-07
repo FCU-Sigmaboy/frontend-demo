@@ -377,8 +377,8 @@
                       {{ selectedBadge.progress }}%
                     </div>
                   </div>
-                  <p class="text-muted small mb-0">
-                    還需 <strong class="text-primary">{{ selectedBadge.remainingKg.toFixed(1) }} kg</strong> 即可解鎖
+                  <p v-if="selectedBadge.remainingKg > 0" class="text-muted small mb-0">
+                    還需 <strong class="text-primary">{{ selectedBadge.remainingKg?.toFixed(1) || '0.0' }} kg</strong> 即可解鎖
                   </p>
                 </div>
               </div>
