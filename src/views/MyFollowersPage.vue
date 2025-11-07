@@ -3,10 +3,13 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
-      <div class="followers-container">
-        <!-- Breadcrumb -->
-        <Breadcrumb :items="[{ label: '我的追蹤' }]" />
+      <!-- Breadcrumb -->
+      <Breadcrumb :items="[
+        { label: '我的檔案', to: { name: 'UserProfile' } },
+        { label: '我的追蹤' }
+      ]" />
 
+      <div class="followers-container">
         <!-- Tabs -->
         <div class="tabs-section">
           <button
@@ -40,7 +43,7 @@
 
         <!-- Loading Skeleton -->
         <div v-if="isLoading" class="users-list">
-          <div v-for="i in 6" :key="`skeleton-${i}`" class="skeleton-user-card">
+          <div v-for="i in 4" :key="`skeleton-${i}`" class="skeleton-user-card">
             <div class="skeleton-avatar"></div>
             <div class="skeleton-info">
               <div class="skeleton-name"></div>
@@ -357,7 +360,7 @@ onMounted(async () => {
 
 .main-content {
   flex: 1;
-  padding: 30px 0 60px;
+  padding: 0 0 30px 0;
   overflow: hidden;
 }
 
