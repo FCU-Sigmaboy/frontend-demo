@@ -101,23 +101,23 @@
 
                 <div class="detail-row balance-row">
                   <span class="detail-label">交易後剩餘</span>
-                  <span :class="['detail-value', { 'insufficient': remainingPoints < 0 }]">
+                  <span class="detail-value" :class="{ 'insufficient': hasInsufficientPoints }">
                     {{ remainingPoints }}P
                   </span>
                 </div>
-              </div>
 
-              <!-- Insufficient Points Warning -->
-              <div v-if="remainingPoints < 0" class="warning-message">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                <span>點數不足，請先儲值或選擇其他物品</span>
+                <!-- Insufficient Points Warning -->
+                <div v-if="hasInsufficientPoints" class="insufficient-warning">
+                  <i class="bi bi-exclamation-triangle"></i>
+                  點數不足，請先賺取更多點數
+                </div>
               </div>
 
               <!-- Submit Button -->
               <button
                 class="submit-btn"
                 @click="handleSubmit"
-                :disabled="!isFormValid || remainingPoints < 0"
+                :disabled="!isFormValid || hasInsufficientPoints"
               >
                 確認訂單
               </button>
@@ -134,6 +134,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { usePointsStore } from '@/stores/points';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -141,11 +142,11 @@ import { useTransactions } from '@/composables/useTransactions';
 
 const router = useRouter();
 const route = useRoute();
+const pointsStore = usePointsStore();
 const { getConfirmationDetails, confirmOrder } = useTransactions();
 
 // State
 const loading = ref(false);
-const userBalance = ref(0);
 const item = ref({
   id: '',
   title: '',
@@ -161,8 +162,17 @@ const form = ref({
 });
 
 // Computed
+const userBalance = computed(() => {
+  // Use points store balance if available, otherwise use fetched balance
+  return pointsStore.currentBalance > 0 ? pointsStore.currentBalance : 0;
+});
+
 const remainingPoints = computed(() => {
   return userBalance.value - item.value.price;
+});
+
+const hasInsufficientPoints = computed(() => {
+  return remainingPoints.value < 0;
 });
 
 const isFormValid = computed(() => {
@@ -186,10 +196,12 @@ async function loadTransactionData() {
     if (data) {
       transaction.value = data.transaction;
       item.value = data.item;
-      userBalance.value = data.user.balance;
 
       // Pre-fill delivery location with item location
       form.value.deliveryLocation = data.item.location || '';
+
+      // Fetch points profile to sync with store
+      await pointsStore.fetchProfile();
     }
   } catch (err) {
     console.error('Failed to load transaction data:', err);
@@ -201,9 +213,9 @@ async function loadTransactionData() {
 }
 
 async function handleSubmit() {
-  if (!isFormValid.value || remainingPoints.value < 0) {
-    if (remainingPoints.value < 0) {
-      alert('點數不足，請先儲值或選擇其他物品');
+  if (!isFormValid.value || hasInsufficientPoints.value) {
+    if (hasInsufficientPoints.value) {
+      alert('點數不足，請先賺取更多點數！');
     }
     return;
   }
@@ -217,7 +229,13 @@ async function handleSubmit() {
     });
 
     if (result) {
-      alert('訂單確認成功！等待賣家最終確認');
+      // Deduct points from store for optimistic update
+      pointsStore.updateBalance(-item.value.price, 'purchase_spending');
+
+      // Invalidate cache to refresh data
+      pointsStore.invalidateCache();
+
+      alert(`訂單確認成功！已扣除 ${item.value.price} 點數\n等待賣家最終確認`);
       router.push({ name: 'Messages' });
     }
   } catch (err) {
@@ -440,6 +458,10 @@ onMounted(() => {
   font-size: 14px;
 
   &.balance-row {
+    padding: 8px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+
     .detail-label {
       font-weight: 500;
     }
@@ -473,21 +495,22 @@ onMounted(() => {
   margin: 10px 0;
 }
 
-.warning-message {
+.insufficient-warning {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
-  background: #fff3e0;
-  border: 1px solid #ffb74d;
-  border-radius: 6px;
+  padding: 10px 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 5px;
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 13px;
-  color: #f57c00;
+  color: #856404;
+  margin-top: 5px;
 
   i {
-    font-size: 18px;
-    flex-shrink: 0;
+    font-size: 16px;
+    color: #ffc107;
   }
 }
 
@@ -530,14 +553,6 @@ onMounted(() => {
     padding: 0 15px;
   }
 
-  .breadcrumb-section {
-    padding: 15px 0;
-  }
-
-  .breadcrumb {
-    font-size: 13px;
-  }
-
   .transaction-form-section {
     padding: 25px 0;
   }
@@ -575,29 +590,12 @@ onMounted(() => {
     padding: 22px;
   }
 
-  .product-preview {
-    padding: 18px 0;
-  }
-
-  .product-thumbnail {
-    width: 120px;
-    height: 120px;
-  }
-
   .order-details {
     gap: 13px;
   }
 
   .detail-row {
     font-size: 13px;
-  }
-
-  .total-row {
-    font-size: 15px;
-
-    .total-value {
-      font-size: 17px;
-    }
   }
 
   .submit-btn {
@@ -609,14 +607,6 @@ onMounted(() => {
 @media (max-width: 575.98px) {
   .container {
     padding: 0 10px;
-  }
-
-  .breadcrumb-section {
-    padding: 12px 0;
-  }
-
-  .breadcrumb {
-    font-size: 12px;
   }
 
   .transaction-form-section {
@@ -658,29 +648,12 @@ onMounted(() => {
     padding: 20px;
   }
 
-  .product-preview {
-    padding: 15px 0;
-  }
-
-  .product-thumbnail {
-    width: 110px;
-    height: 110px;
-  }
-
   .order-details {
     gap: 12px;
   }
 
   .detail-row {
     font-size: 12px;
-  }
-
-  .total-row {
-    font-size: 14px;
-
-    .total-value {
-      font-size: 16px;
-    }
   }
 
   .submit-btn {

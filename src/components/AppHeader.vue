@@ -86,11 +86,14 @@
               <div
                 id="points-display"
                 class="points-display d-none d-lg-flex"
+                @click="router.push({ name: 'Dashboard' })"
+                style="cursor: pointer;"
               >
                 <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
                 <span class="points-value">{{ userBalance }}</span>
+                <span v-if="hasNewAchievements" class="notification-dot"></span>
               </div>
-              <BTooltip target="points-display" placement="bottom">我的環保點數</BTooltip>
+              <BTooltip target="points-display" placement="bottom">點擊查看點數儀表板</BTooltip>
 
               <!-- Post Button (Desktop) -->
              <BButton
@@ -115,9 +118,10 @@
 
               <!-- Mobile: Points + Avatar (Always Visible) -->
               <div class="mobile-user-section d-lg-none">
-                <div class="mobile-points">
+                <div class="mobile-points" @click="router.push({ name: 'Dashboard' })" style="cursor: pointer;">
                   <i class="bi bi-leaf"></i>
                   <span>{{ userBalance }}</span>
+                  <span v-if="hasNewAchievements" class="notification-dot-mobile"></span>
                 </div>
                 <img
                   v-if="authStore.userAvatar"
@@ -332,16 +336,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { BNavbar, BContainer, BNav, BNavItem, BButton, BTooltip } from 'bootstrap-vue-next';
 import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
+import { usePointsStore } from '@/stores/points';
 
 // Router & Auth Store
 const router = useRouter();
 const authStore = useAuthStore();
+const pointsStore = usePointsStore();
 
 // Logo Image
 import logoImage from '../assets/Logo.png';
@@ -354,12 +360,22 @@ const props = defineProps({
   }
 });
 
-// Computed: 從 profileData 獲取使用者的點數（balance）
+// Computed: 從 points store 獲取使用者的點數
 const userBalance = computed(() => {
+  // Priority: Points store > Profile data > Props default
+  if (pointsStore.currentBalance > 0) {
+    return pointsStore.currentBalance;
+  }
   if (authStore.profileData?.profile_details?.balance) {
     return authStore.profileData.profile_details.balance;
   }
   return props.userPoints; // 使用預設值
+});
+
+// Has new badges or achievements
+const hasNewAchievements = computed(() => {
+  // You can add logic here to track new achievements
+  return false;
 });
 
 // State
@@ -368,6 +384,18 @@ const showAllCategories = ref(false);
 const categorySearch = ref('');
 const expandedCategories = ref([]);
 
+// Initialize points profile when user logs in
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    // Fetch points profile in background
+    pointsStore.fetchProfile().catch(error => {
+      console.warn('Failed to fetch points profile in header:', error);
+    });
+  } else {
+    // Reset points store when user logs out
+    pointsStore.resetStore();
+  }
+}, { immediate: true });
 
 const categoriesStore = useCategoriesStore()
 
@@ -565,6 +593,14 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   align-items: center;
   gap: 5px;
   min-width: 80px; // Ensure consistent spacing
+  position: relative;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: rgba(111, 184, 165, 0.1);
+  }
 
   .points-icon {
     background: #f2efeb;
@@ -583,6 +619,17 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     font-weight: 700; // Bolder to make it more prominent
     color: $primary;
     min-width: 30px; // Ensure consistent width
+  }
+
+  .notification-dot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff6b6b;
+    border-radius: 50%;
+    border: 2px solid #f2efeb;
   }
 }
 
@@ -715,6 +762,12 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   background-color: #e8f5f1;
   border-radius: 12px;
   padding: 4px 10px;
+  position: relative;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #d0ebe4;
+  }
 
   i {
     font-size: 16px;
@@ -726,6 +779,17 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     font-size: 14px;
     font-weight: 600;
     color: $primary;
+  }
+
+  .notification-dot-mobile {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff6b6b;
+    border-radius: 50%;
+    border: 2px solid #f2efeb;
   }
 }
 

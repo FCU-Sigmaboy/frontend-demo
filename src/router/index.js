@@ -20,6 +20,7 @@ import MyFollowersPage from '../views/MyFollowersPage.vue';
 import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
 import TransactionRecordsPage from '../views/TransactionRecordsPage.vue';
 import MapSearchPage from '../views/MapSearchPage.vue';
+import UserDashboardPage from '../views/UserDashboardPage.vue';
 
 const routes = [
   {
@@ -127,6 +128,11 @@ const routes = [
     path: '/transactions',
     name: 'TransactionRecords',
     component: TransactionRecordsPage
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: UserDashboardPage
   }
 ];
 
