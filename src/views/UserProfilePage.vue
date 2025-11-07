@@ -8,7 +8,7 @@
 
       <div class="profile-container">
         <!-- Loading Skeleton for Profile Header -->
-        <section v-if="isLoadingProfile" class="profile-header">
+        <section v-if="authStore.isLoadingProfile" class="profile-header">
           <div class="header-content">
             <div class="skeleton-avatar"></div>
             <div class="skeleton-user-info-section">
@@ -55,12 +55,12 @@
               <!-- Followers/Following Stats -->
               <div class="follow-stats">
                 <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">0</span>
+                  <span class="stat-number">{{ profileData.following_count }}</span>
                   <span class="stat-text">追蹤中</span>
                 </button>
                 <span class="stat-divider">|</span>
                 <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">0</span>
+                  <span class="stat-number">{{ profileData.followers_count }}</span>
                   <span class="stat-text">追蹤者</span>
                 </button>
               </div>
@@ -397,7 +397,6 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { getMyItems } from '../api/get_myItemsAPI';
-import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -414,11 +413,9 @@ const favoritesStore = useFavoritesStore();
 
 // State
 const userPoints = ref(500);
-const userCarbonSaved = ref(0); // 使用者節省的碳足跡 (kg)
 const activeTab = ref('listings');
 const myListings = ref([]);
 const isLoadingListings = ref(false);
-const isLoadingProfile = ref(false);
 const selectedBadge = ref(null);
 const badgeModalRef = ref(null);
 const badgeModalInstance = ref(null);
@@ -442,6 +439,13 @@ const userStats = computed(() => ({
   sales: 3
 }));
 
+// 直接使用 authStore 的 profileData，不需要重複呼叫 API
+const profileData = computed(() => authStore.profileData);
+
+const userCarbonSaved = computed(() => {
+  return profileData.value?.profile_details?.carbon_saved_kg || 0;
+});
+
 // Achievement badges are now calculated inside AchievementBadges component
 
 const tabs = computed(() => [
@@ -452,7 +456,7 @@ const tabs = computed(() => [
 ]);
 
 const favoriteItems = computed(() => {
-  console.log('🎯 Favorites from store:', favoritesStore.favoriteItems.length);
+  console.log('Favorites from store:', favoritesStore.favoriteItems.length);
   return favoritesStore.favoriteItems;
 });
 const purchaseHistory = ref([]);
@@ -495,30 +499,17 @@ const isInactiveNextDisabled = computed(() => {
   return inactiveScrollIndex.value >= inactiveListings.value.length - visibleCards;
 });
 
-// Fetch user's carbon footprint data
-const fetchUserCarbonData = async () => {
+// 確保 profile 資料已載入
+const ensureProfileLoaded = async () => {
   if (!authStore.isLoggedIn) {
-    console.warn('[Carbon] Not logged in, skipping fetch');
+    console.warn('[Profile] Not logged in, skipping');
     return;
   }
 
-  try {
-    isLoadingProfile.value = true;
-    console.log('[Carbon] Fetching user carbon data');
-    const profileData = await getMyProfileForEdit();
-
-    if (profileData?.profile_details?.carbon_saved_kg) {
-      userCarbonSaved.value = parseFloat(profileData.profile_details.carbon_saved_kg);
-      console.log('[Carbon] User saved:', userCarbonSaved.value, 'kg');
-    } else {
-      userCarbonSaved.value = 0;
-      console.log('[Carbon] No data found, default to 0 kg');
-    }
-  } catch (error) {
-    console.error('[Carbon] Failed to fetch:', error);
-    userCarbonSaved.value = 0;
-  } finally {
-    isLoadingProfile.value = false;
+  // 如果 authStore 還沒載入 profileData，等待載入完成
+  if (!authStore.profileData && !authStore.isLoadingProfile) {
+    console.log('[Profile] Loading from auth store');
+    await authStore.loadCustomProfile();
   }
 };
 
@@ -584,9 +575,9 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
     dataLoaded = true;
     // Load all data in parallel to improve performance
     await Promise.allSettled([
-      fetchUserCarbonData(),
+      ensureProfileLoaded(),
       fetchMyListings(),
-      favoritesStore.count === 0 ? 
+      favoritesStore.count === 0 ?
         favoritesStore.loadFavorites({
           page: 1,
           size: 100,
@@ -622,7 +613,7 @@ onMounted(async () => {
     dataLoaded = true;
     // Load all data in parallel to improve performance
     await Promise.allSettled([
-      fetchUserCarbonData(),
+      ensureProfileLoaded(),
       fetchMyListings(),
       favoritesStore.count === 0 ?
         favoritesStore.loadFavorites({
