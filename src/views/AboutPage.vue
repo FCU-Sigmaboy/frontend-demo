@@ -10,13 +10,13 @@
         </nav>
 
         <!-- Hero Banner with Upload -->
-        <div class="hero-banner" @click="triggerFileUpload">
+        <div class="hero-banner" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload()">
           <img v-if="coverImageUrl" :src="coverImageUrl" alt="關於我們封面圖" class="hero-image" />
           <div v-else class="hero-placeholder">
             <i class="bi bi-image"></i>
           </div>
 
-          <div class="upload-overlay">
+          <div v-if="isAdmin" class="upload-overlay">
             <div v-if="isUploading" class="upload-status">
               <div class="spinner-border text-light" role="status">
                 <span class="visually-hidden">上傳中...</span>
@@ -30,6 +30,7 @@
           </div>
         </div>
         <input
+          v-if="isAdmin"
           ref="fileInput"
           type="file"
           accept=".jpg,.jpeg,.png,.heic"
@@ -111,18 +112,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { BContainer, BRow, BCol } from 'bootstrap-vue-next';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
-import { uploadImage } from '../api/uploadImage'; // We will create this
+import { useAuthStore } from '../stores/auth';
+import { uploadImage } from '../api/uploadImage';
 
+const authStore = useAuthStore();
 const fileInput = ref(null);
 const coverImageUrl = ref(null); // Initially null
 const isUploading = ref(false);
 
+// Check if the user has an 'admin' role.
+// This assumes your `profileData` from `authStore` includes a `role` field.
+const isAdmin = computed(() => authStore.profileData?.role === 'admin');
+
 const triggerFileUpload = () => {
-  if (isUploading.value) return;
+  if (isUploading.value || !isAdmin.value) return;
   fileInput.value.click();
 };
 
@@ -197,10 +204,13 @@ const handleFileChange = async (event) => {
   margin-bottom: 50px;
   border-radius: 12px;
   overflow: hidden;
-  cursor: pointer;
 
-  &:hover .upload-overlay {
-    opacity: 1;
+  &.is-admin {
+    cursor: pointer;
+
+    &:hover .upload-overlay {
+      opacity: 1;
+    }
   }
 }
 
