@@ -153,7 +153,7 @@
                     v-else-if="message.message_type === 'order_request'"
                     :order-request="message.metadata"
                     :current-user-id="currentUser?.id"
-                    :seller-id="selectedConversation._raw.item.owner_id"
+                    :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
                     @accept="handleAcceptOrderRequest"
                     @decline="handleDeclineOrderRequest"
                     @view-details="handleViewOrderDetails"
@@ -175,7 +175,7 @@
                 :conversation-id="selectedConversation.id"
                 :item-id="selectedConversation.product.id"
                 :current-user-id="currentUser?.id"
-                :seller-id="selectedConversation._raw.item.owner_id"
+                :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
                 :current-price="selectedConversation.product.price || 0"
                 :transaction-state="currentTransactionState"
                 :message-count="messages.length"
@@ -232,8 +232,7 @@ import {
   getConversationMessages,
   sendMessage as sendMessageAPI,
   markMessagesAsRead,
-  subscribeToMessages,
-  subscribeToConversations
+  subscribeToMessages
 } from '@/api/conversationsAPI';
 import { useTransactions } from '@/composables/useTransactions';
 
@@ -307,17 +306,17 @@ const displayConversations = computed(() => {
     user: {
       name: convo.other_user.nickname,
       avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
-      online: false // We don't have online status yet
+      online: false
     },
     product: convo.item.id ? {
       id: convo.item.id,
       name: convo.item.title,
-      price: 0, // Will need to fetch from items if needed
+      price: 0,
       image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
     } : null,
     lastMessage: {
-      text: convo.last_message_preview || '開始對話...',
-      time: formatTime(convo.last_updated_at)
+      text: convo.last_message || convo.last_message_preview || '開始對話...',
+      time: formatTime(convo.last_message_time || convo.last_updated_at)
     },
     unreadCount: convo.unread_count || 0,
     type: convo.role,
@@ -772,7 +771,7 @@ async function handleDeclineOrderRequest(orderRequest) {
   }
 }
 
-function handleViewOrderDetails(orderRequest) {
+function handleViewOrderDetails() {
   router.push({
     name: 'TransactionDetails',
     query: { conversationId: selectedConversation.value.id }
@@ -782,7 +781,30 @@ function handleViewOrderDetails(orderRequest) {
 function scrollToBottom() {
   nextTick(() => {
     if (messagesArea.value) {
-      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+      // Use smooth scrolling on mobile to prevent issues with virtual keyboard
+      if ('ontouchstart' in window || navigator.maxTouchPoints) {
+        // On mobile devices, use a more reliable scroll method
+        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+      } else {
+        // On desktop, use smooth scrolling
+        messagesArea.value.scrollTo({
+          top: messagesArea.value.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+      
+      // On mobile devices, ensure the last message is visible after a delay
+      if (window.matchMedia('(max-width: 575.98px)').matches) {
+        setTimeout(() => {
+          const allMessages = messagesArea.value.querySelectorAll('.message-wrapper');
+          if (allMessages.length > 0) {
+            const lastMessage = allMessages[allMessages.length - 1];
+            if (lastMessage) {
+              lastMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+        }, 100); // Delay to account for keyboard animation
+      }
     }
   });
 }
@@ -800,9 +822,34 @@ async function initialize() {
   await loadConversations();
 }
 
+// Mobile keyboard handling to prevent input area from being covered
+function handleMobileKeyboard() {
+  // Check if we're on a mobile device
+  const isMobile = window.matchMedia('(max-width: 575.98px)').matches;
+  
+  if (isMobile) {
+    // Adjust viewport height when virtual keyboard appears
+    const originalHeight = window.innerHeight;
+    
+    window.addEventListener('resize', () => {
+      // If the window height is smaller, likely the keyboard is open
+      const currentHeight = window.innerHeight;
+      const isKeyboardOpen = currentHeight < (originalHeight - 100); // Threshold for keyboard detection
+      
+      if (isKeyboardOpen) {
+        // Add a class to handle keyboard state
+        document.body.classList.add('keyboard-open');
+      } else {
+        document.body.classList.remove('keyboard-open');
+      }
+    });
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   initialize();
+  handleMobileKeyboard();
 });
 
 onBeforeUnmount(() => {
@@ -824,24 +871,35 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   background-color: #f9f9f9;
+  // Add mobile viewport fix
+  height: 100vh;
+  height: -webkit-fill-available; // For iOS Safari
+  max-height: -webkit-fill-available; // For iOS Safari
 }
 
 .main-content {
   flex: 1;
   padding: 0;
   overflow: hidden;
+  // Ensure content doesn't get hidden by footer on mobile
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .messages-container {
   max-width: 1600px;
   margin: 0 auto;
-  height: calc(100vh - 50px); // Subtract header height
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  // Calculate height properly on mobile devices
+  height: calc(100vh - 50px - env(safe-area-inset-bottom, 0px)); // Subtract header height and safe area
 }
 
 .messages-layout {
   display: flex;
-  height: 100%;
+  flex: 1;
   background: white;
+  height: 100%;
 }
 
 // Conversations Sidebar
@@ -851,6 +909,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   background: white;
+  flex: 0 0 auto; // Fixed width
+  min-width: 0; // Allow flex items to shrink below their content
 }
 
 .sidebar-header {
@@ -859,6 +919,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding: 20px 24px;
   border-bottom: 1px solid #e0e0e0;
+  flex: 0 0 auto; // Fixed height
 
   .sidebar-title {
     font-family: 'Noto Sans TC', sans-serif;
@@ -1132,6 +1193,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  // Ensure proper mobile layout
+  min-height: 0; // Allow flex item to shrink
 }
 
 .chat-header {
@@ -1140,6 +1203,7 @@ onBeforeUnmount(() => {
   gap: 16px;
   padding: 16px 24px;
   border-bottom: 1px solid #e0e0e0;
+  flex: 0 0 auto; // Fixed height
 
   .back-btn-mobile {
     display: none;
@@ -1161,6 +1225,7 @@ onBeforeUnmount(() => {
     .user-details {
       display: flex;
       flex-direction: column;
+      min-width: 0; // Allow text to truncate
 
       .user-name {
         font-family: 'Noto Sans TC', sans-serif;
@@ -1168,6 +1233,9 @@ onBeforeUnmount(() => {
         font-weight: 600;
         color: #1e1e1e;
         margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .user-status {
@@ -1208,6 +1276,11 @@ onBeforeUnmount(() => {
   padding: 24px;
   overflow-y: auto;
   background: #f9f9f9;
+  // Ensure proper scrolling on mobile
+  -webkit-overflow-scrolling: touch; // Smooth scrolling on iOS
+  min-height: 0; // Allow flex item to shrink
+  display: flex;
+  flex-direction: column;
 }
 
 .message-wrapper {
@@ -1450,10 +1523,81 @@ onBeforeUnmount(() => {
 
   .chat-area {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .active-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    height: -webkit-fill-available; // For iOS Safari
+    flex: 1;
+  }
+
+  .messages-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 16px; // Reduced padding for mobile
+  }
+
+  .input-area {
+    padding: 12px 16px;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    z-index: 10; // Ensure it stays above other content
+  }
+
+  .message-input {
+    padding: 10px 12px; // Smaller input for mobile
   }
 
   .message-content {
     max-width: 85%;
   }
+
+  // Fix for iOS Safari virtual keyboard
+  @supports (-webkit-touch-callout: none) {
+    .input-area {
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+// Additional mobile fixes for viewport height
+@supports (-webkit-touch-callout: none) {
+  .messages-container {
+    height: -webkit-fill-available;
+  }
+  
+  .messages-container {
+    height: calc(-webkit-fill-available - 50px - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+// Adjust layout when virtual keyboard is open
+.keyboard-open .messages-container {
+  height: auto;
+  min-height: 50vh; // Ensure a minimum height when keyboard is open
+}
+
+// Adjust messages area when keyboard is open to improve scrolling
+.keyboard-open .messages-area {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+// Ensure input area stays visible when keyboard is open
+.keyboard-open .input-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000; // Ensure it stays above other elements
 }
 </style>

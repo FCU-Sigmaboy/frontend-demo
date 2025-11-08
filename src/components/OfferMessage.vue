@@ -88,11 +88,11 @@ const props = defineProps({
     required: true
   },
   buyerId: {
-    type: String,
+    type: [String, Number],
     required: true
   },
   sellerId: {
-    type: String,
+    type: [String, Number],
     required: true
   }
 });
@@ -100,8 +100,8 @@ const props = defineProps({
 const emit = defineEmits(['accept', 'counter', 'decline']);
 
 // Computed
-const isBuyer = computed(() => props.currentUserId === props.buyerId);
-const isSeller = computed(() => props.currentUserId === props.sellerId);
+const isBuyer = computed(() => String(props.currentUserId) === String(props.buyerId));
+const isSeller = computed(() => String(props.currentUserId) === String(props.sellerId));
 
 const offerTypeClass = computed(() => {
   return props.offer.offered_by === 'buyer' ? 'buyer-offer' : 'seller-offer';
@@ -122,14 +122,7 @@ const titleText = computed(() => {
 // Show actions only if offer is pending and user can respond
 const showActions = computed(() => {
   if (props.offer.status !== 'pending') return false;
-
-  // Seller can respond to buyer offers
-  if (props.offer.offered_by === 'buyer' && isSeller.value) return true;
-
-  // Buyer can respond to seller counter offers
-  if (props.offer.offered_by === 'seller' && isBuyer.value) return true;
-
-  return false;
+  return (props.offer.offered_by === 'buyer' && isSeller.value) || (props.offer.offered_by === 'seller' && isBuyer.value);
 });
 
 const canAccept = computed(() => showActions.value);

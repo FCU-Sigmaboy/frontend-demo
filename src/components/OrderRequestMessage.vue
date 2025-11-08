@@ -105,7 +105,7 @@ const props = defineProps({
     required: true
   },
   sellerId: {
-    type: String,
+    type: [String, Number],
     required: true
   }
 });
@@ -113,7 +113,7 @@ const props = defineProps({
 const emit = defineEmits(['accept', 'decline', 'view-details']);
 
 // Computed
-const isSeller = computed(() => props.currentUserId === props.sellerId);
+const isSeller = computed(() => String(props.currentUserId) === String(props.sellerId));
 
 const statusClass = computed(() => {
   return `status-${props.orderRequest.status}`;

@@ -139,11 +139,11 @@ import { ref, computed } from 'vue';
 
 const props = defineProps({
   conversationId: {
-    type: String,
+    type: [String, Number],
     required: true
   },
   itemId: {
-    type: String,
+    type: [String, Number],
     required: true
   },
   currentUserId: {
@@ -151,8 +151,9 @@ const props = defineProps({
     required: true
   },
   sellerId: {
-    type: String,
-    required: true
+    type: [String, Number],
+    required: false,
+    default: null
   },
   currentPrice: {
     type: Number,
@@ -194,8 +195,8 @@ const quickPrompts = ref([
 ]);
 
 // Computed
-const isBuyer = computed(() => props.currentUserId !== props.sellerId);
-const isSeller = computed(() => props.currentUserId === props.sellerId);
+const isBuyer = computed(() => props.sellerId ? props.currentUserId !== String(props.sellerId) : true)
+const isSeller = computed(() => props.sellerId ? props.currentUserId === String(props.sellerId) : false)
 
 // Show quick prompts only when no messages have been sent
 const showQuickPrompts = computed(() => props.messageCount === 0);
