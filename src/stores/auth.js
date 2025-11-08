@@ -93,14 +93,14 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // 儲存完整的 profile 資料
-      profileData.value = data
+      profileData.value = Array.isArray(data) ? data[0] : data
 
       console.log('✅ Profile updated:', {
-        nickname: data.nickname,
-        avatar: data.profile_picture_url,
-        balance: data.profile_details?.balance,
-        carbon_saved: data.profile_details?.carbon_saved_kg,
-        locations_count: data.locations?.length || 0
+        nickname: profileData.value.nickname,
+        avatar: profileData.value.profile_picture_url,
+        balance: profileData.value.profile_details?.balance,
+        carbon_saved: profileData.value.profile_details?.carbon_saved_kg,
+        locations_count: profileData.value.locations?.length || 0
       })
     } catch (error) {
       console.error('Error updating profile:', error)
@@ -132,18 +132,18 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // 儲存完整的 profile 資料
-      profileData.value = data
+      profileData.value = Array.isArray(data) ? data[0] : data
 
       console.log('Profile loaded:', {
-        nickname: data.nickname,
-        avatar: data.profile_picture_url,
-        balance: data.profile_details?.balance,
-        carbon_saved: data.profile_details?.carbon_saved_kg,
-        locations_count: data.locations?.length || 0
+        nickname: profileData.value.nickname,
+        avatar: profileData.value.profile_picture_url,
+        balance: profileData.value.profile_details?.balance,
+        carbon_saved: profileData.value.profile_details?.carbon_saved_kg,
+        locations_count: profileData.value.locations?.length || 0
       })
 
       // 檢查是否有 locations，如果沒有則自動獲取並儲存當前位置
-      if (!data.locations || data.locations.length === 0) {
+      if (!profileData.value.locations || profileData.value.locations.length === 0) {
         console.log('📍 No locations found, attempting to get current position...')
         await autoSaveCurrentLocation()
       }
