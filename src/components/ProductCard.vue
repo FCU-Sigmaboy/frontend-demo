@@ -63,6 +63,7 @@ import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '@/stores/favorites';
 import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
+import { createOrGetConversation } from '@/api/conversationAPI_v2';
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
@@ -92,7 +93,8 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['contact-seller']);
+// 移除 emit，改為直接處理
+// const emit = defineEmits(['contact-seller']);
 
 // Handle both data structures (with nested user or flat seller data)
 const sellerName = computed(() => {
@@ -144,8 +146,39 @@ const toggleFavorite = () => {
   }, 500);
 };
 
-const handleContact = () => {
-  emit('contact-seller', props.product.item_id);
+const handleContact = async () => {
+  // 檢查是否登入
+  if (!authStore.user) {
+    router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
+    return;
+  }
+
+  // 檢查是否為自己的商品
+  if (isOwner.value) {
+    alert('無法與自己的商品發起對話');
+    return;
+  }
+
+  try {
+    // 使用 v2 API: createOrGetConversation(otherUserId, initialItemId)
+    const conversation = await createOrGetConversation(
+      sellerId.value,
+      props.product.item_id
+    );
+
+    // 導航到訊息頁面，並傳遞物品資訊以便在輸入框上方顯示
+    router.push({
+      name: 'Messages',
+      query: {
+        conversationId: conversation.conversation_id,
+        itemId: props.product.item_id,
+        itemTitle: props.product.title
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create conversation:', error);
+    alert('無法開啟對話，請稍後再試');
+  }
 };
 
 const goToSellerProfile = () => {
