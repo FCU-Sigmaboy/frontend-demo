@@ -1,11 +1,35 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
+import { useMessageStore } from './stores/message'
 
 const authStore = useAuthStore()
+const messageStore = useMessageStore()
 
-onMounted(() => {
-  authStore.initAuth()
+// 監聽登入狀態
+watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
+  if (isLoggedIn) {
+    // 使用者登入後，載入對話並啟動監聽
+    await messageStore.loadConversations()
+    messageStore.startGlobalMessageListener()
+  } else {
+    // 使用者登出，重置訊息 store
+    messageStore.reset()
+  }
+})
+
+onMounted(async () => {
+  await authStore.initAuth()
+
+  // 如果使用者已登入，初始化訊息功能
+  if (authStore.isLoggedIn) {
+    await messageStore.loadConversations()
+    messageStore.startGlobalMessageListener()
+  }
+})
+
+onBeforeUnmount(() => {
+  messageStore.stopGlobalMessageListener()
 })
 </script>
 
