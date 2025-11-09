@@ -465,6 +465,17 @@ const loadItemData = async () => {
       usePrimaryLocation: item.use_primary_location !== undefined ? item.use_primary_location : true
     };
 
+    // 驗證編輯的物品所使用的地點是否仍然存在
+    const selectedLocation = item.use_primary_location 
+      ? userLocations.value.primary 
+      : userLocations.value.secondary;
+
+    if (!selectedLocation) {
+      const locationType = item.use_primary_location ? '主要地點' : '次要地點';
+      console.warn(`⚠️ 此物品原本使用${locationType},但該地點已不存在`);
+      alert(`注意：此物品原本使用${locationType},但您目前尚未設定該地點。請重新選擇交易地點。`);
+    }
+
     console.log('✅ Item data loaded:', formData.value);
   } catch (error) {
     console.error('❌ Failed to load item:', error);
@@ -576,6 +587,17 @@ const handleSubmit = async () => {
   // Validate images
   if (formData.value.images.length === 0) {
     alert('請至少上傳一張商品照片');
+    return;
+  }
+
+  // Validate location exists
+  const selectedLocation = formData.value.usePrimaryLocation 
+    ? userLocations.value.primary 
+    : userLocations.value.secondary;
+
+  if (!selectedLocation) {
+    const locationType = formData.value.usePrimaryLocation ? '主要地點' : '次要地點';
+    alert(`請先在個人資料中設定${locationType}後再刊登物品`);
     return;
   }
 
