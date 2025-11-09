@@ -228,12 +228,12 @@ import OfferMessage from '../components/OfferMessage.vue';
 import OrderRequestMessage from '../components/OrderRequestMessage.vue';
 import { supabase } from '@/lib/supabase';
 import {
-  getMyConversations,
-  getConversationMessages,
+  getConversations,
+  getMessages,
   sendMessage as sendMessageAPI,
-  markMessagesAsRead,
+  markAsRead,
   subscribeToMessages
-} from '@/api/conversationsAPI';
+} from '@/api/conversationAPI_v2';
 import { useTransactions } from '@/composables/useTransactions';
 
 const router = useRouter();
@@ -362,11 +362,33 @@ async function loadConversations() {
   error.value = null;
 
   try {
-    const role = activeFilter.value === 'all' ? 'all' : activeFilter.value;
-    const data = await getMyConversations(role, { page: 1, size: 50 });
+    // v2 API: getConversations(page, size, includeArchived)
+    const data = await getConversations(1, 50, false);
 
     if (data) {
-      conversations.value = data;
+      // Transform v2 data structure to match component expectations
+      conversations.value = data.map(conv => ({
+        id: conv.conversation_id,
+        item: {
+          id: conv.initial_item_id,
+          title: conv.initial_item_title || '未知商品',
+          cover_image_url: conv.initial_item_image || null
+        },
+        other_user: {
+          id: conv.other_user_id,
+          nickname: conv.other_user_name || '未知使用者',
+          profile_picture_url: conv.other_user_avatar || null
+        },
+        last_message: conv.last_message_content || '開始對話...',
+        last_message_time: conv.last_message_at || conv.created_at,
+        unread_count: conv.unread_count || 0,
+        is_archived: conv.is_archived || false,
+        created_at: conv.created_at,
+        // Determine role based on current user
+        role: currentUser.value ?
+          (conv.other_user_id === currentUser.value.id ? 'seller' : 'buyer') :
+          'buyer'
+      }));
       updateFilterCounts();
     }
   } catch (err) {
@@ -387,28 +409,34 @@ function updateFilterCounts() {
 
 async function loadMessages(conversationId) {
   try {
-    const data = await getConversationMessages(conversationId, { limit: 50 });
+    // v2 API: getMessages(conversationId, page, size)
+    const data = await getMessages(conversationId, 1, 50);
 
     if (data) {
       // Transform messages for display
       let lastDate = '';
       messages.value = data.map((msg) => {
-        const msgDate = new Date(msg.sent_at).toLocaleDateString('zh-TW');
+        const msgDate = new Date(msg.created_at).toLocaleDateString('zh-TW');
         const showDate = msgDate !== lastDate;
         lastDate = msgDate;
 
         return {
-          id: msg.id,
+          id: msg.message_id,
           text: msg.content,
-          time: formatMessageTime(msg.sent_at),
-          isSent: msg.sender_id === currentUser.value?.id,
+          time: formatMessageTime(msg.created_at),
+          isSent: msg.is_mine,
           showDate,
-          date: showDate ? formatDateDivider(msg.sent_at) : ''
+          date: showDate ? formatDateDivider(msg.created_at) : '',
+          sender: {
+            id: msg.sender_id,
+            name: msg.sender_name,
+            avatar: msg.sender_avatar
+          }
         };
       });
 
       // Mark messages as read
-      await markMessagesAsRead(conversationId);
+      await markAsRead(conversationId);
     }
   } catch (err) {
     console.error('Failed to load messages:', err);
@@ -474,16 +502,21 @@ function handleRealtimeMessage(newMessage) {
   }
 
   // Check if message already exists (avoid duplicates)
-  const exists = messages.value.some(m => m.id === newMessage.id);
+  const exists = messages.value.some(m => m.id === newMessage.message_id);
   if (exists) return;
 
   // Add message to list
   messages.value.push({
-    id: newMessage.id,
+    id: newMessage.message_id,
     text: newMessage.content,
-    time: formatMessageTime(newMessage.sent_at),
+    time: formatMessageTime(newMessage.created_at),
     isSent: newMessage.sender_id === currentUser.value?.id,
-    showDate: false
+    showDate: false,
+    sender: {
+      id: newMessage.sender_id,
+      name: newMessage.sender_name || '未知使用者',
+      avatar: newMessage.sender_avatar || null
+    }
   });
 
   // Auto-scroll to bottom
@@ -495,7 +528,7 @@ function handleRealtimeMessage(newMessage) {
 
   // Mark as read if received
   if (newMessage.sender_id !== currentUser.value?.id) {
-    markMessagesAsRead(selectedConversation.value.id);
+    markAsRead(selectedConversation.value.id);
   }
 }
 
@@ -506,23 +539,28 @@ async function sendMessage() {
   messageInput.value = '';
 
   try {
-    // Send message via API
-    const newMessage = await sendMessageAPI(selectedConversation.value.id, content);
+    // v2 API: sendMessage(conversationId, content, messageType, relatedItemId)
+    const newMessage = await sendMessageAPI(selectedConversation.value.id, content, 'text', null);
 
     // Add to messages list
     messages.value.push({
-      id: newMessage.id,
+      id: newMessage.message_id,
       text: newMessage.content,
-      time: formatMessageTime(newMessage.sent_at),
+      time: formatMessageTime(newMessage.created_at),
       isSent: true,
-      showDate: false
+      showDate: false,
+      sender: {
+        id: newMessage.sender_id,
+        name: currentUser.value?.user_metadata?.nickname || '我',
+        avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+      }
     });
 
     // Update conversation last message
     if (selectedConversation.value) {
       selectedConversation.value.lastMessage = {
         text: newMessage.content,
-        time: formatTime(newMessage.sent_at)
+        time: formatTime(newMessage.created_at)
       };
     }
 
@@ -820,6 +858,17 @@ async function initialize() {
 
   currentUser.value = user;
   await loadConversations();
+
+  // 如果 URL 有指定 conversationId，自動選擇該對話
+  const conversationId = router.currentRoute.value.query.conversationId;
+  if (conversationId) {
+    const conversation = displayConversations.value.find(
+      c => c.id === parseInt(conversationId)
+    );
+    if (conversation) {
+      await selectConversation(conversation);
+    }
+  }
 }
 
 // Mobile keyboard handling to prevent input area from being covered
