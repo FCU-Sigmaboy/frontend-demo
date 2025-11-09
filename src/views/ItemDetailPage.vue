@@ -453,27 +453,34 @@ const loadProductDetails = async () => {
   error.value = null;
 
   try {
-    const itemId = route.params.id;
+    const itemId = Number(route.params.id);
 
-    // 提供使用者位置（這裡使用預設座標，你可以改用實際的地理位置 API）
-    const userLocation = {
-      latitude: 24.179,  // 預設：台中市西屯區
-      longitude: 120.645
-    };
-
-    const options = {
-      headers: { Authorization: `Bearer ${authStore.session.access_token}` }
+    // 驗證 itemId
+    if (!itemId || itemId <= 0) {
+      error.value = '無效的物品 ID';
+      return;
     }
-    console.log(options);
+
+    console.log(`Loading item details for ID: ${itemId}`);
     
-    const response = await getItemDetails(itemId, options);
+    // v4.0 API - 自動處理使用者位置和登入狀態
+    const response = await getItemDetails(itemId);
     console.log('Fetched item details:', response);
 
-    // 新的 API 回傳格式包含 success, message, data 等欄位
+    // 檢查回應格式
     if (response && response.success && response.data) {
       product.value = response.data;
+      
       // 重置圖片索引
       currentImageIndex.value = 0;
+
+      // 顯示位置資訊（如果有）
+      if (response.isAuthenticated) {
+        if (response.hasDistance && response.data.distance_km) {
+          console.log(`距離: ${response.data.distance_km} km`);
+        }
+        console.log(`位置來源: ${response.locationSource}`);
+      }
 
       // Load related products based on sub-category
       if (response.data.category?.sub_category_id) {
@@ -482,7 +489,7 @@ const loadProductDetails = async () => {
     } else {
       // Handle item not found or unavailable
       error.value = response?.message || '找不到此物品，可能已下架或不存在';
-      console.error('Item not found');
+      console.warn(`${response?.code}: ${response?.message}`);
     }
   } catch (err) {
     console.error('Error loading item details:', err);
