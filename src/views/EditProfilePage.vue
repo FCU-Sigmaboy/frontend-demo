@@ -18,7 +18,52 @@
 
         <!-- Edit Form -->
         <div class="form-card">
-          <form @submit.prevent="handleSubmit">
+          <!-- Loading Skeleton -->
+          <div v-if="isLoadingProfile" class="skeleton-form">
+            <!-- Avatar Skeleton -->
+            <div class="form-section">
+              <div class="skeleton-label"></div>
+              <div class="skeleton-avatar-section">
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-buttons">
+                  <div class="skeleton-button"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nickname Skeleton -->
+            <div class="form-section">
+              <div class="skeleton-label"></div>
+              <div class="skeleton-input"></div>
+              <div class="skeleton-hint"></div>
+            </div>
+
+            <!-- Login Method Skeleton -->
+            <div class="form-section">
+              <div class="skeleton-label"></div>
+              <div class="skeleton-input"></div>
+              <div class="skeleton-hint"></div>
+            </div>
+
+            <!-- Location Skeleton -->
+            <div class="form-section">
+              <div class="skeleton-label"></div>
+              <div class="skeleton-input-group">
+                <div class="skeleton-input flex-1"></div>
+                <div class="skeleton-button"></div>
+              </div>
+              <div class="skeleton-hint"></div>
+            </div>
+
+            <!-- Actions Skeleton -->
+            <div class="skeleton-actions">
+              <div class="skeleton-button"></div>
+              <div class="skeleton-button"></div>
+            </div>
+          </div>
+
+          <!-- Actual Form -->
+          <form v-else @submit.prevent="handleSubmit">
             <!-- Avatar Upload Section -->
             <div class="form-section">
               <label class="section-label">大頭貼</label>
@@ -95,21 +140,27 @@
               <label for="location" class="form-label">
                 所在地區
               </label>
-              <select id="location" v-model="formData.location" class="form-select">
-                <option value="">請選擇地區</option>
-                <option value="中區">台中市中區</option>
-                <option value="東區">台中市東區</option>
-                <option value="南區">台中市南區</option>
-                <option value="西區">台中市西區</option>
-                <option value="北區">台中市北區</option>
-                <option value="西屯區">台中市西屯區</option>
-                <option value="南屯區">台中市南屯區</option>
-                <option value="北屯區">台中市北屯區</option>
-                <option value="豐原區">台中市豐原區</option>
-                <option value="大里區">台中市大里區</option>
-                <option value="太平區">台中市太平區</option>
-                <option value="沙鹿區">台中市沙鹿區</option>
-              </select>
+              <div class="location-input-group">
+                <input
+                  id="location"
+                  v-model="formData.locationDisplay"
+                  type="text"
+                  class="form-input"
+                  placeholder="點擊定位按鈕取得您的位置"
+                  disabled
+                />
+                <button
+                  type="button"
+                  class="location-btn"
+                  @click="getCurrentLocation"
+                  :disabled="isGettingLocation"
+                >
+                  <i v-if="!isGettingLocation" class="bi bi-geo-alt-fill"></i>
+                  <i v-else class="bi bi-arrow-repeat spin"></i>
+                  {{ isGettingLocation ? '定位中...' : '定位' }}
+                </button>
+              </div>
+              <p class="field-hint">使用瀏覽器定位功能取得您的當前位置</p>
             </div>
 
             <!-- Office Address Field (Optional) -->
@@ -117,21 +168,27 @@
               <label for="officeAddress" class="form-label">
                 公司地址
               </label>
-              <select id="officeAddress" v-model="formData.officeAddress" class="form-select">
-                <option value="">請選擇地區</option>
-                <option value="中區">台中市中區</option>
-                <option value="東區">台中市東區</option>
-                <option value="南區">台中市南區</option>
-                <option value="西區">台中市西區</option>
-                <option value="北區">台中市北區</option>
-                <option value="西屯區">台中市西屯區</option>
-                <option value="南屯區">台中市南屯區</option>
-                <option value="北屯區">台中市北屯區</option>
-                <option value="豐原區">台中市豐原區</option>
-                <option value="大里區">台中市大里區</option>
-                <option value="太平區">台中市太平區</option>
-                <option value="沙鹿區">台中市沙鹿區</option>
-              </select>
+              <div class="location-input-group">
+                <input
+                  id="officeAddress"
+                  v-model="formData.officeAddressDisplay"
+                  type="text"
+                  class="form-input"
+                  placeholder="點擊定位按鈕取得您的公司位置"
+                  disabled
+                />
+                <button
+                  type="button"
+                  class="location-btn"
+                  @click="getOfficeLocation"
+                  :disabled="isGettingOfficeLocation"
+                >
+                  <i v-if="!isGettingOfficeLocation" class="bi bi-geo-alt-fill"></i>
+                  <i v-else class="bi bi-arrow-repeat spin"></i>
+                  {{ isGettingOfficeLocation ? '定位中...' : '定位' }}
+                </button>
+              </div>
+              <p class="field-hint">使用瀏覽器定位功能取得您的公司位置</p>
             </div>
 
             <!-- Add Office Address Button -->
@@ -170,6 +227,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
+import { getCurrentPosition } from '../api/location';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -186,16 +244,23 @@ const breadcrumbItems = [
 // State
 const userPoints = ref(500);
 const isSaving = ref(false);
+const isGettingLocation = ref(false);
+const isGettingOfficeLocation = ref(false);
 const fileInput = ref(null);
 const showOfficeAddress = ref(false);
 const originalProfile = ref(null); // Store original profile data
+const isLoadingProfile = ref(true); // Loading state for profile data
 
 const formData = ref({
   avatar: authStore.userAvatar || '',
   nickname: authStore.userName || '',
   loginMethod: 'Google',
-  location: '',
-  officeAddress: ''
+  location: '', // Stores district name like '西屯區'
+  locationDisplay: '', // Display string like '台中市西屯區'
+  locationCoords: null, // Stores { latitude, longitude }
+  officeAddress: '',
+  officeAddressDisplay: '',
+  officeAddressCoords: null
 });
 
 // District coordinate mapping (Taichung districts)
@@ -261,7 +326,166 @@ const toggleOfficeAddress = () => {
   showOfficeAddress.value = !showOfficeAddress.value;
 };
 
+const getCurrentLocation = async () => {
+  isGettingLocation.value = true;
+  
+  try {
+    console.log('Getting current location...');
+    const position = await getCurrentPosition();
+    
+    console.log('Location obtained:', position);
+    
+    // Store coordinates
+    formData.value.locationCoords = {
+      latitude: position.latitude,
+      longitude: position.longitude
+    };
+    
+    // Use Nominatim API to reverse geocode
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&accept-language=zh-TW`
+    );
+    
+    if (!response.ok) {
+      throw new Error('地址解析失敗');
+    }
+    
+    const data = await response.json();
+    console.log('🗺️ Reverse geocode result:', data);
+    
+    // Extract detailed address information
+    const address = data.address;
+    let fullAddress = '';
+    
+    if (address) {
+      // Build address: 市 + 區 + 里
+      const city = address.city || address.county || '';
+      const district = address.town || address.city_district || address.district || address.suburb || '';
+      const village = address.village || address.neighbourhood || '';
+      
+      // Construct full address (市區里)
+      const parts = [];
+      if (city) parts.push(city);
+      if (district) parts.push(district);
+      if (village) parts.push(village);
+      
+      fullAddress = parts.join('');
+      
+      // Set display text and location
+      if (fullAddress) {
+        formData.value.locationDisplay = fullAddress;
+        formData.value.location = fullAddress;
+      } else {
+        formData.value.locationDisplay = '定位成功';
+        formData.value.location = '定位成功';
+      }
+
+      console.log('Address components:', { city, district, village, raw: address });
+    } else {
+      formData.value.locationDisplay = '定位成功';
+      formData.value.location = '定位成功';
+    }
+    
+    console.log('Location set:', formData.value.locationDisplay);
+  } catch (error) {
+    console.error('Location error:', error);
+
+    // User-friendly error messages
+    if (error.message.includes('拒絕')) {
+      alert('需要位置權限才能使用此功能，請在瀏覽器設定中允許位置存取');
+    } else if (error.message.includes('不支援')) {
+      alert('您的瀏覽器不支援地理定位功能');
+    } else if (error.message.includes('逾時')) {
+      alert('定位逾時，請確認您的網路連線並重試');
+    } else {
+      alert(`定位失敗：${error.message}`);
+    }
+  } finally {
+    isGettingLocation.value = false;
+  }
+};
+
+const getOfficeLocation = async () => {
+  isGettingOfficeLocation.value = true;
+  
+  try {
+    console.log('Getting office location...');
+    const position = await getCurrentPosition();
+
+    console.log('Office location obtained:', position);
+
+    // Store coordinates
+    formData.value.officeAddressCoords = {
+      latitude: position.latitude,
+      longitude: position.longitude
+    };
+    
+    // Use Nominatim API to reverse geocode
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&accept-language=zh-TW`
+    );
+    
+    if (!response.ok) {
+      throw new Error('地址解析失敗');
+    }
+    
+    const data = await response.json();
+    console.log('🗺️ Office reverse geocode result:', data);
+    
+    // Extract detailed address information
+    const address = data.address;
+    let fullAddress = '';
+    
+    if (address) {
+      // Build address: 市 + 區 + 里
+      const city = address.city || address.county || '';
+      const district = address.town || address.city_district || address.district || address.suburb || '';
+      const village = address.village || address.neighbourhood || '';
+      
+      // Construct full address (市區里)
+      const parts = [];
+      if (city) parts.push(city);
+      if (district) parts.push(district);
+      if (village) parts.push(village);
+      
+      fullAddress = parts.join('');
+      
+      // Set display text and location
+      if (fullAddress) {
+        formData.value.officeAddressDisplay = fullAddress;
+        formData.value.officeAddress = fullAddress;
+      } else {
+        formData.value.officeAddressDisplay = '定位成功';
+        formData.value.officeAddress = '定位成功';
+      }
+      
+      console.log('Office address components:', { city, district, village, raw: address });
+    } else {
+      formData.value.officeAddressDisplay = '定位成功';
+      formData.value.officeAddress = '定位成功';
+    }
+    
+    console.log('Office location set:', formData.value.officeAddressDisplay);
+  } catch (error) {
+    console.error('Office location error:', error);
+    
+    // User-friendly error messages
+    if (error.message.includes('拒絕')) {
+      alert('需要位置權限才能使用此功能，請在瀏覽器設定中允許位置存取');
+    } else if (error.message.includes('不支援')) {
+      alert('您的瀏覽器不支援地理定位功能');
+    } else if (error.message.includes('逾時')) {
+      alert('定位逾時，請確認您的網路連線並重試');
+    } else {
+      alert(`定位失敗：${error.message}`);
+    }
+  } finally {
+    isGettingOfficeLocation.value = false;
+  }
+};
+
 const loadProfileData = async () => {
+  isLoadingProfile.value = true;
   try {
     const profile = await getMyProfileForEdit();
     console.log('📋 Loaded profile data:', profile);
@@ -276,21 +500,51 @@ const loadProfileData = async () => {
       // Extract primary location district name
       if (profile.locations && profile.locations.length > 0) {
         const primaryLoc = profile.locations.find(loc => loc.is_primary);
-        if (primaryLoc && primaryLoc.formatted_address) {
-          // Extract district from address (e.g., "台中市西屯區福星路" -> "西屯區")
-          const match = primaryLoc.formatted_address.match(/台中市(.+?區)/);
-          if (match) {
-            formData.value.location = match[1];
+        if (primaryLoc) {
+          // Directly use formatted_address
+          if (primaryLoc.formatted_address) {
+            formData.value.locationDisplay = primaryLoc.formatted_address;
+            formData.value.location = primaryLoc.formatted_address;
+          }
+          
+          // Store coordinates if available
+          if (primaryLoc.coordinates) {
+            // Convert PostGIS GeoJSON format to {latitude, longitude}
+            if (primaryLoc.coordinates.type === 'Point' && primaryLoc.coordinates.coordinates) {
+              formData.value.locationCoords = {
+                longitude: primaryLoc.coordinates.coordinates[0],
+                latitude: primaryLoc.coordinates.coordinates[1]
+              };
+            } else if (primaryLoc.coordinates.latitude && primaryLoc.coordinates.longitude) {
+              // Already in correct format
+              formData.value.locationCoords = primaryLoc.coordinates;
+            }
           }
         }
 
         // Check if there's an office address
         const officeAddr = profile.locations.find(loc => !loc.is_primary && loc.type.includes('公司'));
-        if (officeAddr && officeAddr.formatted_address) {
+        if (officeAddr) {
           showOfficeAddress.value = true;
-          const match = officeAddr.formatted_address.match(/台中市(.+?區)/);
-          if (match) {
-            formData.value.officeAddress = match[1];
+          
+          // Directly use formatted_address
+          if (officeAddr.formatted_address) {
+            formData.value.officeAddressDisplay = officeAddr.formatted_address;
+            formData.value.officeAddress = officeAddr.formatted_address;
+          }
+          
+          // Store coordinates if available
+          if (officeAddr.coordinates) {
+            // Convert PostGIS GeoJSON format to {latitude, longitude}
+            if (officeAddr.coordinates.type === 'Point' && officeAddr.coordinates.coordinates) {
+              formData.value.officeAddressCoords = {
+                longitude: officeAddr.coordinates.coordinates[0],
+                latitude: officeAddr.coordinates.coordinates[1]
+              };
+            } else if (officeAddr.coordinates.latitude && officeAddr.coordinates.longitude) {
+              // Already in correct format
+              formData.value.officeAddressCoords = officeAddr.coordinates;
+            }
           }
         }
       }
@@ -298,6 +552,8 @@ const loadProfileData = async () => {
   } catch (error) {
     console.error('Failed to load profile:', error);
     alert('載入個人資料失敗，請稍後再試');
+  } finally {
+    isLoadingProfile.value = false;
   }
 };
 
@@ -321,35 +577,29 @@ const handleSubmit = async () => {
     const locationsArray = [];
 
     // Primary location (home)
-    if (formData.value.location) {
-      const coords = districtCoordinates[formData.value.location];
-      if (coords) {
-        const existingPrimaryLoc = originalProfile.value?.locations?.find(loc => loc.is_primary);
-        locationsArray.push({
-          id: existingPrimaryLoc?.id, // Include ID if updating existing location
-          coordinates: coords,
-          type: '家',
-          is_primary: true,
-          formatted_address: `台中市${formData.value.location}`
-        });
-      }
+    if (formData.value.locationCoords) {
+      const existingPrimaryLoc = originalProfile.value?.locations?.find(loc => loc.is_primary);
+      locationsArray.push({
+        id: existingPrimaryLoc?.id, // Include ID if updating existing location
+        coordinates: formData.value.locationCoords,
+        type: '家',
+        is_primary: true,
+        formatted_address: formData.value.locationDisplay || formData.value.location
+      });
     }
 
     // Office location (if provided)
-    if (showOfficeAddress.value && formData.value.officeAddress) {
-      const coords = districtCoordinates[formData.value.officeAddress];
-      if (coords) {
-        const existingOfficeLoc = originalProfile.value?.locations?.find(
-          loc => !loc.is_primary && loc.type.includes('公司')
-        );
-        locationsArray.push({
-          id: existingOfficeLoc?.id, // Include ID if updating existing location
-          coordinates: coords,
-          type: '公司',
-          is_primary: false,
-          formatted_address: `台中市${formData.value.officeAddress}`
-        });
-      }
+    if (showOfficeAddress.value && formData.value.officeAddressCoords) {
+      const existingOfficeLoc = originalProfile.value?.locations?.find(
+        loc => !loc.is_primary && loc.type.includes('公司')
+      );
+      locationsArray.push({
+        id: existingOfficeLoc?.id, // Include ID if updating existing location
+        coordinates: formData.value.officeAddressCoords,
+        type: '公司',
+        is_primary: false,
+        formatted_address: formData.value.officeAddressDisplay || formData.value.officeAddress
+      });
     }
 
     console.log('📤 Updating profile with:', { userData, profileData, locationsArray });
@@ -515,6 +765,55 @@ onMounted(() => {
 
   &::placeholder {
     color: #999;
+  }
+}
+
+.location-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+
+  .form-input {
+    flex: 1;
+  }
+
+  .location-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 24px;
+    min-width: 120px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: white;
+    background: $primary;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+
+    i {
+      font-size: 16px;
+    }
+
+    &:hover:not(:disabled) {
+      background: #5fa795;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+    }
+
+    &:disabled {
+      background: #b0d4cb;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .spin {
+      animation: spin 1s linear infinite;
+    }
   }
 }
 
@@ -713,6 +1012,101 @@ onMounted(() => {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// Skeleton Loading Styles
+.skeleton-form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.skeleton-label {
+  width: 120px;
+  height: 18px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 16px;
+}
+
+.skeleton-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.skeleton-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.skeleton-button {
+  width: 120px;
+  height: 40px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-input {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.flex-1 {
+    flex: 1;
+  }
+}
+
+.skeleton-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.skeleton-hint {
+  width: 200px;
+  height: 13px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  margin-top: 6px;
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid #e0e0e0;
+}
+
 // Responsive
 @media (max-width: 767.98px) {
   .main-content {
@@ -738,6 +1132,14 @@ onMounted(() => {
   .avatar-upload-section {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .location-input-group {
+    flex-direction: column;
+
+    .location-btn {
+      width: 100%;
+    }
   }
 
   .form-actions {
