@@ -231,30 +231,71 @@
 
             <!-- Location Field -->
             <div class="form-section">
-              <label for="location" class="form-label">
+              <label class="form-label">
                 交易地點 <span class="required">*</span>
               </label>
-              <select
-                id="location"
-                v-model="formData.locationId"
-                class="form-select"
-                required
-              >
-                <option :value="null">請選擇地區</option>
-                <option
-                  v-for="location in userLocations"
-                  :key="location.id"
-                  :value="location.id"
+              <div class="location-options">
+                <label
+                  :class="['location-option', { 
+                    active: formData.usePrimaryLocation === true,
+                    disabled: !userLocations.primary 
+                  }]"
                 >
-                  {{ location.formatted_address }}
-                  <span v-if="location.is_primary"> (預設)</span>
-                  <span v-if="location.type"> - {{ location.type }}</span>
-                </option>
-              </select>
+                  <input
+                    v-model="formData.usePrimaryLocation"
+                    type="radio"
+                    :value="true"
+                    class="location-radio"
+                    :disabled="!userLocations.primary"
+                    required
+                  />
+                  <div class="location-content">
+                    <span class="location-label">
+                      <i class="bi bi-geo-alt-fill"></i>
+                      使用主要地點
+                    </span>
+                    <span v-if="userLocations.primary" class="location-address">
+                      {{ userLocations.primary.formatted_address }}
+                    </span>
+                    <span v-else class="location-not-set">
+                      <i class="bi bi-exclamation-circle"></i>
+                      未設定
+                    </span>
+                  </div>
+                </label>
+                <label
+                  :class="['location-option', { 
+                    active: formData.usePrimaryLocation === false,
+                    disabled: !userLocations.secondary 
+                  }]"
+                >
+                  <input
+                    v-model="formData.usePrimaryLocation"
+                    type="radio"
+                    :value="false"
+                    class="location-radio"
+                    :disabled="!userLocations.secondary"
+                    required
+                  />
+                  <div class="location-content">
+                    <span class="location-label">
+                      <i class="bi bi-geo-alt"></i>
+                      使用次要地點
+                    </span>
+                    <span v-if="userLocations.secondary" class="location-address">
+                      {{ userLocations.secondary.formatted_address }}
+                    </span>
+                    <span v-else class="location-not-set">
+                      <i class="bi bi-exclamation-circle"></i>
+                      未設定
+                    </span>
+                  </div>
+                </label>
+              </div>
               <p class="form-hint">
-                沒有您想要的地區？
+                請先在個人資料中設定主要地點或次要地點。
                 <router-link :to="{ name: 'UserProfile' }" class="link-text">
-                  前往個人資料新增地區
+                  前往個人資料設定
                 </router-link>
               </p>
             </div>
@@ -317,7 +358,10 @@ const isLoading = ref(!!route.params.id); // 如果是編輯模式，初始為 t
 const isDragging = ref(false);
 const imageInput = ref(null);
 const subCategories = ref([]);
-const userLocations = ref([]);
+const userLocations = ref({
+  primary: null,
+  secondary: null
+});
 
 const formData = ref({
   images: [],        // 預覽用的 base64 URLs
@@ -327,7 +371,7 @@ const formData = ref({
   description: '',
   price: 0,
   condition: '',
-  locationId: null
+  usePrimaryLocation: true // 預設使用主要地點
 });
 
 const conditions = [
@@ -374,24 +418,22 @@ const fetchUserLocations = async () => {
     const { data, error } = await supabase
       .from('locations')
       .select('id, formatted_address, type, is_primary')
-      .eq('user_id', user.id)
-      .order('is_primary', { ascending: false });
+      .eq('user_id', user.id);
 
     if (error) {
       console.error('❌ Error fetching locations:', error);
       return;
     }
 
-    userLocations.value = data || [];
-    console.log('✅ Loaded user locations:', userLocations.value);
-
-    // If no locations, warn user
-    if (userLocations.value.length === 0) {
-      alert('請先在個人資料頁面設定您的所在地區');
-      router.push({ name: 'UserProfile' });
+    // Separate primary and secondary locations
+    if (data && data.length > 0) {
+      userLocations.value.primary = data.find(loc => loc.is_primary === true) || null;
+      userLocations.value.secondary = data.find(loc => loc.is_primary === false) || null;
     }
+
+    console.log('Loaded user locations:', userLocations.value);
   } catch (error) {
-    console.error('❌ Failed to fetch user locations:', error);
+    console.error('Failed to fetch user locations:', error);
   }
 };
 
@@ -420,7 +462,7 @@ const loadItemData = async () => {
       description: item.description || '',
       price: item.price || 0,
       condition: item.condition || '',
-      locationId: item.location_id || null
+      usePrimaryLocation: item.use_primary_location !== undefined ? item.use_primary_location : true
     };
 
     console.log('✅ Item data loaded:', formData.value);
@@ -537,19 +579,6 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Validate location
-  if (!formData.value.locationId) {
-    alert('請選擇交易地點');
-    return;
-  }
-
-  // Validate location belongs to user
-  const isValidLocation = userLocations.value.some(loc => loc.id === formData.value.locationId);
-  if (!isValidLocation) {
-    alert('請選擇您在個人資料中設定的地區。如需新增地區，請先前往個人資料頁面設定。');
-    return;
-  }
-
   isSubmitting.value = true;
 
   try {
@@ -564,7 +593,7 @@ const handleSubmit = async () => {
         price: formData.value.price,
         sub_category_id: formData.value.category,
         image_urls: formData.value.images,
-        location_id: formData.value.locationId
+        use_primary_location: formData.value.usePrimaryLocation
       };
 
       const result = await updateMyItem(itemId.value, updateData);
@@ -576,7 +605,7 @@ const handleSubmit = async () => {
 
       const itemData = {
         sub_category_id: formData.value.category,
-        user_location_id: formData.value.locationId,
+        use_primary_location: formData.value.usePrimaryLocation,
         title: formData.value.title,
         description: formData.value.description,
         condition: formData.value.condition,
@@ -1128,6 +1157,97 @@ const handleSubmit = async () => {
   }
 }
 
+// Location Options
+.location-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.location-option {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 20px;
+  background: white;
+  border: 2px solid #d0d0d0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  .location-radio {
+    display: none;
+  }
+
+  .location-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .location-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #666;
+    font-weight: 600;
+
+    i {
+      font-size: 18px;
+    }
+  }
+
+  .location-address {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    color: #888;
+    line-height: 1.5;
+    padding-left: 26px;
+  }
+
+  .location-not-set {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    color: #dc3545;
+    padding-left: 26px;
+
+    i {
+      font-size: 14px;
+    }
+  }
+
+  &:hover:not(.disabled) {
+    border-color: $primary;
+    background: #f9fffe;
+  }
+
+  &.active {
+    border-color: $primary;
+    background: $primary;
+
+    .location-label {
+      color: white;
+    }
+
+    .location-address {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f5f5f5;
+  }
+}
+
 // Form Actions
 .form-actions {
   display: flex;
@@ -1241,6 +1361,14 @@ const handleSubmit = async () => {
   }
 
   .condition-option {
+    min-width: 100%;
+  }
+
+  .location-options {
+    flex-direction: column;
+  }
+
+  .location-option {
     min-width: 100%;
   }
 
