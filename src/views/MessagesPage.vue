@@ -86,18 +86,18 @@
           </aside>
 
           <!-- Chat Area -->
-          <div :class="['chat-area', { 'mobile-visible': selectedConversation }]">
+          <div :class="['chat-area', { 'mobile-visible': selectedConversation || messagesLoading }]">
             <!-- No Conversation Selected -->
-            <div v-if="!selectedConversation" class="no-conversation">
+            <div v-if="!selectedConversation && !messagesLoading" class="no-conversation">
               <i class="bi bi-chat-dots"></i>
               <h3>選擇對話開始聊天</h3>
               <p>從左側選擇一個對話，開始與其他使用者交流</p>
             </div>
 
-            <!-- Active Chat -->
+            <!-- Active Chat (or Loading) -->
             <div v-else class="active-chat">
               <!-- Chat Header -->
-              <div class="chat-header">
+              <div v-if="selectedConversation" class="chat-header">
                 <button class="back-btn-mobile" @click="deselectConversation">
                   <i class="bi bi-arrow-left"></i>
                 </button>
@@ -121,6 +121,25 @@
                 </button>
               </div>
 
+              <!-- Loading Header Skeleton -->
+              <div v-else class="chat-header">
+                <button class="back-btn-mobile" @click="deselectConversation">
+                  <i class="bi bi-arrow-left"></i>
+                </button>
+
+                <div class="chat-user-info">
+                  <div class="skeleton-avatar"></div>
+                  <div class="user-details">
+                    <div class="skeleton-name"></div>
+                    <div class="skeleton-status"></div>
+                  </div>
+                </div>
+
+                <button class="more-btn">
+                  <i class="bi bi-three-dots-vertical"></i>
+                </button>
+              </div>
+
               <!-- Messages Area -->
               <div ref="messagesArea" class="messages-area" @scroll="handleMessagesScroll">
                 <!-- Loading Skeleton -->
@@ -135,58 +154,82 @@
                 </div>
 
                 <!-- Actual Messages -->
-                <transition-group name="message-pop" tag="div" class="messages-list" v-else>
-                  <div v-for="message in messages" :key="message.id" class="message-wrapper">
-                    <!-- Date Divider -->
-                    <div v-if="message.showDate" class="date-divider">
-                      <span>{{ message.date }}</span>
+                <div class="messages-list" v-else>
+                  <!-- Loading More Indicator -->
+                  <div v-if="isLoadingMoreMessages" class="loading-more-indicator">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                      <span class="visually-hidden">載入中...</span>
+                    </div>
+                    <span>載入更多訊息...</span>
+                  </div>
+
+                  <!-- 按日期分組的訊息 -->
+                  <div v-for="group in groupedMessages" :key="group.dateKey" class="date-group">
+                    <!-- Date Divider (獨立元素，黏在頂部) -->
+                    <div class="date-divider">
+                      <span>{{ group.date }}</span>
                     </div>
 
-                    <!-- Special Message: Offer -->
-                    <OfferMessage
-                      v-if="message.message_type === 'offer' || message.message_type === 'counter_offer'"
-                      :offer="message.metadata"
-                      :current-user-id="currentUser?.id"
-                      :buyer-id="getBuyerId(selectedConversation)"
-                      :seller-id="selectedConversation._raw.item.owner_id"
-                      @accept="handleAcceptOffer"
-                      @counter="handleCounterOffer"
-                      @decline="handleDeclineOffer"
-                    />
+                    <!-- 該日期的所有訊息 -->
+                    <div class="date-group-messages">
+                      <div v-for="message in group.messages" :key="message._clientId" class="message-wrapper">
+                        <!-- Special Message: Offer -->
+                        <OfferMessage
+                          v-if="message.message_type === 'offer' || message.message_type === 'counter_offer'"
+                          :offer="message.metadata"
+                          :current-user-id="currentUser?.id"
+                          :buyer-id="getBuyerId(selectedConversation)"
+                          :seller-id="selectedConversation._raw.item.owner_id"
+                          @accept="handleAcceptOffer"
+                          @counter="handleCounterOffer"
+                          @decline="handleDeclineOffer"
+                        />
 
-                    <!-- Special Message: Order Request -->
-                    <OrderRequestMessage
-                      v-else-if="message.message_type === 'order_request'"
-                      :order-request="message.metadata"
-                      :current-user-id="currentUser?.id"
-                      :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
-                      @accept="handleAcceptOrderRequest"
-                      @decline="handleDeclineOrderRequest"
-                      @view-details="handleViewOrderDetails"
-                    />
+                        <!-- Special Message: Order Request -->
+                        <OrderRequestMessage
+                          v-else-if="message.message_type === 'order_request'"
+                          :order-request="message.metadata"
+                          :current-user-id="currentUser?.id"
+                          :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
+                          @accept="handleAcceptOrderRequest"
+                          @decline="handleDeclineOrderRequest"
+                          @view-details="handleViewOrderDetails"
+                        />
 
-                    <!-- Regular Text Message -->
-                    <div v-else :class="['message', { 'message-sent': message.isSent, 'message-received': !message.isSent }]">
-                      <div class="message-content">
-                        <!-- Item Reference (Discord-style reply) -->
-                        <div
-                          v-if="message.related_item_id"
-                          class="item-reference"
-                          @click.stop="openItemPage(message.related_item_id)"
-                        >
-                          <div class="reference-bar"></div>
-                          <div class="reference-content">
-                            <i class="bi bi-box-seam reference-icon"></i>
-                            <span class="reference-text">{{ message.related_item_title || `物品 #${message.related_item_id}` }}</span>
+                        <!-- Regular Text Message -->
+                        <div v-else :class="[
+                          'message',
+                          {
+                            'message-sent': message.isSent,
+                            'message-received': !message.isSent,
+                            'message-grouped': message.isGrouped,
+                            'message-first-in-group': message.isFirstInGroup,
+                            'message-last-in-group': message.isLastInGroup
+                          }
+                        ]">
+                          <div class="message-content">
+                            <!-- Item Reference (Discord-style reply) -->
+                            <div
+                              v-if="message.related_item_id"
+                              class="item-reference"
+                              @click.stop="openItemPage(message.related_item_id)"
+                            >
+                              <div class="reference-bar"></div>
+                              <div class="reference-content">
+                                <i class="bi bi-box-seam reference-icon"></i>
+                                <span class="reference-text">{{ message.related_item_title || `物品 #${message.related_item_id}` }}</span>
+                              </div>
+                            </div>
+
+                            <p class="message-text">{{ message.text }}</p>
+                            <!-- 只在群組最後一則訊息顯示時間 -->
+                            <span v-if="message.isLastInGroup" class="message-time">{{ message.time }}</span>
                           </div>
                         </div>
-
-                        <p class="message-text">{{ message.text }}</p>
-                        <span class="message-time">{{ message.time }}</span>
                       </div>
                     </div>
                   </div>
-                </transition-group>
+                </div>
               </div>
 
               <!-- Scroll to Bottom Button -->
@@ -250,59 +293,55 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
-import AppFooter from '../components/AppFooter.vue';
 import OfferMessage from '../components/OfferMessage.vue';
 import OrderRequestMessage from '../components/OrderRequestMessage.vue';
-import { supabase } from '@/lib/supabase';
-import {
-  getConversations,
-  getMessages,
-  sendMessage as sendMessageAPI,
-  markAsRead,
-  subscribeToAllMessages
-} from '@/api/conversationAPI_v2';
+import { useMessageStore } from '@/stores/message';
+import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
 
 const router = useRouter();
+const messageStore = useMessageStore();
+const authStore = useAuthStore();
 
-// State
+// Local UI State (非共享狀態)
 const userPoints = ref(500);
 const searchQuery = ref('');
 const activeFilter = ref('all');
-const selectedConversation = ref(null);
 const messageInput = ref('');
 const messagesArea = ref(null);
 const showFilterMenu = ref(false);
-const loading = ref(false);
-const messagesLoading = ref(false); // 訊息載入狀態（用於切換聊天室時顯示 skeleton）
-const error = ref(null);
-const currentUser = ref(null);
+const messagesLoading = ref(false); // UI 載入骨架屏狀態
 const pendingItemReference = ref(null); // 待發送的物品引用
 const itemReferenceCache = ref(new Map()); // 物品引用緩存 Map<itemId, itemTitle>
 const showScrollToBottomBtn = ref(false); // 顯示「回到最新」按鈕
-
-const filters = ref([
-  { id: 'all', label: '全部', count: 0 },
-  { id: 'unread', label: '未讀', count: 0 },
-  { id: 'buyer', label: '購買中', count: 0 },
-  { id: 'seller', label: '出售中', count: 0 }
-]);
-
-// Real conversations from Supabase
-const conversations = ref([]);
-const messages = ref([]);
-const globalMessageSubscription = ref(null); // 全域訊息訂閱
-const conversationSubscription = ref(null);
 const timeUpdateInterval = ref(null); // 時間更新定時器
+const isLoadingMoreMessages = ref(false); // 是否正在載入更多訊息
+const currentPage = ref(1); // 當前頁碼
+const hasMoreMessages = ref(true); // 是否還有更多訊息
 
-// Computed
+// 從 store 獲取資料
+const loading = computed(() => messageStore.isLoadingConversations);
+const currentUser = computed(() => authStore.user);
+
+// Filter 計數
+const filters = computed(() => {
+  const all = messageStore.conversations;
+  return [
+    { id: 'all', label: '全部', count: all.length },
+    { id: 'unread', label: '未讀', count: all.filter(c => c.unread_count > 0).length },
+    { id: 'buyer', label: '購買中', count: all.filter(c => c.role === 'buyer').length },
+    { id: 'seller', label: '出售中', count: all.filter(c => c.role === 'seller').length }
+  ];
+});
+
+// Computed - 從 store 過濾對話
 const filteredConversations = computed(() => {
-  let filtered = conversations.value;
+  let filtered = messageStore.conversations;
 
   // Filter by type
   if (activeFilter.value !== 'all') {
     if (activeFilter.value === 'unread') {
-      filtered = filtered.filter(c => c.unreadCount > 0);
+      filtered = filtered.filter(c => c.unread_count > 0);
     } else {
       filtered = filtered.filter(c => c.role === activeFilter.value);
     }
@@ -334,8 +373,8 @@ const displayConversations = computed(() => {
       image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
     } : null,
     lastMessage: {
-      text: convo.last_message || convo.last_message_preview || '開始對話...',
-      time: formatRelativeTime(convo.last_message_time || convo.last_updated_at)
+      text: convo.last_message || '開始對話...',
+      time: formatRelativeTime(convo.last_message_time)
     },
     unreadCount: convo.unread_count || 0,
     type: convo.role,
@@ -343,260 +382,197 @@ const displayConversations = computed(() => {
   }));
 });
 
+// 當前選中的對話
+const selectedConversation = computed(() => {
+  if (!messageStore.selectedConversationId) return null;
+  return displayConversations.value.find(c => c.id === messageStore.selectedConversationId);
+});
+
+// 當前訊息列表（從 store 轉換為顯示格式）
+const messages = computed(() => {
+  return messageStore.currentMessages.map((msg, index) => {
+    // 使用標準化的日期比較（去除時分秒）
+    const msgDateObj = new Date(msg.created_at);
+    const msgDateOnly = new Date(msgDateObj.getFullYear(), msgDateObj.getMonth(), msgDateObj.getDate());
+
+    const prevMsg = index > 0 ? messageStore.currentMessages[index - 1] : null;
+    let showDate = false;
+
+    if (prevMsg) {
+      const prevDateObj = new Date(prevMsg.created_at);
+      const prevDateOnly = new Date(prevDateObj.getFullYear(), prevDateObj.getMonth(), prevDateObj.getDate());
+      showDate = msgDateOnly.getTime() !== prevDateOnly.getTime();
+    } else {
+      // 第一則訊息總是顯示日期
+      showDate = true;
+    }
+
+    // 如果有物品引用信息，加入緩存
+    if (msg.related_item_id && msg.related_item_title) {
+      itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title);
+    }
+
+    // 判斷分組狀態
+    let isGrouped = false;        // 是否與前一則訊息群組
+    let isFirstInGroup = false;   // 是否為群組第一則
+    let isLastInGroup = false;    // 是否為群組最後一則
+    let hasGroupWithPrev = false; // 與前一則能否組成群組
+    let hasGroupWithNext = false; // 與下一則能否組成群組
+
+    // 檢查與前一則訊息的關係
+    if (prevMsg) {
+      const timeDiff = new Date(msg.created_at) - new Date(prevMsg.created_at);
+      const isSameSender = msg.is_mine === prevMsg.is_mine;
+      const isWithinMinute = timeDiff < 60000; // 1分鐘 = 60000 毫秒
+
+      hasGroupWithPrev = isSameSender && isWithinMinute && !showDate;
+    }
+
+    // 檢查與下一則訊息的關係
+    const nextMsg = index < messageStore.currentMessages.length - 1
+      ? messageStore.currentMessages[index + 1]
+      : null;
+
+    if (nextMsg) {
+      const nextTimeDiff = new Date(nextMsg.created_at) - new Date(msg.created_at);
+      const isSameSenderAsNext = msg.is_mine === nextMsg.is_mine;
+      const isWithinMinuteFromNext = nextTimeDiff < 60000;
+      
+      // 計算下一則訊息的標準化日期
+      const nextMsgDateObj = new Date(nextMsg.created_at);
+      const nextMsgDateOnly = new Date(nextMsgDateObj.getFullYear(), nextMsgDateObj.getMonth(), nextMsgDateObj.getDate());
+      const hasDateDividerAfter = msgDateOnly.getTime() !== nextMsgDateOnly.getTime();
+
+      hasGroupWithNext = isSameSenderAsNext && isWithinMinuteFromNext && !hasDateDividerAfter;
+    }
+
+    // 根據前後關係決定群組狀態
+    isGrouped = hasGroupWithPrev;           // 與前一則群組
+    isFirstInGroup = !hasGroupWithPrev;     // 沒有前一則群組 = 是第一則
+    isLastInGroup = !hasGroupWithNext;      // 沒有下一則群組 = 是最後一則
+
+    return {
+      id: msg.id,
+      text: msg.content,
+      time: formatRelativeTime(msg.created_at),
+      created_at: msg.created_at,
+      isSent: msg.is_mine,
+      showDate,
+      date: showDate ? formatDateDivider(msg.created_at) : '',
+      message_type: msg.message_type,
+      related_item_id: msg.related_item_id,
+      related_item_title: msg.related_item_title,
+      metadata: msg.metadata,
+      sender: msg.sender,
+      _clientId: msg._clientId || msg.id, // 使用不變的 clientId 或回退到 id
+      isGrouped, // 是否與上一則訊息群組
+      isFirstInGroup, // 是否為群組第一則
+      isLastInGroup // 是否為群組最後一則
+    };
+  });
+});
+
+// 將訊息按日期分組
+const groupedMessages = computed(() => {
+  const groups = [];
+  let currentGroup = null;
+
+  messages.value.forEach((message) => {
+    if (message.showDate) {
+      // 開始新的日期群組
+      currentGroup = {
+        date: message.date,
+        dateKey: new Date(message.created_at).toLocaleDateString('zh-TW'),
+        messages: [message]
+      };
+      groups.push(currentGroup);
+    } else if (currentGroup) {
+      // 添加到當前日期群組
+      currentGroup.messages.push(message);
+    }
+  });
+
+  return groups;
+});
+
 // Helper functions
 // 時間格式化已改用 @/utils/timeFormat.js 的 formatRelativeTime
 
 // 更新所有訊息和對話的時間顯示
 function updateAllTimestamps() {
-  // 更新當前對話中的所有訊息時間
-  messages.value.forEach(msg => {
-    if (msg.created_at) {
-      msg.time = formatRelativeTime(msg.created_at);
-    }
-  });
-
-  // 更新對話列表中的最後訊息時間
-  // 由於 displayConversations 是 computed，我們需要觸發 conversations 的更新
-  conversations.value = conversations.value.map(conv => ({
-    ...conv,
-    // 保持原有資料不變，只是觸發 computed 重新計算
-  }));
-}
-
-// API Methods
-async function loadConversations() {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    // v2 API: getConversations(page, size, includeArchived)
-    const data = await getConversations(1, 50, false);
-
-    if (data) {
-      // Transform v2 data structure to match component expectations
-      conversations.value = data.map(conv => ({
-        id: conv.conversation_id,
-        item: {
-          id: conv.initial_item_id,
-          title: conv.initial_item_title || '未知商品',
-          cover_image_url: conv.initial_item_image || null
-        },
-        other_user: {
-          id: conv.other_user_id,
-          nickname: conv.other_user_name || '未知使用者',
-          profile_picture_url: conv.other_user_avatar || null
-        },
-        last_message: conv.last_message_content || '開始對話...',
-        last_message_time: conv.last_message_at || conv.created_at,
-        unread_count: conv.unread_count || 0,
-        is_archived: conv.is_archived || false,
-        created_at: conv.created_at,
-        // Determine role based on current user
-        role: currentUser.value ?
-          (conv.other_user_id === currentUser.value.id ? 'seller' : 'buyer') :
-          'buyer'
-      }));
-      updateFilterCounts();
-    }
-  } catch (err) {
-    console.error('Failed to load conversations:', err);
-    error.value = '載入對話失敗';
-  } finally {
-    loading.value = false;
-  }
-}
-
-function updateFilterCounts() {
-  const all = conversations.value;
-  filters.value[0].count = all.length;
-  filters.value[1].count = all.filter(c => c.unread_count > 0).length;
-  filters.value[2].count = all.filter(c => c.role === 'buyer').length;
-  filters.value[3].count = all.filter(c => c.role === 'seller').length;
-}
-
-async function loadMessages(conversationId) {
-  messagesLoading.value = true; // 開始載入訊息
-  try {
-    // v2 API: getMessages(conversationId, page, size)
-    let data = await getMessages(conversationId, 1, 50);
-
-    if (data) {
-      // 確保訊息順序：舊訊息在上，新訊息在下
-      // 如果後端返回的是降序（新到舊），需要反轉
-      // 檢查第一條和最後一條的時間戳
-      if (data.length > 1) {
-        const firstTime = new Date(data[0].created_at).getTime();
-        const lastTime = new Date(data[data.length - 1].created_at).getTime();
-
-        // 如果第一條比最後一條新，說明是降序，需要反轉
-        if (firstTime > lastTime) {
-          console.log('[Debug] 訊息順序為降序，反轉為升序');
-          data = data.reverse();
-        }
-      }
-
-      // Transform messages for display
-      let lastDate = '';
-      messages.value = data.map((msg) => {
-        const msgDate = new Date(msg.created_at).toLocaleDateString('zh-TW');
-        const showDate = msgDate !== lastDate;
-        lastDate = msgDate;
-
-        // 如果有物品引用信息，加入緩存
-        if (msg.related_item_id && msg.related_item_title) {
-          itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title);
-        }
-
-        return {
-          id: msg.message_id,
-          text: msg.content,
-          time: formatRelativeTime(msg.created_at),
-          created_at: msg.created_at, // 保存原始時間戳用於自動更新
-          isSent: msg.is_mine,
-          showDate,
-          date: showDate ? formatDateDivider(msg.created_at) : '',
-          message_type: msg.message_type,
-          related_item_id: msg.related_item_id,
-          related_item_title: msg.related_item_title,
-          sender: {
-            id: msg.sender_id,
-            name: msg.sender_name,
-            avatar: msg.sender_avatar
-          }
-        };
-      });
-
-      // Mark messages as read
-      await markAsRead(conversationId);
-    }
-  } catch (err) {
-    console.error('Failed to load messages:', err);
-  } finally {
-    messagesLoading.value = false; // 載入完成
-  }
+  // displayConversations 和 messages 都是 computed，會自動重新計算
+  // 這裡只需要觸發一次強制更新（如果需要的話）
+  // Vue 的響應式系統會自動處理時間更新
 }
 
 function formatDateDivider(timestamp) {
   const date = new Date(timestamp);
   const now = new Date();
-  const diff = now - date;
 
-  if (diff < 24 * 60 * 60 * 1000) {
+  // 將時間標準化為當天的 00:00:00，以便正確比較日期
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // 計算日期差（以天為單位）
+  const daysDiff = Math.floor((todayOnly - dateOnly) / (24 * 60 * 60 * 1000));
+
+  // 格式化時間（上午/下午 時:分）
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const period = hours < 12 ? '上午' : '下午';
+  const displayHours = hours % 12 || 12;
+  const timeStr = `${period} ${displayHours}:${minutes.toString().padStart(2, '0')}`;
+
+  // 今天：只顯示 "今天"
+  if (daysDiff === 0) {
     return '今天';
   }
-  if (diff < 48 * 60 * 60 * 1000) {
-    return '昨天';
+
+  // 這禮拜內（7天內）：顯示 "周X 下午 X:XX"
+  if (daysDiff > 0 && daysDiff < 7) {
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const weekday = weekdays[date.getDay()];
+    return `${weekday} ${timeStr}`;
   }
-  return date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' });
+
+  // 超過這禮拜：顯示 "X月X日 下午 X:XX"
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}月${day}日 ${timeStr}`;
 }
 
 // Methods
 async function selectConversation(conversation) {
-  selectedConversation.value = conversation;
+  messagesLoading.value = true;
 
-  // Load messages from API
-  await loadMessages(conversation.id);
+  // 重置分頁狀態
+  currentPage.value = 1;
+  hasMoreMessages.value = true;
+  isLoadingMoreMessages.value = false;
 
-  // Mark as read locally
-  conversation.unreadCount = 0;
+  try {
+    // 使用 store 載入訊息
+    await messageStore.loadMessages(conversation.id);
 
-  // Scroll to bottom
-  nextTick(() => {
+    // 等待 loading 狀態更新和 DOM 完全渲染後再滾動
+    messagesLoading.value = false;
+
+    await nextTick(); // 等待 v-if 切換
+    await nextTick(); // 等待訊息列表渲染
+
+    // Scroll to bottom
     if (messagesArea.value) {
       messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+      console.log('[Debug] Scrolled to bottom:', messagesArea.value.scrollHeight);
     }
-  });
+  } catch (err) {
+    messagesLoading.value = false;
+    throw err;
+  }
 }
 
 function deselectConversation() {
-  selectedConversation.value = null;
-  messages.value = [];
-}
-
-// Global real-time message handler (處理所有對話的新訊息)
-function handleGlobalRealtimeMessage(newMessage) {
-  console.log('[Debug] 收到全域新訊息:', newMessage);
-
-  const messageId = newMessage.message_id || newMessage.id;
-  const createdAt = newMessage.created_at || newMessage.sent_at;
-  const senderId = newMessage.sender_id;
-  const content = newMessage.content;
-  const conversationId = newMessage.conversation_id;
-
-  // 1. 更新對話列表中的最後訊息和未讀數
-  const conversation = conversations.value.find(c => c.id === conversationId);
-  if (conversation) {
-    conversation.last_message = content;
-    conversation.last_message_time = createdAt;
-
-    // 如果訊息不是自己發的，增加未讀數
-    if (senderId !== currentUser.value?.id) {
-      conversation.unread_count = (conversation.unread_count || 0) + 1;
-    }
-
-    console.log('[Debug] 已更新對話列表中的對話 #' + conversationId);
-  }
-
-  // 2. 如果是當前選中的對話，更新訊息列表
-  if (selectedConversation.value && conversationId === selectedConversation.value.id) {
-    console.log('[Debug] 訊息屬於當前對話，準備新增到訊息列表');
-
-    // Check if message already exists (avoid duplicates)
-    const exists = messages.value.some(m => m.id === messageId);
-    if (exists) {
-      console.log('[Debug] 訊息已存在，避免重複');
-      return;
-    }
-
-    // Add message to current conversation's message list
-    const relatedItemId = newMessage.related_item_id || null;
-    let relatedItemTitle = newMessage.related_item_title || null;
-
-    // 如果沒有標題但有 ID，嘗試從緩存中獲取
-    if (relatedItemId && !relatedItemTitle) {
-      relatedItemTitle = itemReferenceCache.value.get(relatedItemId) || null;
-    }
-
-    const newMsg = {
-      id: messageId,
-      text: content,
-      time: formatRelativeTime(createdAt),
-      created_at: createdAt, // 保存原始時間戳用於自動更新
-      isSent: senderId === currentUser.value?.id,
-      showDate: false,
-      message_type: newMessage.message_type || 'text',
-      related_item_id: relatedItemId,
-      related_item_title: relatedItemTitle,
-      sender: {
-        id: senderId,
-        name: newMessage.sender_name || '未知使用者',
-        avatar: newMessage.sender_avatar || null
-      }
-    };
-
-    messages.value.push(newMsg);
-    console.log('[Debug] 訊息已新增到列表，目前總訊息數:', messages.value.length);
-
-    // Auto-scroll to bottom
-    nextTick(() => {
-      if (messagesArea.value) {
-        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-        console.log('[Debug] 已滾動到底部');
-      }
-    });
-
-    // Mark as read if received and conversation is currently selected
-    if (senderId !== currentUser.value?.id) {
-      markAsRead(conversationId);
-      // 重置當前對話的未讀數
-      if (conversation) {
-        conversation.unread_count = 0;
-      }
-      console.log('[Debug] 已標記訊息為已讀');
-    }
-  } else {
-    console.log('[Debug] 訊息不屬於當前對話，只更新對話列表');
-  }
+  messageStore.clearSelectedConversation();
 }
 
 async function sendMessage() {
@@ -606,82 +582,109 @@ async function sendMessage() {
   const relatedItemId = pendingItemReference.value ? pendingItemReference.value.id : null;
   const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null;
 
+  // 立即清空輸入框
   messageInput.value = '';
 
-  // 如果有物品引用，加入緩存
-  if (relatedItemId && relatedItemTitle) {
-    itemReferenceCache.value.set(relatedItemId, relatedItemTitle);
+  // 創建臨時訊息 ID（用於樂觀更新）
+  const tempMessageId = `temp-${Date.now()}`;
+
+  // 立即添加樂觀訊息到列表
+  const optimisticMessage = {
+    id: tempMessageId,
+    content: content,
+    created_at: new Date().toISOString(),
+    is_mine: true,
+    message_type: 'text',
+    related_item_id: relatedItemId,
+    related_item_title: relatedItemTitle,
+    sender: {
+      id: currentUser.value?.id,
+      name: currentUser.value?.user_metadata?.nickname || '我',
+      avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+    },
+    metadata: null,
+    _sending: true, // 標記為正在發送
+    _clientId: tempMessageId // 永久的客戶端 ID，用於 v-for key（不會改變）
+  };
+
+  // 立即添加到 store
+  messageStore.currentMessages.push(optimisticMessage);
+
+  // 立即滾動到底部
+  await nextTick();
+  await nextTick();
+  if (messagesArea.value) {
+    messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+  }
+
+  // 清除待發送的物品引用
+  const shouldClearItemReference = !!pendingItemReference.value;
+  if (shouldClearItemReference) {
+    pendingItemReference.value = null;
+
+    // 清除 URL 中的物品相關參數
+    const currentQuery = { ...router.currentRoute.value.query };
+    if (currentQuery.itemId || currentQuery.itemTitle) {
+      delete currentQuery.itemId;
+      delete currentQuery.itemTitle;
+      router.replace({ query: currentQuery });
+    }
   }
 
   try {
-    // v2 API: sendMessage(conversationId, content, messageType, relatedItemId)
-    const newMessage = await sendMessageAPI(
-      selectedConversation.value.id,
-      content,
-      'text',
-      relatedItemId
-    );
+    // 在背景發送訊息
+    const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
 
-    console.log('[Debug] 發送訊息成功，回傳資料:', newMessage);
+    console.log('[Debug] 發送訊息成功，真實 ID:', newMessage.message_id || newMessage.id);
 
-    // 清除待發送的物品引用
-    if (pendingItemReference.value) {
-      pendingItemReference.value = null;
+    // 找到並更新樂觀訊息（只更新屬性，不替換整個物件，避免重新渲染造成抖動）
+    const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+    if (index !== -1) {
+      const message = messageStore.currentMessages[index];
+      const realMessageId = newMessage.message_id || newMessage.id;
 
-      // 清除 URL 中的物品相關參數
-      const currentQuery = { ...router.currentRoute.value.query };
-      if (currentQuery.itemId || currentQuery.itemTitle) {
-        delete currentQuery.itemId;
-        delete currentQuery.itemTitle;
-        router.replace({ query: currentQuery });
-      }
-    }
+      // 檢查真實 ID 是否已存在（可能 realtime 已經添加了）
+      const realMessageExists = messageStore.currentMessages.some(
+        (m, i) => i !== index && m.id === realMessageId
+      );
 
-    // 檢查訊息是否已存在（可能由 realtime 先加入）
-    const messageId = newMessage.message_id || newMessage.id;
-    const exists = messages.value.some(m => m.id === messageId);
+      if (realMessageExists) {
+        // 如果 realtime 已經添加了真實訊息，直接移除樂觀訊息
+        console.log('[Debug] Realtime 已添加真實訊息，移除樂觀訊息');
+        messageStore.currentMessages.splice(index, 1);
+      } else {
+        // 更新屬性而不是替換物件
+        message.id = realMessageId;
+        message.created_at = newMessage.created_at;
+        message.metadata = newMessage.metadata;
+        message._sending = false; // 移除發送中標記
 
-    if (exists) {
-      console.log('[Debug] 訊息已由 realtime 加入，跳過手動添加');
-    } else {
-      // Add to messages list
-      messages.value.push({
-        id: messageId,
-        text: newMessage.content,
-        time: formatRelativeTime(newMessage.created_at),
-        created_at: newMessage.created_at, // 保存原始時間戳用於自動更新
-        isSent: true,
-        showDate: false,
-        message_type: newMessage.message_type || 'text',
-        related_item_id: newMessage.related_item_id || relatedItemId,
-        related_item_title: newMessage.related_item_title || relatedItemTitle,
-        sender: {
-          id: newMessage.sender_id,
-          name: currentUser.value?.user_metadata?.nickname || '我',
-          avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+        // 更新 sender 資訊（如果後端有返回）
+        if (newMessage.sender_id) {
+          message.sender.id = newMessage.sender_id;
         }
-      });
-      console.log('[Debug] 訊息已手動加入列表');
-    }
-
-    // Update conversation last message
-    if (selectedConversation.value) {
-      selectedConversation.value.lastMessage = {
-        text: newMessage.content,
-        time: formatRelativeTime(newMessage.created_at)
-      };
-    }
-
-    // Scroll to bottom
-    nextTick(() => {
-      if (messagesArea.value) {
-        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
       }
-    });
+    }
   } catch (err) {
     console.error('Failed to send message:', err);
+
+    // 發送失敗，移除樂觀訊息
+    const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+    if (index !== -1) {
+      messageStore.currentMessages.splice(index, 1);
+    }
+
+    // 顯示錯誤並恢復輸入內容
     alert('發送訊息失敗，請稍後再試');
-    messageInput.value = content; // Restore message
+    messageInput.value = content;
+
+    // 恢復物品引用
+    if (shouldClearItemReference && relatedItemId && relatedItemTitle) {
+      pendingItemReference.value = {
+        id: relatedItemId,
+        title: relatedItemTitle
+      };
+    }
   }
 }
 
@@ -714,9 +717,15 @@ function handleMessagesScroll() {
 
   const { scrollTop, scrollHeight, clientHeight } = messagesArea.value;
   const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+  const distanceFromTop = scrollTop;
 
   // 顯示按鈕的閾值：距離底部超過 200px
   showScrollToBottomBtn.value = distanceFromBottom > 200;
+
+  // 檢測是否滑動到頂部（距離頂部小於 100px）並載入更多訊息
+  if (distanceFromTop < 100 && !isLoadingMoreMessages.value && hasMoreMessages.value && selectedConversation.value) {
+    loadMoreMessages();
+  }
 }
 
 function scrollToBottom() {
@@ -750,22 +759,53 @@ function scrollToBottom() {
   });
 }
 
+// Load more messages when scrolling to top
+async function loadMoreMessages() {
+  if (!selectedConversation.value || isLoadingMoreMessages.value || !hasMoreMessages.value) return;
+
+  isLoadingMoreMessages.value = true;
+
+  try {
+    // 記錄當前滾動位置和高度
+    const scrollHeightBefore = messagesArea.value.scrollHeight;
+    const scrollTopBefore = messagesArea.value.scrollTop;
+
+    // 載入下一頁訊息
+    const nextPage = currentPage.value + 1;
+    const olderMessages = await messageStore.loadMoreMessages(selectedConversation.value.id, nextPage, 50);
+
+    if (olderMessages && olderMessages.length > 0) {
+      currentPage.value = nextPage;
+      console.log(`✅ Loaded ${olderMessages.length} more messages (page ${nextPage})`);
+
+      // 如果返回的訊息少於請求的數量，表示沒有更多了
+      if (olderMessages.length < 50) {
+        hasMoreMessages.value = false;
+        console.log('📭 No more messages to load');
+      }
+
+      // 等待 DOM 更新後恢復滾動位置
+      await nextTick();
+      await nextTick();
+
+      // 計算新增內容的高度並調整滾動位置，保持用戶看到的內容不變
+      const scrollHeightAfter = messagesArea.value.scrollHeight;
+      const heightDifference = scrollHeightAfter - scrollHeightBefore;
+      messagesArea.value.scrollTop = scrollTopBefore + heightDifference;
+    } else {
+      hasMoreMessages.value = false;
+      console.log('📭 No more messages to load');
+    }
+  } catch (err) {
+    console.error('Failed to load more messages:', err);
+  } finally {
+    isLoadingMoreMessages.value = false;
+  }
+}
+
 // Initialize
 async function initialize() {
-  // Check authentication
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    router.push('/login');
-    return;
-  }
-
-  currentUser.value = user;
-  await loadConversations();
-
-  // 訂閱所有對話的新訊息 (全域監聽)
-  // 如果資料庫使用舊表名，請改為: subscribeToAllMessages(handleGlobalRealtimeMessage, 'conversation_messages')
-  globalMessageSubscription.value = subscribeToAllMessages(handleGlobalRealtimeMessage);
-  console.log('[Debug] 已啟動全域訊息監聽');
+  // 對話已由 App.vue 中的 store 載入，這裡只需處理 URL 參數
 
   // 如果 URL 有指定 conversationId，自動選擇該對話
   const conversationId = router.currentRoute.value.query.conversationId;
@@ -773,23 +813,39 @@ async function initialize() {
   const itemTitle = router.currentRoute.value.query.itemTitle;
 
   if (conversationId) {
-    const conversation = displayConversations.value.find(
-      c => c.id === parseInt(conversationId)
-    );
-    if (conversation) {
-      await selectConversation(conversation);
+    // 立即顯示 loading 狀態
+    messagesLoading.value = true;
 
-      // 如果有物品資訊，設置為待發送的物品引用
-      if (itemId && itemTitle) {
-        pendingItemReference.value = {
-          id: itemId,
-          title: itemTitle
-        };
-        // 加入緩存
-        itemReferenceCache.value.set(itemId, itemTitle);
-        // 預填訊息內容
-        messageInput.value = '我想詢問';
+    try {
+      // 等待 conversations 載入完成
+      if (messageStore.conversations.length === 0) {
+        await messageStore.loadConversations();
       }
+
+      const conversation = displayConversations.value.find(
+        c => c.id === parseInt(conversationId)
+      );
+      if (conversation) {
+        await selectConversation(conversation);
+
+        // 如果有物品資訊，設置為待發送的物品引用
+        if (itemId && itemTitle) {
+          pendingItemReference.value = {
+            id: itemId,
+            title: itemTitle
+          };
+          // 加入緩存
+          itemReferenceCache.value.set(itemId, itemTitle);
+          // 預填訊息內容
+          messageInput.value = '我想詢問';
+        }
+      } else {
+        // 如果找不到對話，關閉 loading
+        messagesLoading.value = false;
+      }
+    } catch (err) {
+      console.error('Failed to initialize conversation:', err);
+      messagesLoading.value = false;
     }
   }
 }
@@ -831,14 +887,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  // Clean up subscriptions
-  if (globalMessageSubscription.value) {
-    globalMessageSubscription.value.unsubscribe();
-    console.log('[Debug] 已取消全域訊息監聽');
-  }
-  if (conversationSubscription.value) {
-    conversationSubscription.value.unsubscribe();
-  }
+  // 全域訊息監聽由 App.vue 管理，這裡不需要取消訂閱
 
   // 清除時間更新定時器
   if (timeUpdateInterval.value) {
@@ -872,6 +921,10 @@ onBeforeUnmount(() => {
     height: -webkit-fill-available;
     max-height: -webkit-fill-available;
   }
+  
+  // Ensure touch scrolling works properly on mobile
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation; // Allow native scrolling
 }
 
 .main-content {
@@ -1046,6 +1099,10 @@ onBeforeUnmount(() => {
 .conversations-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; // Smooth scrolling on iOS
+  overscroll-behavior: contain; // Prevent pull-to-refresh interference
+  touch-action: pan-y; // Allow vertical scrolling
 }
 
 .conversation-item {
@@ -1198,6 +1255,7 @@ onBeforeUnmount(() => {
   // Ensure proper mobile layout
   min-height: 0; // Allow flex item to shrink
   position: relative; // 為浮動按鈕定位
+  overflow: hidden; // Prevent scroll on chat container itself
 }
 
 .chat-header {
@@ -1279,9 +1337,12 @@ onBeforeUnmount(() => {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
   background: #f9f9f9;
   // Ensure proper scrolling on mobile
   -webkit-overflow-scrolling: touch; // Smooth scrolling on iOS
+  overscroll-behavior: contain; // Prevent pull-to-refresh interference
+  touch-action: pan-y; // Allow vertical scrolling
   min-height: 0; // Allow flex item to shrink
   display: flex;
   flex-direction: column;
@@ -1294,15 +1355,59 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
+.date-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+}
+
+.date-group-messages {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.loading-more-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: $primary;
+  
+  .spinner-border {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+  }
+}
+
 .message-wrapper {
   margin-bottom: 16px;
+
+  // 群組中的訊息（不是最後一則）：間距更小
+  &:has(.message-grouped:not(.message-last-in-group)) {
+    margin-bottom: 2px;
+  }
+
+  // 群組第一則（不是最後一則）：間距更小
+  &:has(.message-first-in-group:not(.message-last-in-group)) {
+    margin-bottom: 2px;
+  }
 }
 
 .date-divider {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 20px 0;
+  padding: 8px 0;
 
   span {
     padding: 6px 16px;
@@ -1319,17 +1424,53 @@ onBeforeUnmount(() => {
   display: flex;
   margin-bottom: 8px;
 
+  // 群組訊息：減少間距
+  &.message-grouped {
+    margin-bottom: 1px;
+  }
+
+  // 群組第一則訊息（不是最後一則）：減少間距
+  &.message-first-in-group:not(.message-last-in-group) {
+    margin-bottom: 1px;
+  }
+
+  // 群組最後一則訊息：恢復正常間距
+  &.message-last-in-group {
+    margin-bottom: 8px;
+  }
+
   &.message-sent {
     justify-content: flex-end;
 
     .message-content {
       background: $primary;
       color: white;
-      border-radius: 16px 16px 4px 16px;
+      border-radius: 16px 16px 16px 16px; // 預設：單獨訊息
       transform-origin: bottom right;
 
       .message-time {
         color: rgba(255, 255, 255, 0.8);
+      }
+    }
+
+    // 群組第一則（最上）：右上保持圓角，右下變小圓角
+    &.message-first-in-group:not(.message-last-in-group) {
+      .message-content {
+        border-radius: 16px 16px 4px 16px;
+      }
+    }
+
+    // 群組中間：右上和右下都是小圓角
+    &.message-grouped:not(.message-first-in-group):not(.message-last-in-group) {
+      .message-content {
+        border-radius: 16px 4px 4px 16px;
+      }
+    }
+
+    // 群組最後一則（最下）：右上小圓角，右下恢復圓角
+    &.message-last-in-group:not(.message-first-in-group) {
+      .message-content {
+        border-radius: 16px 4px 16px 16px;
       }
     }
   }
@@ -1340,12 +1481,33 @@ onBeforeUnmount(() => {
     .message-content {
       background: white;
       color: #1e1e1e;
-      border-radius: 16px 16px 16px 4px;
+      border-radius: 16px 16px 16px 16px; // 預設：單獨訊息
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       transform-origin: bottom left;
 
       .message-time {
         color: #999;
+      }
+    }
+
+    // 群組第一則（最上）：左上保持圓角，左下變小圓角
+    &.message-first-in-group:not(.message-last-in-group) {
+      .message-content {
+        border-radius: 16px 16px 16px 4px;
+      }
+    }
+
+    // 群組中間：左上和左下都是小圓角
+    &.message-grouped:not(.message-first-in-group):not(.message-last-in-group) {
+      .message-content {
+        border-radius: 4px 16px 16px 4px;
+      }
+    }
+
+    // 群組最後一則（最下）：左上小圓角，左下恢復圓角
+    &.message-last-in-group:not(.message-first-in-group) {
+      .message-content {
+        border-radius: 4px 16px 16px 16px;
       }
     }
   }
@@ -1829,7 +1991,13 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; // Ensure smooth scrolling on iOS
+    overscroll-behavior-y: contain; // Prevent pull-to-refresh
+    touch-action: pan-y; // Explicitly allow vertical scrolling
     padding: 16px; // Reduced padding for mobile
+    // Use min-height instead of fixed height for better keyboard handling
+    min-height: 200px;
   }
 
   .input-area-wrapper {
@@ -2000,5 +2168,34 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, 0.1);
   align-self: flex-end;
   margin-top: 4px;
+}
+
+// Header Skeleton Styles
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-name {
+  width: 120px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 6px;
+}
+
+.skeleton-status {
+  width: 60px;
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 </style>
