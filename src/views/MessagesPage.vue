@@ -121,91 +121,121 @@
                 </button>
               </div>
 
-              <!-- Product Context (if applicable) -->
-              <ItemContextBar
-                v-if="selectedConversation.product"
-                :items="[selectedConversation.product]"
-                @item-click="goToProduct"
-              />
-
               <!-- Messages Area -->
-              <div ref="messagesArea" class="messages-area">
-                <div v-for="message in messages" :key="message.id" class="message-wrapper">
-                  <!-- Date Divider -->
-                  <div v-if="message.showDate" class="date-divider">
-                    <span>{{ message.date }}</span>
-                  </div>
-
-                  <!-- Special Message: Offer -->
-                  <OfferMessage
-                    v-if="message.message_type === 'offer' || message.message_type === 'counter_offer'"
-                    :offer="message.metadata"
-                    :current-user-id="currentUser?.id"
-                    :buyer-id="getBuyerId(selectedConversation)"
-                    :seller-id="selectedConversation._raw.item.owner_id"
-                    @accept="handleAcceptOffer"
-                    @counter="handleCounterOffer"
-                    @decline="handleDeclineOffer"
-                  />
-
-                  <!-- Special Message: Order Request -->
-                  <OrderRequestMessage
-                    v-else-if="message.message_type === 'order_request'"
-                    :order-request="message.metadata"
-                    :current-user-id="currentUser?.id"
-                    :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
-                    @accept="handleAcceptOrderRequest"
-                    @decline="handleDeclineOrderRequest"
-                    @view-details="handleViewOrderDetails"
-                  />
-
-                  <!-- Regular Text Message -->
-                  <div v-else :class="['message', { 'message-sent': message.isSent, 'message-received': !message.isSent }]">
-                    <div class="message-content">
-                      <p class="message-text">{{ message.text }}</p>
-                      <span class="message-time">{{ message.time }}</span>
+              <div ref="messagesArea" class="messages-area" @scroll="handleMessagesScroll">
+                <!-- Loading Skeleton -->
+                <div v-if="messagesLoading" class="skeleton-messages">
+                  <div v-for="i in 6" :key="`skeleton-${i}`" :class="['skeleton-message-wrapper', i % 2 === 0 ? 'sent' : 'received']">
+                    <div class="skeleton-message">
+                      <div class="skeleton-text-line"></div>
+                      <div class="skeleton-text-line short"></div>
+                      <div class="skeleton-time"></div>
                     </div>
                   </div>
                 </div>
+
+                <!-- Actual Messages -->
+                <transition-group name="message-pop" tag="div" class="messages-list" v-else>
+                  <div v-for="message in messages" :key="message.id" class="message-wrapper">
+                    <!-- Date Divider -->
+                    <div v-if="message.showDate" class="date-divider">
+                      <span>{{ message.date }}</span>
+                    </div>
+
+                    <!-- Special Message: Offer -->
+                    <OfferMessage
+                      v-if="message.message_type === 'offer' || message.message_type === 'counter_offer'"
+                      :offer="message.metadata"
+                      :current-user-id="currentUser?.id"
+                      :buyer-id="getBuyerId(selectedConversation)"
+                      :seller-id="selectedConversation._raw.item.owner_id"
+                      @accept="handleAcceptOffer"
+                      @counter="handleCounterOffer"
+                      @decline="handleDeclineOffer"
+                    />
+
+                    <!-- Special Message: Order Request -->
+                    <OrderRequestMessage
+                      v-else-if="message.message_type === 'order_request'"
+                      :order-request="message.metadata"
+                      :current-user-id="currentUser?.id"
+                      :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
+                      @accept="handleAcceptOrderRequest"
+                      @decline="handleDeclineOrderRequest"
+                      @view-details="handleViewOrderDetails"
+                    />
+
+                    <!-- Regular Text Message -->
+                    <div v-else :class="['message', { 'message-sent': message.isSent, 'message-received': !message.isSent }]">
+                      <div class="message-content">
+                        <!-- Item Reference (Discord-style reply) -->
+                        <div
+                          v-if="message.related_item_id"
+                          class="item-reference"
+                          @click.stop="openItemPage(message.related_item_id)"
+                        >
+                          <div class="reference-bar"></div>
+                          <div class="reference-content">
+                            <i class="bi bi-box-seam reference-icon"></i>
+                            <span class="reference-text">{{ message.related_item_title || `物品 #${message.related_item_id}` }}</span>
+                          </div>
+                        </div>
+
+                        <p class="message-text">{{ message.text }}</p>
+                        <span class="message-time">{{ message.time }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </transition-group>
               </div>
 
-              <!-- Quick Action Bar -->
-              <QuickActionBar
-                v-if="selectedConversation && selectedConversation.product"
-                :conversation-id="selectedConversation.id"
-                :item-id="selectedConversation.product.id"
-                :current-user-id="currentUser?.id"
-                :seller-id="selectedConversation._raw.seller_id || (selectedConversation._raw.buyer_id === currentUser?.id ? selectedConversation._raw.seller_id : selectedConversation._raw.seller_id)"
-                :current-price="selectedConversation.product.price || 0"
-                :transaction-state="currentTransactionState"
-                :message-count="messages.length"
-                :pending-offer="currentPendingOffer"
-                @send-quick-prompt="handleSendQuickPrompt"
-                @make-offer="handleMakeOffer"
-                @accept-offer="handleAcceptOffer"
-                @counter-offer="handleCounterOffer"
-                @request-order="handleRequestOrder"
-              />
+              <!-- Scroll to Bottom Button -->
+              <transition name="scroll-btn-slide">
+                <button
+                  v-if="showScrollToBottomBtn"
+                  :class="['scroll-to-bottom-btn-floating', { 'with-item-reference': pendingItemReference }]"
+                  @click="scrollToBottom"
+                >
+                  <i class="bi bi-arrow-down"></i>
+                  <span>回到最新</span>
+                </button>
+              </transition>
+
+              <!-- Pending Item Reference (above input, outside wrapper for animation) -->
+              <transition name="item-reference-slide">
+                <div v-if="pendingItemReference" class="pending-item-reference">
+                  <div class="reference-info">
+                    <i class="bi bi-box-seam"></i>
+                    <span class="reference-label">提及物品：</span>
+                    <span class="reference-title">{{ pendingItemReference.title }}</span>
+                  </div>
+                  <button class="remove-reference-btn" @click="removePendingItemReference">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              </transition>
 
               <!-- Input Area -->
-              <div class="input-area">
-                <button class="attach-btn" @click="handleAttachment">
-                  <i class="bi bi-paperclip"></i>
-                </button>
-                <input
-                  v-model="messageInput"
-                  type="text"
-                  placeholder="輸入訊息..."
-                  class="message-input"
-                  @keypress.enter="sendMessage"
-                />
-                <button
-                  class="send-btn"
-                  :disabled="!messageInput.trim()"
-                  @click="sendMessage"
-                >
-                  <i class="bi bi-send-fill"></i>
-                </button>
+              <div class="input-area-wrapper">
+                <div class="input-area">
+                  <button class="attach-btn" @click="handleAttachment">
+                    <i class="bi bi-paperclip"></i>
+                  </button>
+                  <input
+                    v-model="messageInput"
+                    type="text"
+                    placeholder="輸入訊息..."
+                    class="message-input"
+                    @keypress.enter="sendMessage"
+                  />
+                  <button
+                    class="send-btn"
+                    :disabled="!messageInput.trim()"
+                    @click="sendMessage"
+                  >
+                    <i class="bi bi-send-fill"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -213,7 +243,6 @@
       </div>
     </main>
 
-    <AppFooter />
   </div>
 </template>
 
@@ -222,8 +251,6 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
-import ItemContextBar from '../components/ItemContextBar.vue';
-import QuickActionBar from '../components/QuickActionBar.vue';
 import OfferMessage from '../components/OfferMessage.vue';
 import OrderRequestMessage from '../components/OrderRequestMessage.vue';
 import { supabase } from '@/lib/supabase';
@@ -232,20 +259,11 @@ import {
   getMessages,
   sendMessage as sendMessageAPI,
   markAsRead,
-  subscribeToMessages
+  subscribeToAllMessages
 } from '@/api/conversationAPI_v2';
-import { useTransactions } from '@/composables/useTransactions';
+import { formatRelativeTime } from '@/utils/timeFormat';
 
 const router = useRouter();
-const {
-  makeOffer,
-  acceptOffer,
-  counterOffer,
-  declineOffer,
-  requestOrder,
-  acceptOrderRequest,
-  declineOrderRequest
-} = useTransactions();
 
 // State
 const userPoints = ref(500);
@@ -256,8 +274,12 @@ const messageInput = ref('');
 const messagesArea = ref(null);
 const showFilterMenu = ref(false);
 const loading = ref(false);
+const messagesLoading = ref(false); // 訊息載入狀態（用於切換聊天室時顯示 skeleton）
 const error = ref(null);
 const currentUser = ref(null);
+const pendingItemReference = ref(null); // 待發送的物品引用
+const itemReferenceCache = ref(new Map()); // 物品引用緩存 Map<itemId, itemTitle>
+const showScrollToBottomBtn = ref(false); // 顯示「回到最新」按鈕
 
 const filters = ref([
   { id: 'all', label: '全部', count: 0 },
@@ -269,12 +291,9 @@ const filters = ref([
 // Real conversations from Supabase
 const conversations = ref([]);
 const messages = ref([]);
-const messageSubscription = ref(null);
+const globalMessageSubscription = ref(null); // 全域訊息訂閱
 const conversationSubscription = ref(null);
-
-// Transaction state
-const currentTransactionState = ref('negotiating');
-const currentPendingOffer = ref(null);
+const timeUpdateInterval = ref(null); // 時間更新定時器
 
 // Computed
 const filteredConversations = computed(() => {
@@ -316,7 +335,7 @@ const displayConversations = computed(() => {
     } : null,
     lastMessage: {
       text: convo.last_message || convo.last_message_preview || '開始對話...',
-      time: formatTime(convo.last_message_time || convo.last_updated_at)
+      time: formatRelativeTime(convo.last_message_time || convo.last_updated_at)
     },
     unreadCount: convo.unread_count || 0,
     type: convo.role,
@@ -325,35 +344,23 @@ const displayConversations = computed(() => {
 });
 
 // Helper functions
-function formatTime(timestamp) {
-  if (!timestamp) return '';
+// 時間格式化已改用 @/utils/timeFormat.js 的 formatRelativeTime
 
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
+// 更新所有訊息和對話的時間顯示
+function updateAllTimestamps() {
+  // 更新當前對話中的所有訊息時間
+  messages.value.forEach(msg => {
+    if (msg.created_at) {
+      msg.time = formatRelativeTime(msg.created_at);
+    }
+  });
 
-  // Less than 1 day
-  if (diff < 24 * 60 * 60 * 1000) {
-    return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  // Less than 2 days
-  if (diff < 48 * 60 * 60 * 1000) {
-    return '昨天';
-  }
-
-  // Less than 7 days
-  if (diff < 7 * 24 * 60 * 60 * 1000) {
-    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`;
-  }
-
-  // Show date
-  return date.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
-}
-
-function formatMessageTime(timestamp) {
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+  // 更新對話列表中的最後訊息時間
+  // 由於 displayConversations 是 computed，我們需要觸發 conversations 的更新
+  conversations.value = conversations.value.map(conv => ({
+    ...conv,
+    // 保持原有資料不變，只是觸發 computed 重新計算
+  }));
 }
 
 // API Methods
@@ -408,11 +415,26 @@ function updateFilterCounts() {
 }
 
 async function loadMessages(conversationId) {
+  messagesLoading.value = true; // 開始載入訊息
   try {
     // v2 API: getMessages(conversationId, page, size)
-    const data = await getMessages(conversationId, 1, 50);
+    let data = await getMessages(conversationId, 1, 50);
 
     if (data) {
+      // 確保訊息順序：舊訊息在上，新訊息在下
+      // 如果後端返回的是降序（新到舊），需要反轉
+      // 檢查第一條和最後一條的時間戳
+      if (data.length > 1) {
+        const firstTime = new Date(data[0].created_at).getTime();
+        const lastTime = new Date(data[data.length - 1].created_at).getTime();
+
+        // 如果第一條比最後一條新，說明是降序，需要反轉
+        if (firstTime > lastTime) {
+          console.log('[Debug] 訊息順序為降序，反轉為升序');
+          data = data.reverse();
+        }
+      }
+
       // Transform messages for display
       let lastDate = '';
       messages.value = data.map((msg) => {
@@ -420,13 +442,22 @@ async function loadMessages(conversationId) {
         const showDate = msgDate !== lastDate;
         lastDate = msgDate;
 
+        // 如果有物品引用信息，加入緩存
+        if (msg.related_item_id && msg.related_item_title) {
+          itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title);
+        }
+
         return {
           id: msg.message_id,
           text: msg.content,
-          time: formatMessageTime(msg.created_at),
+          time: formatRelativeTime(msg.created_at),
+          created_at: msg.created_at, // 保存原始時間戳用於自動更新
           isSent: msg.is_mine,
           showDate,
           date: showDate ? formatDateDivider(msg.created_at) : '',
+          message_type: msg.message_type,
+          related_item_id: msg.related_item_id,
+          related_item_title: msg.related_item_title,
           sender: {
             id: msg.sender_id,
             name: msg.sender_name,
@@ -440,6 +471,8 @@ async function loadMessages(conversationId) {
     }
   } catch (err) {
     console.error('Failed to load messages:', err);
+  } finally {
+    messagesLoading.value = false; // 載入完成
   }
 }
 
@@ -461,20 +494,11 @@ function formatDateDivider(timestamp) {
 async function selectConversation(conversation) {
   selectedConversation.value = conversation;
 
-  // Unsubscribe from previous conversation
-  if (messageSubscription.value) {
-    messageSubscription.value.unsubscribe();
-    messageSubscription.value = null;
-  }
-
   // Load messages from API
   await loadMessages(conversation.id);
 
   // Mark as read locally
   conversation.unreadCount = 0;
-
-  // Subscribe to real-time messages
-  messageSubscription.value = subscribeToMessages(conversation.id, handleRealtimeMessage);
 
   // Scroll to bottom
   nextTick(() => {
@@ -487,48 +511,91 @@ async function selectConversation(conversation) {
 function deselectConversation() {
   selectedConversation.value = null;
   messages.value = [];
-
-  // Unsubscribe from messages
-  if (messageSubscription.value) {
-    messageSubscription.value.unsubscribe();
-    messageSubscription.value = null;
-  }
 }
 
-// Real-time message handler
-function handleRealtimeMessage(newMessage) {
-  if (!selectedConversation.value || newMessage.conversation_id !== selectedConversation.value.id) {
-    return;
+// Global real-time message handler (處理所有對話的新訊息)
+function handleGlobalRealtimeMessage(newMessage) {
+  console.log('[Debug] 收到全域新訊息:', newMessage);
+
+  const messageId = newMessage.message_id || newMessage.id;
+  const createdAt = newMessage.created_at || newMessage.sent_at;
+  const senderId = newMessage.sender_id;
+  const content = newMessage.content;
+  const conversationId = newMessage.conversation_id;
+
+  // 1. 更新對話列表中的最後訊息和未讀數
+  const conversation = conversations.value.find(c => c.id === conversationId);
+  if (conversation) {
+    conversation.last_message = content;
+    conversation.last_message_time = createdAt;
+
+    // 如果訊息不是自己發的，增加未讀數
+    if (senderId !== currentUser.value?.id) {
+      conversation.unread_count = (conversation.unread_count || 0) + 1;
+    }
+
+    console.log('[Debug] 已更新對話列表中的對話 #' + conversationId);
   }
 
-  // Check if message already exists (avoid duplicates)
-  const exists = messages.value.some(m => m.id === newMessage.message_id);
-  if (exists) return;
+  // 2. 如果是當前選中的對話，更新訊息列表
+  if (selectedConversation.value && conversationId === selectedConversation.value.id) {
+    console.log('[Debug] 訊息屬於當前對話，準備新增到訊息列表');
 
-  // Add message to list
-  messages.value.push({
-    id: newMessage.message_id,
-    text: newMessage.content,
-    time: formatMessageTime(newMessage.created_at),
-    isSent: newMessage.sender_id === currentUser.value?.id,
-    showDate: false,
-    sender: {
-      id: newMessage.sender_id,
-      name: newMessage.sender_name || '未知使用者',
-      avatar: newMessage.sender_avatar || null
+    // Check if message already exists (avoid duplicates)
+    const exists = messages.value.some(m => m.id === messageId);
+    if (exists) {
+      console.log('[Debug] 訊息已存在，避免重複');
+      return;
     }
-  });
 
-  // Auto-scroll to bottom
-  nextTick(() => {
-    if (messagesArea.value) {
-      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+    // Add message to current conversation's message list
+    const relatedItemId = newMessage.related_item_id || null;
+    let relatedItemTitle = newMessage.related_item_title || null;
+
+    // 如果沒有標題但有 ID，嘗試從緩存中獲取
+    if (relatedItemId && !relatedItemTitle) {
+      relatedItemTitle = itemReferenceCache.value.get(relatedItemId) || null;
     }
-  });
 
-  // Mark as read if received
-  if (newMessage.sender_id !== currentUser.value?.id) {
-    markAsRead(selectedConversation.value.id);
+    const newMsg = {
+      id: messageId,
+      text: content,
+      time: formatRelativeTime(createdAt),
+      created_at: createdAt, // 保存原始時間戳用於自動更新
+      isSent: senderId === currentUser.value?.id,
+      showDate: false,
+      message_type: newMessage.message_type || 'text',
+      related_item_id: relatedItemId,
+      related_item_title: relatedItemTitle,
+      sender: {
+        id: senderId,
+        name: newMessage.sender_name || '未知使用者',
+        avatar: newMessage.sender_avatar || null
+      }
+    };
+
+    messages.value.push(newMsg);
+    console.log('[Debug] 訊息已新增到列表，目前總訊息數:', messages.value.length);
+
+    // Auto-scroll to bottom
+    nextTick(() => {
+      if (messagesArea.value) {
+        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+        console.log('[Debug] 已滾動到底部');
+      }
+    });
+
+    // Mark as read if received and conversation is currently selected
+    if (senderId !== currentUser.value?.id) {
+      markAsRead(conversationId);
+      // 重置當前對話的未讀數
+      if (conversation) {
+        conversation.unread_count = 0;
+      }
+      console.log('[Debug] 已標記訊息為已讀');
+    }
+  } else {
+    console.log('[Debug] 訊息不屬於當前對話，只更新對話列表');
   }
 }
 
@@ -536,31 +603,72 @@ async function sendMessage() {
   if (!messageInput.value.trim() || !selectedConversation.value) return;
 
   const content = messageInput.value.trim();
+  const relatedItemId = pendingItemReference.value ? pendingItemReference.value.id : null;
+  const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null;
+
   messageInput.value = '';
+
+  // 如果有物品引用，加入緩存
+  if (relatedItemId && relatedItemTitle) {
+    itemReferenceCache.value.set(relatedItemId, relatedItemTitle);
+  }
 
   try {
     // v2 API: sendMessage(conversationId, content, messageType, relatedItemId)
-    const newMessage = await sendMessageAPI(selectedConversation.value.id, content, 'text', null);
+    const newMessage = await sendMessageAPI(
+      selectedConversation.value.id,
+      content,
+      'text',
+      relatedItemId
+    );
 
-    // Add to messages list
-    messages.value.push({
-      id: newMessage.message_id,
-      text: newMessage.content,
-      time: formatMessageTime(newMessage.created_at),
-      isSent: true,
-      showDate: false,
-      sender: {
-        id: newMessage.sender_id,
-        name: currentUser.value?.user_metadata?.nickname || '我',
-        avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+    console.log('[Debug] 發送訊息成功，回傳資料:', newMessage);
+
+    // 清除待發送的物品引用
+    if (pendingItemReference.value) {
+      pendingItemReference.value = null;
+
+      // 清除 URL 中的物品相關參數
+      const currentQuery = { ...router.currentRoute.value.query };
+      if (currentQuery.itemId || currentQuery.itemTitle) {
+        delete currentQuery.itemId;
+        delete currentQuery.itemTitle;
+        router.replace({ query: currentQuery });
       }
-    });
+    }
+
+    // 檢查訊息是否已存在（可能由 realtime 先加入）
+    const messageId = newMessage.message_id || newMessage.id;
+    const exists = messages.value.some(m => m.id === messageId);
+
+    if (exists) {
+      console.log('[Debug] 訊息已由 realtime 加入，跳過手動添加');
+    } else {
+      // Add to messages list
+      messages.value.push({
+        id: messageId,
+        text: newMessage.content,
+        time: formatRelativeTime(newMessage.created_at),
+        created_at: newMessage.created_at, // 保存原始時間戳用於自動更新
+        isSent: true,
+        showDate: false,
+        message_type: newMessage.message_type || 'text',
+        related_item_id: newMessage.related_item_id || relatedItemId,
+        related_item_title: newMessage.related_item_title || relatedItemTitle,
+        sender: {
+          id: newMessage.sender_id,
+          name: currentUser.value?.user_metadata?.nickname || '我',
+          avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+        }
+      });
+      console.log('[Debug] 訊息已手動加入列表');
+    }
 
     // Update conversation last message
     if (selectedConversation.value) {
       selectedConversation.value.lastMessage = {
         text: newMessage.content,
-        time: formatTime(newMessage.created_at)
+        time: formatRelativeTime(newMessage.created_at)
       };
     }
 
@@ -582,238 +690,33 @@ function handleAttachment() {
   alert('檔案附件功能尚未實作');
 }
 
-function goToProduct(itemOrId) {
-  const productId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
-  router.push({ name: 'ItemDetail', params: { id: productId } });
+function openItemPage(itemId) {
+  // 在新分页中打开物品页面
+  const itemUrl = router.resolve({ name: 'ItemDetail', params: { id: itemId } }).href;
+  window.open(itemUrl, '_blank');
 }
 
-// Helper function to get buyer ID from conversation
-function getBuyerId(conversation) {
-  if (!conversation || !conversation._raw) return null;
-  // Buyer is the person who started the conversation (not the item owner)
-  return conversation._raw.role === 'buyer'
-    ? currentUser.value?.id
-    : conversation._raw.other_user.id;
-}
+function removePendingItemReference() {
+  pendingItemReference.value = null;
 
-// Transaction Handlers
-async function handleSendQuickPrompt(promptText) {
-  messageInput.value = promptText;
-  await sendMessage();
-}
-
-async function handleMakeOffer(offerData) {
-  if (!selectedConversation.value) return;
-
-  try {
-    const offer = await makeOffer(
-      selectedConversation.value.id,
-      offerData.amount,
-      'buyer'
-    );
-
-    // Send as special message
-    const offerMessage = await sendMessageAPI(selectedConversation.value.id, `買家出價 ${offerData.amount}P`, {
-      message_type: 'offer',
-      metadata: {
-        ...offer,
-        original_price: offerData.originalPrice
-      }
-    });
-
-    // Add to messages
-    messages.value.push({
-      id: offerMessage.id,
-      message_type: 'offer',
-      metadata: {
-        ...offer,
-        original_price: offerData.originalPrice
-      },
-      time: formatMessageTime(offerMessage.sent_at),
-      isSent: true,
-      showDate: false
-    });
-
-    // Set as current pending offer
-    currentPendingOffer.value = offer;
-
-    scrollToBottom();
-  } catch (err) {
-    console.error('Failed to make offer:', err);
-    alert('出價失敗，請稍後再試');
+  // 清除 URL 中的物品相關參數
+  const currentQuery = { ...router.currentRoute.value.query };
+  if (currentQuery.itemId || currentQuery.itemTitle) {
+    delete currentQuery.itemId;
+    delete currentQuery.itemTitle;
+    router.replace({ query: currentQuery });
   }
 }
 
-async function handleAcceptOffer(offer) {
-  try {
-    await acceptOffer(offer.id);
+// Handle messages area scroll to show/hide scroll-to-bottom button
+function handleMessagesScroll() {
+  if (!messagesArea.value) return;
 
-    // Update message status
-    const messageIndex = messages.value.findIndex(
-      m => m.metadata?.id === offer.id
-    );
-    if (messageIndex >= 0) {
-      messages.value[messageIndex].metadata.status = 'accepted';
-    }
+  const { scrollTop, scrollHeight, clientHeight } = messagesArea.value;
+  const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    currentPendingOffer.value = null;
-    alert('已接受出價');
-  } catch (err) {
-    console.error('Failed to accept offer:', err);
-    alert('接受出價失敗，請稍後再試');
-  }
-}
-
-async function handleCounterOffer(offerData) {
-  try {
-    const result = await counterOffer(offerData.originalOfferId, offerData.amount);
-
-    // Send counter offer message
-    const counterMessage = await sendMessageAPI(selectedConversation.value.id, `賣家還價 ${offerData.amount}P`, {
-      message_type: 'counter_offer',
-      metadata: result.counter_offer
-    });
-
-    // Add to messages
-    messages.value.push({
-      id: counterMessage.id,
-      message_type: 'counter_offer',
-      metadata: result.counter_offer,
-      time: formatMessageTime(counterMessage.sent_at),
-      isSent: true,
-      showDate: false
-    });
-
-    // Update original offer status
-    const originalMessageIndex = messages.value.findIndex(
-      m => m.metadata?.id === offerData.originalOfferId
-    );
-    if (originalMessageIndex >= 0) {
-      messages.value[originalMessageIndex].metadata.status = 'countered';
-    }
-
-    currentPendingOffer.value = result.counter_offer;
-    scrollToBottom();
-  } catch (err) {
-    console.error('Failed to counter offer:', err);
-    alert('還價失敗，請稍後再試');
-  }
-}
-
-async function handleDeclineOffer(offer) {
-  try {
-    await declineOffer(offer.id);
-
-    // Update message status
-    const messageIndex = messages.value.findIndex(
-      m => m.metadata?.id === offer.id
-    );
-    if (messageIndex >= 0) {
-      messages.value[messageIndex].metadata.status = 'declined';
-    }
-
-    currentPendingOffer.value = null;
-    alert('已拒絕出價');
-  } catch (err) {
-    console.error('Failed to decline offer:', err);
-    alert('拒絕出價失敗，請稍後再試');
-  }
-}
-
-async function handleRequestOrder() {
-  if (!selectedConversation.value || !selectedConversation.value.product) return;
-
-  try {
-    const orderReq = await requestOrder(
-      selectedConversation.value.id,
-      selectedConversation.value.product.id,
-      selectedConversation.value.product.price
-    );
-
-    // Send order request message
-    const orderMessage = await sendMessageAPI(selectedConversation.value.id, '請求訂單', {
-      message_type: 'order_request',
-      metadata: {
-        ...orderReq,
-        item: selectedConversation.value.product,
-        agreed_price: selectedConversation.value.product.price,
-        delivery_method: '面交'
-      }
-    });
-
-    // Add to messages
-    messages.value.push({
-      id: orderMessage.id,
-      message_type: 'order_request',
-      metadata: {
-        ...orderReq,
-        item: selectedConversation.value.product,
-        agreed_price: selectedConversation.value.product.price,
-        delivery_method: '面交'
-      },
-      time: formatMessageTime(orderMessage.sent_at),
-      isSent: true,
-      showDate: false
-    });
-
-    currentTransactionState.value = 'order_requested';
-    scrollToBottom();
-  } catch (err) {
-    console.error('Failed to request order:', err);
-    alert('請求訂單失敗，請稍後再試');
-  }
-}
-
-async function handleAcceptOrderRequest(orderRequest) {
-  try {
-    await acceptOrderRequest(orderRequest.id);
-
-    // Update message status
-    const messageIndex = messages.value.findIndex(
-      m => m.metadata?.id === orderRequest.id
-    );
-    if (messageIndex >= 0) {
-      messages.value[messageIndex].metadata.status = 'accepted';
-    }
-
-    currentTransactionState.value = 'buyer_confirmed';
-
-    // Navigate to transaction confirmation page
-    router.push({
-      name: 'TransactionDetails',
-      query: { conversationId: selectedConversation.value.id }
-    });
-  } catch (err) {
-    console.error('Failed to accept order request:', err);
-    alert('接受訂單失敗，請稍後再試');
-  }
-}
-
-async function handleDeclineOrderRequest(orderRequest) {
-  try {
-    await declineOrderRequest(orderRequest.id);
-
-    // Update message status
-    const messageIndex = messages.value.findIndex(
-      m => m.metadata?.id === orderRequest.id
-    );
-    if (messageIndex >= 0) {
-      messages.value[messageIndex].metadata.status = 'declined';
-    }
-
-    currentTransactionState.value = 'negotiating';
-    alert('已拒絕訂單請求');
-  } catch (err) {
-    console.error('Failed to decline order request:', err);
-    alert('拒絕訂單失敗，請稍後再試');
-  }
-}
-
-function handleViewOrderDetails() {
-  router.push({
-    name: 'TransactionDetails',
-    query: { conversationId: selectedConversation.value.id }
-  });
+  // 顯示按鈕的閾值：距離底部超過 200px
+  showScrollToBottomBtn.value = distanceFromBottom > 200;
 }
 
 function scrollToBottom() {
@@ -859,14 +762,34 @@ async function initialize() {
   currentUser.value = user;
   await loadConversations();
 
+  // 訂閱所有對話的新訊息 (全域監聽)
+  // 如果資料庫使用舊表名，請改為: subscribeToAllMessages(handleGlobalRealtimeMessage, 'conversation_messages')
+  globalMessageSubscription.value = subscribeToAllMessages(handleGlobalRealtimeMessage);
+  console.log('[Debug] 已啟動全域訊息監聽');
+
   // 如果 URL 有指定 conversationId，自動選擇該對話
   const conversationId = router.currentRoute.value.query.conversationId;
+  const itemId = router.currentRoute.value.query.itemId;
+  const itemTitle = router.currentRoute.value.query.itemTitle;
+
   if (conversationId) {
     const conversation = displayConversations.value.find(
       c => c.id === parseInt(conversationId)
     );
     if (conversation) {
       await selectConversation(conversation);
+
+      // 如果有物品資訊，設置為待發送的物品引用
+      if (itemId && itemTitle) {
+        pendingItemReference.value = {
+          id: itemId,
+          title: itemTitle
+        };
+        // 加入緩存
+        itemReferenceCache.value.set(itemId, itemTitle);
+        // 預填訊息內容
+        messageInput.value = '我想詢問';
+      }
     }
   }
 }
@@ -899,15 +822,28 @@ function handleMobileKeyboard() {
 onMounted(() => {
   initialize();
   handleMobileKeyboard();
+
+  // 啟動時間自動更新定時器（每分鐘更新一次）
+  timeUpdateInterval.value = setInterval(() => {
+    updateAllTimestamps();
+    console.log('[Debug] 已更新所有時間顯示');
+  }, 60000); // 60000ms = 1分鐘
 });
 
 onBeforeUnmount(() => {
   // Clean up subscriptions
-  if (messageSubscription.value) {
-    messageSubscription.value.unsubscribe();
+  if (globalMessageSubscription.value) {
+    globalMessageSubscription.value.unsubscribe();
+    console.log('[Debug] 已取消全域訊息監聽');
   }
   if (conversationSubscription.value) {
     conversationSubscription.value.unsubscribe();
+  }
+
+  // 清除時間更新定時器
+  if (timeUpdateInterval.value) {
+    clearInterval(timeUpdateInterval.value);
+    console.log('[Debug] 已清除時間更新定時器');
   }
 });
 </script>
@@ -915,15 +851,27 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 @import '@/styles/variables';
 
+// ============================================
+// Z-Index 層級說明 (Z-Index Hierarchy)
+// ============================================
+// 1000: .keyboard-open .input-area-wrapper (鍵盤開啟時的輸入框)
+// 100:  .input-area-wrapper (一般輸入框)
+// 60:   .scroll-to-bottom-btn-floating (回到最新按鈕)
+// 50:   .pending-item-reference (物品引用卡片)
+// 10:   .input-area-wrapper (手機版)
+// ============================================
+
 .messages-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #f9f9f9;
-  // Add mobile viewport fix
-  height: 100vh;
-  height: -webkit-fill-available; // For iOS Safari
-  max-height: -webkit-fill-available; // For iOS Safari
+  
+  // Mobile viewport fix - use fallback pattern
+  @supports (-webkit-touch-callout: none) {
+    height: -webkit-fill-available;
+    max-height: -webkit-fill-available;
+  }
 }
 
 .main-content {
@@ -937,11 +885,15 @@ onBeforeUnmount(() => {
 .messages-container {
   max-width: 1600px;
   margin: 0 auto;
-  height: 100%;
   display: flex;
   flex-direction: column;
   // Calculate height properly on mobile devices
-  height: calc(100vh - 50px - env(safe-area-inset-bottom, 0px)); // Subtract header height and safe area
+  height: calc(100vh - 50px - env(safe-area-inset-bottom, 0px));
+  
+  // iOS Safari support
+  @supports (-webkit-touch-callout: none) {
+    height: calc(-webkit-fill-available - 50px - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .messages-layout {
@@ -966,9 +918,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 16px 24px;
   border-bottom: 1px solid #e0e0e0;
   flex: 0 0 auto; // Fixed height
+  height: 70px;
 
   .sidebar-title {
     font-family: 'Noto Sans TC', sans-serif;
@@ -1244,6 +1197,7 @@ onBeforeUnmount(() => {
   height: 100%;
   // Ensure proper mobile layout
   min-height: 0; // Allow flex item to shrink
+  position: relative; // 為浮動按鈕定位
 }
 
 .chat-header {
@@ -1253,6 +1207,7 @@ onBeforeUnmount(() => {
   padding: 16px 24px;
   border-bottom: 1px solid #e0e0e0;
   flex: 0 0 auto; // Fixed height
+  height: 70px;
 
   .back-btn-mobile {
     display: none;
@@ -1330,6 +1285,13 @@ onBeforeUnmount(() => {
   min-height: 0; // Allow flex item to shrink
   display: flex;
   flex-direction: column;
+  position: relative; // 為了定位「回到最新」按鈕
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .message-wrapper {
@@ -1364,6 +1326,7 @@ onBeforeUnmount(() => {
       background: $primary;
       color: white;
       border-radius: 16px 16px 4px 16px;
+      transform-origin: bottom right;
 
       .message-time {
         color: rgba(255, 255, 255, 0.8);
@@ -1379,6 +1342,7 @@ onBeforeUnmount(() => {
       color: #1e1e1e;
       border-radius: 16px 16px 16px 4px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transform-origin: bottom left;
 
       .message-time {
         color: #999;
@@ -1393,6 +1357,55 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  // Discord-style item reference
+  .item-reference {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    opacity: 0.8;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .reference-bar {
+      width: 3px;
+      height: 100%;
+      min-height: 20px;
+      background-color: currentColor;
+      border-radius: 2px;
+      opacity: 0.5;
+    }
+
+    .reference-content {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+
+      .reference-icon {
+        font-size: 14px;
+      }
+
+      .reference-text {
+        opacity: 0.9;
+      }
+    }
+  }
+
+  // Override hover effect for sent messages
+  &.message-sent .item-reference:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 
   .message-text {
     font-family: 'Noto Sans TC', sans-serif;
@@ -1409,6 +1422,234 @@ onBeforeUnmount(() => {
   }
 }
 
+// Floating Scroll to Bottom Button (從輸入框向上浮出)
+.scroll-to-bottom-btn-floating {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: white;
+  border: none;
+  border-radius: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: $primary;
+  transition: all 0.3s ease;
+  z-index: 50;
+  white-space: nowrap;
+
+  // 當有物品引用卡片時,向上移動
+  &.with-item-reference {
+    bottom: 145px;
+  }
+
+  i {
+    font-size: 16px;
+  }
+
+  // 只在支援 hover 的設備上顯示 hover 效果 (排除觸控設備)
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: translateX(-50%) translateY(-4px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      background: $primary;
+      color: white;
+    }
+  }
+
+  &:active {
+    transform: translateX(-50%) translateY(-2px);
+  }
+}
+
+// ============================================
+// 動畫和過渡效果 (Animations & Transitions)
+// ============================================
+
+// Message Pop Animation (訊息彈出動畫)
+.message-pop-enter-active {
+  animation: messagePop 0.25s ease-out;
+  
+  .message-content {
+    animation: messageContentPop 0.25s ease-out;
+  }
+}
+
+.message-pop-leave-active {
+  transition: all 0.2s ease-out;
+}
+
+.message-pop-enter-from,
+.message-pop-leave-to {
+  opacity: 0;
+}
+
+// Scroll Button Slide Transition (從下方滑入向上浮出)
+.scroll-btn-slide-enter-active,
+.scroll-btn-slide-leave-active {
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.scroll-btn-slide-enter-from,
+.scroll-btn-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(60px);
+}
+
+// Item Reference Slide Transition (向下沉到輸入框後方)
+.item-reference-slide-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.item-reference-slide-leave-active {
+  transition: opacity 0.3s ease-in, 
+              transform 0.4s ease-in,
+              max-height 0.4s ease-in,
+              padding 0.4s ease-in,
+              background-color 0.3s ease-in,
+              border-color 0.3s ease-in;
+}
+
+.item-reference-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.item-reference-slide-leave-to {
+  opacity: 0;
+  transform: translateY(100px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+// ============================================
+// Keyframes
+// ============================================
+
+@keyframes messagePop {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes messageContentPop {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// ============================================
+// 輸入框和物品引用 (Input Area & Item Reference)
+// ============================================
+
+// Input Area Wrapper (包含輸入框)
+.input-area-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  z-index: 100; // 最高層級,確保在所有元素上方
+}
+
+// Pending Item Reference (在輸入框上方，獨立於 wrapper 外)
+.pending-item-reference {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #f0faf8;
+  border-bottom: 1px solid #e0e0e0;
+  border-top: 1px solid #e0e0e0;
+  overflow: hidden;
+  position: relative;
+  z-index: 50; // 比 input-area-wrapper (100) 低,會沉到輸入框後方
+  
+  // 背景色參與過渡動畫,避免白色殘影
+  &.item-reference-slide-leave-active {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .reference-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    color: $primary;
+
+    i {
+      font-size: 16px;
+    }
+
+    .reference-label {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .reference-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e1e1e;
+    }
+  }
+
+  .remove-reference-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    i {
+      font-size: 20px;
+      color: #666;
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.05);
+
+      i {
+        color: #1e1e1e;
+      }
+    }
+  }
+}
+
 // Input Area
 .input-area {
   display: flex;
@@ -1416,7 +1657,6 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding: 16px 24px;
   background: white;
-  border-top: 1px solid #e0e0e0;
 
   .attach-btn,
   .send-btn {
@@ -1592,13 +1832,43 @@ onBeforeUnmount(() => {
     padding: 16px; // Reduced padding for mobile
   }
 
-  .input-area {
-    padding: 12px 16px;
+  .input-area-wrapper {
     position: sticky;
     bottom: 0;
-    background: white;
-    border-top: 1px solid #e0e0e0;
-    z-index: 10; // Ensure it stays above other content
+    z-index: 100; // 保持與桌面版一致
+  }
+
+  .pending-item-reference {
+    padding: 10px 16px;
+
+    .reference-info {
+      gap: 6px;
+
+      i {
+        font-size: 14px;
+      }
+
+      .reference-label {
+        font-size: 12px;
+      }
+
+      .reference-title {
+        font-size: 13px;
+      }
+    }
+
+    .remove-reference-btn {
+      width: 26px;
+      height: 26px;
+
+      i {
+        font-size: 18px;
+      }
+    }
+  }
+
+  .input-area {
+    padding: 12px 16px;
   }
 
   .message-input {
@@ -1609,44 +1879,126 @@ onBeforeUnmount(() => {
     max-width: 85%;
   }
 
+  .scroll-to-bottom-btn-floating {
+    bottom: 80px; // 調整手機版的位置
+    padding: 10px 16px;
+    font-size: 13px;
+
+    // 當有物品引用卡片時,向上移動 (手機版)
+    &.with-item-reference {
+      bottom: 127px; // 80px (輸入框) + 47px (手機版物品引用卡片高度)
+    }
+
+    i {
+      font-size: 14px;
+    }
+
+    span {
+      display: none; // 在手機上只顯示圖標,變成圓形按鈕
+    }
+
+    // 手機上移除 hover 效果
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        transform: translateX(-50%) translateY(-4px);
+      }
+    }
+
+    &:active {
+      transform: translateX(-50%) translateY(-2px);
+    }
+  }
+
   // Fix for iOS Safari virtual keyboard
   @supports (-webkit-touch-callout: none) {
-    .input-area {
+    .input-area-wrapper .input-area {
       padding-bottom: max(12px, env(safe-area-inset-bottom));
     }
   }
 }
 
-// Additional mobile fixes for viewport height
-@supports (-webkit-touch-callout: none) {
-  .messages-container {
-    height: -webkit-fill-available;
-  }
-  
-  .messages-container {
-    height: calc(-webkit-fill-available - 50px - env(safe-area-inset-bottom, 0px));
-  }
-}
-
 // Adjust layout when virtual keyboard is open
-.keyboard-open .messages-container {
-  height: auto;
-  min-height: 50vh; // Ensure a minimum height when keyboard is open
+.keyboard-open {
+  .messages-container {
+    height: auto;
+    min-height: 50vh;
+  }
+
+  .messages-area {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .input-area-wrapper {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1000;
+  }
 }
 
-// Adjust messages area when keyboard is open to improve scrolling
-.keyboard-open .messages-area {
-  max-height: 60vh;
-  overflow-y: auto;
+// Skeleton Loading Styles
+.skeleton-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
 }
 
-// Ensure input area stays visible when keyboard is open
-.keyboard-open .input-area {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+.skeleton-message-wrapper {
+  display: flex;
   width: 100%;
-  z-index: 1000; // Ensure it stays above other elements
+
+  &.sent {
+    justify-content: flex-end;
+  }
+
+  &.received {
+    justify-content: flex-start;
+  }
+}
+
+.skeleton-message {
+  max-width: 70%;
+  min-width: 200px; // 增加最小寬度
+  padding: 16px 20px; // 增加內邊距
+  border-radius: 12px;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px; // 增加間距
+
+  .sent & {
+    background: linear-gradient(90deg, #e8f5f1 25%, #d8ede7 50%, #e8f5f1 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .received & {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+.skeleton-text-line {
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+
+  &.short {
+    width: 70%;
+  }
+}
+
+.skeleton-time {
+  width: 50px;
+  height: 12px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  align-self: flex-end;
+  margin-top: 4px;
 }
 </style>

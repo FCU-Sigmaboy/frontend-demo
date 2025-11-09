@@ -106,6 +106,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { useAuthStore } from '@/stores/auth';
+import { createOrGetConversation } from '@/api/conversationAPI_v2';
 
 const authStore = useAuthStore();
 
@@ -182,8 +183,6 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['message']);
-
 // 格式化相對時間
 const formattedPostedTime = computed(() => {
   return formatRelativeTime(props.postedTime);
@@ -212,8 +211,39 @@ const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
 };
 
-const handleMessage = () => {
-  emit('message');
+const handleMessage = async () => {
+  // 檢查是否登入
+  if (!authStore.user) {
+    router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
+    return;
+  }
+
+  // 檢查是否為自己的商品
+  if (isOwner.value) {
+    alert('無法與自己的商品發起對話');
+    return;
+  }
+
+  try {
+    // 使用 v2 API: createOrGetConversation(otherUserId, initialItemId)
+    const conversation = await createOrGetConversation(
+      props.sellerId,
+      props.productId
+    );
+
+    // 導航到訊息頁面，並傳遞物品資訊以便在輸入框上方顯示
+    router.push({
+      name: 'Messages',
+      query: {
+        conversationId: conversation.conversation_id,
+        itemId: props.productId,
+        itemTitle: props.productName
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create conversation:', error);
+    alert('無法開啟對話，請稍後再試');
+  }
 };
 
 const goToSellerProfile = () => {

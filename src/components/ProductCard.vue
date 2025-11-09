@@ -166,10 +166,14 @@ const handleContact = async () => {
       props.product.item_id
     );
 
-    // 導航到訊息頁面，並自動選擇該對話
+    // 導航到訊息頁面，並傳遞物品資訊以便在輸入框上方顯示
     router.push({
       name: 'Messages',
-      query: { conversationId: conversation.conversation_id }
+      query: {
+        conversationId: conversation.conversation_id,
+        itemId: props.product.item_id,
+        itemTitle: props.product.title
+      }
     });
   } catch (error) {
     console.error('Failed to create conversation:', error);

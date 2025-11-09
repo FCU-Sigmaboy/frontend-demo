@@ -224,6 +224,7 @@ export async function archiveConversation(conversationId, archived = true) {
  * Realtime 訂閱新訊息
  * @param {number} conversationId - 對話 ID
  * @param {Function} callback - 收到新訊息時的回調函數
+ * @param {string} [tableName='conversation_messages_v2'] - 資料表名稱（預設為 v2）
  * @returns {Object} Supabase subscription 物件
  *
  * @example
@@ -233,21 +234,92 @@ export async function archiveConversation(conversationId, archived = true) {
  *
  * // 取消訂閱
  * subscription.unsubscribe();
+ *
+ * @note
+ * 如果你的資料庫使用舊表名，可以指定：
+ * subscribeToMessages(456, callback, 'conversation_messages')
  */
-export function subscribeToMessages(conversationId, callback) {
-  return supabase
-    .channel(`conversation_v2_${conversationId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "conversation_messages_v2",
-        filter: `conversation_id=eq.${conversationId}`,
-      },
-      (payload) => callback(payload.new),
-    )
-    .subscribe();
+export function subscribeToMessages(conversationId, callback, tableName = 'conversation_messages_v2') {
+  const channelName = `conversation_v2_${conversationId}`;
+
+  const channel = supabase.channel(channelName);
+
+  channel.on(
+    "postgres_changes",
+    {
+      event: "INSERT",
+      schema: "public",
+      table: tableName,
+      filter: `conversation_id=eq.${conversationId}`,
+    },
+    (payload) => {
+      console.log(`[Realtime] 收到新訊息 (對話 #${conversationId}):`, payload.new);
+      callback(payload.new);
+    }
+  );
+
+  // 開始訂閱並加入狀態監聽
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log(`[Realtime] 已訂閱對話 #${conversationId} 的訊息更新 (表: ${tableName})`);
+    } else if (status === 'CHANNEL_ERROR') {
+      console.error(`[Realtime] 訂閱對話 #${conversationId} 失敗 (表: ${tableName})`);
+    } else if (status === 'TIMED_OUT') {
+      console.warn(`[Realtime] 訂閱對話 #${conversationId} 逾時`);
+    } else if (status === 'CLOSED') {
+      console.log(`[Realtime] 對話 #${conversationId} 訂閱已關閉`);
+    }
+  });
+
+  return channel;
+}
+
+/**
+ * 訂閱所有對話的新訊息 (全域監聽)
+ * @param {Function} callback - 收到新訊息時的回調函數
+ * @param {string} [tableName='conversation_messages_v2'] - 資料表名稱（預設為 v2）
+ * @returns {Object} Supabase subscription 物件
+ *
+ * @example
+ * const subscription = subscribeToAllMessages((message) => {
+ *   console.log('New message in conversation:', message.conversation_id);
+ * });
+ *
+ * // 取消訂閱
+ * subscription.unsubscribe();
+ */
+export function subscribeToAllMessages(callback, tableName = 'conversation_messages_v2') {
+  const channelName = `all_conversations`;
+
+  const channel = supabase.channel(channelName);
+
+  channel.on(
+    "postgres_changes",
+    {
+      event: "INSERT",
+      schema: "public",
+      table: tableName,
+    },
+    (payload) => {
+      console.log(`[Realtime] 收到新訊息 (對話 #${payload.new.conversation_id}):`, payload.new);
+      callback(payload.new);
+    }
+  );
+
+  // 開始訂閱並加入狀態監聽
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log(`[Realtime] 已訂閱所有對話的訊息更新 (表: ${tableName})`);
+    } else if (status === 'CHANNEL_ERROR') {
+      console.error(`[Realtime] 訂閱所有對話失敗 (表: ${tableName})`);
+    } else if (status === 'TIMED_OUT') {
+      console.warn(`[Realtime] 訂閱逾時`);
+    } else if (status === 'CLOSED') {
+      console.log(`[Realtime] 全域訂閱已關閉`);
+    }
+  });
+
+  return channel;
 }
 
 /**
