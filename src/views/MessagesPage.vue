@@ -366,6 +366,25 @@ const hasMoreMessages = ref(true); // 是否還有更多訊息
 const newMessageCount = ref(0); // 新訊息計數
 const firstUnreadMessageId = ref(null); // 記錄第一條未讀訊息的 ID，用於固定分隔線位置
 const suppressUnreadDivider = ref(false); // 控制是否暫時隱藏未讀訊息分隔線
+const hasReachedBottomAfterUnread = ref(false); // 是否在有未讀後已經滑到最底
+
+const UNREAD_DIVIDER_CLEAR_THRESHOLD = 200; // 需要離開底部多遠才視為「往上滑了一段距離」
+
+function clearUnreadDivider({ suppress = false } = {}) {
+  firstUnreadMessageId.value = null;
+  suppressUnreadDivider.value = suppress;
+  hasReachedBottomAfterUnread.value = false;
+}
+
+function allowUnreadDivider() {
+  suppressUnreadDivider.value = false;
+}
+
+async function waitForTicks(count = 1) {
+  for (let i = 0; i < count; i += 1) {
+    await nextTick();
+  }
+}
 
 // 從 store 獲取資料
 const loading = computed(() => messageStore.isLoadingConversations);
@@ -560,6 +579,7 @@ const messages = computed(() => {
 
         if (isFirstUnreadMessage) {
           firstUnreadMessageId.value = msg.id;
+          hasReachedBottomAfterUnread.value = false;
         }
       }
     } else {
@@ -642,8 +662,7 @@ async function selectConversation(conversation) {
   hasMoreMessages.value = true;
   isLoadingMoreMessages.value = false;
   newMessageCount.value = 0; // 重置新訊息計數
-  firstUnreadMessageId.value = null; // 重置未讀訊息分隔線位置
-  suppressUnreadDivider.value = false; // 切換對話時允許重新顯示分隔線
+  clearUnreadDivider(); // 重置未讀訊息分隔線狀態
 
   try {
     // 使用 store 載入訊息
@@ -655,9 +674,7 @@ async function selectConversation(conversation) {
 
     messagesLoading.value = false;
 
-    await nextTick();
-    await nextTick();
-    await nextTick();
+    await waitForTicks(3);
 
     scrollToBottom(false);
   } catch (err) {
@@ -681,8 +698,7 @@ async function sendMessage() {
   messageInput.value = '';
 
   // 發送訊息時重置未讀訊息分隔線（因為我已經回覆了）
-  firstUnreadMessageId.value = null;
-  suppressUnreadDivider.value = true;
+  clearUnreadDivider({ suppress: true });
 
   // 創建臨時訊息 ID（用於樂觀更新）
   const tempMessageId = `temp-${Date.now()}`;
@@ -710,8 +726,7 @@ async function sendMessage() {
   messageStore.currentMessages.push(optimisticMessage);
 
   // 立即滾動到底部
-  await nextTick();
-  await nextTick();
+  await waitForTicks(2);
   scrollToBottom(false);
 
   // 清除待發送的物品引用
@@ -879,32 +894,29 @@ async function handleMessagesScroll() {
 
   // 更新 store 中的「是否在底部」狀態
   const atBottom = distanceFromBottom < 100;
-  const wasNotAtBottom = !messageStore.isAtMessagesBottom;
+  const wasPreviouslyAtBottom = messageStore.isAtMessagesBottom;
   messageStore.setIsAtMessagesBottom(atBottom);
 
-  // 當使用者向上滾動瀏覽歷史訊息時，清除未讀分隔線
-  if (!atBottom && wasNotAtBottom === false) {
-    // 使用者從底部向上滾動
-    if (firstUnreadMessageId.value) {
-      firstUnreadMessageId.value = null;
-      suppressUnreadDivider.value = true;
-      console.log('[MessagesPage] 向上滾動，清除未讀訊息分隔線');
-    }
+  if (
+    !atBottom &&
+    firstUnreadMessageId.value &&
+    hasReachedBottomAfterUnread.value &&
+    distanceFromBottom > UNREAD_DIVIDER_CLEAR_THRESHOLD
+  ) {
+    clearUnreadDivider({ suppress: true });
+    console.log('[MessagesPage] 從底部向上滑動一段距離，清除未讀訊息分隔線');
   }
 
   // 當使用者滾動到底部時，重置新訊息計數並標記為已讀
   if (atBottom) {
     newMessageCount.value = 0;
-
-    // 滾動到底部時，總是清除未讀訊息分隔線
     if (firstUnreadMessageId.value) {
-      firstUnreadMessageId.value = null;
-      suppressUnreadDivider.value = false;
-      console.log('[MessagesPage] 滾動到底部，清除未讀訊息分隔線');
+      hasReachedBottomAfterUnread.value = true;
+      allowUnreadDivider();
     }
 
     // 如果剛從不在底部變成在底部，且仍有未讀訊息，則標記為已讀
-    if (wasNotAtBottom && selectedConversation.value) {
+    if (!wasPreviouslyAtBottom && selectedConversation.value) {
       const hasUnreadMessages = messageStore.currentMessages.some(msg => !msg.is_mine && !msg.is_read);
 
       if (hasUnreadMessages) {
@@ -918,7 +930,7 @@ async function handleMessagesScroll() {
           }
         });
 
-        suppressUnreadDivider.value = false;
+        allowUnreadDivider();
 
         try {
           const { markAsRead } = await import('@/api/conversationAPI_v2');
@@ -937,6 +949,8 @@ async function handleMessagesScroll() {
               msg.is_read = false;
             }
           });
+
+          allowUnreadDivider();
 
           console.error('[MessagesPage] 標記已讀失敗:', err);
         }
@@ -984,6 +998,10 @@ function scrollToBottom(smooth = false) {
     } else {
       messagesArea.value.scrollTo(scrollOptions);
     }
+
+    if (firstUnreadMessageId.value) {
+      hasReachedBottomAfterUnread.value = true;
+    }
   });
 }
 
@@ -1007,8 +1025,7 @@ async function loadMoreMessages() {
         hasMoreMessages.value = false;
       }
 
-      await nextTick();
-      await nextTick();
+      await waitForTicks(2);
 
       const scrollHeightAfter = messagesArea.value.scrollHeight;
       const heightDifference = scrollHeightAfter - scrollHeightBefore;
@@ -1105,8 +1122,7 @@ onMounted(async () => {
   await initialize();
   handleMobileKeyboard();
 
-  await nextTick();
-  await nextTick();
+  await waitForTicks(2);
 
   if (messagesArea.value) {
     messagesArea.value.addEventListener('scroll', handleMessagesScroll, { passive: true });
@@ -1118,13 +1134,20 @@ onMounted(async () => {
       // 只在訊息增加時處理（不處理減少，例如刪除訊息的情況）
       if (newLen <= oldLen) return;
 
-      await nextTick();
-      await nextTick();
+      // 跳過初次載入或往上載入更多訊息時的變化
+      if (messagesLoading.value || isLoadingMoreMessages.value) return;
+
+      await waitForTicks(2);
 
       if (!messagesArea.value) return;
 
       // 檢查是否在底部
       const atBottom = isAtBottom();
+
+      // 取得本次新增的訊息（僅限陣列尾端新增的部分）
+      const appendedMessages = messageStore.currentMessages.slice(oldLen);
+      const incomingMessages = appendedMessages.filter(msg => !msg.is_mine);
+      const incomingCount = incomingMessages.length;
 
       if (atBottom) {
         // 在底部：自動滾動到最新訊息
@@ -1132,16 +1155,22 @@ onMounted(async () => {
         showScrollToBottomBtn.value = false;
         newMessageCount.value = 0;
         messageStore.setIsAtMessagesBottom(true); // 確保 store 知道在底部
-        suppressUnreadDivider.value = false;
+        allowUnreadDivider();
+
+        if (firstUnreadMessageId.value) {
+          hasReachedBottomAfterUnread.value = true;
+        }
       } else {
         // 不在底部：增加新訊息計數，顯示按鈕
-        newMessageCount.value += (newLen - oldLen);
+        if (incomingCount > 0) {
+          newMessageCount.value += incomingCount;
+        }
         showScrollToBottomBtn.value = true;
         messageStore.setIsAtMessagesBottom(false); // 通知 store 不在底部
 
-        const addedMessages = messageStore.currentMessages.slice(- (newLen - oldLen));
-        if (addedMessages.some(msg => !msg.is_mine)) {
-          suppressUnreadDivider.value = false;
+        if (incomingCount > 0) {
+          allowUnreadDivider();
+          hasReachedBottomAfterUnread.value = false;
         }
       }
     }

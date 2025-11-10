@@ -25,6 +25,58 @@ export const useMessageStore = defineStore('message', () => {
   const isInMessagesPage = ref(false) // 是否在訊息頁面
   const isAtMessagesBottom = ref(true) // 是否在訊息底部（預設為 true）
 
+  // ===== 工具函式 =====
+
+  function cacheItemReferenceFromMessage(msg) {
+    if (msg.related_item_id && msg.related_item_title) {
+      itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title)
+    }
+  }
+
+  function ensureChronologicalOrder(messages) {
+    if (!Array.isArray(messages) || messages.length < 2) {
+      return messages ? [...messages] : []
+    }
+
+    return [...messages].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+  }
+
+  function mapApiMessage(msg) {
+    const id = msg.message_id ?? msg.id
+    cacheItemReferenceFromMessage(msg)
+
+    return {
+      id,
+      content: msg.content,
+      created_at: msg.created_at,
+      is_mine: msg.is_mine,
+      is_read: msg.is_read || false,
+      message_type: msg.message_type || 'text',
+      related_item_id: msg.related_item_id,
+      related_item_title: msg.related_item_title,
+      sender: {
+        id: msg.sender_id,
+        name: msg.sender_name,
+        avatar: msg.sender_avatar
+      },
+      metadata: msg.metadata,
+      _clientId: id
+    }
+  }
+
+  function normalizeMessagesPayload(messages) {
+    return ensureChronologicalOrder(messages).map(mapApiMessage)
+  }
+
+  function updateConversationUnreadCount(conversationId, unreadCount = 0) {
+    const conversation = conversations.value.find(c => c.id === conversationId)
+    if (conversation) {
+      conversation.unread_count = unreadCount
+    }
+  }
+
   // ===== Getters =====
 
   // 總未讀訊息數
@@ -121,42 +173,10 @@ export const useMessageStore = defineStore('message', () => {
     isLoadingMessages.value = true
 
     try {
-      let data = await getMessages(conversationId, 1, 50)
+      const data = await getMessages(conversationId, 1, 50)
 
       if (data) {
-        // 確保訊息是升序排列（舊到新）
-        if (data.length > 1) {
-          const firstTime = new Date(data[0].created_at).getTime()
-          const lastTime = new Date(data[data.length - 1].created_at).getTime()
-          if (firstTime > lastTime) {
-            data = data.reverse()
-          }
-        }
-
-        currentMessages.value = data.map(msg => {
-          // 如果有物品引用信息，加入緩存
-          if (msg.related_item_id && msg.related_item_title) {
-            itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title)
-          }
-
-          return {
-            id: msg.message_id,
-            content: msg.content,
-            created_at: msg.created_at,
-            is_mine: msg.is_mine,
-            is_read: msg.is_read || false, // 對方是否已讀
-            message_type: msg.message_type || 'text',
-            related_item_id: msg.related_item_id,
-            related_item_title: msg.related_item_title,
-            sender: {
-              id: msg.sender_id,
-              name: msg.sender_name,
-              avatar: msg.sender_avatar
-            },
-            metadata: msg.metadata,
-            _clientId: msg.message_id // 使用真實 ID 作為 clientId
-          }
-        })
+        currentMessages.value = normalizeMessagesPayload(data)
 
         selectedConversationId.value = conversationId
 
@@ -164,10 +184,7 @@ export const useMessageStore = defineStore('message', () => {
         await markAsRead(conversationId)
 
         // 更新本地對話的未讀數
-        const conversation = conversations.value.find(c => c.id === conversationId)
-        if (conversation) {
-          conversation.unread_count = 0
-        }
+        updateConversationUnreadCount(conversationId, 0)
 
         console.log(`✅ Loaded ${currentMessages.value.length} messages for conversation ${conversationId}`)
       }
@@ -189,42 +206,10 @@ export const useMessageStore = defineStore('message', () => {
     isLoadingMessages.value = true
 
     try {
-      let data = await getMessages(conversationId, page, pageSize)
+      const data = await getMessages(conversationId, page, pageSize)
 
       if (data && data.length > 0) {
-        // 確保訊息是升序排列（舊到新）
-        if (data.length > 1) {
-          const firstTime = new Date(data[0].created_at).getTime()
-          const lastTime = new Date(data[data.length - 1].created_at).getTime()
-          if (firstTime > lastTime) {
-            data = data.reverse()
-          }
-        }
-
-        const olderMessages = data.map(msg => {
-          // 如果有物品引用信息，加入緩存
-          if (msg.related_item_id && msg.related_item_title) {
-            itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title)
-          }
-
-          return {
-            id: msg.message_id,
-            content: msg.content,
-            created_at: msg.created_at,
-            is_mine: msg.is_mine,
-            is_read: msg.is_read || false, // 對方是否已讀
-            message_type: msg.message_type || 'text',
-            related_item_id: msg.related_item_id,
-            related_item_title: msg.related_item_title,
-            sender: {
-              id: msg.sender_id,
-              name: msg.sender_name,
-              avatar: msg.sender_avatar
-            },
-            metadata: msg.metadata,
-            _clientId: msg.message_id
-          }
-        })
+        const olderMessages = normalizeMessagesPayload(data)
 
         // 將舊訊息添加到當前訊息列表的開頭
         currentMessages.value = [...olderMessages, ...currentMessages.value]
@@ -265,11 +250,11 @@ export const useMessageStore = defineStore('message', () => {
       console.log('✅ Message sent:', newMessage)
 
       // 更新對話的最後訊息
-      const conversation = conversations.value.find(c => c.id === selectedConversationId.value)
-      if (conversation) {
-        conversation.last_message = content
-        conversation.last_message_time = newMessage.created_at
-      }
+        const conversation = conversations.value.find(c => c.id === selectedConversationId.value)
+        if (conversation) {
+          conversation.last_message = content
+          conversation.last_message_time = newMessage.created_at
+        }
 
       return newMessage
     } catch (err) {
@@ -408,9 +393,7 @@ export const useMessageStore = defineStore('message', () => {
               }
             })
 
-            if (conversation) {
-              conversation.unread_count = 0
-            }
+            updateConversationUnreadCount(conversationId, 0)
           } catch (err) {
             console.error(`[Message] 標記已讀失敗:`, err)
           }
