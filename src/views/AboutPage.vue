@@ -9,12 +9,34 @@
           <router-link to="/">首頁</router-link> &gt; 關於我們
         </nav>
 
-        <!-- Hero Banner -->
-        <div class="hero-banner">
-          <div class="hero-placeholder">
+        <!-- Hero Banner with Upload -->
+        <div class="hero-banner" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload('cover')">
+          <img v-if="coverImageUrl" :src="coverImageUrl" alt="關於我們封面圖" class="hero-image" />
+          <div v-else class="hero-placeholder">
             <i class="bi bi-image"></i>
           </div>
+
+          <div v-if="isAdmin" class="upload-overlay">
+            <div v-if="isUploading" class="upload-status">
+              <div class="spinner-border text-light" role="status">
+                <span class="visually-hidden">上傳中...</span>
+              </div>
+              <p>上傳中...</p>
+            </div>
+            <div v-else class="upload-prompt">
+              <i class="bi bi-camera-fill"></i>
+              <p>點擊更換封面圖片</p>
+            </div>
+          </div>
         </div>
+        <input
+          v-if="isAdmin"
+          ref="fileInput"
+          type="file"
+          accept=".jpg,.jpeg,.png,.heic"
+          style="display: none"
+          @change="handleFileChange"
+        />
 
         <!-- Vision Section -->
         <section class="content-section">
@@ -24,19 +46,20 @@
           </p>
 
           <BRow class="image-grid">
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="image-placeholder">
-                <i class="bi bi-recycle"></i>
-              </div>
-            </BCol>
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="image-placeholder">
-                <i class="bi bi-people"></i>
-              </div>
-            </BCol>
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="image-placeholder">
-                <i class="bi bi-heart"></i>
+            <BCol v-for="(item, index) in visionItems" :key="index" cols="12" md="4" class="mb-4">
+              <div class="vision-image-wrapper" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload(`vision-${index}`)">
+                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="`願景圖片 ${index + 1}`" class="vision-image" />
+                <div v-else class="image-placeholder">
+                  <i :class="item.icon"></i>
+                </div>
+                <div v-if="isAdmin" class="upload-overlay">
+                  <div v-if="isUploading" class="upload-status">
+                    <div class="spinner-border text-light" role="status"></div>
+                  </div>
+                  <div v-else class="upload-prompt">
+                    <i class="bi bi-camera-fill"></i>
+                  </div>
+                </div>
               </div>
             </BCol>
           </BRow>
@@ -90,9 +113,95 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue';
 import { BContainer, BRow, BCol } from 'bootstrap-vue-next';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import { useAuthStore } from '../stores/auth';
+import { uploadImage } from '../api/uploadImage';
+import { supabase } from '../lib/supabase';
+
+const authStore = useAuthStore();
+const fileInput = ref(null);
+const coverImageUrl = ref(null);
+const visionItems = ref([
+  { imageUrl: null, icon: 'bi bi-recycle' },
+  { imageUrl: null, icon: 'bi bi-people' },
+  { imageUrl: null, icon: 'bi bi-heart' },
+]);
+const isUploading = ref(false);
+const currentUploadTarget = ref(null);
+
+const isAdmin = computed(() => authStore.profileData?.role === 'admin');
+
+const triggerFileUpload = (target) => {
+  if (isUploading.value || !isAdmin.value) return;
+  currentUploadTarget.value = target;
+  fileInput.value.click();
+};
+
+const handleFileChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/heic'];
+  if (!allowedTypes.includes(file.type)) {
+    alert('圖片格式不符，僅限 JPG, PNG, HEIC。');
+    return;
+  }
+
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    alert('圖片大小不可超過 5MB。');
+    return;
+  }
+
+  isUploading.value = true;
+  try {
+    const target = currentUploadTarget.value;
+    let fileName;
+    if (target === 'cover') {
+      fileName = 'about-us-cover.jpg';
+    } else if (target.startsWith('vision-')) {
+      const index = parseInt(target.split('-')[1], 10);
+      fileName = `about-us-vision-${index + 1}.jpg`;
+    }
+
+    const newUrl = await uploadImage(file, fileName);
+
+    if (target === 'cover') {
+      coverImageUrl.value = newUrl;
+    } else if (target.startsWith('vision-')) {
+      const index = parseInt(target.split('-')[1], 10);
+      visionItems.value[index].imageUrl = newUrl;
+    }
+
+    alert('圖片更新成功！');
+  } catch (error) {
+    console.error('Upload failed:', error);
+    alert(`上傳失敗：${error.message}`);
+  } finally {
+    isUploading.value = false;
+    event.target.value = '';
+    currentUploadTarget.value = null;
+  }
+};
+
+const loadInitialImages = async () => {
+  const getPublicUrl = (fileName) => {
+    const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+    return data.publicUrl;
+  };
+
+  coverImageUrl.value = getPublicUrl('about-us-cover.jpg');
+  visionItems.value[0].imageUrl = getPublicUrl('about-us-vision-1.jpg');
+  visionItems.value[1].imageUrl = getPublicUrl('about-us-vision-2.jpg');
+  visionItems.value[2].imageUrl = getPublicUrl('about-us-vision-3.jpg');
+};
+
+onMounted(() => {
+  loadInitialImages();
+});
 </script>
 
 <style scoped lang="scss">
@@ -126,23 +235,90 @@ import AppFooter from '../components/AppFooter.vue';
   }
 }
 
-.hero-banner {
-  margin-bottom: 50px;
+.hero-banner, .vision-image-wrapper {
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
+
+  &.is-admin {
+    cursor: pointer;
+
+    &:hover .upload-overlay {
+      opacity: 1;
+    }
+  }
 }
 
-.hero-placeholder {
+.hero-banner {
+  margin-bottom: 50px;
+}
+
+.hero-image,
+.hero-placeholder,
+.vision-image {
   width: 100%;
+  display: block;
+}
+
+.hero-image,
+.hero-placeholder {
   height: 400px;
-  background: linear-gradient(135deg, $primary 0%, #5fa795 100%);
+  object-fit: cover;
+}
+
+.vision-image,
+.image-placeholder {
+  height: 280px;
+  object-fit: cover;
+}
+
+.hero-placeholder, .image-placeholder {
+  background: linear-gradient(135deg, #e9f5f2 0%, #d4e9e4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
 
   i {
     font-size: 80px;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(111, 184, 165, 0.5);
+  }
+}
+
+.image-placeholder i {
+  font-size: 60px;
+}
+
+.upload-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  .upload-status,
+  .upload-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  i {
+    font-size: 48px;
+  }
+
+  p {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
   }
 }
 
@@ -171,22 +347,6 @@ import AppFooter from '../components/AppFooter.vue';
 
 .image-grid {
   margin-top: 30px;
-}
-
-.image-placeholder {
-  width: 100%;
-  height: 280px;
-  background-color: #e9f5f2;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px dashed $primary;
-
-  i {
-    font-size: 60px;
-    color: $primary;
-  }
 }
 
 .value-cards {
@@ -250,12 +410,14 @@ import AppFooter from '../components/AppFooter.vue';
     margin-bottom: 25px;
   }
 
+  .hero-image,
   .hero-placeholder {
     height: 300px;
+  }
 
-    i {
-      font-size: 60px;
-    }
+  .vision-image,
+  .image-placeholder {
+    height: 240px;
   }
 
   .section-title {
@@ -266,33 +428,8 @@ import AppFooter from '../components/AppFooter.vue';
     font-size: 17px;
   }
 
-  .image-placeholder {
-    height: 240px;
-
-    i {
-      font-size: 50px;
-    }
-  }
-
   .value-card {
     padding: 35px 25px;
-
-    .value-icon {
-      width: 70px;
-      height: 70px;
-
-      i {
-        font-size: 35px;
-      }
-    }
-
-    h3 {
-      font-size: 20px;
-    }
-
-    p {
-      font-size: 15px;
-    }
   }
 }
 
@@ -306,13 +443,14 @@ import AppFooter from '../components/AppFooter.vue';
     margin-bottom: 20px;
   }
 
+  .hero-image,
   .hero-placeholder {
     height: 240px;
-    border-radius: 8px;
-
-    i {
-      font-size: 50px;
-    }
+  }
+  
+  .vision-image,
+  .image-placeholder {
+    height: 200px;
   }
 
   .content-section {
@@ -321,41 +459,14 @@ import AppFooter from '../components/AppFooter.vue';
 
   .section-title {
     font-size: 24px;
-    margin-bottom: 20px;
   }
 
   .section-description {
     font-size: 16px;
-    margin-bottom: 30px;
-  }
-
-  .image-placeholder {
-    height: 200px;
-
-    i {
-      font-size: 40px;
-    }
   }
 
   .value-card {
     padding: 30px 20px;
-
-    .value-icon {
-      width: 60px;
-      height: 60px;
-
-      i {
-        font-size: 30px;
-      }
-    }
-
-    h3 {
-      font-size: 18px;
-    }
-
-    p {
-      font-size: 14px;
-    }
   }
 }
 </style>
