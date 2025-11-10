@@ -56,10 +56,13 @@
               <BButton
                 id="messages-btn"
                 variant="link"
-                class="icon-button d-none d-lg-flex"
+                class="icon-button message-button d-none d-lg-flex"
                 @click="router.push({ name: 'Messages' })"
               >
                 <i class="bi bi-chat-left"></i>
+                <span v-if="unreadMessageCount > 0" class="message-badge">
+                  {{ unreadMessageCount > 99 ? '99+' : unreadMessageCount }}
+                </span>
               </BButton>
               <BTooltip target="messages-btn" placement="bottom">聊天訊息</BTooltip>
 
@@ -225,9 +228,12 @@
                   <i class="bi bi-heart"></i>
                   <span>我的收藏</span>
                 </li>
-                <li @click="handleMenuAction('Messages')">
+                <li @click="handleMenuAction('Messages')" class="menu-item-with-badge">
                   <i class="bi bi-chat-left"></i>
                   <span>聊天訊息</span>
+                  <span v-if="unreadMessageCount > 0" class="menu-message-badge">
+                    {{ unreadMessageCount > 99 ? '99+' : unreadMessageCount }}
+                  </span>
                 </li>
                 <li @click="handleLogout" class="logout-item">
                   <i class="bi bi-box-arrow-right"></i>
@@ -343,11 +349,13 @@ import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
 import { usePointsStore } from '@/stores/points';
+import { useMessageStore } from '@/stores/message';
 
 // Router & Auth Store
 const router = useRouter();
 const authStore = useAuthStore();
 const pointsStore = usePointsStore();
+const messageStore = useMessageStore();
 
 // Logo Image
 import logoImage from '../assets/Logo.png';
@@ -376,6 +384,11 @@ const userBalance = computed(() => {
 const hasNewAchievements = computed(() => {
   // You can add logic here to track new achievements
   return false;
+});
+
+// Unread message count
+const unreadMessageCount = computed(() => {
+  return messageStore.totalUnreadCount;
 });
 
 // State
@@ -577,6 +590,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 
   i {
     font-size: 24px;
@@ -585,6 +599,37 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 
   &:hover i {
     color: $primary;
+  }
+
+  &.message-button {
+    .message-badge {
+      position: absolute;
+      top: -4px;
+      right: -8px;
+      background: #ff4757;
+      color: white;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 10px;
+      min-width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+      animation: badge-pulse 2s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
   }
 }
 
@@ -946,6 +991,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     cursor: pointer;
     transition: background-color 0.3s;
     border-bottom: 1px solid #f0f0f0;
+    position: relative;
 
     i {
       font-size: 20px;
@@ -976,6 +1022,25 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 
       &:hover {
         background-color: #fff5f5;
+      }
+    }
+
+    &.menu-item-with-badge {
+      .menu-message-badge {
+        background: #ff4757;
+        color: white;
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 12px;
+        min-width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;
+        box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
       }
     }
   }

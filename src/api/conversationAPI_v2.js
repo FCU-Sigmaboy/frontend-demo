@@ -275,6 +275,62 @@ export function subscribeToMessages(conversationId, callback, tableName = 'conve
 }
 
 /**
+ * Realtime 訂閱訊息已讀狀態更新
+ * @param {Function} onUpdate - 收到訊息更新時的回調函數
+ * @param {string} [tableName='conversation_messages_v2'] - 資料表名稱（預設為 v2）
+ * @returns {Object} Supabase subscription 物件
+ *
+ * @example
+ * const subscription = subscribeToMessageUpdates((updatedMessage) => {
+ *   console.log('Message updated:', updatedMessage);
+ *   // updatedMessage 包含更新後的 is_read 狀態
+ * });
+ *
+ * // 取消訂閱
+ * subscription.unsubscribe();
+ */
+export function subscribeToMessageUpdates(onUpdate, tableName = 'conversation_messages_v2') {
+  const channelName = `message_updates`;
+
+  const channel = supabase.channel(channelName, {
+    config: {
+      broadcast: { self: true },
+      presence: { key: '' }
+    }
+  });
+
+  channel.on(
+    "postgres_changes",
+    {
+      event: "UPDATE",
+      schema: "public",
+      table: tableName,
+    },
+    (payload) => {
+      console.log(`[Realtime] 訊息更新 (完整數據):`, payload);
+      console.log(`[Realtime] payload.new:`, payload.new);
+      console.log(`[Realtime] payload.old:`, payload.old);
+      onUpdate(payload.new);
+    }
+  );
+
+  // 開始訂閱並加入狀態監聽
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log(`[Realtime] 已訂閱訊息更新 (表: ${tableName})`);
+    } else if (status === 'CHANNEL_ERROR') {
+      console.error(`[Realtime] 訂閱訊息更新失敗 (表: ${tableName})`);
+    } else if (status === 'TIMED_OUT') {
+      console.warn(`[Realtime] 訂閱訊息更新逾時`);
+    } else if (status === 'CLOSED') {
+      console.log(`[Realtime] 訊息更新訂閱已關閉`);
+    }
+  });
+
+  return channel;
+}
+
+/**
  * 訂閱所有對話的新訊息 (全域監聽)
  * @param {Function} callback - 收到新訊息時的回調函數
  * @param {string} [tableName='conversation_messages_v2'] - 資料表名稱（預設為 v2）
@@ -369,4 +425,40 @@ export async function restoreMessage(messageId) {
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * 訂閱使用者線上狀態
+ * @param {Function} onPresenceUpdate - 當有使用者上線/離線時的回調函數
+ * @returns {Object} Supabase presence channel
+ *
+ * @example
+ * const presenceChannel = subscribeToUserPresence((presenceState) => {
+ *   console.log('當前線上使用者:', presenceState);
+ *   // presenceState 格式: { 'user-id': [{ user_id: 'xxx', online_at: 'timestamp' }] }
+ * });
+ *
+ * // 廣播自己的線上狀態
+ * presenceChannel.track({ user_id: currentUserId, online_at: new Date().toISOString() });
+ *
+ * // 取消訂閱
+ * presenceChannel.unsubscribe();
+ */
+export function subscribeToUserPresence(onPresenceUpdate) {
+  const channelName = 'online-users';
+
+  const channel = supabase.channel(channelName);
+
+  channel.on('presence', { event: 'sync' }, () => {
+    const presenceState = channel.presenceState();
+    onPresenceUpdate(presenceState);
+  });
+
+  channel.on('presence', { event: 'join' }, () => {});
+
+  channel.on('presence', { event: 'leave' }, () => {});
+
+  channel.subscribe(() => {});
+
+  return channel;
 }

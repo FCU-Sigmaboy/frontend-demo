@@ -40,34 +40,36 @@
 
             <!-- Conversations List -->
             <div class="conversations-list">
-              <div
-                v-for="conversation in displayConversations"
-                :key="conversation.id"
-                :class="['conversation-item', { active: selectedConversation?.id === conversation.id }]"
-                @click="selectConversation(conversation)"
-              >
-                <div class="conv-avatar">
-                  <img
-                    :src="conversation.user.avatar"
-                    :alt="conversation.user.name"
-                    class="avatar-image"
-                  />
-                  <span v-if="conversation.user.online" class="online-indicator"></span>
-                </div>
+              <TransitionGroup name="conversation-list" tag="div">
+                <div
+                  v-for="conversation in displayConversations"
+                  :key="conversation.id"
+                  :class="['conversation-item', { active: selectedConversation?.id === conversation.id }]"
+                  @click="selectConversation(conversation)"
+                >
+                  <div class="conv-avatar">
+                    <img
+                      :src="conversation.user.avatar"
+                      :alt="conversation.user.name"
+                      class="avatar-image"
+                    />
+                    <span v-if="conversation.user.online" class="online-indicator"></span>
+                  </div>
 
-                <div class="conv-content">
-                  <div class="conv-header">
-                    <h3 class="conv-name">{{ conversation.user.name }}</h3>
-                    <span class="conv-time">{{ conversation.lastMessage.time }}</span>
-                  </div>
-                  <div class="conv-preview">
-                    <p class="preview-text">{{ conversation.lastMessage.text }}</p>
-                    <span v-if="conversation.unreadCount" class="unread-badge">
-                      {{ conversation.unreadCount }}
-                    </span>
+                  <div class="conv-content">
+                    <div class="conv-header">
+                      <h3 class="conv-name">{{ conversation.user.name }}</h3>
+                      <span class="conv-time">{{ conversation.lastMessage.time }}</span>
+                    </div>
+                    <div class="conv-preview">
+                      <p class="preview-text">{{ conversation.lastMessage.text }}</p>
+                      <span v-if="conversation.unreadCount" class="unread-badge">
+                        {{ conversation.unreadCount }}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </TransitionGroup>
 
               <!-- Loading State -->
               <div v-if="loading" class="empty-state">
@@ -173,6 +175,11 @@
                     <!-- 該日期的所有訊息 -->
                     <div class="date-group-messages">
                       <div v-for="message in group.messages" :key="message._clientId" class="message-wrapper">
+                        <!-- 未讀分隔線 -->
+                        <div v-if="message.isFirstUnreadMessage" class="unread-divider">
+                          <span class="unread-divider-text">未讀訊息</span>
+                        </div>
+
                         <!-- Special Message: Offer -->
                         <OfferMessage
                           v-if="message.message_type === 'offer' || message.message_type === 'counter_offer'"
@@ -207,23 +214,61 @@
                             'message-last-in-group': message.isLastInGroup
                           }
                         ]">
-                          <div class="message-content">
-                            <!-- Item Reference (Discord-style reply) -->
-                            <div
-                              v-if="message.related_item_id"
-                              class="item-reference"
-                              @click.stop="openItemPage(message.related_item_id)"
-                            >
-                              <div class="reference-bar"></div>
-                              <div class="reference-content">
-                                <i class="bi bi-box-seam reference-icon"></i>
-                                <span class="reference-text">{{ message.related_item_title || `物品 #${message.related_item_id}` }}</span>
+                          <div class="message-bubble-wrapper">
+                            <div class="message-content">
+                              <!-- Item Reference (Discord-style reply) -->
+                              <div
+                                v-if="message.related_item_id"
+                                class="item-reference"
+                                @click.stop="openItemPage(message.related_item_id)"
+                              >
+                                <div class="reference-bar"></div>
+                                <div class="reference-content">
+                                  <i class="bi bi-box-seam reference-icon"></i>
+                                  <span class="reference-text">{{ message.related_item_title || `物品 #${message.related_item_id}` }}</span>
+                                </div>
                               </div>
+
+                              <p class="message-text">{{ message.text }}</p>
+
+                              <!-- 訊息氣泡內的時間（只在群組最後一則顯示） -->
+                              <span v-if="message.isLastInGroup" class="message-time">{{ message.time }}</span>
                             </div>
 
-                            <p class="message-text">{{ message.text }}</p>
-                            <!-- 只在群組最後一則訊息顯示時間 -->
-                            <span v-if="message.isLastInGroup" class="message-time">{{ message.time }}</span>
+                            <!-- 訊息狀態：在氣泡外面顯示，只在自己發送的訊息顯示 -->
+                            <div v-if="message.isSent" class="message-status">
+                              <!-- 傳送中 -->
+                              <span v-if="message._sending" class="status-sending">
+                                <span class="status-dot"></span>
+                                傳送中...
+                              </span>
+
+                              <!-- 傳送失敗 -->
+                              <span v-else-if="message._failed" class="status-failed">
+                                <i class="bi bi-exclamation-circle"></i>
+                                傳送失敗
+                                <button class="retry-btn" @click="retryMessage(message)">
+                                  <i class="bi bi-arrow-clockwise"></i>
+                                  重新發送
+                                </button>
+                              </span>
+
+                              <!-- 已讀（雙勾圖標） -->
+                              <Transition v-else-if="message.is_read && message.isLatestSentMessage" name="status-fade">
+                                <span class="status-read">
+                                  <i class="bi bi-check-all"></i>
+                                  已讀
+                                </span>
+                              </Transition>
+
+                              <!-- 已傳送（只在最新的已發送訊息顯示） -->
+                               <Transition v-else name="status-fade">
+                                 <span v-if="message.isLatestSentMessage" class="status-sent">
+                                   <i class="bi bi-check"></i>
+                                   已傳送
+                                 </span>
+                               </Transition>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -240,7 +285,8 @@
                   @click="scrollToBottom"
                 >
                   <i class="bi bi-arrow-down"></i>
-                  <span>回到最新</span>
+                  <span v-if="newMessageCount > 0">{{ newMessageCount }}則新訊息</span>
+                  <span v-else>回到最新</span>
                 </button>
               </transition>
 
@@ -290,7 +336,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import OfferMessage from '../components/OfferMessage.vue';
@@ -314,10 +360,31 @@ const messagesLoading = ref(false); // UI 載入骨架屏狀態
 const pendingItemReference = ref(null); // 待發送的物品引用
 const itemReferenceCache = ref(new Map()); // 物品引用緩存 Map<itemId, itemTitle>
 const showScrollToBottomBtn = ref(false); // 顯示「回到最新」按鈕
-const timeUpdateInterval = ref(null); // 時間更新定時器
 const isLoadingMoreMessages = ref(false); // 是否正在載入更多訊息
 const currentPage = ref(1); // 當前頁碼
 const hasMoreMessages = ref(true); // 是否還有更多訊息
+const newMessageCount = ref(0); // 新訊息計數
+const firstUnreadMessageId = ref(null); // 記錄第一條未讀訊息的 ID，用於固定分隔線位置
+const suppressUnreadDivider = ref(false); // 控制是否暫時隱藏未讀訊息分隔線
+const hasReachedBottomAfterUnread = ref(false); // 是否在有未讀後已經滑到最底
+
+const UNREAD_DIVIDER_CLEAR_THRESHOLD = 200; // 需要離開底部多遠才視為「往上滑了一段距離」
+
+function clearUnreadDivider({ suppress = false } = {}) {
+  firstUnreadMessageId.value = null;
+  suppressUnreadDivider.value = suppress;
+  hasReachedBottomAfterUnread.value = false;
+}
+
+function allowUnreadDivider() {
+  suppressUnreadDivider.value = false;
+}
+
+async function waitForTicks(count = 1) {
+  for (let i = 0; i < count; i += 1) {
+    await nextTick();
+  }
+}
 
 // 從 store 獲取資料
 const loading = computed(() => messageStore.isLoadingConversations);
@@ -359,27 +426,44 @@ const filteredConversations = computed(() => {
 
 // Transform conversations for display
 const displayConversations = computed(() => {
-  return filteredConversations.value.map(convo => ({
-    id: convo.id,
-    user: {
-      name: convo.other_user.nickname,
-      avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
-      online: false
-    },
-    product: convo.item.id ? {
-      id: convo.item.id,
-      name: convo.item.title,
-      price: 0,
-      image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
-    } : null,
-    lastMessage: {
-      text: convo.last_message || '開始對話...',
-      time: formatRelativeTime(convo.last_message_time)
-    },
-    unreadCount: convo.unread_count || 0,
-    type: convo.role,
-    _raw: convo
-  }));
+  return filteredConversations.value
+    .map(convo => {
+      // 檢查對方使用者是否線上（從 store 獲取）
+      const otherUserId = convo.other_user.id;
+      const isOnline = messageStore.onlineUsers.has(otherUserId);
+
+      return {
+        id: convo.id,
+        user: {
+          name: convo.other_user.nickname,
+          avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
+          online: isOnline
+        },
+        product: convo.item.id ? {
+          id: convo.item.id,
+          name: convo.item.title,
+          price: 0,
+          image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
+        } : null,
+        lastMessage: {
+          text: convo.last_message || '開始對話...',
+          time: formatRelativeTime(convo.last_message_time)
+        },
+        unreadCount: convo.unread_count || 0,
+        type: convo.role,
+        _raw: convo
+      };
+    })
+    .sort((a, b) => {
+      // 有未讀訊息的對話優先
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+
+      // 如果都有或都沒有未讀，按最後訊息時間排序
+      const timeA = new Date(a._raw.last_message_time || 0).getTime();
+      const timeB = new Date(b._raw.last_message_time || 0).getTime();
+      return timeB - timeA;
+    });
 });
 
 // 當前選中的對話
@@ -465,9 +549,47 @@ const messages = computed(() => {
       metadata: msg.metadata,
       sender: msg.sender,
       _clientId: msg._clientId || msg.id, // 使用不變的 clientId 或回退到 id
+      _sending: msg._sending, // 傳送中
+      _failed: msg._failed, // 傳送失敗
+      _failedContent: msg._failedContent,
+      _failedRelatedItemId: msg._failedRelatedItemId,
+      _failedRelatedItemTitle: msg._failedRelatedItemTitle,
+      is_read: msg.is_read || false, // 對方是否已讀
       isGrouped, // 是否與上一則訊息群組
       isFirstInGroup, // 是否為群組第一則
       isLastInGroup // 是否為群組最後一則
+    };
+  }).map((msg, index, arr) => {
+    // 找到最後一則已發送且已成功的訊息
+    const isLatestSentMessage = msg.isSent && !msg._sending && !msg._failed &&
+      !arr.slice(index + 1).some(m => m.isSent && !m._sending && !m._failed);
+
+    // 找到第一條未讀的接收訊息（對方發給我的未讀訊息）
+    let isFirstUnreadMessage = false;
+
+    if (!suppressUnreadDivider.value) {
+      // 如果已經記錄了第一條未讀訊息的 ID，則固定在那個位置
+      if (firstUnreadMessageId.value) {
+        isFirstUnreadMessage = msg.id === firstUnreadMessageId.value;
+      } else if (!msg.isSent && !msg.is_read) {
+        // 還沒記錄時，動態計算第一條未讀訊息
+        const hasUnreadBefore = arr.slice(0, index).some(m => !m.isSent && !m.is_read);
+        const hasSentMessageAfter = arr.slice(index + 1).some(m => m.isSent);
+        isFirstUnreadMessage = !hasUnreadBefore && !hasSentMessageAfter;
+
+        if (isFirstUnreadMessage) {
+          firstUnreadMessageId.value = msg.id;
+          hasReachedBottomAfterUnread.value = false;
+        }
+      }
+    } else {
+      isFirstUnreadMessage = false;
+    }
+
+    return {
+      ...msg,
+      isLatestSentMessage,
+      isFirstUnreadMessage
     };
   });
 });
@@ -494,16 +616,6 @@ const groupedMessages = computed(() => {
 
   return groups;
 });
-
-// Helper functions
-// 時間格式化已改用 @/utils/timeFormat.js 的 formatRelativeTime
-
-// 更新所有訊息和對話的時間顯示
-function updateAllTimestamps() {
-  // displayConversations 和 messages 都是 computed，會自動重新計算
-  // 這裡只需要觸發一次強制更新（如果需要的話）
-  // Vue 的響應式系統會自動處理時間更新
-}
 
 function formatDateDivider(timestamp) {
   const date = new Date(timestamp);
@@ -549,22 +661,22 @@ async function selectConversation(conversation) {
   currentPage.value = 1;
   hasMoreMessages.value = true;
   isLoadingMoreMessages.value = false;
+  newMessageCount.value = 0; // 重置新訊息計數
+  clearUnreadDivider(); // 重置未讀訊息分隔線狀態
 
   try {
     // 使用 store 載入訊息
     await messageStore.loadMessages(conversation.id);
 
-    // 等待 loading 狀態更新和 DOM 完全渲染後再滾動
+    if (messageStore.currentMessages.length < 50) {
+      hasMoreMessages.value = false;
+    }
+
     messagesLoading.value = false;
 
-    await nextTick(); // 等待 v-if 切換
-    await nextTick(); // 等待訊息列表渲染
+    await waitForTicks(3);
 
-    // Scroll to bottom
-    if (messagesArea.value) {
-      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-      console.log('[Debug] Scrolled to bottom:', messagesArea.value.scrollHeight);
-    }
+    scrollToBottom(false);
   } catch (err) {
     messagesLoading.value = false;
     throw err;
@@ -584,6 +696,9 @@ async function sendMessage() {
 
   // 立即清空輸入框
   messageInput.value = '';
+
+  // 發送訊息時重置未讀訊息分隔線（因為我已經回覆了）
+  clearUnreadDivider({ suppress: true });
 
   // 創建臨時訊息 ID（用於樂觀更新）
   const tempMessageId = `temp-${Date.now()}`;
@@ -611,11 +726,8 @@ async function sendMessage() {
   messageStore.currentMessages.push(optimisticMessage);
 
   // 立即滾動到底部
-  await nextTick();
-  await nextTick();
-  if (messagesArea.value) {
-    messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-  }
+  await waitForTicks(2);
+  scrollToBottom(false);
 
   // 清除待發送的物品引用
   const shouldClearItemReference = !!pendingItemReference.value;
@@ -668,22 +780,15 @@ async function sendMessage() {
   } catch (err) {
     console.error('Failed to send message:', err);
 
-    // 發送失敗，移除樂觀訊息
+    // 發送失敗，標記為失敗狀態（不移除訊息）
     const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
     if (index !== -1) {
-      messageStore.currentMessages.splice(index, 1);
-    }
-
-    // 顯示錯誤並恢復輸入內容
-    alert('發送訊息失敗，請稍後再試');
-    messageInput.value = content;
-
-    // 恢復物品引用
-    if (shouldClearItemReference && relatedItemId && relatedItemTitle) {
-      pendingItemReference.value = {
-        id: relatedItemId,
-        title: relatedItemTitle
-      };
+      const message = messageStore.currentMessages[index];
+      message._sending = false;
+      message._failed = true; // 標記為發送失敗
+      message._failedContent = content; // 保存原始內容用於重試
+      message._failedRelatedItemId = relatedItemId; // 保存物品 ID 用於重試
+      message._failedRelatedItemTitle = relatedItemTitle; // 保存物品標題用於重試
     }
   }
 }
@@ -711,50 +816,191 @@ function removePendingItemReference() {
   }
 }
 
-// Handle messages area scroll to show/hide scroll-to-bottom button
-function handleMessagesScroll() {
+// 重新發送失敗的訊息
+async function retryMessage(failedMessage) {
+  if (!failedMessage._failed) return;
+
+  const content = failedMessage._failedContent || failedMessage.content;
+  const relatedItemId = failedMessage._failedRelatedItemId || failedMessage.related_item_id;
+  const relatedItemTitle = failedMessage._failedRelatedItemTitle || failedMessage.related_item_title;
+
+  // 標記為發送中
+  failedMessage._sending = true;
+  failedMessage._failed = false;
+
+  try {
+    // 發送訊息
+    const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+
+    console.log('[Debug] 重新發送訊息成功，真實 ID:', newMessage.message_id || newMessage.id);
+
+    // 找到並更新訊息
+    const index = messageStore.currentMessages.findIndex(m => m._clientId === failedMessage._clientId);
+    if (index !== -1) {
+      const message = messageStore.currentMessages[index];
+      const realMessageId = newMessage.message_id || newMessage.id;
+
+      // 檢查真實 ID 是否已存在
+      const realMessageExists = messageStore.currentMessages.some(
+        (m, i) => i !== index && m.id === realMessageId
+      );
+
+      if (realMessageExists) {
+        // 如果 realtime 已經添加了真實訊息，直接移除這則訊息
+        messageStore.currentMessages.splice(index, 1);
+      } else {
+        // 更新屬性
+        message.id = realMessageId;
+        message.created_at = newMessage.created_at;
+        message.metadata = newMessage.metadata;
+        message._sending = false;
+
+        // 清除失敗相關的屬性
+        delete message._failed;
+        delete message._failedContent;
+        delete message._failedRelatedItemId;
+        delete message._failedRelatedItemTitle;
+
+        if (newMessage.sender_id) {
+          message.sender.id = newMessage.sender_id;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to retry message:', err);
+
+    // 重新標記為失敗
+    failedMessage._sending = false;
+    failedMessage._failed = true;
+  }
+}
+
+// 檢查是否在訊息底部
+function isAtBottom() {
+  if (!messagesArea.value) return false;
+  const { scrollTop, scrollHeight, clientHeight } = messagesArea.value;
+  const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+  return distanceFromBottom < 100; // 100px 閾值
+}
+
+async function handleMessagesScroll() {
   if (!messagesArea.value) return;
 
   const { scrollTop, scrollHeight, clientHeight } = messagesArea.value;
   const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
   const distanceFromTop = scrollTop;
 
-  // 顯示按鈕的閾值：距離底部超過 200px
   showScrollToBottomBtn.value = distanceFromBottom > 200;
 
-  // 檢測是否滑動到頂部（距離頂部小於 100px）並載入更多訊息
-  if (distanceFromTop < 100 && !isLoadingMoreMessages.value && hasMoreMessages.value && selectedConversation.value) {
+  // 更新 store 中的「是否在底部」狀態
+  const atBottom = distanceFromBottom < 100;
+  const wasPreviouslyAtBottom = messageStore.isAtMessagesBottom;
+  messageStore.setIsAtMessagesBottom(atBottom);
+
+  if (
+    !atBottom &&
+    firstUnreadMessageId.value &&
+    hasReachedBottomAfterUnread.value &&
+    distanceFromBottom > UNREAD_DIVIDER_CLEAR_THRESHOLD
+  ) {
+    clearUnreadDivider({ suppress: true });
+    console.log('[MessagesPage] 從底部向上滑動一段距離，清除未讀訊息分隔線');
+  }
+
+  // 當使用者滾動到底部時，重置新訊息計數並標記為已讀
+  if (atBottom) {
+    newMessageCount.value = 0;
+    if (firstUnreadMessageId.value) {
+      hasReachedBottomAfterUnread.value = true;
+      allowUnreadDivider();
+    }
+
+    // 如果剛從不在底部變成在底部，且仍有未讀訊息，則標記為已讀
+    if (!wasPreviouslyAtBottom && selectedConversation.value) {
+      const hasUnreadMessages = messageStore.currentMessages.some(msg => !msg.is_mine && !msg.is_read);
+
+      if (hasUnreadMessages) {
+        const unreadMessageIds = [];
+
+        // 先樂觀地將未讀訊息設為已讀，以避免分隔線再次出現
+        messageStore.currentMessages.forEach(msg => {
+          if (!msg.is_mine && !msg.is_read) {
+            unreadMessageIds.push(msg.id);
+            msg.is_read = true;
+          }
+        });
+
+        allowUnreadDivider();
+
+        try {
+          const { markAsRead } = await import('@/api/conversationAPI_v2');
+          await markAsRead(selectedConversation.value.id);
+          console.log('[MessagesPage] 滾動到底部，已標記為已讀');
+
+          // 更新對話列表中的未讀計數
+          const conversation = messageStore.conversations.find(c => c.id === selectedConversation.value.id);
+          if (conversation) {
+            conversation.unread_count = 0;
+          }
+        } catch (err) {
+          // 如果 API 失敗，還原本地未讀狀態
+          messageStore.currentMessages.forEach(msg => {
+            if (unreadMessageIds.includes(msg.id)) {
+              msg.is_read = false;
+            }
+          });
+
+          allowUnreadDivider();
+
+          console.error('[MessagesPage] 標記已讀失敗:', err);
+        }
+      }
+    }
+  }
+
+  if (distanceFromTop < 200 && !isLoadingMoreMessages.value && hasMoreMessages.value && selectedConversation.value) {
     loadMoreMessages();
   }
 }
 
-function scrollToBottom() {
+function scrollToBottom(smooth = false) {
+  // 重置新訊息計數
+  newMessageCount.value = 0;
+
   nextTick(() => {
-    if (messagesArea.value) {
-      // Use smooth scrolling on mobile to prevent issues with virtual keyboard
-      if ('ontouchstart' in window || navigator.maxTouchPoints) {
-        // On mobile devices, use a more reliable scroll method
-        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-      } else {
-        // On desktop, use smooth scrolling
-        messagesArea.value.scrollTo({
-          top: messagesArea.value.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
-      
-      // On mobile devices, ensure the last message is visible after a delay
+    if (!messagesArea.value) return;
+
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints;
+    const scrollOptions = {
+      top: messagesArea.value.scrollHeight,
+      behavior: smooth && !isMobile ? 'smooth' : 'auto'
+    };
+
+    // Force immediate scroll on mobile for better reliability
+    if (isMobile) {
+      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+
+      // Double-check after a short delay to ensure scroll completed
+      setTimeout(() => {
+        if (messagesArea.value) {
+          messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+        }
+      }, 50);
+
+      // Additional check for iOS devices
       if (window.matchMedia('(max-width: 575.98px)').matches) {
         setTimeout(() => {
-          const allMessages = messagesArea.value.querySelectorAll('.message-wrapper');
-          if (allMessages.length > 0) {
-            const lastMessage = allMessages[allMessages.length - 1];
-            if (lastMessage) {
-              lastMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
+          if (messagesArea.value) {
+            messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
           }
-        }, 100); // Delay to account for keyboard animation
+        }, 150);
       }
+    } else {
+      messagesArea.value.scrollTo(scrollOptions);
+    }
+
+    if (firstUnreadMessageId.value) {
+      hasReachedBottomAfterUnread.value = true;
     }
   });
 }
@@ -766,35 +1012,28 @@ async function loadMoreMessages() {
   isLoadingMoreMessages.value = true;
 
   try {
-    // 記錄當前滾動位置和高度
     const scrollHeightBefore = messagesArea.value.scrollHeight;
     const scrollTopBefore = messagesArea.value.scrollTop;
 
-    // 載入下一頁訊息
     const nextPage = currentPage.value + 1;
     const olderMessages = await messageStore.loadMoreMessages(selectedConversation.value.id, nextPage, 50);
 
     if (olderMessages && olderMessages.length > 0) {
       currentPage.value = nextPage;
-      console.log(`✅ Loaded ${olderMessages.length} more messages (page ${nextPage})`);
 
-      // 如果返回的訊息少於請求的數量，表示沒有更多了
       if (olderMessages.length < 50) {
         hasMoreMessages.value = false;
-        console.log('📭 No more messages to load');
       }
 
-      // 等待 DOM 更新後恢復滾動位置
-      await nextTick();
-      await nextTick();
+      await waitForTicks(2);
 
-      // 計算新增內容的高度並調整滾動位置，保持用戶看到的內容不變
       const scrollHeightAfter = messagesArea.value.scrollHeight;
       const heightDifference = scrollHeightAfter - scrollHeightBefore;
       messagesArea.value.scrollTop = scrollTopBefore + heightDifference;
     } else {
-      hasMoreMessages.value = false;
-      console.log('📭 No more messages to load');
+      if (currentPage.value > 1) {
+        hasMoreMessages.value = false;
+      }
     }
   } catch (err) {
     console.error('Failed to load more messages:', err);
@@ -875,24 +1114,76 @@ function handleMobileKeyboard() {
 }
 
 // Lifecycle
-onMounted(() => {
-  initialize();
+onMounted(async () => {
+  // 設置為在訊息頁面
+  messageStore.setIsInMessagesPage(true);
+  messageStore.setIsAtMessagesBottom(true); // 初始化為在底部
+
+  await initialize();
   handleMobileKeyboard();
 
-  // 啟動時間自動更新定時器（每分鐘更新一次）
-  timeUpdateInterval.value = setInterval(() => {
-    updateAllTimestamps();
-    console.log('[Debug] 已更新所有時間顯示');
-  }, 60000); // 60000ms = 1分鐘
+  await waitForTicks(2);
+
+  if (messagesArea.value) {
+    messagesArea.value.addEventListener('scroll', handleMessagesScroll, { passive: true });
+  }
+
+  watch(
+    () => messageStore.currentMessages.length,
+    async (newLen, oldLen) => {
+      // 只在訊息增加時處理（不處理減少，例如刪除訊息的情況）
+      if (newLen <= oldLen) return;
+
+      // 跳過初次載入或往上載入更多訊息時的變化
+      if (messagesLoading.value || isLoadingMoreMessages.value) return;
+
+      await waitForTicks(2);
+
+      if (!messagesArea.value) return;
+
+      // 檢查是否在底部
+      const atBottom = isAtBottom();
+
+      // 取得本次新增的訊息（僅限陣列尾端新增的部分）
+      const appendedMessages = messageStore.currentMessages.slice(oldLen);
+      const incomingMessages = appendedMessages.filter(msg => !msg.is_mine);
+      const incomingCount = incomingMessages.length;
+
+      if (atBottom) {
+        // 在底部：自動滾動到最新訊息
+        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+        showScrollToBottomBtn.value = false;
+        newMessageCount.value = 0;
+        messageStore.setIsAtMessagesBottom(true); // 確保 store 知道在底部
+        allowUnreadDivider();
+
+        if (firstUnreadMessageId.value) {
+          hasReachedBottomAfterUnread.value = true;
+        }
+      } else {
+        // 不在底部：增加新訊息計數，顯示按鈕
+        if (incomingCount > 0) {
+          newMessageCount.value += incomingCount;
+        }
+        showScrollToBottomBtn.value = true;
+        messageStore.setIsAtMessagesBottom(false); // 通知 store 不在底部
+
+        if (incomingCount > 0) {
+          allowUnreadDivider();
+          hasReachedBottomAfterUnread.value = false;
+        }
+      }
+    }
+  );
 });
 
 onBeforeUnmount(() => {
-  // 全域訊息監聽由 App.vue 管理，這裡不需要取消訂閱
+  // 離開訊息頁面
+  messageStore.setIsInMessagesPage(false);
+  messageStore.setIsAtMessagesBottom(true); // 重置為預設值
 
-  // 清除時間更新定時器
-  if (timeUpdateInterval.value) {
-    clearInterval(timeUpdateInterval.value);
-    console.log('[Debug] 已清除時間更新定時器');
+  if (messagesArea.value) {
+    messagesArea.value.removeEventListener('scroll', handleMessagesScroll);
   }
 });
 </script>
@@ -1123,6 +1414,26 @@ onBeforeUnmount(() => {
   }
 }
 
+// TransitionGroup 動畫
+.conversation-list-move {
+  transition: transform 0.4s ease;
+}
+
+.conversation-list-enter-active,
+.conversation-list-leave-active {
+  transition: all 0.4s ease;
+}
+
+.conversation-list-enter-from,
+.conversation-list-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.conversation-list-leave-active {
+  position: absolute;
+}
+
 .conv-avatar {
   position: relative;
   flex-shrink: 0;
@@ -1252,10 +1563,9 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  // Ensure proper mobile layout
   min-height: 0; // Allow flex item to shrink
   position: relative; // 為浮動按鈕定位
-  overflow: hidden; // Prevent scroll on chat container itself
+  overflow: hidden; // Prevent scroll on chat container itself - only messages-area should scroll
 }
 
 .chat-header {
@@ -1344,8 +1654,6 @@ onBeforeUnmount(() => {
   overscroll-behavior: contain; // Prevent pull-to-refresh interference
   touch-action: pan-y; // Allow vertical scrolling
   min-height: 0; // Allow flex item to shrink
-  display: flex;
-  flex-direction: column;
   position: relative; // 為了定位「回到最新」按鈕
 }
 
@@ -1353,6 +1661,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   width: 100%;
+  flex-shrink: 0; // Prevent content from shrinking
+  min-height: min-content; // Allow content to determine height
 }
 
 .date-group {
@@ -1417,6 +1727,54 @@ onBeforeUnmount(() => {
     font-size: 12px;
     color: #999;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+}
+
+// 未讀分隔線
+.unread-divider {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #ff4757;
+  }
+
+  &::before {
+    margin-right: 12px;
+  }
+
+  &::after {
+    margin-left: 12px;
+  }
+
+  .unread-divider-text {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ff4757;
+    background: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(255, 71, 87, 0.15);
+    animation: unread-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes unread-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(0.98);
   }
 }
 
@@ -1514,7 +1872,7 @@ onBeforeUnmount(() => {
 }
 
 .message-content {
-  max-width: 70%;
+  width: 100%; // 填滿 bubble-wrapper 的寬度
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
@@ -1581,6 +1939,129 @@ onBeforeUnmount(() => {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 11px;
     align-self: flex-end;
+  }
+}
+
+// 訊息氣泡包裝器
+.message-bubble-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; // 對齊到右邊（發送的訊息）
+  gap: 1px;
+  max-width: 70%;
+}
+
+.message-received .message-bubble-wrapper {
+  align-items: flex-start; // 對齊到左邊（接收的訊息）
+}
+
+// 訊息狀態樣式（在氣泡外面）
+.message-status {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+
+  .status-sending {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #999;
+
+    .status-dot {
+      width: 4px;
+      height: 4px;
+      background: #999;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  }
+
+  .status-failed {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #ff4444;
+
+    i {
+      font-size: 12px;
+    }
+
+    .retry-btn {
+      margin-left: 6px;
+      padding: 2px 8px;
+      background: rgba(255, 68, 68, 0.1);
+      border: 1px solid #ff4444;
+      border-radius: 4px;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 11px;
+      color: #ff4444;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(255, 68, 68, 0.2);
+      }
+
+      i {
+        font-size: 11px;
+      }
+    }
+  }
+
+  .status-sent {
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    i {
+      font-size: 12px;
+    }
+  }
+
+  .status-read {
+    color: $primary;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+
+    i {
+      font-size: 14px;
+      font-weight: bold;
+    }
+  }
+}
+
+// Status Fade Transition (已傳送狀態向右漂走效果 - 超快速)
+.status-fade-enter-active {
+  transition: transform 0.05s ease-in;
+}
+
+.status-fade-leave-active {
+  transition: transform 0.05s ease-out;
+}
+
+.status-fade-enter-from {
+  transform: scaleY(0.5);
+}
+
+.status-fade-leave-to {
+  transform: scaleY(0);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
   }
 }
 
@@ -1961,6 +2442,7 @@ onBeforeUnmount(() => {
 @media (max-width: 575.98px) {
   .messages-layout {
     flex-direction: column;
+    overflow: hidden; // Critical: Prevent layout from scrolling
   }
 
   .conversations-sidebar {
@@ -1976,6 +2458,8 @@ onBeforeUnmount(() => {
     width: 100%;
     display: flex;
     flex-direction: column;
+    min-height: 0; // Allow flex item to shrink
+    overflow: hidden; // Prevent outer container from scrolling
   }
 
   .active-chat {
@@ -1984,20 +2468,22 @@ onBeforeUnmount(() => {
     height: 100%;
     height: -webkit-fill-available; // For iOS Safari
     flex: 1;
+    min-height: 0; // Critical for nested flex containers
+    overflow: hidden; // Only messages-area should scroll
   }
 
   .messages-area {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+    overflow-y: scroll; // Force scroll container
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch; // Ensure smooth scrolling on iOS
     overscroll-behavior-y: contain; // Prevent pull-to-refresh
     touch-action: pan-y; // Explicitly allow vertical scrolling
     padding: 16px; // Reduced padding for mobile
     // Use min-height instead of fixed height for better keyboard handling
-    min-height: 200px;
+    min-height: 0; // Critical: Allow flex item to shrink
+    position: relative;
+    // Remove max-height to allow natural scrolling
   }
 
   .input-area-wrapper {
@@ -2043,8 +2529,8 @@ onBeforeUnmount(() => {
     padding: 10px 12px; // Smaller input for mobile
   }
 
-  .message-content {
-    max-width: 85%;
+  .message-bubble-wrapper {
+    max-width: 85%; // 手機版訊息泡泡更寬
   }
 
   .scroll-to-bottom-btn-floating {
@@ -2113,6 +2599,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 16px;
   padding: 20px;
+  flex-shrink: 0; // Prevent content from shrinking
 }
 
 .skeleton-message-wrapper {
