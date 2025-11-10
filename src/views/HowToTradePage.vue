@@ -17,7 +17,6 @@
 
         <!-- Steps Grid -->
         <div class="steps-grid">
-          <!-- Row 1: Steps 1-3 -->
           <BRow class="step-row">
             <BCol cols="12" md="4" class="mb-4">
               <div class="step-card">
@@ -57,15 +56,7 @@
                 </p>
               </div>
             </BCol>
-          </BRow>
 
-          <!-- Arrow Down -->
-          <div class="arrow-down">
-            <i class="bi bi-arrow-down"></i>
-          </div>
-
-          <!-- Row 2: Steps 4-6 -->
-          <BRow class="step-row">
             <BCol cols="12" md="4" class="mb-4">
               <div class="step-card">
                 <div class="step-number">4</div>
@@ -299,33 +290,6 @@ import AppFooter from '../components/AppFooter.vue';
   }
 }
 
-.arrow-down {
-  text-align: center;
-  margin: 30px 0;
-
-  i {
-    font-size: 40px;
-    color: $primary;
-    animation: bounce 2s infinite;
-  }
-}
-
-@keyframes bounce {
-  0%,
-  20%,
-  50%,
-  80%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  60% {
-    transform: translateY(-5px);
-  }
-}
-
 .tips-section {
   background-color: white;
   border-radius: 16px;
@@ -484,14 +448,6 @@ import AppFooter from '../components/AppFooter.vue';
     }
   }
 
-  .arrow-down {
-    margin: 25px 0;
-
-    i {
-      font-size: 36px;
-    }
-  }
-
   .tips-section {
     padding: 45px 35px;
     margin-bottom: 50px;
@@ -601,14 +557,6 @@ import AppFooter from '../components/AppFooter.vue';
 
     .step-description {
       font-size: 13px;
-    }
-  }
-
-  .arrow-down {
-    margin: 20px 0;
-
-    i {
-      font-size: 32px;
     }
   }
 
