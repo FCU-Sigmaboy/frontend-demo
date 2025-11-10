@@ -224,8 +224,21 @@
                               >
                                 <div class="reference-bar"></div>
                                 <div class="reference-content">
-                                  <i class="bi bi-box-seam reference-icon"></i>
-                                  <span class="reference-text">{{ message.related_item_title || `物品 #${message.related_item_id}` }}</span>
+                                  <img
+                                    v-if="message.relatedItem?.image"
+                                    :src="message.relatedItem.image"
+                                    alt="提及物品"
+                                    class="reference-thumbnail"
+                                  />
+                                  <i v-else class="bi bi-box-seam reference-icon"></i>
+                                  <div class="reference-details">
+                                    <span class="reference-text">
+                                      {{ message.relatedItem?.title || message.related_item_title || `物品 #${message.related_item_id}` }}
+                                    </span>
+                                    <span v-if="message.relatedItemPrice" class="reference-meta">
+                                      {{ message.relatedItemPrice }}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
 
@@ -294,9 +307,18 @@
               <transition name="item-reference-slide">
                 <div v-if="pendingItemReference" class="pending-item-reference">
                   <div class="reference-info">
-                    <i class="bi bi-box-seam"></i>
-                    <span class="reference-label">提及物品：</span>
-                    <span class="reference-title">{{ pendingItemReference.title }}</span>
+                    <img
+                      v-if="pendingItemReference.image"
+                      :src="pendingItemReference.image"
+                      alt="提及物品"
+                      class="reference-thumbnail"
+                    />
+                    <i v-else class="bi bi-box-seam"></i>
+                    <div class="reference-details">
+                      <span class="reference-label">提及物品</span>
+                      <span class="reference-title">{{ pendingItemReference.title }}</span>
+                      <span v-if="pendingItemPrice" class="reference-meta">{{ pendingItemPrice }}</span>
+                    </div>
                   </div>
                   <button class="remove-reference-btn" @click="removePendingItemReference">
                     <i class="bi bi-x"></i>
@@ -344,6 +366,7 @@ import OrderRequestMessage from '../components/OrderRequestMessage.vue';
 import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
+import { getConversationItems } from '@/api/conversationAPI_v2';
 
 const router = useRouter();
 const messageStore = useMessageStore();
@@ -368,6 +391,50 @@ const firstUnreadMessageId = ref(null); // 記錄第一條未讀訊息的 ID，�
 const suppressUnreadDivider = ref(false); // 控制是否暫時隱藏未讀訊息分隔線
 const hasReachedBottomAfterUnread = ref(false); // 是否在有未讀後已經滑到最底
 
+const conversationItems = ref([]); // 依對話載入的提及物品列表
+const isLoadingConversationItems = ref(false); // 提及物品資料載入狀態
+let conversationItemsRequestId = 0; // 追蹤最新的商品載入請求
+
+const conversationItemMap = computed(() => {
+  const map = new Map();
+  conversationItems.value.forEach(item => {
+    if (!item || item.id === undefined || item.id === null) return;
+    map.set(item.id, item);
+  });
+  return map;
+});
+
+const pendingItemPrice = computed(() => formatItemPrice(pendingItemReference.value?.price));
+
+const currencyFormatter = new Intl.NumberFormat('zh-TW', {
+  style: 'currency',
+  currency: 'TWD',
+  maximumFractionDigits: 0
+});
+
+function formatItemPrice(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return null;
+  return currencyFormatter.format(numeric);
+}
+
+function toItemKey(id) {
+  if (id === undefined || id === null) return null;
+  if (typeof id === 'string') {
+    const trimmed = id.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    return Number.isNaN(numeric) ? trimmed : numeric;
+  }
+  if (typeof id === 'number') {
+    if (!Number.isFinite(id)) return null;
+    return id;
+  }
+  const numeric = Number(id);
+  return Number.isNaN(numeric) ? id : numeric;
+}
+
 const UNREAD_DIVIDER_CLEAR_THRESHOLD = 200; // 需要離開底部多遠才視為「往上滑了一段距離」
 
 function clearUnreadDivider({ suppress = false } = {}) {
@@ -383,6 +450,138 @@ function allowUnreadDivider() {
 async function waitForTicks(count = 1) {
   for (let i = 0; i < count; i += 1) {
     await nextTick();
+  }
+}
+
+function normalizeConversationItem(apiItem) {
+  if (!apiItem) return null;
+
+  const id = toItemKey(apiItem.item_id ?? apiItem.itemId ?? null);
+  if (id === null) {
+    return null;
+  }
+
+  const titleSource = apiItem.item_title ?? apiItem.itemTitle;
+  const title = titleSource && String(titleSource).trim()
+    ? String(titleSource).trim()
+    : `物品 #${id}`;
+
+  return {
+    id,
+    title,
+    price: apiItem.item_price ?? apiItem.itemPrice ?? null,
+    image: apiItem.item_image_url ?? apiItem.itemImageUrl ?? null,
+    status: apiItem.item_status ?? apiItem.itemStatus ?? null,
+    addedAt: apiItem.added_at ?? apiItem.addedAt ?? null,
+    addedBy: (apiItem.added_by_user_id || apiItem.added_by_user_name)
+      ? {
+          id: apiItem.added_by_user_id ?? null,
+          name: apiItem.added_by_user_name ?? ''
+        }
+      : null,
+    messageCount: apiItem.message_count ?? apiItem.messageCount ?? 0
+  };
+}
+
+function resolveItemFromMap(itemId) {
+  if (itemId === undefined || itemId === null) return null;
+
+  const normalizedKey = toItemKey(itemId);
+  if (normalizedKey !== null && conversationItemMap.value.has(normalizedKey)) {
+    return conversationItemMap.value.get(normalizedKey);
+  }
+
+  return null;
+}
+
+function refreshPendingItemReferenceFromCache() {
+  if (!pendingItemReference.value || pendingItemReference.value.id === undefined || pendingItemReference.value.id === null) {
+    return;
+  }
+
+  const matchedItem = resolveItemFromMap(pendingItemReference.value.id);
+  if (!matchedItem) return;
+
+  pendingItemReference.value = {
+    ...pendingItemReference.value,
+    ...matchedItem,
+    id: matchedItem.id,
+    title: matchedItem.title
+  };
+}
+
+function applyItemMetadataToMessages() {
+  const nextCache = new Map(itemReferenceCache.value);
+
+  messageStore.currentMessages.forEach(msg => {
+    const itemKey = toItemKey(msg.related_item_id);
+    if (itemKey === null) {
+      return;
+    }
+
+    const matchedItem = resolveItemFromMap(itemKey);
+    if (matchedItem) {
+      if (matchedItem.title) {
+        msg.related_item_title = matchedItem.title;
+      }
+      if (matchedItem.image) {
+        msg._related_item_image = matchedItem.image;
+      }
+      if (matchedItem.price !== undefined && matchedItem.price !== null) {
+        msg._related_item_price = matchedItem.price;
+      }
+    }
+
+    const title = msg.related_item_title || matchedItem?.title;
+    if (title) {
+      nextCache.set(itemKey, title);
+    }
+  });
+
+  itemReferenceCache.value = nextCache;
+  refreshPendingItemReferenceFromCache();
+}
+
+async function loadConversationItems(conversationId) {
+  const activeConversationId = conversationId ?? selectedConversation.value?.id;
+  if (!activeConversationId) return;
+
+  const requestId = ++conversationItemsRequestId;
+  isLoadingConversationItems.value = true;
+
+  try {
+    const data = await getConversationItems(activeConversationId);
+    if (requestId !== conversationItemsRequestId) {
+      return;
+    }
+
+    if (selectedConversation.value?.id !== activeConversationId) {
+      return;
+    }
+
+    const normalizedItems = Array.isArray(data)
+      ? data.map(normalizeConversationItem).filter(Boolean)
+      : [];
+
+    conversationItems.value = normalizedItems;
+
+    const nextCache = new Map(itemReferenceCache.value);
+    normalizedItems.forEach(item => {
+      if (item.id !== null && item.title) {
+        nextCache.set(item.id, item.title);
+      }
+    });
+    itemReferenceCache.value = nextCache;
+
+    applyItemMetadataToMessages();
+  } catch (err) {
+    if (requestId === conversationItemsRequestId) {
+      console.error('Failed to load conversation items:', err);
+    }
+  } finally {
+    if (requestId === conversationItemsRequestId) {
+      isLoadingConversationItems.value = false;
+    }
   }
 }
 
@@ -472,8 +671,47 @@ const selectedConversation = computed(() => {
   return displayConversations.value.find(c => c.id === messageStore.selectedConversationId);
 });
 
+watch(
+  () => selectedConversation.value?.id,
+  (newId, oldId) => {
+    if (oldId && oldId !== newId) {
+      messageStore.setPendingItemReference(oldId, pendingItemReference.value);
+      messageStore.setMessageDraft(oldId, messageInput.value);
+    }
+
+    if (!newId) {
+      pendingItemReference.value = null;
+      messageInput.value = '';
+      return;
+    }
+
+    pendingItemReference.value = messageStore.getPendingItemReference(newId);
+    messageInput.value = messageStore.getMessageDraft(newId);
+  }
+);
+
+watch(
+  pendingItemReference,
+  newValue => {
+    const conversationId = selectedConversation.value?.id;
+    if (!conversationId) return;
+    messageStore.setPendingItemReference(conversationId, newValue);
+  },
+  { deep: true }
+);
+
+watch(
+  messageInput,
+  newValue => {
+    const conversationId = selectedConversation.value?.id;
+    if (!conversationId) return;
+    messageStore.setMessageDraft(conversationId, newValue);
+  }
+);
+
 // 當前訊息列表（從 store 轉換為顯示格式）
 const messages = computed(() => {
+  const itemMap = conversationItemMap.value;
   return messageStore.currentMessages.map((msg, index) => {
     // 使用標準化的日期比較（去除時分秒）
     const msgDateObj = new Date(msg.created_at);
@@ -489,11 +727,6 @@ const messages = computed(() => {
     } else {
       // 第一則訊息總是顯示日期
       showDate = true;
-    }
-
-    // 如果有物品引用信息，加入緩存
-    if (msg.related_item_id && msg.related_item_title) {
-      itemReferenceCache.value.set(msg.related_item_id, msg.related_item_title);
     }
 
     // 判斷分組狀態
@@ -535,6 +768,37 @@ const messages = computed(() => {
     isFirstInGroup = !hasGroupWithPrev;     // 沒有前一則群組 = 是第一則
     isLastInGroup = !hasGroupWithNext;      // 沒有下一則群組 = 是最後一則
 
+    const itemKey = toItemKey(msg.related_item_id);
+    const matchedItem = itemKey !== null ? itemMap.get(itemKey) : null;
+
+    let relatedItemTitle = msg.related_item_title || matchedItem?.title || null;
+
+    if (!relatedItemTitle && itemKey !== null) {
+      const cachedTitle = itemReferenceCache.value.get(itemKey);
+      if (cachedTitle) {
+        relatedItemTitle = cachedTitle;
+      }
+    }
+
+    if (!relatedItemTitle && itemKey !== null) {
+      relatedItemTitle = `物品 #${itemKey}`;
+    }
+
+    const relatedItemImage = matchedItem?.image ?? msg._related_item_image ?? null;
+    const relatedItemPriceRaw = matchedItem?.price ?? msg._related_item_price ?? null;
+    const relatedItemPrice = relatedItemPriceRaw !== null && relatedItemPriceRaw !== undefined
+      ? formatItemPrice(relatedItemPriceRaw)
+      : null;
+
+    const relatedItem = matchedItem || (relatedItemImage || relatedItemPrice !== null
+      ? {
+          id: itemKey,
+          title: relatedItemTitle,
+          image: relatedItemImage,
+          price: relatedItemPriceRaw
+        }
+      : null);
+
     return {
       id: msg.id,
       text: msg.content,
@@ -545,7 +809,9 @@ const messages = computed(() => {
       date: showDate ? formatDateDivider(msg.created_at) : '',
       message_type: msg.message_type,
       related_item_id: msg.related_item_id,
-      related_item_title: msg.related_item_title,
+      related_item_title: relatedItemTitle,
+  relatedItem,
+      relatedItemPrice,
       metadata: msg.metadata,
       sender: msg.sender,
       _clientId: msg._clientId || msg.id, // 使用不變的 clientId 或回退到 id
@@ -655,6 +921,15 @@ function formatDateDivider(timestamp) {
 
 // Methods
 async function selectConversation(conversation) {
+  const previousConversationId = selectedConversation.value?.id || messageStore.selectedConversationId || null;
+  if (previousConversationId && previousConversationId !== conversation.id) {
+    messageStore.setPendingItemReference(previousConversationId, pendingItemReference.value);
+    messageStore.setMessageDraft(previousConversationId, messageInput.value);
+  }
+
+  if (messageStore.selectedConversationId !== conversation.id) {
+    messageStore.selectedConversationId = conversation.id;
+  }
   messagesLoading.value = true;
 
   // 重置分頁狀態
@@ -664,15 +939,25 @@ async function selectConversation(conversation) {
   newMessageCount.value = 0; // 重置新訊息計數
   clearUnreadDivider(); // 重置未讀訊息分隔線狀態
 
+  conversationItems.value = [];
+  itemReferenceCache.value = new Map();
+
   try {
     // 使用 store 載入訊息
     await messageStore.loadMessages(conversation.id);
+
+    applyItemMetadataToMessages();
 
     if (messageStore.currentMessages.length < 50) {
       hasMoreMessages.value = false;
     }
 
     messagesLoading.value = false;
+
+    // 後續以背景方式載入提及物品資料，避免阻塞訊息呈現
+    loadConversationItems(conversation.id).catch(err => {
+      console.error('Failed to refresh conversation items after select:', err);
+    });
 
     await waitForTicks(3);
 
@@ -684,7 +969,14 @@ async function selectConversation(conversation) {
 }
 
 function deselectConversation() {
+  const conversationId = selectedConversation.value?.id;
+  if (conversationId) {
+    messageStore.setPendingItemReference(conversationId, pendingItemReference.value);
+    messageStore.setMessageDraft(conversationId, messageInput.value);
+  }
+  pendingItemReference.value = null;
   messageStore.clearSelectedConversation();
+  messageInput.value = '';
 }
 
 async function sendMessage() {
@@ -732,7 +1024,11 @@ async function sendMessage() {
   // 清除待發送的物品引用
   const shouldClearItemReference = !!pendingItemReference.value;
   if (shouldClearItemReference) {
+    const activeConversationId = selectedConversation.value?.id || null;
     pendingItemReference.value = null;
+    if (activeConversationId) {
+      messageStore.clearPendingItemReference(activeConversationId);
+    }
 
     // 清除 URL 中的物品相關參數
     const currentQuery = { ...router.currentRoute.value.query };
@@ -746,6 +1042,18 @@ async function sendMessage() {
   try {
     // 在背景發送訊息
     const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+
+    applyItemMetadataToMessages();
+
+    if (relatedItemId && selectedConversation.value) {
+      const itemKey = toItemKey(relatedItemId);
+      const hasCachedItem = itemKey !== null ? resolveItemFromMap(itemKey) : null;
+      if (!hasCachedItem) {
+        loadConversationItems(selectedConversation.value.id).catch(err => {
+          console.error('Failed to refresh conversation items after sending message:', err);
+        });
+      }
+    }
 
     console.log('[Debug] 發送訊息成功，真實 ID:', newMessage.message_id || newMessage.id);
 
@@ -807,6 +1115,10 @@ function openItemPage(itemId) {
 function removePendingItemReference() {
   pendingItemReference.value = null;
 
+  if (selectedConversation.value?.id) {
+    messageStore.clearPendingItemReference(selectedConversation.value.id);
+  }
+
   // 清除 URL 中的物品相關參數
   const currentQuery = { ...router.currentRoute.value.query };
   if (currentQuery.itemId || currentQuery.itemTitle) {
@@ -831,6 +1143,18 @@ async function retryMessage(failedMessage) {
   try {
     // 發送訊息
     const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+
+    applyItemMetadataToMessages();
+
+    if (relatedItemId && selectedConversation.value) {
+      const itemKey = toItemKey(relatedItemId);
+      const hasCachedItem = itemKey !== null ? resolveItemFromMap(itemKey) : null;
+      if (!hasCachedItem) {
+        loadConversationItems(selectedConversation.value.id).catch(err => {
+          console.error('Failed to refresh conversation items after retrying message:', err);
+        });
+      }
+    }
 
     console.log('[Debug] 重新發送訊息成功，真實 ID:', newMessage.message_id || newMessage.id);
 
@@ -1025,6 +1349,20 @@ async function loadMoreMessages() {
         hasMoreMessages.value = false;
       }
 
+      applyItemMetadataToMessages();
+
+      const needsItemRefresh = olderMessages.some(msg => {
+        const itemKey = toItemKey(msg.related_item_id);
+        if (itemKey === null) return false;
+        return !resolveItemFromMap(itemKey);
+      });
+
+      if (needsItemRefresh && selectedConversation.value) {
+        loadConversationItems(selectedConversation.value.id).catch(err => {
+          console.error('Failed to refresh conversation items while loading more:', err);
+        });
+      }
+
       await waitForTicks(2);
 
       const scrollHeightAfter = messagesArea.value.scrollHeight;
@@ -1074,7 +1412,12 @@ async function initialize() {
             title: itemTitle
           };
           // 加入緩存
-          itemReferenceCache.value.set(itemId, itemTitle);
+          const cacheKey = toItemKey(itemId);
+          if (cacheKey !== null) {
+            const nextCache = new Map(itemReferenceCache.value);
+            nextCache.set(cacheKey, itemTitle);
+            itemReferenceCache.value = nextCache;
+          }
           // 預填訊息內容
           messageInput.value = '我想詢問';
         }
@@ -1146,6 +1489,21 @@ onMounted(async () => {
 
       // 取得本次新增的訊息（僅限陣列尾端新增的部分）
       const appendedMessages = messageStore.currentMessages.slice(oldLen);
+      if (appendedMessages.length > 0) {
+        applyItemMetadataToMessages();
+
+        const hasItemReferenceWithoutCache = appendedMessages.some(msg => {
+          const itemKey = toItemKey(msg.related_item_id);
+          if (itemKey === null) return false;
+          return !resolveItemFromMap(itemKey);
+        });
+
+        if (hasItemReferenceWithoutCache && selectedConversation.value) {
+          loadConversationItems(selectedConversation.value.id).catch(err => {
+            console.error('Failed to refresh conversation items for new message:', err);
+          });
+        }
+      }
       const incomingMessages = appendedMessages.filter(msg => !msg.is_mine);
       const incomingCount = incomingMessages.length;
 
@@ -1178,6 +1536,12 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  const conversationId = selectedConversation.value?.id;
+  if (conversationId) {
+    messageStore.setPendingItemReference(conversationId, pendingItemReference.value);
+    messageStore.setMessageDraft(conversationId, messageInput.value);
+  }
+
   // 離開訊息頁面
   messageStore.setIsInMessagesPage(false);
   messageStore.setIsAtMessagesBottom(true); // 重置為預設值
@@ -1916,8 +2280,29 @@ onBeforeUnmount(() => {
         font-size: 14px;
       }
 
+      .reference-thumbnail {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .reference-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        line-height: 1.2;
+      }
+
       .reference-text {
         opacity: 0.9;
+        font-weight: 600;
+      }
+
+      .reference-meta {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.6);
       }
     }
   }
@@ -2254,15 +2639,37 @@ onBeforeUnmount(() => {
       font-size: 16px;
     }
 
+    .reference-thumbnail {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .reference-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      color: #1e1e1e;
+      line-height: 1.2;
+    }
+
     .reference-label {
       font-size: 13px;
       font-weight: 500;
+      color: $primary;
     }
 
     .reference-title {
       font-size: 14px;
       font-weight: 600;
       color: #1e1e1e;
+    }
+
+    .reference-meta {
+      font-size: 12px;
+      color: rgba(30, 30, 30, 0.65);
     }
   }
 

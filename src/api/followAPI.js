@@ -150,37 +150,3 @@ export async function unfollowUser(followingUserId) {
   console.log(`Successfully unfollowed user #${followingUserId}`);
   return true;
 }
-
-/**
- * 【功能】檢查是否已追蹤指定使用者
- * @param {string} followingUserId - 要檢查的使用者的 UUID
- * @returns {Promise<boolean>} - 回傳 true 表示已追蹤，false 表示未追蹤
- */
-export async function checkIfFollowing(followingUserId) {
-  // 1. 獲取當前登入者 ID
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return false; // 未登入則視為未追蹤
-  }
-
-  // 2. 查詢是否存在追蹤記錄
-  const { data, error } = await supabase
-    .from('following')
-    .select('user_id')
-    .match({
-      follower_id: user.id,
-      following_id: followingUserId
-    })
-    .single();
-
-  if (error) {
-    // 如果是找不到記錄的錯誤，表示未追蹤
-    if (error.code === 'PGRST116') {
-      return false;
-    }
-    console.error('檢查追蹤狀態失敗:', error);
-    return false;
-  }
-
-  return !!data; // 有資料表示已追蹤
-}

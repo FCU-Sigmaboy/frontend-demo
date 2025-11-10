@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import {
   getConversations,
@@ -24,8 +24,67 @@ export const useMessageStore = defineStore('message', () => {
   const onlineUsers = ref(new Set()) // 線上使用者集合
   const isInMessagesPage = ref(false) // 是否在訊息頁面
   const isAtMessagesBottom = ref(true) // 是否在訊息底部（預設為 true）
+  const pendingItemReferenceByConversation = ref({})
+  const MESSAGE_DRAFT_STORAGE_KEY = 'messagesPageDrafts'
+  const messageDraftByConversation = ref(loadMessageDraftsFromStorage())
 
   // ===== 工具函式 =====
+
+  function loadMessageDraftsFromStorage() {
+    if (typeof window === 'undefined') return {}
+
+    try {
+      const raw = window.localStorage.getItem(MESSAGE_DRAFT_STORAGE_KEY)
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object') {
+        return {}
+      }
+
+      const sanitized = {}
+      Object.keys(parsed).forEach(key => {
+        const value = parsed[key]
+        if (typeof value === 'string') {
+          sanitized[key] = value
+        }
+      })
+      return sanitized
+    } catch (err) {
+      console.error('Failed to load message drafts from storage:', err)
+      return {}
+    }
+  }
+
+  function saveMessageDraftsToStorage(drafts) {
+    if (typeof window === 'undefined') return
+
+    try {
+      window.localStorage.setItem(MESSAGE_DRAFT_STORAGE_KEY, JSON.stringify(drafts))
+    } catch (err) {
+      console.error('Failed to save message drafts to storage:', err)
+    }
+  }
+
+  function clonePendingItemReference(reference) {
+    if (!reference) return null
+    return {
+      id: reference.id ?? null,
+      title: reference.title ?? '',
+      image: reference.image ?? null,
+      price: reference.price ?? null
+    }
+  }
+
+  function arePendingReferencesEqual(a, b) {
+    if (!a && !b) return true
+    if (!a || !b) return false
+    return (
+      a.id === b.id &&
+      a.title === b.title &&
+      a.image === b.image &&
+      a.price === b.price
+    )
+  }
 
   function cacheItemReferenceFromMessage(msg) {
     if (msg.related_item_id && msg.related_item_title) {
@@ -69,6 +128,88 @@ export const useMessageStore = defineStore('message', () => {
   function normalizeMessagesPayload(messages) {
     return ensureChronologicalOrder(messages).map(mapApiMessage)
   }
+
+  function setPendingItemReference(conversationId, reference) {
+    if (!conversationId) return
+
+    const sanitized = clonePendingItemReference(reference)
+    const current = pendingItemReferenceByConversation.value[conversationId]
+
+    if (!sanitized) {
+      if (current !== undefined) {
+        const nextState = { ...pendingItemReferenceByConversation.value }
+        delete nextState[conversationId]
+        pendingItemReferenceByConversation.value = nextState
+      }
+      return
+    }
+
+    if (arePendingReferencesEqual(current, sanitized)) {
+      return
+    }
+
+    pendingItemReferenceByConversation.value = {
+      ...pendingItemReferenceByConversation.value,
+      [conversationId]: sanitized
+    }
+  }
+
+  function getPendingItemReference(conversationId) {
+    if (!conversationId) return null
+    const stored = pendingItemReferenceByConversation.value[conversationId]
+    return stored ? clonePendingItemReference(stored) : null
+  }
+
+  function clearPendingItemReference(conversationId) {
+    if (!conversationId) return
+    setPendingItemReference(conversationId, null)
+  }
+
+  function setMessageDraft(conversationId, draft) {
+    if (!conversationId) return
+
+    const content = typeof draft === 'string' ? draft : ''
+    const trimmed = content
+    const shouldStore = trimmed.trim().length > 0
+    const existing = messageDraftByConversation.value[conversationId]
+
+    if (shouldStore) {
+      if (existing === trimmed) {
+        return
+      }
+
+      messageDraftByConversation.value = {
+        ...messageDraftByConversation.value,
+        [conversationId]: trimmed
+      }
+      return
+    }
+
+    if (existing !== undefined) {
+      const nextDrafts = { ...messageDraftByConversation.value }
+      delete nextDrafts[conversationId]
+      messageDraftByConversation.value = nextDrafts
+    }
+  }
+
+  function getMessageDraft(conversationId) {
+    if (!conversationId) return ''
+    const stored = messageDraftByConversation.value[conversationId]
+    return typeof stored === 'string' ? stored : ''
+  }
+
+  function clearMessageDraft(conversationId) {
+    if (!conversationId) return
+    setMessageDraft(conversationId, '')
+  }
+
+  watch(
+    messageDraftByConversation,
+    newDrafts => {
+      saveMessageDraftsToStorage(newDrafts)
+    },
+    { deep: true }
+  )
 
   function updateConversationUnreadCount(conversationId, unreadCount = 0) {
     const conversation = conversations.value.find(c => c.id === conversationId)
@@ -478,6 +619,9 @@ export const useMessageStore = defineStore('message', () => {
     error.value = null
     onlineUsers.value = new Set()
     stopGlobalMessageListener()
+    pendingItemReferenceByConversation.value = {}
+    messageDraftByConversation.value = {}
+    saveMessageDraftsToStorage({})
     console.log(' Message store reset')
   }
 
@@ -491,6 +635,13 @@ export const useMessageStore = defineStore('message', () => {
     error,
     onlineUsers,
     isAtMessagesBottom,
+  // Pending Item References & Drafts
+  setPendingItemReference,
+  getPendingItemReference,
+  clearPendingItemReference,
+  setMessageDraft,
+  getMessageDraft,
+  clearMessageDraft,
     // Getters
     totalUnreadCount,
     selectedConversation,

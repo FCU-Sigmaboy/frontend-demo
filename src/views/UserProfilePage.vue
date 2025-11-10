@@ -55,12 +55,12 @@
               <!-- Followers/Following Stats -->
               <div class="follow-stats">
                 <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">{{ profileData.following_count }}</span>
+                  <span class="stat-number">{{ profileData?.following_count || 0 }}</span>
                   <span class="stat-text">追蹤中</span>
                 </button>
                 <span class="stat-divider">|</span>
                 <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">{{ profileData.followers_count }}</span>
+                  <span class="stat-number">{{ profileData?.followers_count || 0 }}</span>
                   <span class="stat-text">追蹤者</span>
                 </button>
               </div>

@@ -72,11 +72,33 @@
                 <button
                   :class="['follow-btn', { following: isFollowing, loading: isLoadingFollow }]"
                   @click="toggleFollow"
+                  @mouseenter="isFollowBtnHovered = true"
+                  @mouseleave="isFollowBtnHovered = false"
                   :disabled="isLoadingFollow"
                 >
-                  <i v-if="!isLoadingFollow" :class="['bi', isFollowing ? 'bi-check' : 'bi-plus']"></i>
-                  <span v-if="isLoadingFollow" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                  {{ isLoadingFollow ? '處理中...' : (isFollowing ? '' : '追蹤') }}
+                  <template v-if="isLoadingFollow">
+                    <span
+                      class="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="btn-text">處理中...</span>
+                  </template>
+                  <template v-else>
+                    <i
+                      :class="[
+                        'bi',
+                        isFollowing
+                          ? (isFollowBtnHovered ? 'bi-x' : 'bi-check')
+                          : 'bi-plus'
+                      ]"
+                    ></i>
+                    <span class="btn-text">
+                      {{ isFollowing
+                        ? (isFollowBtnHovered ? '取消追蹤' : '已追蹤')
+                        : '追蹤' }}
+                    </span>
+                  </template>
                 </button>
               </div>
             </div>
@@ -259,7 +281,7 @@ import ProductCard from '../components/ProductCard.vue';
 import AchievementBadges from '../components/AchievementBadges.vue';
 import { searchItems } from '../api/get_searchItemsAPI';
 import { getPublicUserProfile } from '../api/get_userProfileAPI';
-import { followUser, unfollowUser, checkIfFollowing } from '../api/followAPI';
+import { followUser, unfollowUser } from '../api/followAPI';
 
 const route = useRoute();
 const router = useRouter();
@@ -267,10 +289,10 @@ const router = useRouter();
 // State
 const userPoints = ref(500);
 const activeTab = ref('listings');
-const isFollowing = ref(false);
 const isLoadingListings = ref(false);
 const isLoadingProfile = ref(false);
 const isLoadingFollow = ref(false);
+const isFollowBtnHovered = ref(false);
 
 // User data (from API)
 const userData = ref({
@@ -281,6 +303,7 @@ const userData = ref({
   joinDate: '',
   avgRating: 0,
   carbonSaved: 0, // Added for badge progress calculation
+  followed_at: null,
   stats: {
     followers: 0,
     following: 0,
@@ -288,6 +311,8 @@ const userData = ref({
     completedDeals: 0
   }
 });
+
+const isFollowing = computed(() => Boolean(userData.value.followed_at));
 
 // Achievement badges are now calculated inside AchievementBadges component
 
@@ -374,7 +399,7 @@ const toggleFollow = async () => {
     if (isFollowing.value) {
       // 取消追蹤
       await unfollowUser(userData.value.id);
-      isFollowing.value = false;
+      userData.value.followed_at = null;
       // 更新追蹤者數量
       if (userData.value.stats.followers > 0) {
         userData.value.stats.followers--;
@@ -383,7 +408,7 @@ const toggleFollow = async () => {
     } else {
       // 追蹤使用者
       const result = await followUser(userData.value.id);
-      isFollowing.value = true;
+      userData.value.followed_at = result?.followed_at || new Date().toISOString();
       // 更新追蹤者數量
       userData.value.stats.followers++;
       console.log('✅ 成功追蹤:', result);
@@ -394,6 +419,7 @@ const toggleFollow = async () => {
     alert(error.message || '操作失敗，請稍後再試');
   } finally {
     isLoadingFollow.value = false;
+    isFollowBtnHovered.value = false;
   }
 };
 
@@ -417,11 +443,7 @@ const fetchUserProfile = async (userId) => {
     isLoadingProfile.value = true;
     console.log('Fetching profile for user:', userId);
 
-    // 同時獲取個人資料和追蹤狀態
-    const [profile, isFollowingUser] = await Promise.all([
-      getPublicUserProfile(userId),
-      checkIfFollowing(userId)
-    ]);
+    const profile = await getPublicUserProfile(userId);
 
     if (profile) {
       // Format the join date
@@ -439,6 +461,7 @@ const fetchUserProfile = async (userId) => {
         joinDate: formattedDate,
         avgRating: profile.avg_rating || 0,
         carbonSaved: profile.carbon_saved_kg || 0, // Added for badge progress calculation
+        followed_at: profile.followed_at || null,
         stats: {
           followers: profile.followers_count || 0,
           following: profile.following_count || 0,
@@ -447,11 +470,7 @@ const fetchUserProfile = async (userId) => {
         }
       };
 
-      // 設定追蹤狀態
-      isFollowing.value = isFollowingUser;
-
       console.log('✅ User profile loaded:', profile);
-      console.log('✅ Following status:', isFollowingUser);
     } else {
       console.warn('Profile not found for user:', userId);
     }
@@ -671,24 +690,14 @@ onMounted(async () => {
       border-color: #dc3545;
       color: white;
       transform: translateY(-2px);
-
-      &::after {
-        content: '取消追蹤';
-      }
-
-      i {
-        display: none;
-      }
-    }
-
-    &:not(:hover)::after {
-      content: '追蹤中';
-    }
-
-    &:not(:hover) i {
-      display: inline;
     }
   }
+}
+
+.follow-btn .btn-text {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 // Statistics Section
