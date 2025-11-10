@@ -19,9 +19,9 @@
           <div v-if="isAdmin" class="upload-overlay">
             <div v-if="isUploading" class="upload-status">
               <div class="spinner-border text-light" role="status">
-                <span class="visually-hidden">上傳中...</span>
+                <span class="visually-hidden">上傳中...請稍候</span>
               </div>
-              <p>上傳中...</p>
+              <p>上傳中...請稍後</p>
             </div>
             <div v-else class="upload-prompt">
               <i class="bi bi-camera-fill"></i>
