@@ -188,9 +188,20 @@ const handleFileChange = async (event) => {
 };
 
 const loadInitialImages = async () => {
+  const { data: files, error } = await supabase.storage.from('images').list();
+  if (error) {
+    console.error('Error listing files:', error);
+    return;
+  }
+
+  const fileNames = new Set(files.map(file => file.name));
+
   const getPublicUrl = (fileName) => {
-    const { data } = supabase.storage.from('images').getPublicUrl(fileName);
-    return data.publicUrl;
+    if (fileNames.has(fileName)) {
+      const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+      return data.publicUrl;
+    }
+    return null;
   };
 
   coverImageUrl.value = getPublicUrl('about-us-cover.jpg');
