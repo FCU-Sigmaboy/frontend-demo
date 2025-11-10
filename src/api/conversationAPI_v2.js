@@ -462,3 +462,22 @@ export function subscribeToUserPresence(onPresenceUpdate) {
 
   return channel;
 }
+
+/**
+ * 建立指定對話的輸入中提示 channel（使用 Supabase Presence）
+ * @param {number|string} conversationId - 對話 ID
+ * @param {string} presenceKey - 當前使用者的 Presence Key（建議使用 userId）
+ * @returns {Object} Supabase Realtime channel
+ */
+export function createConversationTypingChannel(conversationId, presenceKey) {
+  const channelName = `conversation-typing-${conversationId}`;
+
+  const key = presenceKey || `anon-${Math.random().toString(36).slice(2)}`;
+
+  return supabase.channel(channelName, {
+    config: {
+      presence: { key },
+      broadcast: { self: true }
+    }
+  });
+}

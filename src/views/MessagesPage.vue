@@ -296,10 +296,25 @@
                   v-if="showScrollToBottomBtn"
                   :class="['scroll-to-bottom-btn-floating', { 'with-item-reference': pendingItemReference }]"
                   @click="scrollToBottom"
+                  aria-live="polite"
                 >
-                  <i class="bi bi-arrow-down"></i>
-                  <span v-if="newMessageCount > 0">{{ newMessageCount }}則新訊息</span>
-                  <span v-else>回到最新</span>
+                  <template v-if="typeof scrollButtonLabel === 'string'">
+                    <span>{{ scrollButtonLabel }}</span>
+                  </template>
+                  <template v-else>
+                    <span v-if="scrollButtonLabel.newMessages" class="scroll-btn-new">{{ scrollButtonLabel.newMessages }}</span>
+                    <span
+                      v-if="scrollButtonLabel.typing"
+                      class="scroll-btn-typing"
+                    >
+                      <span class="typing-dots inline" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </span>
+                      <span class="typing-text">{{ scrollButtonLabel.typing }}...</span>
+                    </span>
+                  </template>
                 </button>
               </transition>
 
@@ -323,6 +338,22 @@
                   <button class="remove-reference-btn" @click="removePendingItemReference">
                     <i class="bi bi-x"></i>
                   </button>
+                </div>
+              </transition>
+
+              <!-- Typing Indicator (outside input-area-wrapper) -->
+              <transition name="typing-indicator-slide">
+                <div
+                  v-if="showBottomTypingIndicator && selectedConversation"
+                  class="typing-indicator"
+                  aria-live="polite"
+                >
+                  <span class="typing-dots" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </span>
+                  <span class="typing-text">{{ typingIndicatorBaseText }}...</span>
                 </div>
               </transition>
 
@@ -391,6 +422,13 @@ const firstUnreadMessageId = ref(null); // 記錄第一條未讀訊息的 ID，�
 const suppressUnreadDivider = ref(false); // 控制是否暫時隱藏未讀訊息分隔線
 const hasReachedBottomAfterUnread = ref(false); // 是否在有未讀後已經滑到最底
 
+const TYPING_BROADCAST_INTERVAL = 1200;
+const TYPING_STOP_DELAY = 3500;
+let typingStopTimerId = null;
+let localTypingActive = false;
+let lastTypingBroadcastAt = 0;
+let suppressTypingBroadcast = false;
+
 const conversationItems = ref([]); // 依對話載入的提及物品列表
 const isLoadingConversationItems = ref(false); // 提及物品資料載入狀態
 let conversationItemsRequestId = 0; // 追蹤最新的商品載入請求
@@ -445,6 +483,18 @@ function clearUnreadDivider({ suppress = false } = {}) {
 
 function allowUnreadDivider() {
   suppressUnreadDivider.value = false;
+}
+
+function clearTypingStopTimer() {
+  if (typingStopTimerId) {
+    clearTimeout(typingStopTimerId);
+    typingStopTimerId = null;
+  }
+}
+
+function resetTypingFlags() {
+  localTypingActive = false;
+  lastTypingBroadcastAt = 0;
 }
 
 async function waitForTicks(count = 1) {
@@ -589,6 +639,26 @@ async function loadConversationItems(conversationId) {
 const loading = computed(() => messageStore.isLoadingConversations);
 const currentUser = computed(() => authStore.user);
 
+const currentUserIdentity = computed(() => {
+  const user = currentUser.value;
+  if (!user) return null;
+
+  const metadata = user.user_metadata || {};
+  const profileNickname = authStore.profileData?.nickname;
+  const fallbackNickname =
+    profileNickname ||
+    metadata.nickname ||
+    metadata.full_name ||
+    metadata.name ||
+    (user.email ? user.email.split('@')[0] : null) ||
+    '我';
+
+  return {
+    id: user.id,
+    nickname: fallbackNickname
+  };
+});
+
 // Filter 計數
 const filters = computed(() => {
   const all = messageStore.conversations;
@@ -671,22 +741,124 @@ const selectedConversation = computed(() => {
   return displayConversations.value.find(c => c.id === messageStore.selectedConversationId);
 });
 
+const typingUsers = computed(() => {
+  const conversationId = selectedConversation.value?.id;
+  if (!conversationId) return [];
+  return messageStore.getTypingUsers(conversationId);
+});
+
+const typingIndicatorBaseText = computed(() => {
+  if (!typingUsers.value.length) return '';
+
+  if (typingUsers.value.length === 1) {
+    const name = typingUsers.value[0].nickname || '對方';
+    return `${name} 正在輸入`;
+  }
+
+  if (typingUsers.value.length === 2) {
+    const first = typingUsers.value[0].nickname || '對方';
+    const second = typingUsers.value[1].nickname || '其他使用者';
+    return `${first}、${second} 正在輸入`;
+  }
+
+  return '多人正在輸入';
+});
+
+const typingIndicatorText = computed(() => {
+  return typingIndicatorBaseText.value ? `${typingIndicatorBaseText.value}...` : '';
+});
+
+const scrollButtonLabel = computed(() => {
+  const showNewMessages = newMessageCount.value > 0;
+  const showTyping = !!typingIndicatorBaseText.value;
+
+  if (!showNewMessages && !showTyping) {
+    return '回到最新';
+  }
+
+  if (showNewMessages && showTyping) {
+    return {
+      newMessages: `${newMessageCount.value}則新訊息`,
+      typing: typingIndicatorBaseText.value
+    };
+  }
+
+  if (showNewMessages) {
+    return {
+      newMessages: `${newMessageCount.value}則新訊息`,
+      typing: null
+    };
+  }
+
+  return {
+    newMessages: null,
+    typing: typingIndicatorBaseText.value
+  };
+});
+
+const showBottomTypingIndicator = computed(() => {
+  if (!typingIndicatorText.value) return false;
+
+  if (showScrollToBottomBtn.value) {
+    const buttonLabel = scrollButtonLabel.value;
+    if (buttonLabel && typeof buttonLabel === 'object' && buttonLabel.typing) {
+      return false;
+    }
+    if (typeof buttonLabel === 'string' && buttonLabel.includes('正在輸入')) {
+      return false;
+    }
+  }
+
+  return true;
+});
+
 watch(
   () => selectedConversation.value?.id,
-  (newId, oldId) => {
+  async (newId, oldId) => {
     if (oldId && oldId !== newId) {
       messageStore.setPendingItemReference(oldId, pendingItemReference.value);
       messageStore.setMessageDraft(oldId, messageInput.value);
+
+      const identity = currentUserIdentity.value;
+      if (identity) {
+        messageStore.broadcastTypingStatus(oldId, false, identity).catch(err => {
+          console.error('Failed to broadcast typing status when leaving conversation:', err);
+        });
+      }
+
+      try {
+        await messageStore.leaveTypingChannel(oldId);
+      } catch (err) {
+        console.error('Failed to leave typing channel:', err);
+      }
+      clearTypingStopTimer();
+      resetTypingFlags();
     }
 
     if (!newId) {
       pendingItemReference.value = null;
+      suppressTypingBroadcast = true;
       messageInput.value = '';
+      await nextTick();
+      suppressTypingBroadcast = false;
       return;
     }
 
     pendingItemReference.value = messageStore.getPendingItemReference(newId);
+    suppressTypingBroadcast = true;
     messageInput.value = messageStore.getMessageDraft(newId);
+    await nextTick();
+    suppressTypingBroadcast = false;
+
+    clearTypingStopTimer();
+    resetTypingFlags();
+
+    const identity = currentUserIdentity.value;
+    if (identity) {
+      messageStore.joinTypingChannel(newId, identity).catch(err => {
+        console.error('Failed to join typing channel:', err);
+      });
+    }
   }
 );
 
@@ -705,7 +877,53 @@ watch(
   newValue => {
     const conversationId = selectedConversation.value?.id;
     if (!conversationId) return;
+
     messageStore.setMessageDraft(conversationId, newValue);
+
+    if (suppressTypingBroadcast) return;
+
+    const identity = currentUserIdentity.value;
+    if (!identity?.id) return;
+
+    const trimmed = newValue.trim();
+    const now = Date.now();
+
+    if (!trimmed) {
+      if (localTypingActive) {
+        messageStore.broadcastTypingStatus(conversationId, false, identity).catch(err => {
+          console.error('Failed to broadcast typing end:', err);
+        });
+      }
+      clearTypingStopTimer();
+      resetTypingFlags();
+      return;
+    }
+
+    if (!localTypingActive || now - lastTypingBroadcastAt > TYPING_BROADCAST_INTERVAL) {
+      localTypingActive = true;
+      lastTypingBroadcastAt = now;
+      messageStore.broadcastTypingStatus(conversationId, true, identity).catch(err => {
+        console.error('Failed to broadcast typing status:', err);
+      });
+    }
+
+    clearTypingStopTimer();
+
+    typingStopTimerId = setTimeout(() => {
+      const activeConversationId = selectedConversation.value?.id;
+      const activeIdentity = currentUserIdentity.value;
+      if (!activeConversationId || !activeIdentity?.id) {
+        resetTypingFlags();
+        typingStopTimerId = null;
+        return;
+      }
+
+      messageStore.broadcastTypingStatus(activeConversationId, false, activeIdentity).catch(err => {
+        console.error('Failed to broadcast typing end:', err);
+      });
+      resetTypingFlags();
+      typingStopTimerId = null;
+    }, TYPING_STOP_DELAY);
   }
 );
 
@@ -975,8 +1193,9 @@ function deselectConversation() {
     messageStore.setMessageDraft(conversationId, messageInput.value);
   }
   pendingItemReference.value = null;
+  clearTypingStopTimer();
+  resetTypingFlags();
   messageStore.clearSelectedConversation();
-  messageInput.value = '';
 }
 
 async function sendMessage() {
@@ -988,6 +1207,13 @@ async function sendMessage() {
 
   // 立即清空輸入框
   messageInput.value = '';
+  clearTypingStopTimer();
+  resetTypingFlags();
+  if (selectedConversation.value?.id && currentUserIdentity.value?.id) {
+    messageStore.broadcastTypingStatus(selectedConversation.value.id, false, currentUserIdentity.value).catch(err => {
+      console.error('Failed to broadcast typing end after send:', err);
+    });
+  }
 
   // 發送訊息時重置未讀訊息分隔線（因為我已經回覆了）
   clearUnreadDivider({ suppress: true });
@@ -1540,7 +1766,18 @@ onBeforeUnmount(() => {
   if (conversationId) {
     messageStore.setPendingItemReference(conversationId, pendingItemReference.value);
     messageStore.setMessageDraft(conversationId, messageInput.value);
+    if (currentUserIdentity.value?.id) {
+      messageStore.broadcastTypingStatus(conversationId, false, currentUserIdentity.value).catch(err => {
+        console.error('Failed to broadcast typing end before unmount:', err);
+      });
+    }
+    messageStore.leaveTypingChannel(conversationId).catch(err => {
+      console.error('Failed to leave typing channel before unmount:', err);
+    });
   }
+
+  clearTypingStopTimer();
+  resetTypingFlags();
 
   // 離開訊息頁面
   messageStore.setIsInMessagesPage(false);
@@ -2021,6 +2258,100 @@ onBeforeUnmount(() => {
   position: relative; // 為了定位「回到最新」按鈕
 }
 
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 24px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 12px;
+  color: #4a4a4a;
+  opacity: 0.9;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+.typing-text,
+.typing-dots,
+.scroll-btn-typing {
+  position: relative;
+  z-index: 1;
+}
+
+.typing-text {
+  font-weight: 500;
+  color: #555;
+}
+
+.typing-dots {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: $primary;
+  opacity: 0.25;
+  animation: typing-dot 1.2s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.scroll-btn-new {
+  font-weight: 600;
+  color: $primary;
+}
+
+.scroll-btn-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 0;
+  font-weight: 500;
+  color: $primary;
+}
+
+.scroll-btn-typing .typing-text {
+  color: inherit;
+}
+
+.scroll-btn-new + .scroll-btn-typing {
+  margin-left: 8px;
+}
+
+.typing-dots.inline {
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+}
+
+.typing-dots.inline span {
+  width: 5px;
+  height: 5px;
+  opacity: 0.3;
+  animation-duration: 1s;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 0.6;
+  }
+}
+
 .messages-list {
   display: flex;
   flex-direction: column;
@@ -2475,7 +2806,7 @@ onBeforeUnmount(() => {
 
   // 當有物品引用卡片時,向上移動
   &.with-item-reference {
-    bottom: 145px;
+    bottom: 188px;
   }
 
   i {
@@ -2489,6 +2820,22 @@ onBeforeUnmount(() => {
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
       background: $primary;
       color: white;
+
+      .scroll-btn-typing {
+        color: inherit;
+
+        .typing-dots span {
+          background: currentColor;
+        }
+
+        .typing-text {
+          color: inherit;
+        }
+      }
+
+      .scroll-btn-new {
+        color: inherit;
+      }
     }
   }
 
@@ -2531,9 +2878,31 @@ onBeforeUnmount(() => {
   transform: translateX(-50%) translateY(60px);
 }
 
+// Typing Indicator Slide (輸入中提示上下收合)
+.typing-indicator-slide-enter-active,
+.typing-indicator-slide-leave-active {
+  transition: max-height 0.25s ease,
+              padding-top 0.25s ease,
+              padding-bottom 0.25s ease;
+}
+
+.typing-indicator-slide-enter-from,
+.typing-indicator-slide-leave-to {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.typing-indicator-slide-enter-to,
+.typing-indicator-slide-leave-from {
+  max-height: 40px;
+  padding-top: 10px;
+  padding-bottom: 0;
+}
+
 // Item Reference Slide Transition (向下沉到輸入框後方)
 .item-reference-slide-enter-active {
-  transition: all 0.3s ease-out;
+  transition: all 0.8s ease-out;
 }
 
 .item-reference-slide-leave-active {

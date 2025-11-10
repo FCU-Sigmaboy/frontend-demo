@@ -7,7 +7,8 @@ import {
   sendMessage as sendMessageAPI,
   markAsRead,
   subscribeToAllMessages,
-  subscribeToMessageUpdates
+  subscribeToMessageUpdates,
+  createConversationTypingChannel
 } from '@/api/conversationAPI_v2'
 
 export const useMessageStore = defineStore('message', () => {
@@ -27,6 +28,10 @@ export const useMessageStore = defineStore('message', () => {
   const pendingItemReferenceByConversation = ref({})
   const MESSAGE_DRAFT_STORAGE_KEY = 'messagesPageDrafts'
   const messageDraftByConversation = ref(loadMessageDraftsFromStorage())
+  const typingUsersByConversation = ref({})
+  const typingChannels = new Map()
+  const typingChannelReady = new Map()
+  const TYPING_EXPIRY_MS = 4000
 
   // ===== 工具函式 =====
 
@@ -201,6 +206,167 @@ export const useMessageStore = defineStore('message', () => {
   function clearMessageDraft(conversationId) {
     if (!conversationId) return
     setMessageDraft(conversationId, '')
+  }
+
+  function applyTypingPresence(conversationId, presenceState, currentUserId) {
+    if (!conversationId) return
+
+    const now = Date.now()
+    const nextUsers = []
+    const seen = new Set()
+
+    if (presenceState && typeof presenceState === 'object') {
+      Object.values(presenceState).forEach(entries => {
+        if (!Array.isArray(entries)) return
+        entries.forEach(entry => {
+          if (!entry) return
+          if (!entry.user_id || entry.user_id === currentUserId) return
+
+          const expiresAt = entry.typing_expires_at
+            ? Date.parse(entry.typing_expires_at)
+            : null
+          const isActive = entry.typing === true && (!expiresAt || expiresAt > now)
+
+          if (!isActive) return
+
+          if (seen.has(entry.user_id)) return
+          seen.add(entry.user_id)
+
+          nextUsers.push({
+            userId: entry.user_id,
+            nickname: entry.nickname || entry.name || '使用者',
+            expiresAt
+          })
+        })
+      })
+    }
+
+    if (nextUsers.length === 0) {
+      if (typingUsersByConversation.value[conversationId]) {
+        const next = { ...typingUsersByConversation.value }
+        delete next[conversationId]
+        typingUsersByConversation.value = next
+      }
+      return
+    }
+
+    typingUsersByConversation.value = {
+      ...typingUsersByConversation.value,
+      [conversationId]: nextUsers
+    }
+  }
+
+  function clearTypingState(conversationId) {
+    if (!conversationId) return
+    if (typingUsersByConversation.value[conversationId]) {
+      const next = { ...typingUsersByConversation.value }
+      delete next[conversationId]
+      typingUsersByConversation.value = next
+    }
+  }
+
+  function getTypingUsers(conversationId) {
+    if (!conversationId) return []
+    const users = typingUsersByConversation.value[conversationId]
+    return Array.isArray(users) ? users : []
+  }
+
+  async function ensureTypingChannel(conversationId, identity) {
+    if (!conversationId || !identity?.id) return null
+
+    if (typingChannels.has(conversationId)) {
+      const existingChannel = typingChannels.get(conversationId)
+      const readiness = typingChannelReady.get(conversationId)
+      if (readiness) {
+        await readiness
+      }
+      return existingChannel
+    }
+
+    const channel = createConversationTypingChannel(conversationId, identity.id)
+
+    const handlePresenceChange = () => {
+      const state = channel.presenceState()
+      applyTypingPresence(conversationId, state, identity.id)
+    }
+
+    channel.on('presence', { event: 'sync' }, handlePresenceChange)
+    channel.on('presence', { event: 'join' }, handlePresenceChange)
+    channel.on('presence', { event: 'leave' }, handlePresenceChange)
+
+    const subscribePromise = new Promise(resolve => {
+      channel.subscribe(status => {
+        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
+          resolve()
+        }
+      })
+    })
+
+    typingChannels.set(conversationId, channel)
+    typingChannelReady.set(conversationId, subscribePromise)
+
+    await subscribePromise
+    typingChannelReady.delete(conversationId)
+
+    const state = channel.presenceState()
+    if (state) {
+      applyTypingPresence(conversationId, state, identity.id)
+    }
+
+    return channel
+  }
+
+  async function joinTypingChannel(conversationId, identity) {
+    return ensureTypingChannel(conversationId, identity)
+  }
+
+  async function leaveTypingChannel(conversationId) {
+    if (!conversationId) return
+
+    const channel = typingChannels.get(conversationId)
+    if (channel) {
+      try {
+        await channel.untrack()
+      } catch (err) {
+        console.warn('Failed to untrack typing channel:', err)
+      }
+
+      try {
+        channel.unsubscribe()
+      } catch (err) {
+        console.warn('Failed to unsubscribe typing channel:', err)
+      }
+    }
+
+    typingChannels.delete(conversationId)
+    typingChannelReady.delete(conversationId)
+    clearTypingState(conversationId)
+  }
+
+  async function broadcastTypingStatus(conversationId, isTyping, identity) {
+    if (!conversationId || !identity?.id) return
+
+    const channel = await ensureTypingChannel(conversationId, identity)
+    if (!channel) return
+
+    const payload = {
+      user_id: identity.id,
+      nickname: identity.nickname || '',
+      typing: !!isTyping,
+      typing_expires_at: new Date(Date.now() + TYPING_EXPIRY_MS).toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    try {
+      await channel.track(payload)
+    } catch (err) {
+      console.error('Failed to broadcast typing status:', err)
+    }
+
+    const state = channel.presenceState()
+    if (state) {
+      applyTypingPresence(conversationId, state, identity.id)
+    }
   }
 
   watch(
@@ -621,6 +787,21 @@ export const useMessageStore = defineStore('message', () => {
     stopGlobalMessageListener()
     pendingItemReferenceByConversation.value = {}
     messageDraftByConversation.value = {}
+    typingUsersByConversation.value = {}
+    typingChannels.forEach(channel => {
+      try {
+        channel.untrack()
+      } catch (err) {
+        console.warn('Failed to untrack typing channel during reset:', err)
+      }
+      try {
+        channel.unsubscribe()
+      } catch (err) {
+        console.warn('Failed to unsubscribe typing channel during reset:', err)
+      }
+    })
+  typingChannels.clear()
+    typingChannelReady.clear()
     saveMessageDraftsToStorage({})
     console.log(' Message store reset')
   }
@@ -635,6 +816,11 @@ export const useMessageStore = defineStore('message', () => {
     error,
     onlineUsers,
     isAtMessagesBottom,
+    // Typing Indicators
+    getTypingUsers,
+    joinTypingChannel,
+    leaveTypingChannel,
+    broadcastTypingStatus,
   // Pending Item References & Drafts
   setPendingItemReference,
   getPendingItemReference,
