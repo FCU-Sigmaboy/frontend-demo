@@ -6,7 +6,8 @@ import {
   getMessages,
   sendMessage as sendMessageAPI,
   markAsRead,
-  subscribeToAllMessages
+  subscribeToAllMessages,
+  subscribeToMessageUpdates
 } from '@/api/conversationAPI_v2'
 
 export const useMessageStore = defineStore('message', () => {
@@ -18,7 +19,9 @@ export const useMessageStore = defineStore('message', () => {
   const isLoadingMessages = ref(false)
   const error = ref(null)
   const globalMessageSubscription = ref(null)
+  const messageUpdateSubscription = ref(null) // 訊息更新訂閱（已讀狀態）
   const itemReferenceCache = ref(new Map()) // 物品引用緩存 Map<itemId, itemTitle>
+  const onlineUsers = ref(new Set()) // 線上使用者集合
 
   // ===== Getters =====
 
@@ -139,6 +142,7 @@ export const useMessageStore = defineStore('message', () => {
             content: msg.content,
             created_at: msg.created_at,
             is_mine: msg.is_mine,
+            is_read: msg.is_read || false, // 對方是否已讀
             message_type: msg.message_type || 'text',
             related_item_id: msg.related_item_id,
             related_item_title: msg.related_item_title,
@@ -206,6 +210,7 @@ export const useMessageStore = defineStore('message', () => {
             content: msg.content,
             created_at: msg.created_at,
             is_mine: msg.is_mine,
+            is_read: msg.is_read || false, // 對方是否已讀
             message_type: msg.message_type || 'text',
             related_item_id: msg.related_item_id,
             related_item_title: msg.related_item_title,
@@ -271,9 +276,48 @@ export const useMessageStore = defineStore('message', () => {
     }
   }
 
+  // 處理訊息更新（已讀狀態變化）
+  async function handleMessageUpdate(updatedMessage) {
+    console.log('[Message] 收到訊息更新事件:', updatedMessage)
+
+    const messageId = updatedMessage.message_id || updatedMessage.id
+    const conversationId = updatedMessage.conversation_id
+
+    // 後端使用去角色化設計: read_by_participant_1 / read_by_participant_2
+    // 我們需要判斷當前用戶是發送者還是接收者，然後檢查對方是否已讀
+    const { data: { user } } = await supabase.auth.getUser()
+    const currentUserId = user?.id
+    const senderId = updatedMessage.sender_id
+
+    // 判斷已讀狀態
+    let isRead = false
+
+    // 如果當前用戶是發送者，檢查接收者（對方）是否已讀
+    if (currentUserId === senderId) {
+      // 我是發送者，需要知道對方是否已讀
+      // 兩個參與者都已讀，就表示對方已讀
+      isRead = updatedMessage.read_by_participant_1 && updatedMessage.read_by_participant_2
+      console.log(`[Message] 我是發送者，對方已讀: ${isRead}`)
+      console.log(`[Message] read_by_participant_1: ${updatedMessage.read_by_participant_1}, read_by_participant_2: ${updatedMessage.read_by_participant_2}`)
+    }
+
+    console.log(`[Message] 訊息 ID: ${messageId}, 對話 ID: ${conversationId}, 已讀: ${isRead}`)
+    console.log(`[Message] 目前對話 ID: ${selectedConversationId.value}`)
+
+    // 無論是否為當前對話，都嘗試更新
+    const message = currentMessages.value.find(m => m.id === messageId)
+    if (message) {
+      console.log(`[Message] 找到訊息，更新前 is_read: ${message.is_read}`)
+      message.is_read = isRead
+      console.log(`[Message] 已更新訊息 ${messageId} 的已讀狀態: ${isRead}`)
+    } else {
+      console.log(`[Message] 未找到訊息 ${messageId}，可能不在目前對話中`)
+    }
+  }
+
   // 處理即時收到的新訊息（全域監聽）
   async function handleRealtimeMessage(newMessage) {
-    console.log('[MessageStore] 收到新訊息:', newMessage)
+    console.log('[Message] 收到新訊息:', newMessage)
 
     const messageId = newMessage.message_id || newMessage.id
     const createdAt = newMessage.created_at || newMessage.sent_at
@@ -293,7 +337,7 @@ export const useMessageStore = defineStore('message', () => {
       // 如果有 ID 但沒有標題，嘗試從緩存中獲取
       relatedItemTitle = itemReferenceCache.value.get(relatedItemId) || null
       if (relatedItemTitle) {
-        console.log(`[MessageStore] 從緩存獲取物品標題: ${relatedItemId} -> ${relatedItemTitle}`)
+        console.log(`[Message] 從緩存獲取物品標題: ${relatedItemId} -> ${relatedItemTitle}`)
       }
     } else if (relatedItemId && relatedItemTitle) {
       // 如果有標題，更新緩存
@@ -329,12 +373,13 @@ export const useMessageStore = defineStore('message', () => {
       }
 
       if (!exists && !hasOptimisticVersion) {
-        console.log('[MessageStore] 添加新的 realtime 訊息:', messageId)
+        console.log('[Message] 添加新的 realtime 訊息:', messageId)
         currentMessages.value.push({
           id: messageId,
           content: content,
           created_at: createdAt,
           is_mine: isMine, // 正確判斷是否為自己發送的訊息
+          is_read: newMessage.is_read || false, // 對方是否已讀
           message_type: newMessage.message_type || 'text',
           related_item_id: relatedItemId,
           related_item_title: relatedItemTitle, // 使用處理後的標題
@@ -349,13 +394,27 @@ export const useMessageStore = defineStore('message', () => {
 
         // 如果不是自己發的，自動標記為已讀
         if (!isMine) {
-          markAsRead(conversationId)
-          if (conversation) {
-            conversation.unread_count = 0
+          try {
+            const updatedCount = await markAsRead(conversationId)
+            console.log(`[Message] 已標記對話 ${conversationId} 為已讀，更新了 ${updatedCount} 則訊息`)
+
+            // 手動更新當前對話中所有對方發送的訊息為已讀
+            // 這樣可以立即反映在發送者的界面上，不需要等待 Realtime 事件
+            currentMessages.value.forEach(msg => {
+              if (!msg.is_mine && msg.id <= messageId) {
+                msg.is_read = true
+              }
+            })
+
+            if (conversation) {
+              conversation.unread_count = 0
+            }
+          } catch (err) {
+            console.error(`[Message] 標記已讀失敗:`, err)
           }
         }
       } else if (hasOptimisticVersion) {
-        console.log('[MessageStore] 跳過 realtime 訊息（已有樂觀版本）:', messageId)
+        console.log('[Message] 跳過 realtime 訊息（已有樂觀版本）:', messageId)
       }
     }
   }
@@ -367,8 +426,15 @@ export const useMessageStore = defineStore('message', () => {
       return
     }
 
+    // 訂閱新訊息
     globalMessageSubscription.value = subscribeToAllMessages(handleRealtimeMessage)
-    console.log('✅ Global message listener started')
+    console.log(' Global message listener started')
+
+    // 訂閱訊息更新（已讀狀態）
+    if (!messageUpdateSubscription.value) {
+      messageUpdateSubscription.value = subscribeToMessageUpdates(handleMessageUpdate)
+      console.log(' Message update listener started')
+    }
   }
 
   // 停止全域訊息監聽
@@ -376,7 +442,13 @@ export const useMessageStore = defineStore('message', () => {
     if (globalMessageSubscription.value) {
       globalMessageSubscription.value.unsubscribe()
       globalMessageSubscription.value = null
-      console.log('✅ Global message listener stopped')
+      console.log(' Global message listener stopped')
+    }
+
+    if (messageUpdateSubscription.value) {
+      messageUpdateSubscription.value.unsubscribe()
+      messageUpdateSubscription.value = null
+      console.log(' Message update listener stopped')
     }
   }
 
@@ -386,14 +458,32 @@ export const useMessageStore = defineStore('message', () => {
     currentMessages.value = []
   }
 
+  function updateOnlineUsers(presenceState) {
+    const newOnlineUsers = new Set()
+
+    Object.keys(presenceState).forEach(key => {
+      const presences = presenceState[key]
+      if (presences && Array.isArray(presences)) {
+        presences.forEach(presence => {
+          if (presence.user_id) {
+            newOnlineUsers.add(presence.user_id)
+          }
+        })
+      }
+    })
+
+    onlineUsers.value = newOnlineUsers
+  }
+
   // 重置 store（用於登出）
   function reset() {
     conversations.value = []
     currentMessages.value = []
     selectedConversationId.value = null
     error.value = null
+    onlineUsers.value = new Set()
     stopGlobalMessageListener()
-    console.log('✅ Message store reset')
+    console.log(' Message store reset')
   }
 
   return {
@@ -404,6 +494,7 @@ export const useMessageStore = defineStore('message', () => {
     isLoadingConversations,
     isLoadingMessages,
     error,
+    onlineUsers,
     // Getters
     totalUnreadCount,
     selectedConversation,
@@ -415,6 +506,7 @@ export const useMessageStore = defineStore('message', () => {
     loadMoreMessages,
     sendMessage,
     handleRealtimeMessage,
+    updateOnlineUsers,
     startGlobalMessageListener,
     stopGlobalMessageListener,
     clearSelectedConversation,

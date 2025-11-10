@@ -246,9 +246,18 @@
                                 </button>
                               </span>
 
+                              <!-- 已讀（雙勾圖標） -->
+                              <Transition v-else-if="message.is_read && message.isLatestSentMessage" name="status-fade">
+                                <span class="status-read">
+                                  <i class="bi bi-check-all"></i>
+                                  已讀
+                                </span>
+                              </Transition>
+
                               <!-- 已傳送（只在最新的已發送訊息顯示） -->
                                <Transition v-else name="status-fade">
                                  <span v-if="message.isLatestSentMessage" class="status-sent">
+                                   <i class="bi bi-check"></i>
                                    已傳送
                                  </span>
                                </Transition>
@@ -387,27 +396,33 @@ const filteredConversations = computed(() => {
 
 // Transform conversations for display
 const displayConversations = computed(() => {
-  return filteredConversations.value.map(convo => ({
-    id: convo.id,
-    user: {
-      name: convo.other_user.nickname,
-      avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
-      online: false
-    },
-    product: convo.item.id ? {
-      id: convo.item.id,
-      name: convo.item.title,
-      price: 0,
-      image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
-    } : null,
-    lastMessage: {
-      text: convo.last_message || '開始對話...',
-      time: formatRelativeTime(convo.last_message_time)
-    },
-    unreadCount: convo.unread_count || 0,
-    type: convo.role,
-    _raw: convo
-  }));
+  return filteredConversations.value.map(convo => {
+    // 檢查對方使用者是否線上（從 store 獲取）
+    const otherUserId = convo.other_user.id;
+    const isOnline = messageStore.onlineUsers.has(otherUserId);
+
+    return {
+      id: convo.id,
+      user: {
+        name: convo.other_user.nickname,
+        avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
+        online: isOnline
+      },
+      product: convo.item.id ? {
+        id: convo.item.id,
+        name: convo.item.title,
+        price: 0,
+        image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
+      } : null,
+      lastMessage: {
+        text: convo.last_message || '開始對話...',
+        time: formatRelativeTime(convo.last_message_time)
+      },
+      unreadCount: convo.unread_count || 0,
+      type: convo.role,
+      _raw: convo
+    };
+  });
 });
 
 // 當前選中的對話
@@ -498,6 +513,7 @@ const messages = computed(() => {
       _failedContent: msg._failedContent,
       _failedRelatedItemId: msg._failedRelatedItemId,
       _failedRelatedItemTitle: msg._failedRelatedItemTitle,
+      is_read: msg.is_read || false, // 對方是否已讀
       isGrouped, // 是否與上一則訊息群組
       isFirstInGroup, // 是否為群組第一則
       isLastInGroup // 是否為群組最後一則
@@ -1751,6 +1767,26 @@ onBeforeUnmount(() => {
 
   .status-sent {
     color: #999;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    i {
+      font-size: 12px;
+    }
+  }
+
+  .status-read {
+    color: $primary;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+
+    i {
+      font-size: 14px;
+      font-weight: bold;
+    }
   }
 }
 

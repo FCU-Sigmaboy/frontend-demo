@@ -426,3 +426,39 @@ export async function restoreMessage(messageId) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * 訂閱使用者線上狀態
+ * @param {Function} onPresenceUpdate - 當有使用者上線/離線時的回調函數
+ * @returns {Object} Supabase presence channel
+ *
+ * @example
+ * const presenceChannel = subscribeToUserPresence((presenceState) => {
+ *   console.log('當前線上使用者:', presenceState);
+ *   // presenceState 格式: { 'user-id': [{ user_id: 'xxx', online_at: 'timestamp' }] }
+ * });
+ *
+ * // 廣播自己的線上狀態
+ * presenceChannel.track({ user_id: currentUserId, online_at: new Date().toISOString() });
+ *
+ * // 取消訂閱
+ * presenceChannel.unsubscribe();
+ */
+export function subscribeToUserPresence(onPresenceUpdate) {
+  const channelName = 'online-users';
+
+  const channel = supabase.channel(channelName);
+
+  channel.on('presence', { event: 'sync' }, () => {
+    const presenceState = channel.presenceState();
+    onPresenceUpdate(presenceState);
+  });
+
+  channel.on('presence', { event: 'join' }, () => {});
+
+  channel.on('presence', { event: 'leave' }, () => {});
+
+  channel.subscribe(() => {});
+
+  return channel;
+}
