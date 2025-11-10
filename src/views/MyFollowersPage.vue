@@ -16,7 +16,7 @@
             v-for="tab in tabs"
             :key="tab.id"
             :class="['tab-btn', { active: activeTab === tab.id }]"
-            @click="activeTab = tab.id"
+            @click="handleTabClick(tab.id)"
           >
             {{ tab.label }}
             <span v-if="tab.count" class="tab-count">({{ tab.count }})</span>
@@ -47,9 +47,8 @@
             <div class="skeleton-avatar"></div>
             <div class="skeleton-info">
               <div class="skeleton-name"></div>
-              <div class="skeleton-handle"></div>
+              <div class="skeleton-follow-date"></div>
             </div>
-            <div class="skeleton-date"></div>
             <div class="skeleton-button"></div>
           </div>
         </div>
@@ -63,26 +62,25 @@
         >
           <div
             v-for="user in displayedUsers"
-            :key="user.id"
+            :key="user.user_id"
             class="user-card"
           >
-            <div class="user-clickable-area" @click="goToUserProfile(user.id)">
+            <div class="user-clickable-area" @click="goToUserProfile(user.user_id)">
               <img
-                :src="user.avatar"
-                :alt="user.name"
+                :src="user.profile_picture_url || defaultAvatar"
+                :alt="user.nickname || '未知使用者'"
                 class="user-avatar"
               />
               <div class="user-info">
-                <h3 class="user-name">{{ user.name }}</h3>
-                <p class="user-handle">@{{ user.handle }}</p>
+                <h3 class="user-name">{{ user.nickname || '未知使用者' }}</h3>
+                <p class="user-follow-date">{{ formatFollowerText(user.followed_at) }}</p>
               </div>
             </div>
-            <span class="follow-date">{{ user.followDate }}</span>
             <button
-              :class="['follow-btn', { following: user.isFollowing }]"
+              :class="['follow-btn', { following: user.is_following_back }]"
               @click.stop="toggleFollow(user)"
             >
-              <span v-if="user.isFollowing" class="btn-text">追蹤中</span>
+              <span v-if="user.is_following_back" class="btn-text">追蹤中</span>
               <span v-else class="btn-text">回追</span>
             </button>
           </div>
@@ -103,21 +101,20 @@
         >
           <div
             v-for="user in displayedUsers"
-            :key="user.id"
+            :key="user.user_id"
             class="user-card"
           >
-            <div class="user-clickable-area" @click="goToUserProfile(user.id)">
+            <div class="user-clickable-area" @click="goToUserProfile(user.user_id)">
               <img
-                :src="user.avatar"
-                :alt="user.name"
+                :src="user.profile_picture_url || defaultAvatar"
+                :alt="user.nickname || '未知使用者'"
                 class="user-avatar"
               />
               <div class="user-info">
-                <h3 class="user-name">{{ user.name }}</h3>
-                <p class="user-handle">@{{ user.handle }}</p>
+                <h3 class="user-name">{{ user.nickname || '未知使用者' }}</h3>
+                <p class="user-follow-date">{{ formatFollowingText(user.followed_at) }}</p>
               </div>
             </div>
-            <span class="follow-date">{{ user.followDate }}</span>
             <button
               class="follow-btn following"
               @click.stop="unfollow(user)"
@@ -140,8 +137,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -154,10 +151,19 @@ import {
 } from '@/api/followAPI';
 
 const router = useRouter();
+const route = useRoute();
+const validTabs = ['followers', 'following'];
+
+const getInitialTab = () => {
+  const tabFromRoute = route.query.tab;
+  return typeof tabFromRoute === 'string' && validTabs.includes(tabFromRoute)
+    ? tabFromRoute
+    : 'followers';
+};
 
 // State
 const userPoints = ref(500);
-const activeTab = ref('followers');
+const activeTab = ref(getInitialTab());
 const searchQuery = ref('');
 const isLoading = ref(false);
 
@@ -165,13 +171,47 @@ const isLoading = ref(false);
 const followers = ref([]);
 const following = ref([]);
 const sortedDisplayItems = ref([]);
+const defaultAvatar = 'https://placehold.co/48/6fb8a5/ffffff?text=U';
+
+watch([activeTab, searchQuery], () => {
+  sortedDisplayItems.value = [];
+});
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (typeof newTab === 'string' && validTabs.includes(newTab)) {
+      activeTab.value = newTab;
+    }
+  }
+);
+
+const formatFollowDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}/${month}/${day}`;
+};
+
+const formatFollowerText = (dateString) => {
+  const formatted = formatFollowDate(dateString);
+  return formatted ? `於 ${formatted} 追蹤了你` : '';
+};
+
+const formatFollowingText = (dateString) => {
+  const formatted = formatFollowDate(dateString);
+  return formatted ? `在 ${formatted} 開始追蹤` : '';
+};
 
 // Filter options
 const filterOptions = [
   {
     id: 1,
     label: '追蹤日期',
-    sortKey: 'followDate',
+    sortKey: 'followed_at',
     defaultOrder: 'desc',
     ascText: '早到晚',
     descText: '晚到早'
@@ -179,7 +219,7 @@ const filterOptions = [
   {
     id: 2,
     label: '名稱',
-    sortKey: 'name',
+    sortKey: ['nickname', 'username'],
     defaultOrder: 'asc',
     ascText: 'A-Z',
     descText: 'Z-A'
@@ -192,40 +232,33 @@ const tabs = computed(() => [
   { id: 'following', label: '追蹤中', count: following.value.length }
 ]);
 
-// Computed - 將 API 資料轉換為頁面所需格式
+// Computed - 依搜尋條件過濾列表
 const filteredFollowers = computed(() => {
-  const formattedFollowers = followers.value.map(follower => ({
-    id: follower.user_id,
-    name: follower.nickname || '未知使用者',
-    handle: follower.nickname || 'unknown',
-    avatar: follower.profile_picture_url || 'https://placehold.co/48/6fb8a5/ffffff?text=U',
-    followDate: formatDate(follower.followed_at),
-    isFollowing: follower.is_following_back || false
-  }));
+  const list = followers.value || [];
+  if (!searchQuery.value) return list;
 
-  if (!searchQuery.value) return formattedFollowers;
-
-  return formattedFollowers.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    user.handle.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  const query = searchQuery.value.toLowerCase();
+  return list.filter(user => {
+    const nickname = (user.nickname || '').toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const displayName = (user.display_name || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return [nickname, username, displayName, email].some(field => field.includes(query));
+  });
 });
 
 const filteredFollowing = computed(() => {
-  const formattedFollowing = following.value.map(follow => ({
-    id: follow.user_id,
-    name: follow.nickname || '未知使用者',
-    handle: follow.nickname || 'unknown',
-    avatar: follow.profile_picture_url || 'https://placehold.co/48/6fb8a5/ffffff?text=U',
-    followDate: formatDate(follow.followed_at)
-  }));
+  const list = following.value || [];
+  if (!searchQuery.value) return list;
 
-  if (!searchQuery.value) return formattedFollowing;
-
-  return formattedFollowing.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    user.handle.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  const query = searchQuery.value.toLowerCase();
+  return list.filter(user => {
+    const nickname = (user.nickname || '').toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const displayName = (user.display_name || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return [nickname, username, displayName, email].some(field => field.includes(query));
+  });
 });
 
 // 顯示的使用者列表（經過排序）
@@ -240,11 +273,14 @@ const handleSortedItems = (items) => {
   sortedDisplayItems.value = items;
 };
 
-// Helper function - 格式化日期
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toISOString().split('T')[0].replace(/-/g, '/');
+const handleTabClick = (tabId) => {
+  if (validTabs.includes(tabId)) {
+    activeTab.value = tabId;
+    router.replace({
+      path: route.path,
+      query: { ...route.query, tab: tabId }
+    });
+  }
 };
 
 // API Methods - 載入資料
@@ -289,20 +325,23 @@ const loadFollowing = async () => {
 // 追蹤/取消追蹤操作
 const toggleFollow = async (user) => {
   try {
-    if (user.isFollowing) {
+    const targetUserId = user.user_id;
+    if (!targetUserId) return;
+
+    if (user.is_following_back) {
       // 取消追蹤
-      await unfollowUser(user.id);
-      user.isFollowing = false;
+      await unfollowUser(targetUserId);
+      user.is_following_back = false;
 
       // 從追蹤中列表移除
-      const index = following.value.findIndex(f => f.user_id === user.id);
+      const index = following.value.findIndex(f => f.user_id === targetUserId);
       if (index > -1) {
         following.value.splice(index, 1);
       }
     } else {
       // 追蹤回去
-      await followUser(user.id);
-      user.isFollowing = true;
+      await followUser(targetUserId);
+      user.is_following_back = true;
 
       // 重新載入追蹤中列表
       await loadFollowing();
@@ -313,22 +352,27 @@ const toggleFollow = async (user) => {
   } catch (error) {
     console.error('操作失敗:', error);
     alert(error.message || '操作失敗，請稍後再試');
-    user.isFollowing = !user.isFollowing; // 還原狀態
+    if (typeof user.is_following_back === 'boolean') {
+      user.is_following_back = !user.is_following_back; // 還原狀態
+    }
   }
 };
 
 const unfollow = async (user) => {
   try {
-    await unfollowUser(user.id);
+    const targetUserId = user.user_id;
+    if (!targetUserId) return;
+
+    await unfollowUser(targetUserId);
 
     // 從追蹤中列表移除
-    const index = following.value.findIndex(f => f.user_id === user.id);
+    const index = following.value.findIndex(f => f.user_id === targetUserId);
     if (index > -1) {
       following.value.splice(index, 1);
     }
 
     // 更新追蹤者列表中的狀態
-    const followerIndex = followers.value.findIndex(f => f.user_id === user.id);
+    const followerIndex = followers.value.findIndex(f => f.user_id === targetUserId);
     if (followerIndex > -1) {
       followers.value[followerIndex].is_following_back = false;
     }
@@ -576,23 +620,13 @@ onMounted(async () => {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.skeleton-handle {
+.skeleton-follow-date {
   width: 80px;
   height: 14px;
   border-radius: 4px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
-}
-
-.skeleton-date {
-  width: 90px;
-  height: 14px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  flex-shrink: 0;
 }
 
 .skeleton-button {
@@ -662,19 +696,12 @@ onMounted(async () => {
       margin: 0 0 4px 0;
     }
 
-    .user-handle {
+    .user-follow-date {
       font-family: 'Noto Sans TC', sans-serif;
       font-size: 13px;
       color: #999;
       margin: 0;
     }
-  }
-
-  .follow-date {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 13px;
-    color: #999;
-    flex-shrink: 0;
   }
 
   .follow-btn {
@@ -756,14 +783,6 @@ onMounted(async () => {
 
   .user-card {
     flex-wrap: wrap;
-
-    .follow-date {
-      order: 4;
-      width: 100%;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #f0f0f0;
-    }
   }
 }
 
@@ -805,7 +824,7 @@ onMounted(async () => {
         font-size: 14px;
       }
 
-      .user-handle {
+      .user-follow-date {
         font-size: 12px;
       }
     }

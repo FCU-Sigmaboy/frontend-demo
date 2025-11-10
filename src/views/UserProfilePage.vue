@@ -63,12 +63,12 @@
 
               <!-- Followers/Following Stats -->
               <div class="follow-stats">
-                <button class="follow-stat-btn" @click="goToFollowers">
+                <button class="follow-stat-btn" @click="goToFollowers('following')">
                   <span class="stat-number">{{ profileData?.following_count || 0 }}</span>
                   <span class="stat-text">追蹤中</span>
                 </button>
                 <span class="stat-divider">|</span>
-                <button class="follow-stat-btn" @click="goToFollowers">
+                <button class="follow-stat-btn" @click="goToFollowers('followers')">
                   <span class="stat-number">{{ profileData?.followers_count || 0 }}</span>
                   <span class="stat-text">追蹤者</span>
                 </button>
@@ -724,8 +724,9 @@ const goToReviews = () => {
   router.push({ name: 'MyReviews' });
 };
 
-const goToFollowers = () => {
-  router.push({ name: 'MyFollowers' });
+const goToFollowers = (tab = 'followers') => {
+  const targetTab = tab === 'following' ? 'following' : 'followers';
+  router.push({ name: 'MyFollowers', query: { tab: targetTab } });
 };
 
 // Get number of visible cards based on screen width
