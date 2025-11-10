@@ -1452,14 +1452,10 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 }
 
 @media (max-width: 1200px) {
-  // Hide category nav and all categories button
+  // Hide category nav but keep all categories button
   .category-nav {
     display: none !important;
     width: 0;
-  }
-
-  .all-categories-btn {
-    display: none !important;
   }
 }
 
