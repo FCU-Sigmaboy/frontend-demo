@@ -22,6 +22,8 @@ export const useMessageStore = defineStore('message', () => {
   const messageUpdateSubscription = ref(null) // 訊息更新訂閱（已讀狀態）
   const itemReferenceCache = ref(new Map()) // 物品引用緩存 Map<itemId, itemTitle>
   const onlineUsers = ref(new Set()) // 線上使用者集合
+  const isInMessagesPage = ref(false) // 是否在訊息頁面
+  const isAtMessagesBottom = ref(true) // 是否在訊息底部（預設為 true）
 
   // ===== Getters =====
 
@@ -392,8 +394,8 @@ export const useMessageStore = defineStore('message', () => {
           _clientId: messageId // 使用真實 ID 作為 clientId
         })
 
-        // 如果不是自己發的，自動標記為已讀
-        if (!isMine) {
+        // 只有在訊息頁面、在底部且不是自己發的，才自動標記為已讀
+        if (!isMine && isInMessagesPage.value && isAtMessagesBottom.value) {
           try {
             const updatedCount = await markAsRead(conversationId)
             console.log(`[Message] 已標記對話 ${conversationId} 為已讀，更新了 ${updatedCount} 則訊息`)
@@ -458,6 +460,16 @@ export const useMessageStore = defineStore('message', () => {
     currentMessages.value = []
   }
 
+  // 設置是否在訊息頁面
+  function setIsInMessagesPage(value) {
+    isInMessagesPage.value = value
+  }
+
+  // 設置是否在訊息底部
+  function setIsAtMessagesBottom(value) {
+    isAtMessagesBottom.value = value
+  }
+
   function updateOnlineUsers(presenceState) {
     const newOnlineUsers = new Set()
 
@@ -495,6 +507,7 @@ export const useMessageStore = defineStore('message', () => {
     isLoadingMessages,
     error,
     onlineUsers,
+    isAtMessagesBottom,
     // Getters
     totalUnreadCount,
     selectedConversation,
@@ -510,6 +523,8 @@ export const useMessageStore = defineStore('message', () => {
     startGlobalMessageListener,
     stopGlobalMessageListener,
     clearSelectedConversation,
+    setIsInMessagesPage,
+    setIsAtMessagesBottom,
     reset
   }
 })
