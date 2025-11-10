@@ -71,7 +71,10 @@ export async function uploadItemImage(file, userId, itemId, shouldCompress = tru
     // 上傳檔案到 items bucket
     const { data, error } = await supabase.storage
         .from('items')
-        .upload(filePath, fileToUpload);
+        .upload(filePath, fileToUpload, {
+            cacheControl: 'public, max-age=31536000, immutable',
+            upsert: false
+        });
 
     if (error) {
         console.error('圖片上傳失敗:', error);
@@ -81,7 +84,7 @@ export async function uploadItemImage(file, userId, itemId, shouldCompress = tru
     // 獲取公開 URL
     const { data: { publicUrl } } = supabase.storage
         .from('items')
-        .getPublicUrl(data.path);
+        .getPublicUrl(data.path, { download: false });
 
     return publicUrl;
 }
