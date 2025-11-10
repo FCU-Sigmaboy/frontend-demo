@@ -433,7 +433,7 @@ export const useMessageStore = defineStore('message', () => {
     error.value = null
 
     try {
-      const data = await getConversations(1, 50, false)
+      const data = await getConversations(1, 50, true)
 
       if (data) {
         // 獲取當前用戶資訊以判斷角色

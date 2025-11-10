@@ -9,9 +9,6 @@
           <aside :class="['conversations-sidebar', { 'mobile-hidden': selectedConversation }]">
             <div class="sidebar-header">
               <h2 class="sidebar-title">訊息</h2>
-              <button class="filter-btn" @click="showFilterMenu = !showFilterMenu">
-                <i class="bi bi-funnel"></i>
-              </button>
             </div>
 
             <!-- Search Bar -->
@@ -118,9 +115,20 @@
                   </div>
                 </div>
 
-                <button class="more-btn">
-                  <i class="bi bi-three-dots-vertical"></i>
-                </button>
+                <div class="more-menu-container">
+                  <button class="more-btn" @click="showMoreMenu = !showMoreMenu">
+                    <i class="bi bi-three-dots-vertical"></i>
+                  </button>
+                  <div v-if="showMoreMenu" class="more-menu-dropdown">
+                    <button
+                      class="menu-item"
+                      @click="handleArchiveConversation"
+                    >
+                      <i :class="selectedConversation._raw.is_archived ? 'bi bi-inbox' : 'bi bi-archive'"></i>
+                      {{ selectedConversation._raw.is_archived ? '取消封存' : '封存對話' }}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <!-- Loading Header Skeleton -->
@@ -137,9 +145,11 @@
                   </div>
                 </div>
 
-                <button class="more-btn">
-                  <i class="bi bi-three-dots-vertical"></i>
-                </button>
+                <div class="more-menu-container">
+                  <button class="more-btn">
+                    <i class="bi bi-three-dots-vertical"></i>
+                  </button>
+                </div>
               </div>
 
               <!-- Messages Area -->
@@ -397,7 +407,7 @@ import OrderRequestMessage from '../components/OrderRequestMessage.vue';
 import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems } from '@/api/conversationAPI_v2';
+import { getConversationItems, archiveConversation } from '@/api/conversationAPI_v2';
 
 const router = useRouter();
 const messageStore = useMessageStore();
@@ -409,7 +419,7 @@ const searchQuery = ref('');
 const activeFilter = ref('all');
 const messageInput = ref('');
 const messagesArea = ref(null);
-const showFilterMenu = ref(false);
+const showMoreMenu = ref(false);
 const messagesLoading = ref(false); // UI 載入骨架屏狀態
 const pendingItemReference = ref(null); // 待發送的物品引用
 const itemReferenceCache = ref(new Map()); // 物品引用緩存 Map<itemId, itemTitle>
@@ -664,9 +674,7 @@ const filters = computed(() => {
   const all = messageStore.conversations;
   return [
     { id: 'all', label: '全部', count: all.length },
-    { id: 'unread', label: '未讀', count: all.filter(c => c.unread_count > 0).length },
-    { id: 'buyer', label: '購買中', count: all.filter(c => c.role === 'buyer').length },
-    { id: 'seller', label: '出售中', count: all.filter(c => c.role === 'seller').length }
+    { id: 'archived', label: '封存', count: all.filter(c => c.is_archived).length }
   ];
 });
 
@@ -675,12 +683,10 @@ const filteredConversations = computed(() => {
   let filtered = messageStore.conversations;
 
   // Filter by type
-  if (activeFilter.value !== 'all') {
-    if (activeFilter.value === 'unread') {
-      filtered = filtered.filter(c => c.unread_count > 0);
-    } else {
-      filtered = filtered.filter(c => c.role === activeFilter.value);
-    }
+  if (activeFilter.value === 'archived') {
+    filtered = filtered.filter(c => c.is_archived);
+  } else if (activeFilter.value === 'all') {
+    filtered = filtered.filter(c => !c.is_archived);
   }
 
   // Filter by search
@@ -1183,6 +1189,45 @@ async function selectConversation(conversation) {
   } catch (err) {
     messagesLoading.value = false;
     throw err;
+  }
+}
+
+async function handleArchiveConversation() {
+  if (!selectedConversation.value) return;
+
+  const conversationId = selectedConversation.value.id;
+  const isCurrentlyArchived = selectedConversation.value._raw.is_archived || false;
+
+  try {
+    // 關閉選單
+    showMoreMenu.value = false;
+
+    // 調用 API 切換封存狀態
+    await archiveConversation(conversationId, !isCurrentlyArchived);
+
+    // 更新 store 中的對話狀態
+    const conversation = messageStore.conversations.find(c => c.id === conversationId);
+    if (conversation) {
+      conversation.is_archived = !isCurrentlyArchived;
+    }
+
+    // 如果當前在「全部」頁籤且對話被封存，取消選擇該對話
+    if (!isCurrentlyArchived && activeFilter.value === 'all') {
+      deselectConversation();
+    }
+  } catch (error) {
+    console.error('Failed to archive/unarchive conversation:', error);
+    alert('操作失敗，請稍後再試');
+  }
+}
+
+function handleClickOutside(event) {
+  // 檢查點擊是否在選單容器外部
+  if (showMoreMenu.value) {
+    const menuContainer = event.target.closest('.more-menu-container');
+    if (!menuContainer) {
+      showMoreMenu.value = false;
+    }
   }
 }
 
@@ -1697,6 +1742,9 @@ onMounted(async () => {
     messagesArea.value.addEventListener('scroll', handleMessagesScroll, { passive: true });
   }
 
+  // 添加點擊外部關閉選單的監聽器
+  document.addEventListener('click', handleClickOutside);
+
   watch(
     () => messageStore.currentMessages.length,
     async (newLen, oldLen) => {
@@ -1786,6 +1834,9 @@ onBeforeUnmount(() => {
   if (messagesArea.value) {
     messagesArea.value.removeEventListener('scroll', handleMessagesScroll);
   }
+
+  // 移除點擊外部關閉選單的監聽器
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -1876,27 +1927,6 @@ onBeforeUnmount(() => {
     margin: 0;
   }
 
-  .filter-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    i {
-      font-size: 18px;
-      color: #666;
-    }
-
-    &:hover {
-      background: #f5f5f5;
-    }
-  }
 }
 
 // Search Bar
@@ -2219,6 +2249,10 @@ onBeforeUnmount(() => {
     }
   }
 
+  .more-menu-container {
+    position: relative;
+  }
+
   .more-btn {
     width: 36px;
     height: 36px;
@@ -2238,6 +2272,49 @@ onBeforeUnmount(() => {
 
     &:hover {
       background: #f5f5f5;
+    }
+  }
+
+  .more-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    z-index: 1000;
+    overflow: hidden;
+
+    .menu-item {
+      width: 100%;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #1e1e1e;
+      text-align: left;
+      transition: background 0.2s;
+
+      i {
+        font-size: 16px;
+        color: #666;
+      }
+
+      &:hover {
+        background: #f5f5f5;
+      }
+
+      &:active {
+        background: #e8e8e8;
+      }
     }
   }
 }
