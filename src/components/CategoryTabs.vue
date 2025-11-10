@@ -120,19 +120,6 @@ const handleCategoryClick = (categoryId) => {
 @media (max-width: 575.98px) {
   .category-tabs {
     gap: 8px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 5px;
-    -webkit-overflow-scrolling: touch;
-
-    &::-webkit-scrollbar {
-      height: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background-color: #d0d0d0;
-      border-radius: 2px;
-    }
   }
 
   .skeleton-tab {

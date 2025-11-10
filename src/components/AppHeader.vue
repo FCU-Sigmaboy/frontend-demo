@@ -6,7 +6,8 @@
           <!-- Left Side: Logo & Navigation -->
           <div class="header-left">
             <div class="logo-link" @click="router.push({ name: 'Home' })" style="cursor: pointer;">
-              <img :src="logoImage" alt="台中易起來" class="header-logo" />
+              <img :src="logoImage" alt="台中易起來" class="header-logo desktop-logo" />
+              <img :src="iconImage" alt="台中易起來" class="header-logo mobile-logo" />
             </div>
 
             <BNav class="category-nav d-none d-lg-flex">
@@ -98,7 +99,7 @@
               </div>
               <BTooltip target="points-display" placement="bottom">點擊查看點數儀表板</BTooltip>
 
-              <!-- Post Button (Desktop) -->
+              <!-- Post Button (Desktop Only) -->
              <BButton
                id="post-btn"
                class="post-button d-none d-lg-flex"
@@ -119,8 +120,14 @@
               </BButton>
               <BTooltip target="logout-btn" placement="bottom">登出帳號</BTooltip>
 
-              <!-- Mobile: Points + Avatar (Always Visible) -->
+              <!-- Mobile: Post Button + Points + Avatar (Always Visible) -->
               <div class="mobile-user-section d-lg-none">
+                <BButton
+                  class="post-button mobile-post-button"
+                  @click="router.push({ name: 'CreateListing' })"
+                >
+                  刊登
+                </BButton>
                 <div class="mobile-points" @click="router.push({ name: 'Dashboard' })" style="cursor: pointer;">
                   <i class="bi bi-leaf"></i>
                   <span>{{ userBalance }}</span>
@@ -186,7 +193,7 @@
 
             <!-- Categories Section -->
             <div class="categories-section">
-              <div v-for="cat in categories" :key="cat.id" class="category-section">
+              <div v-for="cat in filteredCategories" :key="cat.id" class="category-section">
                 <div class="category-item expandable" @click="toggleCategory(cat.id)">
                   <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
                     <i :class="['bi', cat.icon]"></i>
@@ -257,17 +264,6 @@
       </div>
     </Transition>
 
-    <!-- Floating Action Button (Mobile Only) -->
-    <Transition name="fab">
-      <BButton
-        v-if="authStore.isLoggedIn"
-        class="floating-action-btn d-lg-none"
-        @click="router.push({ name: 'CreateListing' })"
-      >
-        <i class="bi bi-plus-lg"></i>
-      </BButton>
-    </Transition>
-
     <!-- All Categories Offcanvas (Desktop Only) -->
     <Transition name="offcanvas">
       <div v-if="showAllCategories" class="all-categories-offcanvas" @click="closeAllCategories">
@@ -306,7 +302,7 @@
               </div> -->
 
               <!-- Main Categories with Expandable Subcategories -->
-              <div v-for="cat in categories" :key="cat.id" class="category-section">
+              <div v-for="cat in filteredCategories" :key="cat.id" class="category-section">
                 <div class="category-item expandable" @click="toggleCategory(cat.id)">
                   <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
                     <i :class="['bi', cat.icon]"></i>
@@ -357,8 +353,9 @@ const authStore = useAuthStore();
 const pointsStore = usePointsStore();
 const messageStore = useMessageStore();
 
-// Logo Image
+// Logo Images
 import logoImage from '../assets/Logo.png';
+import iconImage from '../assets/icon.png';
 
 // Props
 const props = defineProps({
@@ -419,6 +416,35 @@ if (!categoriesStore.isLoaded) {
 }
 
 const categories = computed(() => categoriesStore.categories);
+
+// Filtered categories based on search
+const filteredCategories = computed(() => {
+  if (!categorySearch.value) {
+    return categories.value;
+  }
+
+  const searchLower = categorySearch.value.toLowerCase();
+
+  return categories.value.map(cat => {
+    // Check if category name matches
+    const categoryMatches = cat.name.toLowerCase().includes(searchLower);
+
+    // Filter subcategories that match
+    const matchedSubcategories = cat.sub_categories?.filter(sub =>
+      sub.name.toLowerCase().includes(searchLower)
+    ) || [];
+
+    // Return category if it matches or has matching subcategories
+    if (categoryMatches || matchedSubcategories.length > 0) {
+      return {
+        ...cat,
+        sub_categories: categoryMatches ? cat.sub_categories : matchedSubcategories
+      };
+    }
+
+    return null;
+  }).filter(cat => cat !== null);
+});
 
 // Methods
 const toggleUnifiedMenu = () => {
@@ -545,6 +571,27 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     height: 35px;
     width: auto;
     object-fit: contain;
+  }
+
+  .desktop-logo {
+    display: none; // Hidden by default
+  }
+
+  .mobile-logo {
+    display: block; // Show icon by default (mobile first)
+    height: 40px;
+  }
+
+  // Width >= 450px: Switch to full logo
+  @media (min-width: 450px) {
+    .desktop-logo {
+      display: block;
+      height: 35px;
+    }
+
+    .mobile-logo {
+      display: none;
+    }
   }
 }
 
@@ -793,11 +840,18 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   }
 }
 
-// Mobile User Section (Points + Avatar)
+// Mobile User Section (Post Button + Points + Avatar)
 .mobile-user-section {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+
+  .mobile-post-button {
+    font-size: 14px;
+    min-width: 50px;
+    height: 30px;
+    padding: 0 10px;
+  }
 }
 
 .mobile-points {
@@ -1091,51 +1145,6 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   }
 }
 
-// Floating Action Button (FAB)
-.floating-action-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-  z-index: 1500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  i {
-    font-size: 24px;
-    color: white;
-  }
-
-  &:hover {
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
-    transform: translateY(-2px);
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
-  }
-}
-
-// FAB Transition
-.fab-enter-active,
-.fab-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fab-enter-from,
-.fab-leave-to {
-  opacity: 0;
-  transform: scale(0.8) translateY(20px);
-}
-
 // Menu Transition
 .menu-enter-active,
 .menu-leave-active {
@@ -1248,7 +1257,7 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   background: #f5f5f5;
   border-radius: 8px;
   padding: 12px 16px;
-  margin: 0 24px 20px;
+  margin: 24px 20px;
 
   i {
     font-size: 18px;
