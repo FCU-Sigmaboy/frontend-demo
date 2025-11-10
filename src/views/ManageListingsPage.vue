@@ -60,8 +60,8 @@
           </button>
         </div>
 
-        <!-- Listings Table -->
-        <div class="table-container">
+        <!-- Listings Table (Desktop) -->
+        <div class="table-container desktop-view">
           <table class="listings-table">
             <thead>
               <tr>
@@ -75,7 +75,41 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="listing in filteredListings" :key="listing.id" class="listing-row">
+              <!-- Loading Skeleton Rows -->
+              <template v-if="isLoading">
+                <tr v-for="i in 5" :key="`skeleton-${i}`" class="skeleton-row">
+                  <td class="col-image">
+                    <div class="product-info">
+                      <div class="skeleton-image"></div>
+                      <div class="skeleton-text" style="width: 150px;"></div>
+                    </div>
+                  </td>
+                  <td class="col-status">
+                    <div class="skeleton-badge"></div>
+                  </td>
+                  <td class="col-date">
+                    <div class="skeleton-text" style="width: 100px;"></div>
+                  </td>
+                  <td class="col-date">
+                    <div class="skeleton-text" style="width: 100px;"></div>
+                  </td>
+                  <td class="col-price">
+                    <div class="skeleton-text" style="width: 60px;"></div>
+                  </td>
+                  <td class="col-stats">
+                    <div class="skeleton-text" style="width: 40px;"></div>
+                  </td>
+                  <td class="col-actions">
+                    <div class="skeleton-actions">
+                      <div class="skeleton-button"></div>
+                      <div class="skeleton-button"></div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <!-- Actual Listing Rows -->
+              <tr v-else v-for="listing in filteredListings" :key="listing.id" class="listing-row">
                 <!-- Product Info -->
                 <td class="col-image">
                   <div class="product-info">
@@ -161,7 +195,119 @@
           </table>
 
           <!-- Empty State -->
-          <div v-if="filteredListings.length === 0" class="empty-state">
+          <div v-if="!isLoading && filteredListings.length === 0" class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <p>找不到符合條件的刊登</p>
+          </div>
+        </div>
+
+        <!-- Listings Cards (Mobile) -->
+        <div class="cards-container mobile-view">
+          <!-- Loading Skeleton Cards -->
+          <template v-if="isLoading">
+            <div v-for="i in 5" :key="`skeleton-card-${i}`" class="listing-card skeleton-card">
+              <div class="card-image-section">
+                <div class="skeleton-image-large"></div>
+              </div>
+              <div class="card-content">
+                <div class="skeleton-text" style="width: 80%; height: 20px; margin-bottom: 12px;"></div>
+                <div class="skeleton-badge" style="margin-bottom: 12px;"></div>
+                <div class="card-details">
+                  <div class="skeleton-text" style="width: 60%; height: 14px; margin-bottom: 8px;"></div>
+                  <div class="skeleton-text" style="width: 50%; height: 14px;"></div>
+                </div>
+                <div class="skeleton-actions" style="margin-top: 16px;">
+                  <div class="skeleton-button"></div>
+                  <div class="skeleton-button"></div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Actual Listing Cards -->
+          <div v-else v-for="listing in filteredListings" :key="`card-${listing.id}`" class="listing-card">
+            <div class="card-image-section" @click="router.push({ name: 'ItemDetail', params: { id: listing.id } })">
+              <img :src="listing.image" :alt="listing.name" class="card-image" />
+              <span :class="['card-status-badge', `status-${listing.status}`]">
+                <i :class="getStatusIcon(listing.status)"></i>
+                {{ getStatusText(listing.status) }}
+              </span>
+            </div>
+
+            <div class="card-content">
+              <h3 class="card-title" @click="router.push({ name: 'ItemDetail', params: { id: listing.id } })">
+                {{ listing.name }}
+              </h3>
+
+              <div class="card-details">
+                <div class="detail-row">
+                  <span class="detail-label">點數</span>
+                  <span class="detail-value price">{{ listing.price }}p</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">被收藏</span>
+                  <span class="detail-value">
+                    <i class="bi bi-heart-fill"></i>
+                    {{ listing.likes }}
+                  </span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">發布日期</span>
+                  <span class="detail-value">{{ listing.publishedDate }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">更新日期</span>
+                  <span class="detail-value">{{ listing.updatedDate }}</span>
+                </div>
+              </div>
+
+              <div class="card-actions">
+                <button
+                  v-if="listing.status !== 'sold'"
+                  class="btn-card btn-edit btn-primary"
+                  @click="editListing(listing.id)"
+                >
+                  <i class="bi bi-pencil"></i>
+                  編輯
+                </button>
+                <button
+                  v-if="listing.status === 'sold'"
+                  class="btn-card btn-view btn-primary"
+                  @click="viewTransaction(listing.id)"
+                >
+                  <i class="bi bi-eye"></i>
+                  查看交易
+                </button>
+                <button
+                  v-if="listing.status === 'inactive'"
+                  class="btn-card btn-toggle btn-secondary"
+                  @click="toggleStatus(listing.id, true)"
+                >
+                  <i class="bi bi-arrow-up-circle"></i>
+                  重新上架
+                </button>
+                <button
+                  v-if="listing.status === 'active'"
+                  class="btn-card btn-toggle btn-secondary"
+                  @click="toggleStatus(listing.id, false)"
+                >
+                  <i class="bi bi-arrow-down-circle"></i>
+                  下架
+                </button>
+                <button
+                  v-if="listing.status !== 'sold'"
+                  class="btn-card btn-delete btn-tertiary"
+                  @click="deleteListing(listing.id)"
+                >
+                  <i class="bi bi-trash"></i>
+                  <span class="btn-text">刪除</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-if="!isLoading && filteredListings.length === 0" class="empty-state">
             <i class="bi bi-inbox"></i>
             <p>找不到符合條件的刊登</p>
           </div>
@@ -174,7 +320,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getMyItems } from '../api/get_myItemsAPI';
@@ -197,7 +343,7 @@ const userPoints = ref(500);
 const searchQuery = ref('');
 const activeFilter = ref('all');
 const listings = ref([]);
-const isLoading = ref(false);
+const isLoading = ref(true);
 
 // Computed stats
 const stats = computed(() => {
@@ -230,13 +376,15 @@ const filteredListings = computed(() => {
 
 // Load listings from API
 const loadListings = async () => {
-  if (!authStore.isLoggedIn) {
-    console.warn('⚠️ Not logged in, cannot load listings');
-    return;
-  }
-
   try {
     isLoading.value = true;
+
+    if (!authStore.isLoggedIn) {
+      console.warn('⚠️ Not logged in, cannot load listings');
+      listings.value = [];
+      return;
+    }
+
     console.log('🔍 Fetching my items...');
 
     const items = await getMyItems({
@@ -273,10 +421,13 @@ const loadListings = async () => {
         };
       });
 
-      console.log('✅ Loaded listings:', listings.value.length);
+      console.log('[Item] Loaded listings:', listings.value.length);
+    } else {
+      listings.value = [];
     }
   } catch (error) {
-    console.error('❌ Failed to load listings:', error);
+    console.error('[ItemManagement] Failed to load listings:', error);
+    listings.value = [];
     alert('載入刊登失敗，請稍後再試');
   } finally {
     isLoading.value = false;
@@ -333,10 +484,9 @@ const viewTransaction = (id) => {
 // Toggle listing status (上架/下架)
 const toggleStatus = async (id, newStatus) => {
   const action = newStatus ? '上架' : '下架';
-  if (!confirm(`確定要${action}此商品嗎？`)) return;
 
   try {
-    console.log(`🔄 Toggling item #${id} status to ${newStatus}`);
+    console.log(`[ItemManagement] Toggling item #${id} status to ${newStatus}`);
 
     await toggleItemStatus(id, newStatus);
 
@@ -346,9 +496,8 @@ const toggleStatus = async (id, newStatus) => {
       listing.status = newStatus ? 'active' : 'inactive';
     }
 
-    alert(`${action}成功！`);
   } catch (error) {
-    console.error(`❌ Failed to toggle status:`, error);
+    console.error(`[ItemManagement] Failed to toggle status:`, error);
     alert(`${action}失敗：${error.message}`);
   }
 };
@@ -358,7 +507,7 @@ const deleteListing = async (id) => {
   if (!confirm('確定要刪除此刊登嗎？刪除後無法復原。')) return;
 
   try {
-    console.log(`🗑️ Deleting item #${id}`);
+    console.log(`[ItemManagement] Deleting item #${id}`);
 
     await deleteMyItem(id);
 
@@ -367,14 +516,32 @@ const deleteListing = async (id) => {
 
     alert('刪除成功！');
   } catch (error) {
-    console.error('❌ Failed to delete item:', error);
+    console.error('[ItemManagement] Failed to delete item:', error);
     alert(`刪除失敗：${error.message}`);
   }
 };
 
-// Load listings on mount
+// Load listings on mount and when auth state changes
 onMounted(() => {
+  // Try to load immediately if already logged in
   if (authStore.isLoggedIn) {
+    loadListings();
+  } else {
+    // If not logged in yet, wait a bit for auth to initialize
+    setTimeout(() => {
+      if (authStore.isLoggedIn) {
+        loadListings();
+      } else {
+        // Still not logged in, stop loading
+        isLoading.value = false;
+      }
+    }, 100);
+  }
+});
+
+// Watch for auth state changes (e.g., after login or page refresh)
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn && listings.value.length === 0 && !isLoading.value) {
     loadListings();
   }
 });
@@ -758,6 +925,64 @@ onMounted(() => {
   }
 }
 
+// Skeleton Loading Styles
+.skeleton-row {
+  td {
+    padding: 16px 12px;
+  }
+}
+
+.skeleton-image {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge {
+  width: 80px;
+  height: 28px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.skeleton-button {
+  width: 60px;
+  height: 32px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 // Empty State
 .empty-state {
   display: flex;
@@ -778,6 +1003,241 @@ onMounted(() => {
     color: #999;
     margin: 0;
   }
+}
+
+// Mobile Cards View
+.cards-container {
+  display: none; // Hidden on desktop
+
+  &.mobile-view {
+    display: none;
+  }
+}
+
+.listing-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+  transition: all 0.3s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.card-image-section {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  cursor: pointer;
+
+  .card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-status-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+
+    i {
+      font-size: 10px;
+    }
+
+    &.status-active {
+      background: rgba(0, 184, 148, 0.9);
+      color: white;
+    }
+
+    &.status-inactive {
+      background: rgba(149, 149, 149, 0.9);
+      color: white;
+    }
+
+    &.status-sold {
+      background: rgba(33, 150, 243, 0.9);
+      color: white;
+    }
+  }
+}
+
+.card-content {
+  padding: 16px;
+}
+
+.card-title {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e1e1e;
+  margin: 0 0 12px 0;
+  cursor: pointer;
+  transition: color 0.3s;
+
+  &:hover {
+    color: $primary;
+  }
+}
+
+.card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+
+  .detail-label {
+    color: #666;
+    font-weight: 400;
+  }
+
+  .detail-value {
+    color: #1e1e1e;
+    font-weight: 500;
+
+    &.price {
+      color: $primary;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    i {
+      font-size: 12px;
+      color: #ff6b6b;
+      margin-right: 4px;
+    }
+  }
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 14px;
+  }
+
+  // Primary buttons (編輯/查看交易) - flexible width
+  &.btn-primary {
+    flex: 1;
+    font-size: 15px;
+    padding: 11px 16px;
+    font-weight: 600;
+  }
+
+  // Secondary buttons (上架/下架) - flexible width
+  &.btn-secondary {
+    flex: 1;
+  }
+
+  // Tertiary buttons (刪除) - 35% width on desktop, less prominent
+  &.btn-tertiary {
+    flex: 0 0 calc(35% - 8px);
+    font-size: 12px;
+    padding: 9px 10px;
+
+    // Hide text on mobile, keep icon only
+    .btn-text {
+      display: inline;
+    }
+  }
+
+  &.btn-view,
+  &.btn-edit {
+    background: white;
+    border-color: $primary;
+    color: $primary;
+
+    &:hover {
+      background: $primary;
+      color: white;
+    }
+  }
+
+  &.btn-edit {
+    border-color: #2196f3;
+    color: #2196f3;
+
+    &:hover {
+      background: #2196f3;
+      color: white;
+    }
+  }
+
+  &.btn-toggle {
+    background: white;
+    border-color: $primary;
+    color: $primary;
+
+    &:hover {
+      background: $primary;
+      color: white;
+    }
+  }
+
+  &.btn-delete {
+    background: white;
+    border-color: #dc3545;
+    color: #dc3545;
+
+    &:hover {
+      background: #dc3545;
+      color: white;
+    }
+  }
+}
+
+.skeleton-card {
+  .card-image-section {
+    cursor: default;
+  }
+}
+
+.skeleton-image-large {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 // Responsive
@@ -825,13 +1285,81 @@ onMounted(() => {
     }
   }
 
-  .table-container {
-    padding: 16px;
-    overflow-x: scroll;
+  // Switch to card view on mobile
+  .desktop-view {
+    display: none !important;
   }
 
-  .listings-table {
-    min-width: 800px;
+  .mobile-view {
+    display: block !important;
+  }
+
+  .listing-card {
+    margin-bottom: 12px;
+  }
+
+  .card-image-section {
+    height: 180px;
+  }
+
+  .card-content {
+    padding: 14px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .card-details {
+    gap: 6px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+  }
+
+  .detail-row {
+    font-size: 13px;
+
+    .detail-value.price {
+      font-size: 15px;
+    }
+  }
+
+  .btn-card {
+    padding: 9px 10px;
+    font-size: 13px;
+
+    &.btn-primary {
+      flex: 1;
+      font-size: 14px;
+      padding: 10px 12px;
+    }
+
+    &.btn-secondary {
+      flex: 1;
+      font-size: 13px;
+    }
+
+    &.btn-tertiary {
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      justify-content: center;
+
+      .btn-text {
+        display: none;
+      }
+
+      i {
+        font-size: 16px;
+        margin: 0;
+      }
+    }
+
+    i {
+      font-size: 13px;
+    }
   }
 }
 
@@ -850,6 +1378,83 @@ onMounted(() => {
 
   .stats-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .listing-card {
+    margin-bottom: 10px;
+  }
+
+  .card-image-section {
+    height: 160px;
+
+    .card-status-badge {
+      top: 8px;
+      right: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+  }
+
+  .card-content {
+    padding: 12px;
+  }
+
+  .card-title {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .card-details {
+    gap: 5px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .detail-row {
+    font-size: 12px;
+
+    .detail-value.price {
+      font-size: 14px;
+    }
+
+    i {
+      font-size: 11px;
+    }
+  }
+
+  .btn-card {
+    padding: 8px 8px;
+    font-size: 12px;
+
+    &.btn-primary {
+      flex: 1;
+      font-size: 12px;
+      padding: 9px 10px;
+    }
+
+    &.btn-secondary {
+      flex: 1;
+      font-size: 12px;
+    }
+
+    &.btn-tertiary {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+
+      .btn-text {
+        display: none;
+      }
+
+      i {
+        font-size: 15px;
+        margin: 0;
+      }
+    }
+
+    i {
+      font-size: 12px;
+    }
   }
 }
 </style>
