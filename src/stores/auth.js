@@ -19,21 +19,18 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const userName = computed(() => {
     if (!user.value) return '訪客'
-    // Prefer database nickname over OAuth metadata
-    return profileData.value?.nickname ||
-           user.value.user_metadata?.full_name ||
-           user.value.user_metadata?.name ||
-           user.value.email?.split('@')[0] ||
-           '使用者'
+    if (!profileData.value) return '使用者'
+    return profileData.value.nickname || '使用者'
   })
 
-  const userEmail = computed(() => user.value?.email || '')
+  const userEmail = computed(() => {
+    if (!user.value) return ''
+    return profileData.value?.email || user.value.email || ''
+  })
 
   const userAvatar = computed(() => {
-    // Prefer database avatar over OAuth metadata
-    return profileData.value?.profile_picture_url ||
-           user.value?.user_metadata?.avatar_url ||
-           ''
+    if (!user.value) return ''
+    return profileData.value?.profile_picture_url || ''
   })
 
   // Actions
@@ -242,6 +239,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     session,
     profileData,
+    isLoadingProfile,
     // Getters
     userName,
     userEmail,

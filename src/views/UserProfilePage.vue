@@ -8,7 +8,7 @@
 
       <div class="profile-container">
         <!-- Loading Skeleton for Profile Header -->
-        <section v-if="authStore.isLoadingProfile" class="profile-header">
+    <section v-if="showProfileSkeleton" class="profile-header">
           <div class="header-content">
             <div class="skeleton-avatar"></div>
             <div class="skeleton-user-info-section">
@@ -28,7 +28,16 @@
             </div>
             <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
               <div class="skeleton-badges">
-                <div class="skeleton-badge" v-for="i in 3" :key="`badge-${i}`"></div>
+                <div class="skeleton-badge" v-for="i in 4" :key="`badge-${i}`">
+                  <div class="skeleton-badge-icon"></div>
+                  <div class="skeleton-badge-content">
+                    <div class="skeleton-badge-title"></div>
+                    <div class="skeleton-badge-progress">
+                      <div class="skeleton-badge-progress-bar"></div>
+                    </div>
+                    <div class="skeleton-badge-meta"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -39,8 +48,8 @@
           <div class="header-content">
             <div class="user-avatar-section">
               <img
-                v-if="authStore.userAvatar"
-                :src="authStore.userAvatar"
+                v-if="displayAvatar"
+                :src="displayAvatar"
                 alt="User Avatar"
                 class="user-avatar"
                 referrerpolicy="no-referrer"
@@ -49,7 +58,7 @@
             </div>
 
             <div class="user-info-section">
-              <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
+              <h1 class="user-name">{{ displayName }}</h1>
               <p class="user-email">{{ authStore.userEmail }}</p>
 
               <!-- Followers/Following Stats -->
@@ -95,6 +104,7 @@
               </div>
             </div>
 
+            <!-- Achievement Badges -->
             <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
               <AchievementBadges
                 :total-carbon="userCarbonSaved"
@@ -446,6 +456,29 @@ const userCarbonSaved = computed(() => {
   return profileData.value?.profile_details?.carbon_saved_kg || 0;
 });
 
+// 優先使用 profileData 的自定義資料，避免顯示閃爍
+// 只有在 profileData 存在時才使用，否則繼續顯示 loading
+const displayAvatar = computed(() => {
+  return profileData.value?.profile_picture_url || '';
+});
+
+const displayName = computed(() => {
+  if (!profileData.value) {
+    return '使用者';
+  }
+  return profileData.value.nickname || '使用者';
+});
+
+const showProfileSkeleton = computed(() => {
+  if (!authStore.isLoggedIn) {
+    return false;
+  }
+  if (authStore.isLoadingProfile) {
+    return true;
+  }
+  return !profileData.value;
+});
+
 // Achievement badges are now calculated inside AchievementBadges component
 
 const tabs = computed(() => [
@@ -506,10 +539,16 @@ const ensureProfileLoaded = async () => {
     return;
   }
 
-  // 如果 authStore 還沒載入 profileData，等待載入完成
-  if (!authStore.profileData && !authStore.isLoadingProfile) {
-    console.log('[Profile] Loading from auth store');
-    await authStore.loadCustomProfile();
+  try {
+    // 如果 authStore 還沒載入 profileData，等待載入完成
+    if (!authStore.profileData) {
+      console.log('[Profile] Loading from auth store');
+      await authStore.loadCustomProfile();
+    } else {
+      console.log('[Profile] Profile data already loaded');
+    }
+  } catch (error) {
+    console.error('[Profile] Failed to load profile data:', error);
   }
 };
 
@@ -590,6 +629,8 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
         })
       : Promise.resolve()
     ]);
+  } else if (!isLoggedIn) {
+    dataLoaded = false;
   }
 }, { immediate: true }); // Run immediately on mount
 
@@ -629,6 +670,7 @@ onMounted(async () => {
       : Promise.resolve()
     ]);
   }
+
   if (badgeModalRef.value) {
     badgeModalInstance.value = new Modal(badgeModalRef.value);
   }
@@ -1056,8 +1098,6 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 12px;
   }
 
-
-
   .manage-btn {
     display: inline-flex;
     align-items: center;
@@ -1294,33 +1334,9 @@ const scrollCarousel = (carouselRef, index) => {
     min-width: 300px;
   }
 
-  .achievements-section {
+  // Achievement badges section responsive
+  .col-xl-6.col-lg-6 {
     width: 100%;
-    margin-top: 0 !important;
-  }
-
-  .achievements-stepper {
-    gap: 18px;
-
-    .step-item {
-      .step-circle {
-        width: 90px;
-        height: 90px;
-        padding: 9px;
-      }
-
-      .step-label {
-        font-size: 13px;
-      }
-    }
-
-    &::before {
-      top: 45px;
-    }
-
-    .unlocked-line {
-      top: 45px;
-    }
   }
 }
 
@@ -1476,6 +1492,42 @@ const scrollCarousel = (carouselRef, index) => {
       padding: 10px 20px;
     }
   }
+
+  // Skeleton responsive
+  .skeleton-avatar {
+    width: 120px;
+    height: 120px;
+  }
+
+  .skeleton-user-info-section {
+    align-items: center;
+  }
+
+  .skeleton-name {
+    width: 180px;
+  }
+
+  .skeleton-email {
+    width: 130px;
+  }
+
+  .skeleton-follow-stats {
+    justify-content: center;
+  }
+
+  .skeleton-badges {
+    gap: 12px;
+  }
+
+  .skeleton-badge {
+    width: 100%;
+    max-width: none;
+  }
+
+  .skeleton-badge-icon {
+    width: 56px;
+    height: 56px;
+  }
 }
 
 // Mobile devices (< 768px)
@@ -1561,50 +1613,6 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .achievements-section {
-    width: 100%;
-  }
-
-  .achievements-title {
-    flex-direction: column;
-    align-items: flex-start !important;
-    gap: 10px;
-    font-size: 16px !important;
-
-    .carbon-total {
-      font-size: 13px;
-    }
-  }
-
-  .achievements-stepper {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px 16px;
-
-    &::before {
-      display: none;
-    }
-
-    .unlocked-line {
-      display: none;
-    }
-
-    .step-item {
-      .step-circle {
-        width: 75px;
-        height: 75px;
-        padding: 8px;
-      }
-
-      .step-label {
-        font-size: 12px;
-      }
-
-      .step-requirement {
-        font-size: 10px;
-      }
-    }
-  }
-
   .tab-btn {
     padding: 16px 20px;
     font-size: 14px;
@@ -1616,6 +1624,18 @@ const scrollCarousel = (carouselRef, index) => {
     span:not(.tab-count) {
       display: none;
     }
+  }
+
+  .skeleton-badges {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .skeleton-badge {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
   }
 
   // Mobile Layout: Show carousel with 1 card at a time
@@ -1775,35 +1795,6 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .achievements-title {
-    font-size: 15px !important;
-
-    .carbon-total {
-      font-size: 12px;
-      padding: 4px 10px;
-    }
-  }
-
-  .achievements-stepper {
-    gap: 16px 12px;
-
-    .step-item {
-      .step-circle {
-        width: 65px;
-        height: 65px;
-        padding: 6px;
-      }
-
-      .step-label {
-        font-size: 11px;
-      }
-
-      .step-requirement {
-        font-size: 9px;
-      }
-    }
-  }
-
   // Adjust carousel arrow size for smaller screens
   .carousel-arrow {
     width: 32px;
@@ -1824,6 +1815,38 @@ const scrollCarousel = (carouselRef, index) => {
     p {
       font-size: 15px;
     }
+  }
+
+  // Skeleton responsive for small screens
+  .skeleton-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .skeleton-name {
+    width: 150px;
+    height: 24px;
+  }
+
+  .skeleton-email {
+    width: 120px;
+  }
+
+  .skeleton-button {
+    width: 100px;
+    height: 40px;
+  }
+
+  .skeleton-badge {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 14px;
+  }
+
+  .skeleton-badge-icon {
+    width: 52px;
+    height: 52px;
   }
 }
 
@@ -1933,11 +1956,68 @@ const scrollCarousel = (carouselRef, index) => {
 }
 
 .skeleton-badge {
-  width: 100px;
-  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  width: calc(50% - 16px);
+  min-width: 220px;
+  max-width: 260px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.skeleton-badge-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
-  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+}
+
+.skeleton-badge-title,
+.skeleton-badge-meta {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge-title {
+  width: 70%;
+}
+
+.skeleton-badge-meta {
+  width: 50%;
+}
+
+.skeleton-badge-progress {
+  height: 10px;
+  width: 100%;
+  border-radius: 6px;
+  background: #f3f3f3;
+  overflow: hidden;
+}
+
+.skeleton-badge-progress-bar {
+  height: 100%;
+  width: 60%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
@@ -1960,10 +2040,19 @@ const scrollCarousel = (carouselRef, index) => {
 }
 
 .skeleton-product-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
   background: white;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-product-card > .skeleton-image,
+.skeleton-product-card > .skeleton-content {
+  width: 100%;
 }
 
 .skeleton-image {
@@ -1972,6 +2061,7 @@ const scrollCarousel = (carouselRef, index) => {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 .skeleton-content {
@@ -1979,6 +2069,18 @@ const scrollCarousel = (carouselRef, index) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+@media (max-width: 1199.98px) {
+  .skeleton-product-card {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .skeleton-product-card {
+    flex-direction: column;
+  }
 }
 
 .skeleton-title {
