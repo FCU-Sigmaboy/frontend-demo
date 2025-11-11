@@ -3325,6 +3325,15 @@ onBeforeUnmount(() => {
     overflow: hidden; // Only messages-area should scroll
   }
 
+  // 固定 chat-header 在頂部
+  .chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 200; // 確保在 input-area-wrapper 之上
+    background: white; // 確保有背景色
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); // 增加陰影效果
+  }
+
   .messages-area {
     flex: 1;
     overflow-y: scroll; // Force scroll container
@@ -3333,16 +3342,22 @@ onBeforeUnmount(() => {
     overscroll-behavior-y: contain; // Prevent pull-to-refresh
     touch-action: pan-y; // Explicitly allow vertical scrolling
     padding: 16px; // Reduced padding for mobile
+    padding-bottom: 80px; // 增加底部間距，避免被固定的輸入框遮擋
     // Use min-height instead of fixed height for better keyboard handling
     min-height: 0; // Critical: Allow flex item to shrink
     position: relative;
     // Remove max-height to allow natural scrolling
   }
 
+  // 固定 input-area-wrapper 在底部
   .input-area-wrapper {
-    position: sticky;
+    position: fixed;
     bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 100; // 保持與桌面版一致
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05); // 增加陰影效果
   }
 
   .pending-item-reference {
@@ -3398,10 +3413,6 @@ onBeforeUnmount(() => {
 
     i {
       font-size: 14px;
-    }
-
-    span {
-      display: none; // 在手機上只顯示圖標,變成圓形按鈕
     }
 
     // 手機上移除 hover 效果
