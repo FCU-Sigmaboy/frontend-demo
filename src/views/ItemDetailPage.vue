@@ -588,6 +588,7 @@ onUnmounted(() => {
 .image-gallery {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   gap: 20px;
 }
 
