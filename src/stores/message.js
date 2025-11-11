@@ -32,6 +32,7 @@ export const useMessageStore = defineStore('message', () => {
   const typingChannels = new Map()
   const typingChannelReady = new Map()
   const TYPING_EXPIRY_MS = 4000
+  const sentMessageReadReceipts = ref(new Map()) // Map<string, boolean>
 
   // ===== 工具函式 =====
 
@@ -97,6 +98,27 @@ export const useMessageStore = defineStore('message', () => {
     }
   }
 
+  function toMessageKey(id) {
+    if (id === undefined || id === null) return null
+    return typeof id === 'string' ? id : String(id)
+  }
+
+  function getSentMessageReadReceipt(messageId) {
+    const key = toMessageKey(messageId)
+    if (key === null) return undefined
+    return sentMessageReadReceipts.value.get(key)
+  }
+
+  function setSentMessageReadReceipt(messageId, isRead) {
+    const key = toMessageKey(messageId)
+    if (key === null) return
+
+    const next = new Map(sentMessageReadReceipts.value)
+    next.set(key, !!isRead)
+    sentMessageReadReceipts.value = next
+  }
+
+
   function ensureChronologicalOrder(messages) {
     if (!Array.isArray(messages) || messages.length < 2) {
       return messages ? [...messages] : []
@@ -111,12 +133,25 @@ export const useMessageStore = defineStore('message', () => {
     const id = msg.message_id ?? msg.id
     cacheItemReferenceFromMessage(msg)
 
+    const isMine = !!msg.is_mine
+    let isRead = msg.is_read || false
+
+    if (isMine) {
+      const cachedReceipt = getSentMessageReadReceipt(id)
+      if (cachedReceipt !== undefined) {
+        isRead = cachedReceipt
+      } else {
+        isRead = false
+        setSentMessageReadReceipt(id, false)
+      }
+    }
+
     return {
       id,
       content: msg.content,
       created_at: msg.created_at,
       is_mine: msg.is_mine,
-      is_read: msg.is_read || false,
+      is_read: isRead,
       message_type: msg.message_type || 'text',
       related_item_id: msg.related_item_id,
       related_item_title: msg.related_item_title,
@@ -456,7 +491,8 @@ export const useMessageStore = defineStore('message', () => {
           unread_count: conv.unread_count || 0,
           is_archived: conv.is_archived || false,
           created_at: conv.created_at,
-          role: user ? (conv.other_user_id === user.id ? 'seller' : 'buyer') : 'buyer'
+          role: user ? (conv.other_user_id === user.id ? 'seller' : 'buyer') : 'buyer',
+          _raw: conv // 保存原始資料以供後續使用
         }))
 
         console.log(`✅ Loaded ${conversations.value.length} conversations, total unread: ${totalUnreadCount.value}`)
@@ -583,29 +619,83 @@ export const useMessageStore = defineStore('message', () => {
     const currentUserId = user?.id
     const senderId = updatedMessage.sender_id
 
+    const isMine = currentUserId ? senderId === currentUserId : false
+
+    if (!isMine) {
+      console.log(`[Message] 訊息 ${messageId} 不是我發送的，跳過已讀狀態更新`)
+      return
+    }
+
+    const message = currentMessages.value.find(m => m.id === messageId)
+
     // 判斷已讀狀態
     let isRead = false
 
-    // 如果當前用戶是發送者，檢查接收者（對方）是否已讀
+    // 確認當前用戶是發送者
     if (currentUserId === senderId) {
-      // 我是發送者，需要知道對方是否已讀
-      // 兩個參與者都已讀，就表示對方已讀
-      isRead = updatedMessage.read_by_participant_1 && updatedMessage.read_by_participant_2
-      console.log(`[Message] 我是發送者，對方已讀: ${isRead}`)
-      console.log(`[Message] read_by_participant_1: ${updatedMessage.read_by_participant_1}, read_by_participant_2: ${updatedMessage.read_by_participant_2}`)
+      // 我是發送者，需要找出對話中哪個 participant 是我，哪個是對方
+      let participant1Id, participant2Id
+
+      // 先嘗試從本地對話列表獲取
+      const conversation = conversations.value.find(c => c.id === conversationId)
+      if (conversation?._raw?.participant_1_id && conversation?._raw?.participant_2_id) {
+        participant1Id = conversation._raw.participant_1_id
+        participant2Id = conversation._raw.participant_2_id
+      } else {
+        // 如果本地沒有，直接從資料庫查詢對話的 participant 資訊
+        try {
+          const { data: convData, error } = await supabase
+            .from('conversations_v2')
+            .select('participant_1_id, participant_2_id')
+            .eq('id', conversationId)
+            .single()
+
+          if (!error && convData) {
+            participant1Id = convData.participant_1_id
+            participant2Id = convData.participant_2_id
+            console.log(`[Message] 從資料庫查詢到 participant 資訊: p1=${participant1Id}, p2=${participant2Id}`)
+          } else {
+            console.error(`[Message] 查詢對話 participant 失敗:`, error)
+            return
+          }
+        } catch (err) {
+          console.error(`[Message] 查詢對話資訊時發生錯誤:`, err)
+          return
+        }
+      }
+
+      if (participant1Id && participant2Id) {
+        // 判斷我是 participant_1 還是 participant_2
+        const iAmParticipant1 = currentUserId === participant1Id
+
+        // 檢查對方是否已讀：如果我是 participant_1，檢查 participant_2 的已讀狀態，反之亦然
+        if (iAmParticipant1) {
+          isRead = updatedMessage.read_by_participant_2 === true
+        } else {
+          isRead = updatedMessage.read_by_participant_1 === true
+        }
+
+        console.log(`[Message] 我是發送者，我是 participant_${iAmParticipant1 ? '1' : '2'}，對方已讀: ${isRead}`)
+        console.log(`[Message] read_by_participant_1: ${updatedMessage.read_by_participant_1}, read_by_participant_2: ${updatedMessage.read_by_participant_2}`)
+      } else {
+        console.log(`[Message] 無法取得 participant 資訊，不更新已讀狀態`)
+        return
+      }
+    } else {
+      // 當前用戶不是發送者，這種情況不應該發生（因為我們已經檢查了 is_mine）
+      console.log(`[Message] 當前用戶不是發送者，跳過更新`)
+      return
     }
 
-    console.log(`[Message] 訊息 ID: ${messageId}, 對話 ID: ${conversationId}, 已讀: ${isRead}`)
-    console.log(`[Message] 目前對話 ID: ${selectedConversationId.value}`)
+    console.log(`[Message] 訊息 ID: ${messageId}, 對話 ID: ${conversationId}, 更新後 is_read: ${isRead}`)
 
-    // 無論是否為當前對話，都嘗試更新
-    const message = currentMessages.value.find(m => m.id === messageId)
+    setSentMessageReadReceipt(messageId, isRead)
+
     if (message) {
-      console.log(`[Message] 找到訊息，更新前 is_read: ${message.is_read}`)
+      console.log(`[Message] 更新當前訊息 ${messageId} 的已讀狀態`)
       message.is_read = isRead
-      console.log(`[Message] 已更新訊息 ${messageId} 的已讀狀態: ${isRead}`)
     } else {
-      console.log(`[Message] 未找到訊息 ${messageId}，可能不在目前對話中`)
+      console.log(`[Message] 訊息 ${messageId} 當前不在列表中，僅更新快取狀態`)
     }
   }
 
@@ -622,6 +712,10 @@ export const useMessageStore = defineStore('message', () => {
     // 獲取當前用戶ID（用於判斷是否為自己發送的訊息）
     const { data: { user } } = await supabase.auth.getUser()
     const isMine = senderId === user?.id
+
+    if (isMine && getSentMessageReadReceipt(messageId) === undefined) {
+      setSentMessageReadReceipt(messageId, false)
+    }
 
     // 處理物品引用：優先使用後端返回的標題，否則從緩存中讀取
     const relatedItemId = newMessage.related_item_id || null
@@ -673,7 +767,7 @@ export const useMessageStore = defineStore('message', () => {
           content: content,
           created_at: createdAt,
           is_mine: isMine, // 正確判斷是否為自己發送的訊息
-          is_read: newMessage.is_read || false, // 對方是否已讀
+          is_read: isMine ? (getSentMessageReadReceipt(messageId) || false) : (newMessage.is_read || false),
           message_type: newMessage.message_type || 'text',
           related_item_id: relatedItemId,
           related_item_title: relatedItemTitle, // 使用處理後的標題
@@ -800,7 +894,7 @@ export const useMessageStore = defineStore('message', () => {
         console.warn('Failed to unsubscribe typing channel during reset:', err)
       }
     })
-  typingChannels.clear()
+    typingChannels.clear()
     typingChannelReady.clear()
     saveMessageDraftsToStorage({})
     console.log(' Message store reset')
@@ -821,13 +915,13 @@ export const useMessageStore = defineStore('message', () => {
     joinTypingChannel,
     leaveTypingChannel,
     broadcastTypingStatus,
-  // Pending Item References & Drafts
-  setPendingItemReference,
-  getPendingItemReference,
-  clearPendingItemReference,
-  setMessageDraft,
-  getMessageDraft,
-  clearMessageDraft,
+    // Pending Item References & Drafts
+    setPendingItemReference,
+    getPendingItemReference,
+    clearPendingItemReference,
+    setMessageDraft,
+    getMessageDraft,
+    clearMessageDraft,
     // Getters
     totalUnreadCount,
     selectedConversation,

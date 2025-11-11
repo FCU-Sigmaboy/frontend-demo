@@ -1272,6 +1272,7 @@ async function sendMessage() {
     content: content,
     created_at: new Date().toISOString(),
     is_mine: true,
+    is_read: false,
     message_type: 'text',
     related_item_id: relatedItemId,
     related_item_title: relatedItemTitle,
