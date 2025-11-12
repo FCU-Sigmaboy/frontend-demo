@@ -4,6 +4,8 @@ import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { getConversationItems, archiveConversation } from '@/api/conversationAPI_v2';
+import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
+import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
 
 const UNREAD_DIVIDER_CLEAR_THRESHOLD = 200;
 const TYPING_BROADCAST_INTERVAL = 1200;
@@ -95,6 +97,7 @@ export function useMessagePage() {
   const activeFilter = ref('all');
   const messageInput = ref('');
   const messagesArea = ref(null);
+  let registeredMessagesArea = null;
   const showMoreMenu = ref(false);
   const messagesLoading = ref(false);
   const pendingItemReference = ref(null);
@@ -108,9 +111,6 @@ export function useMessagePage() {
   const suppressUnreadDivider = ref(false);
   const hasReachedBottomAfterUnread = ref(false);
 
-  let typingStopTimerId = null;
-  let localTypingActive = false;
-  let lastTypingBroadcastAt = 0;
   let suppressTypingBroadcast = false;
 
   const conversationItems = ref([]);
@@ -149,18 +149,6 @@ export function useMessagePage() {
 
   function allowUnreadDivider() {
     suppressUnreadDivider.value = false;
-  }
-
-  function clearTypingStopTimer() {
-    if (typingStopTimerId) {
-      clearTimeout(typingStopTimerId);
-      typingStopTimerId = null;
-    }
-  }
-
-  function resetTypingFlags() {
-    localTypingActive = false;
-    lastTypingBroadcastAt = 0;
   }
 
   async function waitForTicks(count = 1) {
@@ -364,6 +352,31 @@ export function useMessagePage() {
     return displayConversations.value.find(c => c.id === messageStore.selectedConversationId) || null;
   });
 
+  const typingCoordinator = useTypingCoordinator({
+    messageStore,
+    getIdentity: () => currentUserIdentity.value,
+    getSelectedConversationId: () => selectedConversation.value?.id ?? null,
+    typingStopDelay: TYPING_STOP_DELAY,
+    typingBroadcastInterval: TYPING_BROADCAST_INTERVAL
+  });
+
+  const scrollCoordinator = useScrollCoordinator({
+    messagesArea,
+    messageStore,
+    selectedConversation,
+    showScrollToBottomBtn,
+    newMessageCount,
+    isLoadingMoreMessages,
+    hasMoreMessages,
+    firstUnreadMessageId,
+    hasReachedBottomAfterUnread,
+    clearUnreadDivider,
+    allowUnreadDivider,
+    loadMoreMessages,
+    scrollToBottom,
+    unreadDividerClearThreshold: UNREAD_DIVIDER_CLEAR_THRESHOLD
+  });
+
   const typingUsers = computed(() => {
     const conversationId = selectedConversation.value?.id;
     if (!conversationId) return [];
@@ -441,21 +454,11 @@ export function useMessagePage() {
       if (oldId && oldId !== newId) {
         messageStore.setPendingItemReference(oldId, pendingItemReference.value);
         messageStore.setMessageDraft(oldId, messageInput.value);
+        await scrollCoordinator.emitReset({ conversationId: oldId || null });
+      }
 
-        const identity = currentUserIdentity.value;
-        if (identity) {
-          messageStore.broadcastTypingStatus(oldId, false, identity).catch(err => {
-            console.error('Failed to broadcast typing status when leaving conversation:', err);
-          });
-        }
-
-        try {
-          await messageStore.leaveTypingChannel(oldId);
-        } catch (err) {
-          console.error('Failed to leave typing channel:', err);
-        }
-        clearTypingStopTimer();
-        resetTypingFlags();
+      if (newId === oldId) {
+        return;
       }
 
       if (!newId) {
@@ -464,24 +467,28 @@ export function useMessagePage() {
         messageInput.value = '';
         await nextTick();
         suppressTypingBroadcast = false;
-        return;
-      }
 
-      pendingItemReference.value = messageStore.getPendingItemReference(newId);
-      suppressTypingBroadcast = true;
-      messageInput.value = messageStore.getMessageDraft(newId);
-      await nextTick();
-      suppressTypingBroadcast = false;
-
-      clearTypingStopTimer();
-      resetTypingFlags();
-
-      const identity = currentUserIdentity.value;
-      if (identity) {
-        messageStore.joinTypingChannel(newId, identity).catch(err => {
-          console.error('Failed to join typing channel:', err);
+        await typingCoordinator.emitConversationChanged({
+          prevConversationId: oldId || null,
+          nextConversationId: null,
+          identity: currentUserIdentity.value || null
         });
+        await scrollCoordinator.emitConversationChanged({ conversationId: null });
+        return;
+      } else {
+        pendingItemReference.value = messageStore.getPendingItemReference(newId);
+        suppressTypingBroadcast = true;
+        messageInput.value = messageStore.getMessageDraft(newId);
+        await nextTick();
+        suppressTypingBroadcast = false;
       }
+
+      await typingCoordinator.emitConversationChanged({
+        prevConversationId: oldId || null,
+        nextConversationId: newId || null,
+        identity: currentUserIdentity.value || null
+      });
+      await scrollCoordinator.emitConversationChanged({ conversationId: newId || null });
     }
   );
 
@@ -504,49 +511,10 @@ export function useMessagePage() {
       messageStore.setMessageDraft(conversationId, newValue);
 
       if (suppressTypingBroadcast) return;
-
-      const identity = currentUserIdentity.value;
-      if (!identity?.id) return;
-
-      const trimmed = newValue.trim();
-      const now = Date.now();
-
-      if (!trimmed) {
-        if (localTypingActive) {
-          messageStore.broadcastTypingStatus(conversationId, false, identity).catch(err => {
-            console.error('Failed to broadcast typing end:', err);
-          });
-        }
-        clearTypingStopTimer();
-        resetTypingFlags();
-        return;
-      }
-
-      if (!localTypingActive || now - lastTypingBroadcastAt > TYPING_BROADCAST_INTERVAL) {
-        localTypingActive = true;
-        lastTypingBroadcastAt = now;
-        messageStore.broadcastTypingStatus(conversationId, true, identity).catch(err => {
-          console.error('Failed to broadcast typing status:', err);
-        });
-      }
-
-      clearTypingStopTimer();
-
-      typingStopTimerId = setTimeout(() => {
-        const activeConversationId = selectedConversation.value?.id;
-        const activeIdentity = currentUserIdentity.value;
-        if (!activeConversationId || !activeIdentity?.id) {
-          resetTypingFlags();
-          typingStopTimerId = null;
-          return;
-        }
-
-        messageStore.broadcastTypingStatus(activeConversationId, false, activeIdentity).catch(err => {
-          console.error('Failed to broadcast typing end:', err);
-        });
-        resetTypingFlags();
-        typingStopTimerId = null;
-      }, TYPING_STOP_DELAY);
+      void typingCoordinator.emitInputChanged({
+        conversationId,
+        content: newValue
+      });
     }
   );
 
@@ -795,9 +763,8 @@ export function useMessagePage() {
       messageStore.setMessageDraft(conversationId, messageInput.value);
     }
     pendingItemReference.value = null;
-    clearTypingStopTimer();
-    resetTypingFlags();
     messageStore.clearSelectedConversation();
+    void scrollCoordinator.emitReset({ conversationId: conversationId || null });
   }
 
   async function sendMessage() {
@@ -808,12 +775,8 @@ export function useMessagePage() {
     const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null;
 
     messageInput.value = '';
-    clearTypingStopTimer();
-    resetTypingFlags();
-    if (selectedConversation.value?.id && currentUserIdentity.value?.id) {
-      messageStore.broadcastTypingStatus(selectedConversation.value.id, false, currentUserIdentity.value).catch(err => {
-        console.error('Failed to broadcast typing end after send:', err);
-      });
+    if (selectedConversation.value?.id) {
+      void typingCoordinator.emitSendMessage({ conversationId: selectedConversation.value.id });
     }
 
     clearUnreadDivider({ suppress: true });
@@ -997,101 +960,90 @@ export function useMessagePage() {
     }
   }
 
-  function isAtBottom() {
-    if (!messagesArea.value) return false;
-    const { scrollTop, scrollHeight, clientHeight } = messagesArea.value;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    return distanceFromBottom < 100;
+  async function handleMessagesScroll(event) {
+    const target = event?.target instanceof HTMLElement
+      ? event.target
+      : messagesArea.value;
+
+    if (!target) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = target;
+
+    void scrollCoordinator.emitScrollMetrics({
+      scrollTop,
+      scrollHeight,
+      clientHeight
+    });
   }
 
-  async function handleMessagesScroll() {
-    if (!messagesArea.value) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = messagesArea.value;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    const distanceFromTop = scrollTop;
-
-    showScrollToBottomBtn.value = distanceFromBottom > 200;
-
-    const atBottom = distanceFromBottom < 100;
-    const wasPreviouslyAtBottom = messageStore.isAtMessagesBottom;
-    messageStore.setIsAtMessagesBottom(atBottom);
-
-    if (
-      !atBottom &&
-      firstUnreadMessageId.value &&
-      hasReachedBottomAfterUnread.value &&
-      distanceFromBottom > UNREAD_DIVIDER_CLEAR_THRESHOLD
-    ) {
-      clearUnreadDivider({ suppress: true });
-      console.log('[MessagesPage] 從底部向上滑動一段距離，清除未讀訊息分隔線');
+  function registerMessagesArea(element) {
+    if (registeredMessagesArea === element) {
+      messagesArea.value = element;
+      return;
     }
 
-    if (atBottom) {
-      newMessageCount.value = 0;
-      if (firstUnreadMessageId.value) {
-        hasReachedBottomAfterUnread.value = true;
-        allowUnreadDivider();
-      }
-
-      if (!wasPreviouslyAtBottom && selectedConversation.value) {
-        const hasUnreadMessages = messageStore.currentMessages.some(msg => !msg.is_mine && !msg.is_read);
-
-        if (hasUnreadMessages) {
-          const unreadMessageIds = [];
-
-          messageStore.currentMessages.forEach(msg => {
-            if (!msg.is_mine && !msg.is_read) {
-              unreadMessageIds.push(msg.id);
-              msg.is_read = true;
-            }
-          });
-
-          allowUnreadDivider();
-
-          try {
-            const { markAsRead } = await import('@/api/conversationAPI_v2');
-            await markAsRead(selectedConversation.value.id);
-            console.log('[MessagesPage] 滾動到底部，已標記為已讀');
-
-            const conversation = messageStore.conversations.find(c => c.id === selectedConversation.value.id);
-            if (conversation) {
-              conversation.unread_count = 0;
-            }
-          } catch (err) {
-            messageStore.currentMessages.forEach(msg => {
-              if (unreadMessageIds.includes(msg.id)) {
-                msg.is_read = false;
-              }
-            });
-
-            allowUnreadDivider();
-
-            console.error('[MessagesPage] 標記已讀失敗:', err);
-          }
-        }
-      }
+    if (registeredMessagesArea) {
+      registeredMessagesArea.removeEventListener('scroll', handleMessagesScroll);
     }
 
-    if (distanceFromTop < 200 && !isLoadingMoreMessages.value && hasMoreMessages.value && selectedConversation.value) {
-      loadMoreMessages();
+    registeredMessagesArea = element || null;
+    messagesArea.value = registeredMessagesArea;
+
+    if (registeredMessagesArea) {
+      registeredMessagesArea.addEventListener('scroll', handleMessagesScroll, { passive: true });
+
+      void scrollCoordinator.emitScrollMetrics({
+        scrollTop: registeredMessagesArea.scrollTop,
+        scrollHeight: registeredMessagesArea.scrollHeight,
+        clientHeight: registeredMessagesArea.clientHeight
+      });
     }
   }
 
-  function scrollToBottom(smooth = false) {
+  function scrollToBottom(arg) {
+    const defaultOptions = { smooth: false, preferUnread: true };
+    let options = { ...defaultOptions };
+
+    if (typeof arg === 'boolean') {
+      options.smooth = arg;
+    } else if (arg && typeof arg === 'object') {
+      const isEvent = typeof arg.preventDefault === 'function';
+      if (isEvent) {
+        arg.preventDefault();
+        arg.stopPropagation?.();
+      } else {
+        options = { ...options, ...arg };
+      }
+    }
+
     newMessageCount.value = 0;
 
     nextTick(() => {
-      if (!messagesArea.value) return;
+      const container = messagesArea.value;
+      if (!container) return;
 
       const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints;
-      const scrollOptions = {
-        top: messagesArea.value.scrollHeight,
-        behavior: smooth && !isMobile ? 'smooth' : 'auto'
-      };
+      const behavior = options.smooth && !isMobile ? 'smooth' : 'auto';
+
+      if (options.preferUnread && firstUnreadMessageId.value) {
+        const selector = `[data-message-id="${String(firstUnreadMessageId.value)}"]`;
+        const target = container.querySelector(selector);
+
+        if (target) {
+          const containerRect = container.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const offset = targetRect.top - containerRect.top + container.scrollTop - 48;
+          const top = Math.max(0, offset);
+
+          container.scrollTo({ top, behavior });
+          return;
+        }
+      }
+
+      const scrollTop = container.scrollHeight;
 
       if (isMobile) {
-        messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+        container.scrollTop = scrollTop;
 
         setTimeout(() => {
           if (messagesArea.value) {
@@ -1107,7 +1059,7 @@ export function useMessagePage() {
           }, 150);
         }
       } else {
-        messagesArea.value.scrollTo(scrollOptions);
+        container.scrollTo({ top: scrollTop, behavior });
       }
 
       if (firstUnreadMessageId.value) {
@@ -1236,10 +1188,6 @@ export function useMessagePage() {
 
     await waitForTicks(2);
 
-    if (messagesArea.value) {
-      messagesArea.value.addEventListener('scroll', handleMessagesScroll, { passive: true });
-    }
-
     document.addEventListener('click', handleClickOutside);
 
     watch(
@@ -1252,8 +1200,6 @@ export function useMessagePage() {
         await waitForTicks(2);
 
         if (!messagesArea.value) return;
-
-        const atBottom = isAtBottom();
 
         const appendedMessages = messageStore.currentMessages.slice(oldLen);
         if (appendedMessages.length > 0) {
@@ -1270,31 +1216,8 @@ export function useMessagePage() {
               console.error('Failed to refresh conversation items for new message:', err);
             });
           }
-        }
-        const incomingMessages = appendedMessages.filter(msg => !msg.is_mine);
-        const incomingCount = incomingMessages.length;
 
-        if (atBottom) {
-          messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-          showScrollToBottomBtn.value = false;
-          newMessageCount.value = 0;
-          messageStore.setIsAtMessagesBottom(true);
-          allowUnreadDivider();
-
-          if (firstUnreadMessageId.value) {
-            hasReachedBottomAfterUnread.value = true;
-          }
-        } else {
-          if (incomingCount > 0) {
-            newMessageCount.value += incomingCount;
-          }
-          showScrollToBottomBtn.value = true;
-          messageStore.setIsAtMessagesBottom(false);
-
-          if (incomingCount > 0) {
-            allowUnreadDivider();
-            hasReachedBottomAfterUnread.value = false;
-          }
+          void scrollCoordinator.emitMessagesAppended({ appendedMessages });
         }
       }
     );
@@ -1305,25 +1228,14 @@ export function useMessagePage() {
     if (conversationId) {
       messageStore.setPendingItemReference(conversationId, pendingItemReference.value);
       messageStore.setMessageDraft(conversationId, messageInput.value);
-      if (currentUserIdentity.value?.id) {
-        messageStore.broadcastTypingStatus(conversationId, false, currentUserIdentity.value).catch(err => {
-          console.error('Failed to broadcast typing end before unmount:', err);
-        });
-      }
-      messageStore.leaveTypingChannel(conversationId).catch(err => {
-        console.error('Failed to leave typing channel before unmount:', err);
-      });
     }
-
-    clearTypingStopTimer();
-    resetTypingFlags();
+    void typingCoordinator.emitReset({ conversationId: conversationId || null });
+    void scrollCoordinator.emitReset({ conversationId: conversationId || null });
 
     messageStore.setIsInMessagesPage(false);
     messageStore.setIsAtMessagesBottom(true);
 
-    if (messagesArea.value) {
-      messagesArea.value.removeEventListener('scroll', handleMessagesScroll);
-    }
+    registerMessagesArea(null);
 
     document.removeEventListener('click', handleClickOutside);
   });
@@ -1359,6 +1271,7 @@ export function useMessagePage() {
     openItemPage,
     removePendingItemReference,
     handleMessagesScroll,
+    registerMessagesArea,
     scrollToBottom
   };
 }
