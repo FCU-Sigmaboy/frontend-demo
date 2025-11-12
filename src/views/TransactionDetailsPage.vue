@@ -138,12 +138,10 @@ import { usePointsStore } from '@/stores/points';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
-import { useTransactions } from '@/composables/useTransactions';
 
 const router = useRouter();
 const route = useRoute();
 const pointsStore = usePointsStore();
-const { getConfirmationDetails, confirmOrder } = useTransactions();
 
 // State
 const loading = ref(false);

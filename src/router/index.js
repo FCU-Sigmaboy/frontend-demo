@@ -21,7 +21,6 @@ import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
 import TransactionRecordsPage from '../views/TransactionRecordsPage.vue';
 import MapSearchPage from '../views/MapSearchPage.vue';
 import UserDashboardPage from '../views/UserDashboardPage.vue';
-import MessagingDiagnosticsPage from '../views/MessagingDiagnosticsPage.vue';
 
 const routes = [
   {
@@ -134,11 +133,6 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: UserDashboardPage
-  },
-  {
-    path: '/messaging-diagnostics',
-    name: 'MessagingDiagnostics',
-    component: MessagingDiagnosticsPage
   }
 ];
 
