@@ -167,8 +167,17 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
   if (to.meta.requiresAuth && !authStore.isLoggedIn) {
-    await authStore.signInWithGoogle();
-    next(to.meta.path);
+    try {
+      await authStore.signInWithGoogle();
+      if (authStore.isLoggedIn) {
+        next();
+      } else {
+        next({ path: '/' });
+      }
+    } catch (error) {
+      console.error('Sign in failed:', error);
+      next({ path: '/' });
+    }
   } else {
     next();
   }
