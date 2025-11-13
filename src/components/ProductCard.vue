@@ -312,8 +312,8 @@ const goToSellerProfile = () => {
       display: block;
       bottom: 10px;
       right: 10px;
-      width: 26.4px;
-      height: 26.4px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       background-color: transparent;
       border: none;
@@ -325,7 +325,7 @@ const goToSellerProfile = () => {
       transition: all 0.3s;
 
       i {
-        font-size: 16px;
+        font-size: 20px;
         color: #1e1e1e;
       }
 
@@ -446,6 +446,15 @@ const goToSellerProfile = () => {
       font-size: 15px;
     }
   }
+
+  .name-and-favorite-button-wrapper .favorite-btn {
+    width: 40px;
+    height: 40px;
+
+    i {
+      font-size: 22px;
+    }
+  }
 }
 
 // Bootstrap 5 sm breakpoint
@@ -490,6 +499,15 @@ const goToSellerProfile = () => {
 
     i {
       font-size: 14px;
+    }
+  }
+
+  .name-and-favorite-button-wrapper .favorite-btn {
+    width: 44px;
+    height: 44px;
+
+    i {
+      font-size: 24px;
     }
   }
 }
