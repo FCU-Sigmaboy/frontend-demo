@@ -44,8 +44,7 @@
       <div class="product-meta">
         <i class="bi bi-geo-alt-fill"></i>
         <span>{{ product.formatted_address }}</span>
-        <span class="separator">•</span>
-        <span>{{ Math.round(product.distance_km * 100) / 100 }} km</span>
+        <span v-if="authStore.user"><span class="separator">•</span>{{ Math.round(product.distance_km * 100) / 100 }} km</span>
       </div>
 
       <!-- Posted Time -->
@@ -129,7 +128,12 @@ const formattedTime = computed(() => {
 
 // 切換收藏狀態
 let timeoutId = null;
-const toggleFavorite = () => {
+const toggleFavorite = async () => {
+  if (!authStore.user) {
+    await authStore.signInWithGoogle();
+    return;
+  }
+
   // 立即更新狀態,提供即時視覺回饋
   localFavoriteState.value = !localFavoriteState.value;
   
@@ -149,7 +153,7 @@ const toggleFavorite = () => {
 const handleContact = async () => {
   // 檢查是否登入
   if (!authStore.user) {
-    router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
+    await authStore.signInWithGoogle();
     return;
   }
 

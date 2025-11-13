@@ -481,6 +481,7 @@ const handleGoogleLogin = async () => {
 // 登出
 const handleLogout = async () => {
   await authStore.signOut();
+  router.push({ name: 'Home' });
   console.log('已登出');
   closeUnifiedMenu();
 };

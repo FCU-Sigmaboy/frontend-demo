@@ -22,6 +22,8 @@ import TransactionRecordsPage from '../views/TransactionRecordsPage.vue';
 import MapSearchPage from '../views/MapSearchPage.vue';
 import UserDashboardPage from '../views/UserDashboardPage.vue';
 
+import { useAuthStore } from '@/stores/auth';
+
 const routes = [
   {
     path: '/',
@@ -72,66 +74,79 @@ const routes = [
   {
     path: '/profile',
     name: 'UserProfile',
+    meta: { requiresAuth: true },
     component: UserProfilePage
   },
   {
     path: '/profile/edit',
     name: 'EditProfile',
+    meta: { requiresAuth: true },
     component: EditProfilePage
   },
   {
     path: '/favorites',
     name: 'Favorites',
+    meta: { requiresAuth: true },
     component: FavoritesPage
   },
   {
     path: '/messages',
     name: 'Messages',
+    meta: { requiresAuth: true },
     component: MessagesPage
   },
   {
     path: '/create-listing',
     name: 'CreateListing',
+    meta: { requiresAuth: true },
     component: CreateListingPage
   },
   {
     path: '/listing/:id/edit',
     name: 'EditListing',
+    meta: { requiresAuth: true },
     component: CreateListingPage
   },
   {
     path: '/settings',
     name: 'AccountSettings',
+    meta: { requiresAuth: true },
     component: AccountSettingsPage
   },
   {
     path: '/manage-listings',
     name: 'ManageListings',
+    meta: { requiresAuth: true },
     component: ManageListingsPage
   },
   {
     path: '/my-reviews',
     name: 'MyReviews',
+    meta: { requiresAuth: true },
     component: MyReviewsPage
   },
   {
     path: '/my-followers',
     name: 'MyFollowers',
+    meta: { requiresAuth: true },
     component: MyFollowersPage
   },
   {
     path: '/user/:id',
     name: 'PublicUserProfile',
+    meta: { requiresAuth: true },
     component: PublicUserProfilePage
   },
   {
     path: '/transactions',
     name: 'TransactionRecords',
+    meta: { requiresAuth: true },
     component: TransactionRecordsPage
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
+    meta: { requiresAuth: true },
     component: UserDashboardPage
   }
 ];
@@ -147,5 +162,16 @@ const router = createRouter({
     }
   }
 });
+
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
+
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    await authStore.signInWithGoogle();
+    next(to.meta.path);
+  } else {
+    next();
+  }
+})
 
 export default router;

@@ -214,7 +214,7 @@ const toggleExpand = () => {
 const handleMessage = async () => {
   // 檢查是否登入
   if (!authStore.user) {
-    router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
+    await authStore.signInWithGoogle();
     return;
   }
 
