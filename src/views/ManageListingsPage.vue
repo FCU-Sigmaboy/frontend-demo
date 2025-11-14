@@ -65,51 +65,63 @@
           <table class="listings-table">
             <thead>
               <tr>
-                <th class="col-image">物品</th>
-                <th class="col-status">狀態</th>
-                <th class="col-date">發布日期</th>
-                <th class="col-date">更新日期</th>
-                <th class="col-price">點數</th>
-                <th class="col-stats">被收藏</th>
+                <th class="col-image sortable" @click="sortBy('name')">
+                  物品 <span class="sort-icon">{{ getSortIcon('name') }}</span>
+                </th>
+                <th class="col-status sortable" @click="sortBy('status')">
+                  狀態 <span class="sort-icon">{{ getSortIcon('status') }}</span>
+                </th>
+                <th class="col-date sortable" @click="sortBy('publishedDate')">
+                  發布日期 <span class="sort-icon">{{ getSortIcon('publishedDate') }}</span>
+                </th>
+                <th class="col-date sortable" @click="sortBy('updatedDate')">
+                  更新日期 <span class="sort-icon">{{ getSortIcon('updatedDate') }}</span>
+                </th>
+                <th class="col-price sortable" @click="sortBy('price')">
+                  點數 <span class="sort-icon">{{ getSortIcon('price') }}</span>
+                </th>
+                <th class="col-stats sortable" @click="sortBy('likes')">
+                  被收藏 <span class="sort-icon">{{ getSortIcon('likes') }}</span>
+                </th>
                 <th class="col-actions">操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody v-if="isLoading">
               <!-- Loading Skeleton Rows -->
-              <template v-if="isLoading">
-                <tr v-for="i in 5" :key="`skeleton-${i}`" class="skeleton-row">
-                  <td class="col-image">
-                    <div class="product-info">
-                      <div class="skeleton-image"></div>
-                      <div class="skeleton-text" style="width: 150px;"></div>
-                    </div>
-                  </td>
-                  <td class="col-status">
-                    <div class="skeleton-badge"></div>
-                  </td>
-                  <td class="col-date">
-                    <div class="skeleton-text" style="width: 100px;"></div>
-                  </td>
-                  <td class="col-date">
-                    <div class="skeleton-text" style="width: 100px;"></div>
-                  </td>
-                  <td class="col-price">
-                    <div class="skeleton-text" style="width: 60px;"></div>
-                  </td>
-                  <td class="col-stats">
-                    <div class="skeleton-text" style="width: 40px;"></div>
-                  </td>
-                  <td class="col-actions">
-                    <div class="skeleton-actions">
-                      <div class="skeleton-button"></div>
-                      <div class="skeleton-button"></div>
-                    </div>
-                  </td>
-                </tr>
-              </template>
+              <tr v-for="i in 5" :key="`skeleton-${i}`" class="skeleton-row">
+                <td class="col-image">
+                  <div class="product-info">
+                    <div class="skeleton-image"></div>
+                    <div class="skeleton-text" style="width: 150px;"></div>
+                  </div>
+                </td>
+                <td class="col-status">
+                  <div class="skeleton-badge"></div>
+                </td>
+                <td class="col-date">
+                  <div class="skeleton-text" style="width: 100px;"></div>
+                </td>
+                <td class="col-date">
+                  <div class="skeleton-text" style="width: 100px;"></div>
+                </td>
+                <td class="col-price">
+                  <div class="skeleton-text" style="width: 60px;"></div>
+                </td>
+                <td class="col-stats">
+                  <div class="skeleton-text" style="width: 40px;"></div>
+                </td>
+                <td class="col-actions">
+                  <div class="skeleton-actions">
+                    <div class="skeleton-button"></div>
+                    <div class="skeleton-button"></div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
 
-              <!-- Actual Listing Rows -->
-              <tr v-else v-for="listing in filteredListings" :key="listing.id" class="listing-row">
+            <!-- Actual Listing Rows with Transition -->
+            <TransitionGroup v-else name="list" tag="tbody">
+              <tr v-for="listing in filteredListings" :key="listing.id" class="listing-row">
                 <!-- Product Info -->
                 <td class="col-image">
                   <div class="product-info">
@@ -201,7 +213,7 @@
                   </div>
                 </td>
               </tr>
-            </tbody>
+            </TransitionGroup>
           </table>
 
           <!-- Empty State -->
@@ -213,6 +225,15 @@
 
         <!-- Listings Cards (Mobile) -->
         <div class="cards-container mobile-view">
+          <!-- Mobile Sort Filters -->
+          <div v-if="!isLoading && filteredListings.length > 0" class="mobile-sort-section">
+            <FilterTabs
+              :items="filteredListings"
+              :filters="mobileFilterTabs"
+              @update:sortedItems="mobileSortedListings = $event"
+            />
+          </div>
+
           <!-- Loading Skeleton Cards -->
           <template v-if="isLoading">
             <div v-for="i in 5" :key="`skeleton-card-${i}`" class="listing-card skeleton-card">
@@ -235,7 +256,7 @@
           </template>
 
           <!-- Actual Listing Cards -->
-          <div v-else v-for="listing in filteredListings" :key="`card-${listing.id}`" class="listing-card">
+          <div v-else v-for="listing in (mobileSortedListings.length > 0 ? mobileSortedListings : filteredListings)" :key="`card-${listing.id}`" class="listing-card">
             <div class="card-image-section" @click="router.push({ name: 'ItemDetail', params: { id: listing.id } })">
               <img :src="listing.image" :alt="listing.name" class="card-image" />
               <span :class="['card-status-badge', `status-${listing.status}`]">
@@ -350,6 +371,7 @@ import { toggleItemStatus, deleteMyItem } from '../api/update_myItemAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import FilterTabs from '../components/FilterTabs.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -367,6 +389,57 @@ const searchQuery = ref('');
 const activeFilter = ref('all');
 const listings = ref([]);
 const isLoading = ref(true);
+
+// Sorting state
+const sortKey = ref('');
+const sortOrder = ref('asc'); // 'asc' or 'desc'
+
+// Mobile filter tabs configuration
+const mobileFilterTabs = ref([
+  {
+    id: 1,
+    label: '更新日期',
+    sortKey: 'updatedDate',
+    defaultOrder: 'desc',
+    ascText: '早到晚',
+    descText: '晚到早'
+  },
+  {
+    id: 2,
+    label: '發布日期',
+    sortKey: 'publishedDate',
+    defaultOrder: 'desc',
+    ascText: '早到晚',
+    descText: '晚到早'
+  },
+  {
+    id: 3,
+    label: '點數',
+    sortKey: 'price',
+    defaultOrder: 'asc',
+    ascText: '低到高',
+    descText: '高到低'
+  },
+  {
+    id: 4,
+    label: '收藏數',
+    sortKey: 'likes',
+    defaultOrder: 'desc',
+    ascText: '少到多',
+    descText: '多到少'
+  },
+  {
+    id: 5,
+    label: '物品名稱',
+    sortKey: 'name',
+    defaultOrder: 'asc',
+    ascText: 'A-Z',
+    descText: 'Z-A'
+  }
+]);
+
+// Mobile sorted items
+const mobileSortedListings = ref([]);
 
 // Computed stats
 const stats = computed(() => {
@@ -392,6 +465,40 @@ const filteredListings = computed(() => {
     filtered = filtered.filter(item =>
       item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
     );
+  }
+
+  // Apply sorting
+  if (sortKey.value) {
+    filtered = [...filtered].sort((a, b) => {
+      let aVal = a[sortKey.value];
+      let bVal = b[sortKey.value];
+
+      // Handle date sorting
+      if (sortKey.value === 'publishedDate' || sortKey.value === 'updatedDate') {
+        aVal = new Date(aVal.replace(/\//g, '-'));
+        bVal = new Date(bVal.replace(/\//g, '-'));
+      }
+
+      // Handle number sorting (price, likes)
+      if (sortKey.value === 'price' || sortKey.value === 'likes') {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+      }
+
+      // Handle string sorting (name, status)
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) {
+        return sortOrder.value === 'asc' ? -1 : 1;
+      }
+      if (aVal > bVal) {
+        return sortOrder.value === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
   }
 
   return filtered;
@@ -481,6 +588,25 @@ const formatDate = (dateString) => {
 // Set filter
 const setFilter = (filter) => {
   activeFilter.value = filter;
+};
+
+// Sorting methods
+const sortBy = (key) => {
+  if (sortKey.value === key) {
+    // Toggle sort order if clicking the same column
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+  } else {
+    // Set new sort key and default to ascending
+    sortKey.value = key;
+    sortOrder.value = 'asc';
+  }
+};
+
+const getSortIcon = (key) => {
+  if (sortKey.value !== key) {
+    return '⇅'; // Default unsorted icon
+  }
+  return sortOrder.value === 'asc' ? '↑' : '↓';
 };
 
 // Methods
@@ -788,13 +914,40 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
       font-weight: 600;
       color: #666;
       white-space: nowrap;
+
+      &.sortable {
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+        position: relative;
+
+        &:hover {
+          background: #f0f0f0;
+          color: $primary;
+        }
+
+        &:active {
+          background: #e8e8e8;
+        }
+
+        .sort-icon {
+          display: inline-block;
+          margin-left: 6px;
+          font-size: 12px;
+          opacity: 0.6;
+          transition: opacity 0.2s ease;
+        }
+
+        &:hover .sort-icon {
+          opacity: 1;
+        }
+      }
     }
   }
 
   tbody {
     tr {
       border-bottom: 1px solid #f0f0f0;
-      transition: background 0.3s;
 
       &:hover {
         background: #fafafa;
@@ -810,6 +963,45 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
       font-size: 14px;
       color: #1e1e1e;
       vertical-align: middle;
+    }
+  }
+}
+
+// List transition animations for table rows
+// Move animation - when items change position during sort
+.list-move {
+  transition: transform 0.4s cubic-bezier(0.59, 0.12, 0.34, 0.95);
+}
+
+// Enter animation - new items appearing
+.list-enter-active {
+  transition: all 0.4s cubic-bezier(0.59, 0.12, 0.34, 0.95);
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+// Leave animation - items disappearing
+.list-leave-active {
+  transition: all 0.4s cubic-bezier(0.59, 0.12, 0.34, 0.95);
+  position: absolute;
+  width: 100%;
+}
+
+.list-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+// Make table rows relative for absolute positioning to work
+.listings-table {
+  tbody {
+    position: relative;
+
+    tr {
+      position: relative;
     }
   }
 }
@@ -1067,6 +1259,22 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 
   &.mobile-view {
     display: none;
+  }
+}
+
+// Mobile Sort Section
+.mobile-sort-section {
+  margin-bottom: 20px;
+  padding: 0;
+
+  // Override FilterTabs styles to allow wrapping
+  :deep(.filter-tabs) {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  :deep(.filter-tab) {
+    flex-shrink: 0;
   }
 }
 
