@@ -4,7 +4,7 @@
       <i class="bi bi-arrow-left"></i>
     </button>
 
-    <div v-if="conversation" class="chat-user-info">
+    <div v-if="conversation" class="chat-user-info" @click.stop="goToUserProfile">
       <img
         :src="conversation.user.avatar"
         :alt="conversation.user.name"
@@ -43,6 +43,10 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
 const props = defineProps({
   conversation: {
     type: Object,
@@ -59,6 +63,12 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['back', 'toggle-menu', 'archive']);
+
+const goToUserProfile = () => {
+  if (props.conversation?._raw?.other_user?.id) {
+    router.push({ name: 'PublicUserProfile', params: { id: props.conversation._raw.other_user.id } });
+  }
+};
 </script>
 
 <style scoped>
@@ -81,6 +91,12 @@ const emit = defineEmits(['back', 'toggle-menu', 'archive']);
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+  
+  &:hover {
+    opacity: 0.7;
+  }
 }
 
 .user-avatar {
