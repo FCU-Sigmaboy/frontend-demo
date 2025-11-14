@@ -160,17 +160,33 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
-    try {
-      await authStore.signInWithGoogle();
-      if (authStore.isLoggedIn) {
-        next();
-      } else {
+  // 如果頁面需要認證，先等待 auth 初始化完成
+  if (to.meta.requiresAuth) {
+    // 確保 auth 已經初始化（檢查 session）
+    if (!authStore.session && !authStore.isLoggedIn) {
+      try {
+        // 嘗試從 Supabase 恢復 session
+        await authStore.initAuth();
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+      }
+    }
+
+    // 初始化後仍未登入，才觸發 Google 登入
+    if (!authStore.isLoggedIn) {
+      try {
+        await authStore.signInWithGoogle();
+        if (authStore.isLoggedIn) {
+          next();
+        } else {
+          next({ path: '/' });
+        }
+      } catch (error) {
+        console.error('Sign in failed:', error);
         next({ path: '/' });
       }
-    } catch (error) {
-      console.error('Sign in failed:', error);
-      next({ path: '/' });
+    } else {
+      next();
     }
   } else {
     next();
