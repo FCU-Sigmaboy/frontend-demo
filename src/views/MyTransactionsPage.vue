@@ -325,6 +325,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useTransactionStore } from '@/stores/transaction';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -332,21 +333,16 @@ import ConfirmTransactionModal from '../components/transaction/ConfirmTransactio
 import InputCodeModal from '../components/transaction/InputCodeModal.vue';
 import ViewCodeModal from '../components/transaction/ViewCodeModal.vue';
 import RejectTransactionModal from '../components/transaction/RejectTransactionModal.vue';
-import { getMyTransactionsByStatus, buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_before_meetAPI';
+import { buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_before_meetAPI';
 import { finalizeTransactionWithCode } from '@/api/transaction_meetAPI';
 
 const router = useRouter();
+const transactionStore = useTransactionStore();
 
 // State
 const userPoints = ref(500);
 const activeTab = ref('confirming');
 const isLoading = ref(false);
-const confirmingTransactionsGiver = ref([]);
-const confirmingTransactionsReceiver = ref([]);
-const pendingTransactionsGiver = ref([]);
-const pendingTransactionsReceiver = ref([]);
-const completedTransactionsGiver = ref([]);
-const completedTransactionsReceiver = ref([]);
 const showConfirmModal = ref(false);
 const selectedTransaction = ref(null);
 const showInputCodeModal = ref(false);
@@ -358,50 +354,25 @@ const selectedTransactionForReject = ref(null);
 
 // Computed
 const confirmingTransactions = computed(() => {
-  const giver = confirmingTransactionsGiver.value.map(t => ({ ...t, role: 'giver' }));
-  const receiver = confirmingTransactionsReceiver.value.map(t => ({ ...t, role: 'receiver' }));
-  return [...giver, ...receiver].sort((a, b) => b.transaction_id - a.transaction_id);
+  const transactions = transactionStore.allConfirmingTransactions || [];
+  return [...transactions].sort((a, b) => b.transaction_id - a.transaction_id);
 });
 
 const pendingTransactions = computed(() => {
-  const giver = pendingTransactionsGiver.value.map(t => ({ ...t, role: 'giver' }));
-  const receiver = pendingTransactionsReceiver.value.map(t => ({ ...t, role: 'receiver' }));
-  return [...giver, ...receiver].sort((a, b) => b.transaction_id - a.transaction_id);
+  const transactions = transactionStore.allPendingTransactions || [];
+  return [...transactions].sort((a, b) => b.transaction_id - a.transaction_id);
 });
 
 const completedTransactions = computed(() => {
-  const giver = completedTransactionsGiver.value.map(t => ({ ...t, role: 'giver' }));
-  const receiver = completedTransactionsReceiver.value.map(t => ({ ...t, role: 'receiver' }));
-  return [...giver, ...receiver].sort((a, b) => b.transaction_id - a.transaction_id);
+  const transactions = transactionStore.allCompletedTransactions || [];
+  return [...transactions].sort((a, b) => b.transaction_id - a.transaction_id);
 });
 
 // Methods
-const fetchTransactions = async () => {
+const fetchTransactions = async (forceRefresh = false) => {
   isLoading.value = true;
   try {
-    // Fetch all transaction statuses
-    const [
-      confirmingGiver,
-      confirmingReceiver,
-      pendingGiver,
-      pendingReceiver,
-      completedGiver,
-      completedReceiver
-    ] = await Promise.all([
-      getMyTransactionsByStatus('confirming', 'giver').catch(() => []),
-      getMyTransactionsByStatus('confirming', 'receiver').catch(() => []),
-      getMyTransactionsByStatus('pending', 'giver').catch(() => []),
-      getMyTransactionsByStatus('pending', 'receiver').catch(() => []),
-      getMyTransactionsByStatus('completed', 'giver').catch(() => []),
-      getMyTransactionsByStatus('completed', 'receiver').catch(() => [])
-    ]);
-
-    confirmingTransactionsGiver.value = confirmingGiver || [];
-    confirmingTransactionsReceiver.value = confirmingReceiver || [];
-    pendingTransactionsGiver.value = pendingGiver || [];
-    pendingTransactionsReceiver.value = pendingReceiver || [];
-    completedTransactionsGiver.value = completedGiver || [];
-    completedTransactionsReceiver.value = completedReceiver || [];
+    await transactionStore.fetchAllTransactions(forceRefresh);
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
   } finally {
@@ -455,7 +426,7 @@ const handleRejectModalSubmit = async () => {
     alert('已拒絕交易，商品已重新上架。');
 
     // 重新載入交易列表
-    await fetchTransactions();
+    await fetchTransactions(true);
   } catch (error) {
     console.error('Failed to reject transaction:', error);
     alert(`拒絕交易失敗：${error.message}`);
@@ -475,7 +446,7 @@ const handleConfirmModalSubmit = async (note) => {
     alert('交易已確認！請與賣家約定時間地點面交。');
 
     // 重新載入交易列表
-    await fetchTransactions();
+    await fetchTransactions(true);
   } catch (error) {
     console.error('Failed to confirm transaction:', error);
     alert(`確認交易失敗：${error.message}`);
@@ -501,7 +472,7 @@ const handleInputCodeSubmit = async (code) => {
     alert(`交易完成！\n\n您的新點數餘額：${result.new_balance} 點`);
 
     // 重新載入交易列表
-    await fetchTransactions();
+    await fetchTransactions(true);
   } catch (error) {
     console.error('Failed to finalize transaction:', error);
     alert(`完成交易失敗：${error.message}`);
