@@ -75,17 +75,17 @@
               </div>
 
               <div class="user-stats">
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToDashboard">
                   <i class="bi bi-leaf"></i>
                   <span class="stat-value">{{ userPoints }}</span>
                   <span class="stat-label">點數</span>
                 </div>
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToManageListings">
                   <i class="bi bi-box-seam"></i>
                   <span class="stat-value">{{ userStats.listings }}</span>
                   <span class="stat-label">刊登中</span>
                 </div>
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToFavorites">
                   <i class="bi bi-heart"></i>
                   <span class="stat-value">{{ userStats.favorites }}</span>
                   <span class="stat-label">收藏</span>
@@ -736,6 +736,14 @@ const goToFollowers = (tab = 'followers') => {
   router.push({ name: 'MyFollowers', query: { tab: targetTab } });
 };
 
+const goToDashboard = () => {
+  router.push({ name: 'Dashboard' });
+};
+
+const goToFavorites = () => {
+  router.push({ name: 'Favorites' });
+};
+
 // Get number of visible cards based on screen width
 const getVisibleCardsCount = () => {
   const width = window.innerWidth;
@@ -925,6 +933,15 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 8px;
     white-space: nowrap;
     min-width: fit-content;
+
+    &.clickable {
+      cursor: pointer;
+      transition: opacity 0.3s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
 
     i {
       font-size: 24px;
