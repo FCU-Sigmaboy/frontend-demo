@@ -107,8 +107,11 @@
               <!-- Input Area -->
               <div class="input-area-wrapper">
                 <div class="input-area">
-                  <button class="attach-btn" @click="handleAttachment">
+                  <button class="attach-btn" @click="handleAttachment" title="附件">
                     <i class="bi bi-paperclip"></i>
+                  </button>
+                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="提出交易">
+                    <i class="bi bi-arrow-left-right"></i>
                   </button>
                   <input
                     v-model="messageInput"
@@ -132,6 +135,15 @@
       </div>
     </main>
 
+    <!-- Transaction Modal -->
+    <TransactionModal
+      v-model="showTransactionModal"
+      :conversation-items="conversationItems"
+      :loading="isLoadingTransactionItems"
+      :current-user-id="currentUser?.id"
+      @confirm="handleTransactionConfirm"
+    />
+
   </div>
 </template>
 
@@ -141,6 +153,7 @@ import ConversationsSidebar from '@/components/messages/ConversationsSidebar.vue
 import ChatHeader from '@/components/messages/ChatHeader.vue';
 import ChatMessages from '@/components/messages/ChatMessages.vue';
 import ChatScrollControls from '@/components/messages/ChatScrollControls.vue';
+import TransactionModal from '@/components/messages/TransactionModal.vue';
 import { useMessagePage } from '@/composables/useMessagePage';
 
 const {
@@ -174,7 +187,13 @@ const {
   removePendingItemReference,
   handleMessagesScroll,
   registerMessagesArea,
-  scrollToBottom
+  scrollToBottom,
+  // Transaction Modal
+  showTransactionModal,
+  isLoadingTransactionItems,
+  conversationItems,
+  handleOpenTransactionModal,
+  handleTransactionConfirm
 } = useMessagePage();
 </script>
 
@@ -574,6 +593,7 @@ const {
   background: white;
 
   .attach-btn,
+  .transaction-btn,
   .send-btn {
     width: 40px;
     height: 40px;
@@ -594,6 +614,20 @@ const {
 
     &:hover {
       background: #f5f5f5;
+    }
+  }
+
+  .transaction-btn {
+    i {
+      color: $primary;
+    }
+
+    &:hover {
+      background: rgba(111, 184, 165, 0.1);
+
+      i {
+        color: darken($primary, 10%);
+      }
     }
   }
 
@@ -763,9 +797,14 @@ const {
   }
 
   .attach-btn,
+  .transaction-btn,
   .send-btn {
     width: 36px;
     height: 36px;
+
+    i {
+      font-size: 18px;
+    }
   }
 
   // Fix for iOS Safari virtual keyboard

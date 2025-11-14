@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomePage from '../views/HomePage.vue';
 import ItemListPage from '../views/ItemListPage.vue';
 import ItemDetailPage from '../views/ItemDetailPage.vue';
-import TransactionDetailsPage from '../views/TransactionDetailsPage.vue';
 import AboutPage from '../views/AboutPage.vue';
 import TermsPage from '../views/TermsPage.vue';
 import FAQPage from '../views/FAQPage.vue';
@@ -18,7 +17,7 @@ import ManageListingsPage from '../views/ManageListingsPage.vue';
 import MyReviewsPage from '../views/MyReviewsPage.vue';
 import MyFollowersPage from '../views/MyFollowersPage.vue';
 import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
-import TransactionRecordsPage from '../views/TransactionRecordsPage.vue';
+import MyTransactionsPage from '../views/MyTransactionsPage.vue';
 import MapSearchPage from '../views/MapSearchPage.vue';
 import UserDashboardPage from '../views/UserDashboardPage.vue';
 
@@ -44,11 +43,6 @@ const routes = [
     path: '/items/:id',
     name: 'ItemDetail',
     component: ItemDetailPage
-  },
-  {
-    path: '/items/:id/transaction',
-    name: 'TransactionDetails',
-    component: TransactionDetailsPage
   },
   {
     path: '/about',
@@ -141,7 +135,7 @@ const routes = [
     path: '/transactions',
     name: 'TransactionRecords',
     meta: { requiresAuth: true },
-    component: TransactionRecordsPage
+    component: MyTransactionsPage
   },
   {
     path: '/dashboard',

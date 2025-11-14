@@ -111,6 +111,10 @@ export function useMessagePage() {
   const suppressUnreadDivider = ref(false);
   const hasReachedBottomAfterUnread = ref(false);
 
+  // Transaction Modal
+  const showTransactionModal = ref(false);
+  const isLoadingTransactionItems = ref(false);
+
   let suppressTypingBroadcast = false;
 
   const conversationItems = ref([]);
@@ -880,6 +884,124 @@ export function useMessagePage() {
     alert('檔案附件功能尚未實作');
   }
 
+  async function handleOpenTransactionModal() {
+    if (!selectedConversation.value) {
+      alert('請先選擇一個對話');
+      return;
+    }
+
+    showTransactionModal.value = true;
+
+    // 載入聊天室商品列表（每次都重新載入以確保數據最新）
+    isLoadingTransactionItems.value = true;
+    try {
+      await loadConversationItems(selectedConversation.value.id);
+
+      // 需要為每個商品補充擁有者信息
+      // 因為 getConversationItems 返回的 added_by_user_id 是提及者，不是商品擁有者
+      // 我們需要調用額外的 API 來獲取商品詳情
+      await enrichItemsWithOwnerInfo();
+    } catch (error) {
+      console.error('Failed to load conversation items for transaction:', error);
+    } finally {
+      isLoadingTransactionItems.value = false;
+    }
+  }
+
+  async function enrichItemsWithOwnerInfo() {
+    // 為聊天室中的商品補充擁有者信息和交易狀態
+    const { getItemById } = await import('@/api/get_itemByIdAPI');
+    const { getMyTransactionsByStatus } = await import('@/api/transaction_before_meetAPI');
+
+    // 獲取當前用戶正在進行的交易（confirming 和 pending 狀態）
+    let myActiveTransactions = [];
+    try {
+      const [confirmingGiver, confirmingReceiver, pendingGiver, pendingReceiver] = await Promise.all([
+        getMyTransactionsByStatus('confirming', 'giver').catch(() => []),
+        getMyTransactionsByStatus('confirming', 'receiver').catch(() => []),
+        getMyTransactionsByStatus('pending', 'giver').catch(() => []),
+        getMyTransactionsByStatus('pending', 'receiver').catch(() => [])
+      ]);
+      myActiveTransactions = [...confirmingGiver, ...confirmingReceiver, ...pendingGiver, ...pendingReceiver];
+    } catch (error) {
+      console.error('Failed to fetch active transactions:', error);
+    }
+
+    // 建立物品ID到交易的映射
+    const itemToTransactionMap = new Map();
+    myActiveTransactions.forEach(transaction => {
+      if (transaction.item_id) {
+        itemToTransactionMap.set(transaction.item_id, transaction);
+      }
+    });
+
+    const enrichedItems = await Promise.all(
+      conversationItems.value.map(async (item) => {
+        try {
+          const itemDetail = await getItemById(item.id);
+          const activeTransaction = itemToTransactionMap.get(item.id);
+
+          return {
+            ...item,
+            ownerId: itemDetail?.user_id || null,
+            inTransaction: !!activeTransaction,
+            transactionStatus: activeTransaction?.status || null,
+            transactionRole: activeTransaction ? (
+              activeTransaction.giver_id === authStore.user?.id ? 'giver' : 'receiver'
+            ) : null
+          };
+        } catch (error) {
+          console.error(`Failed to fetch owner info for item ${item.id}:`, error);
+          return item;
+        }
+      })
+    );
+
+    conversationItems.value = enrichedItems;
+  }
+
+  async function handleTransactionConfirm(payload) {
+    const { item, note } = payload;
+
+    console.log('Transaction confirmed for item:', item);
+    console.log('Seller note:', note);
+
+    if (!selectedConversation.value) {
+      alert('對話資訊錯誤');
+      return;
+    }
+
+    try {
+      // 獲取對方用戶 ID（買家）
+      const receiverId = selectedConversation.value._raw.other_user.id;
+
+      // 調用發起交易 API
+      const { initiateTransaction } = await import('@/api/transaction_before_meetAPI');
+      const result = await initiateTransaction(item.id, receiverId);
+
+      console.log('Transaction initiated:', result);
+
+      // 如果有備註，更新備註
+      if (note) {
+        const { updateGiverNote } = await import('@/api/transaction_before_meetAPI');
+        await updateGiverNote(result.transaction_id, note);
+      }
+
+      // 顯示成功訊息，包含交易確認碼
+      alert(`交易已發起成功！\n\n商品：${item.title}\n交易確認碼：${result.code}\n\n請妥善保管交易確認碼，見面時買家需要輸入此確認碼完成交易。`);
+
+      // TODO: 可以導航到交易詳情頁面
+      // router.push({
+      //   name: 'TransactionDetail',
+      //   params: { id: result.transaction_id }
+      // });
+
+    } catch (error) {
+      console.error('Failed to initiate transaction:', error);
+      alert(`發起交易失敗：${error.message}`);
+    }
+  }
+
   function openItemPage(itemId) {
     const itemUrl = router.resolve({ name: 'ItemDetail', params: { id: itemId } }).href;
     window.open(itemUrl, '_blank');
@@ -1272,6 +1394,12 @@ export function useMessagePage() {
     removePendingItemReference,
     handleMessagesScroll,
     registerMessagesArea,
-    scrollToBottom
+    scrollToBottom,
+    // Transaction Modal
+    showTransactionModal,
+    isLoadingTransactionItems,
+    conversationItems,
+    handleOpenTransactionModal,
+    handleTransactionConfirm
   };
 }
