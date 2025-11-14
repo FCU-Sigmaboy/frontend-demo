@@ -56,29 +56,16 @@ export async function searchItems(filters = {}) {
         throw new Error(error.message);
     }
 
-    // Parse location coordinates from debug fields for map display
-    // RPC returns coordinates in POINT(longitude latitude) format
-    const parsedData = data?.map(item => {
-        let latitude = null;
-        let longitude = null;
+    // Note: The RPC should return latitude and longitude directly
+    // If not present, coordinates will be null and markers won't show on map
+    console.log('[searchItemsAPI] Received items:', data?.length);
 
-        // Parse POINT(longitude latitude) format
-        if (item.debug_item_location_wkb) {
-            const match = item.debug_item_location_wkb.match(/POINT\(([^ ]+) ([^ ]+)\)/);
-            if (match) {
-                longitude = parseFloat(match[1]);
-                latitude = parseFloat(match[2]);
-            }
-        }
+    if (data && data.length > 0) {
+        console.log('[searchItemsAPI] Sample item fields:', Object.keys(data[0]));
+        console.log('[searchItemsAPI] First item:', data[0]);
+    }
 
-        return {
-            ...item,
-            latitude,
-            longitude
-        };
-    });
-
-    return parsedData || data;
+    return data;
 }
 
 // data 範例
