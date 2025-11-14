@@ -58,11 +58,11 @@
 
                 <!-- Stats -->
                 <div class="user-stats-compact">
-                  <div class="stat-item">
+                  <div class="stat-item clickable" @click="openFollowersModal('followers')">
                     <span class="stat-number">{{ userData.stats.followers }}</span>
                     <span class="stat-label">追蹤者</span>
                   </div>
-                  <div class="stat-item">
+                  <div class="stat-item clickable" @click="openFollowersModal('following')">
                     <span class="stat-number">{{ userData.stats.following }}</span>
                     <span class="stat-label">追蹤中</span>
                   </div>
@@ -269,6 +269,15 @@
     </main>
 
     <AppFooter />
+
+    <!-- Followers/Following Modal -->
+    <FollowersFollowingModal
+      v-model="showFollowersModal"
+      :user-id="userData.id"
+      :initial-tab="followersModalTab"
+      :followers-count="userData.stats.followers"
+      :following-count="userData.stats.following"
+    />
   </div>
 </template>
 
@@ -279,6 +288,7 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import AchievementBadges from '../components/AchievementBadges.vue';
+import FollowersFollowingModal from '../components/FollowersFollowingModal.vue';
 import { searchItems } from '../api/get_searchItemsAPI';
 import { getPublicUserProfile } from '../api/get_userProfileAPI';
 import { followUser, unfollowUser } from '../api/followAPI';
@@ -293,6 +303,8 @@ const isLoadingListings = ref(false);
 const isLoadingProfile = ref(false);
 const isLoadingFollow = ref(false);
 const isFollowBtnHovered = ref(false);
+const showFollowersModal = ref(false);
+const followersModalTab = ref('followers');
 
 // User data (from API)
 const userData = ref({
@@ -430,6 +442,11 @@ const goToProductDetail = (id) => {
 const openBadgeModal = (badge) => {
   // TODO: 可以在這裡加入 Modal 顯示邏輯
   console.log('Badge clicked:', badge);
+};
+
+const openFollowersModal = (tab) => {
+  followersModalTab.value = tab;
+  showFollowersModal.value = true;
 };
 
 // Fetch user's profile
@@ -624,6 +641,15 @@ onMounted(async () => {
     display: flex;
     align-items: baseline;
     gap: 6px;
+
+    &.clickable {
+      cursor: pointer;
+      transition: opacity 0.3s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
 
     .stat-number {
       font-family: 'Noto Sans TC', sans-serif;

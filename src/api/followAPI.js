@@ -150,3 +150,128 @@ export async function unfollowUser(followingUserId) {
   console.log(`Successfully unfollowed user #${followingUserId}`);
   return true;
 }
+
+/**
+ * 【功能】獲取指定使用者的追蹤者列表 (公開，使用 Supabase SDK V2)
+ * @param {string} userId - 要查詢的使用者 ID
+ * @param {Object} params - 查詢參數
+ * @param {number} [params.page=1] - 頁碼，預設為 1
+ * @param {number} [params.pageSize=50] - 每頁數量，預設為 50
+ * @returns {Promise<Array>} - 回傳追蹤者列表
+ */
+export async function getPublicFollowers(userId, params = {}) {
+  const {
+    page = 1,
+    pageSize = 50
+  } = params;
+
+  const offset = (page - 1) * pageSize;
+
+  // 先查詢 following 表獲取 follower_id 列表
+  const { data: followingData, error: followingError } = await supabase
+    .from('following')
+    .select('follower_id, created_at')
+    .eq('following_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + pageSize - 1);
+
+  if (followingError) {
+    console.error('獲取公開追蹤者列表失敗:', followingError);
+    throw new Error(followingError.message);
+  }
+
+  if (!followingData || followingData.length === 0) {
+    return [];
+  }
+
+  // 獲取所有 follower_id
+  const followerIds = followingData.map(item => item.follower_id);
+
+  // 查詢 users 表獲取使用者資訊
+  const { data: usersData, error: usersError } = await supabase
+    .from('users')
+    .select('id, nickname, profile_picture_url')
+    .in('id', followerIds);
+
+  if (usersError) {
+    console.error('獲取使用者資訊失敗:', usersError);
+    throw new Error(usersError.message);
+  }
+
+  // 建立使用者資訊的映射
+  const usersMap = new Map((usersData || []).map(user => [user.id, user]));
+
+  // 合併資料並轉換格式
+  return followingData.map(item => {
+    const user = usersMap.get(item.follower_id);
+    return {
+      user_id: item.follower_id,
+      nickname: user?.nickname || '未知使用者',
+      profile_picture_url: user?.profile_picture_url || null,
+      followed_at: item.created_at,
+      is_following_back: false // 需要額外查詢，暫時設為 false
+    };
+  });
+}
+
+/**
+ * 【功能】獲取指定使用者追蹤的人列表 (公開，使用 Supabase SDK V2)
+ * @param {string} userId - 要查詢的使用者 ID
+ * @param {Object} params - 查詢參數
+ * @param {number} [params.page=1] - 頁碼，預設為 1
+ * @param {number} [params.pageSize=50] - 每頁數量，預設為 50
+ * @returns {Promise<Array>} - 回傳追蹤中的用戶列表
+ */
+export async function getPublicFollowing(userId, params = {}) {
+  const {
+    page = 1,
+    pageSize = 50
+  } = params;
+
+  const offset = (page - 1) * pageSize;
+
+  // 先查詢 following 表獲取 following_id 列表
+  const { data: followingData, error: followingError } = await supabase
+    .from('following')
+    .select('following_id, created_at')
+    .eq('follower_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + pageSize - 1);
+
+  if (followingError) {
+    console.error('獲取公開追蹤中列表失敗:', followingError);
+    throw new Error(followingError.message);
+  }
+
+  if (!followingData || followingData.length === 0) {
+    return [];
+  }
+
+  // 獲取所有 following_id
+  const followingIds = followingData.map(item => item.following_id);
+
+  // 查詢 users 表獲取使用者資訊
+  const { data: usersData, error: usersError } = await supabase
+    .from('users')
+    .select('id, nickname, profile_picture_url')
+    .in('id', followingIds);
+
+  if (usersError) {
+    console.error('獲取使用者資訊失敗:', usersError);
+    throw new Error(usersError.message);
+  }
+
+  // 建立使用者資訊的映射
+  const usersMap = new Map((usersData || []).map(user => [user.id, user]));
+
+  // 合併資料並轉換格式
+  return followingData.map(item => {
+    const user = usersMap.get(item.following_id);
+    return {
+      user_id: item.following_id,
+      nickname: user?.nickname || '未知使用者',
+      profile_picture_url: user?.profile_picture_url || null,
+      followed_at: item.created_at
+    };
+  });
+}
