@@ -344,13 +344,11 @@ import { BNavbar, BContainer, BNav, BNavItem, BButton, BTooltip } from 'bootstra
 import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
-import { usePointsStore } from '@/stores/points';
 import { useMessageStore } from '@/stores/message';
 
 // Router & Auth Store
 const router = useRouter();
 const authStore = useAuthStore();
-const pointsStore = usePointsStore();
 const messageStore = useMessageStore();
 
 // Logo Images
@@ -361,20 +359,19 @@ import iconImage from '../assets/icon.png';
 const props = defineProps({
   userPoints: {
     type: Number,
-    default: 500
+    default: 0
   }
 });
 
-// Computed: 從 points store 獲取使用者的點數
+// Computed: 從 auth store 獲取使用者的點數
 const userBalance = computed(() => {
-  // Priority: Points store > Profile data > Props default
-  if (pointsStore.currentBalance > 0) {
-    return pointsStore.currentBalance;
+  // Priority: Auth store profile data > Props default
+  const balance = authStore.profileData?.profile_details?.balance || props.userPoints;
+  // 超過一百萬顯示 999,999+，否則加上千分位格式
+  if (balance > 1000000) {
+    return '999,999+';
   }
-  if (authStore.profileData?.profile_details?.balance) {
-    return authStore.profileData.profile_details.balance;
-  }
-  return props.userPoints; // 使用預設值
+  return balance.toLocaleString('zh-TW');
 });
 
 // Has new badges or achievements
@@ -394,16 +391,11 @@ const showAllCategories = ref(false);
 const categorySearch = ref('');
 const expandedCategories = ref([]);
 
-// Initialize points profile when user logs in
+// Initialize profile when user logs in
 watch(() => authStore.isLoggedIn, (isLoggedIn) => {
   if (isLoggedIn) {
-    // Fetch points profile in background
-    pointsStore.fetchProfile().catch(error => {
-      console.warn('Failed to fetch points profile in header:', error);
-    });
-  } else {
-    // Reset points store when user logs out
-    pointsStore.resetStore();
+    // Profile data is already loaded by authStore
+    console.log('User logged in, balance:', authStore.profileData?.profile_details?.balance);
   }
 }, { immediate: true });
 

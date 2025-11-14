@@ -5,6 +5,59 @@ import { supabase } from '@/lib/supabase';
 // ===================================================================
 
 /**
+ * 【功能】更新 "當前登入者" 的指定物品
+ * @param {number} itemId - 要更新的物品 ID
+ * @param {object} updateData - 包含 "有變動" 欄位的物件
+ * e.g., { title: '新標題', price: 600, listing_status: false }
+ * @returns {Promise<object>} - 回傳更新後的完整物品物件
+ */
+export async function updateMyItem(itemId, updateData) {
+    // 1. 檢查使用者是否登入
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        throw new Error('使用者未登入，無法更新物品');
+    }
+
+    console.log(`📝 Updating item #${itemId}:`, updateData);
+
+    try {
+        // 2. 如果要更新 location_id，先驗證該地點屬於當前使用者
+        if (updateData.location_id) {
+            const { data: locationCheck, error: locationError } = await supabase
+                .from('locations')
+                .select('id')
+                .eq('id', updateData.location_id)
+                .eq('user_id', user.id)
+                .single();
+
+            if (locationError || !locationCheck) {
+                throw new Error('無效的地點 ID，或該地點不屬於當前使用者。請先在個人資料中新增此地區。');
+            }
+        }
+
+        // 3. 更新物品 (使用 direct query)
+        const { data, error } = await supabase
+            .from('items')
+            .update(updateData)
+            .eq('id', itemId)
+            .eq('user_id', user.id) // Ensure user owns this item
+            .select()
+            .single();
+
+        if (error) {
+            console.error(`Failed to update item #${itemId}:`, error);
+            throw new Error(error.message);
+        }
+
+        console.log(`✅ Item #${itemId} updated:`, data);
+        return data;
+    } catch (error) {
+        console.error('Error updating item:', error);
+        throw error;
+    }
+}
+
+/**
  * 【新功能 - 安全版】切換物品上架/下架狀態
  * 這是您前端元件 "唯一" 應該呼叫的函式。
  * @param {number} itemId - 物品 ID

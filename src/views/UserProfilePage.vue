@@ -421,8 +421,15 @@ const router = useRouter();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 
-// State
-const userPoints = ref(500);
+// Computed: 從 auth store 獲取使用者的點數
+const userPoints = computed(() => {
+  const balance = authStore.profileData?.profile_details?.balance || 0;
+  // 超過一百萬顯示 999,999+，否則加上千分位格式
+  if (balance > 1000000) {
+    return '999,999+';
+  }
+  return balance.toLocaleString('zh-TW');
+});
 const activeTab = ref('listings');
 const myListings = ref([]);
 const isLoadingListings = ref(false);
