@@ -2,6 +2,7 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router';
 import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
+import { useTransactionStore } from '@/stores/transaction';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { getConversationItems, archiveConversation } from '@/api/conversationAPI_v2';
 import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
@@ -91,6 +92,7 @@ export function useMessagePage() {
   const router = useRouter();
   const messageStore = useMessageStore();
   const authStore = useAuthStore();
+  const transactionStore = useTransactionStore();
 
   const userPoints = ref(500);
   const searchQuery = ref('');
@@ -911,44 +913,27 @@ export function useMessagePage() {
   async function enrichItemsWithOwnerInfo() {
     // 為聊天室中的商品補充擁有者信息和交易狀態
     const { getItemById } = await import('@/api/get_itemByIdAPI');
-    const { getMyTransactionsByStatus } = await import('@/api/transaction_before_meetAPI');
-
-    // 獲取當前用戶正在進行的交易（confirming 和 pending 狀態）
-    let myActiveTransactions = [];
     try {
-      const [confirmingGiver, confirmingReceiver, pendingGiver, pendingReceiver] = await Promise.all([
-        getMyTransactionsByStatus('confirming', 'giver').catch(() => []),
-        getMyTransactionsByStatus('confirming', 'receiver').catch(() => []),
-        getMyTransactionsByStatus('pending', 'giver').catch(() => []),
-        getMyTransactionsByStatus('pending', 'receiver').catch(() => [])
-      ]);
-      myActiveTransactions = [...confirmingGiver, ...confirmingReceiver, ...pendingGiver, ...pendingReceiver];
+      await transactionStore.fetchAllTransactions();
     } catch (error) {
-      console.error('Failed to fetch active transactions:', error);
+      console.error('Failed to refresh transaction cache for conversation items:', error);
     }
 
-    // 建立物品ID到交易的映射
-    const itemToTransactionMap = new Map();
-    myActiveTransactions.forEach(transaction => {
-      if (transaction.item_id) {
-        itemToTransactionMap.set(transaction.item_id, transaction);
-      }
-    });
+    const itemTransactionMap = transactionStore.itemToTransactionMap?.value ?? new Map();
 
     const enrichedItems = await Promise.all(
       conversationItems.value.map(async (item) => {
         try {
           const itemDetail = await getItemById(item.id);
-          const activeTransaction = itemToTransactionMap.get(item.id);
+          const transactionInfo = itemTransactionMap.get(item.id);
 
           return {
             ...item,
             ownerId: itemDetail?.user_id || null,
-            inTransaction: !!activeTransaction,
-            transactionStatus: activeTransaction?.status || null,
-            transactionRole: activeTransaction ? (
-              activeTransaction.giver_id === authStore.user?.id ? 'giver' : 'receiver'
-            ) : null
+            inTransaction: transactionInfo ? transactionInfo.status !== 'sold' : false,
+            transactionStatus: transactionInfo?.status || null,
+            transactionRole: transactionInfo?.role || null,
+            transactionId: transactionInfo?.transactionId || null
           };
         } catch (error) {
           console.error(`Failed to fetch owner info for item ${item.id}:`, error);

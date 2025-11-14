@@ -149,45 +149,55 @@
                 <td class="col-actions">
                   <div class="action-buttons">
                     <button
-                      v-if="listing.status !== 'sold'"
-                      class="btn-sm btn-edit"
-                      @click="editListing(listing.id)"
-                      title="編輯"
-                    >
-                      編輯
-                    </button>
-                    <button
-                      v-if="listing.status === 'inactive'"
-                      class="btn-sm btn-toggle"
-                      @click="toggleStatus(listing.id, true)"
-                      title="上架"
-                    >
-                      上架
-                    </button>
-                    <button
-                      v-if="listing.status === 'active'"
-                      class="btn-sm btn-toggle"
-                      @click="toggleStatus(listing.id, false)"
-                      title="下架"
-                    >
-                      下架
-                    </button>
-                    <button
-                      v-if="listing.status !== 'sold'"
-                      class="btn-sm btn-delete"
-                      @click="deleteListing(listing.id)"
-                      title="刪除"
-                    >
-                      刪除
-                    </button>
-                    <button
-                      v-if="listing.status === 'sold'"
+                      v-if="listing.status === 'waiting' || listing.status === 'in_transaction'"
                       class="btn-sm btn-view"
-                      @click="viewTransaction(listing.id)"
+                      @click="router.push({ name: 'TransactionRecords' })"
                       title="查看交易"
                     >
                       查看交易
                     </button>
+                    <template v-else>
+                      <button
+                        v-if="listing.status !== 'sold'"
+                        class="btn-sm btn-edit"
+                        @click="editListing(listing.id)"
+                        title="編輯"
+                      >
+                        編輯
+                      </button>
+                      <button
+                        v-if="listing.status === 'inactive'"
+                        class="btn-sm btn-toggle"
+                        @click="toggleStatus(listing.id, true)"
+                        title="上架"
+                      >
+                        上架
+                      </button>
+                      <button
+                        v-if="listing.status === 'active'"
+                        class="btn-sm btn-toggle"
+                        @click="toggleStatus(listing.id, false)"
+                        title="下架"
+                      >
+                        下架
+                      </button>
+                      <button
+                        v-if="listing.status !== 'sold'"
+                        class="btn-sm btn-delete"
+                        @click="deleteListing(listing.id)"
+                        title="刪除"
+                      >
+                        刪除
+                      </button>
+                      <button
+                        v-if="listing.status === 'sold'"
+                        class="btn-sm btn-view"
+                        @click="viewTransaction(listing.id)"
+                        title="查看交易"
+                      >
+                        查看交易
+                      </button>
+                    </template>
                   </div>
                 </td>
               </tr>
@@ -262,46 +272,57 @@
               </div>
 
               <div class="card-actions">
-                <button
-                  v-if="listing.status !== 'sold'"
-                  class="btn-card btn-edit btn-primary"
-                  @click="editListing(listing.id)"
-                >
-                  <i class="bi bi-pencil"></i>
-                  編輯
-                </button>
-                <button
-                  v-if="listing.status === 'sold'"
-                  class="btn-card btn-view btn-primary"
-                  @click="viewTransaction(listing.id)"
-                >
-                  <i class="bi bi-eye"></i>
-                  查看交易
-                </button>
-                <button
-                  v-if="listing.status === 'inactive'"
-                  class="btn-card btn-toggle btn-secondary"
-                  @click="toggleStatus(listing.id, true)"
-                >
-                  <i class="bi bi-arrow-up-circle"></i>
-                  重新上架
-                </button>
-                <button
-                  v-if="listing.status === 'active'"
-                  class="btn-card btn-toggle btn-secondary"
-                  @click="toggleStatus(listing.id, false)"
-                >
-                  <i class="bi bi-arrow-down-circle"></i>
-                  下架
-                </button>
-                <button
-                  v-if="listing.status !== 'sold'"
-                  class="btn-card btn-delete btn-tertiary"
-                  @click="deleteListing(listing.id)"
-                >
-                  <i class="bi bi-trash"></i>
-                  <span class="btn-text">刪除</span>
-                </button>
+                <template v-if="listing.status === 'waiting' || listing.status === 'in_transaction'">
+                  <button
+                    class="btn-card btn-view btn-primary"
+                    @click="router.push({ name: 'TransactionRecords' })"
+                  >
+                    <i class="bi bi-eye"></i>
+                    查看交易
+                  </button>
+                </template>
+                <template v-else>
+                  <button
+                    v-if="listing.status !== 'sold'"
+                    class="btn-card btn-edit btn-primary"
+                    @click="editListing(listing.id)"
+                  >
+                    <i class="bi bi-pencil"></i>
+                    編輯
+                  </button>
+                  <button
+                    v-if="listing.status === 'sold'"
+                    class="btn-card btn-view btn-primary"
+                    @click="viewTransaction(listing.id)"
+                  >
+                    <i class="bi bi-eye"></i>
+                    查看交易
+                  </button>
+                  <button
+                    v-if="listing.status === 'inactive'"
+                    class="btn-card btn-toggle btn-secondary"
+                    @click="toggleStatus(listing.id, true)"
+                  >
+                    <i class="bi bi-arrow-up-circle"></i>
+                    重新上架
+                  </button>
+                  <button
+                    v-if="listing.status === 'active'"
+                    class="btn-card btn-toggle btn-secondary"
+                    @click="toggleStatus(listing.id, false)"
+                  >
+                    <i class="bi bi-arrow-down-circle"></i>
+                    下架
+                  </button>
+                  <button
+                    v-if="listing.status !== 'sold'"
+                    class="btn-card btn-delete btn-tertiary"
+                    @click="deleteListing(listing.id)"
+                  >
+                    <i class="bi bi-trash"></i>
+                    <span class="btn-text">刪除</span>
+                  </button>
+                </template>
               </div>
             </div>
           </div>
@@ -323,6 +344,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useTransactionStore } from '@/stores/transaction';
 import { getMyItems } from '../api/get_myItemsAPI';
 import { toggleItemStatus, deleteMyItem } from '../api/update_myItemAPI';
 import AppHeader from '../components/AppHeader.vue';
@@ -331,6 +353,7 @@ import Breadcrumb from '../components/Breadcrumb.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const transactionStore = useTransactionStore();
 
 // Breadcrumb items
 const breadcrumbItems = [
@@ -387,25 +410,34 @@ const loadListings = async () => {
 
     console.log('🔍 Fetching my items...');
 
-    const items = await getMyItems({
-      page: 1,
-      size: 100,
-      sort_by: 'updated_at',
-      sort_direction: 'desc'
-    });
+    // Fetch items while ensuring transaction cache is hydrated
+    const [, items] = await Promise.all([
+      transactionStore.fetchAllTransactions(),
+      getMyItems({
+        page: 1,
+        size: 100,
+        sort_by: 'updated_at',
+        sort_direction: 'desc'
+      })
+    ]);
+
+    const itemToTransactionMap = transactionStore.itemToTransactionMap ?? new Map();
 
     if (items) {
       // Transform API data to match component expectations
       listings.value = items.map(item => {
-        // Determine status based on listing_status and other factors
-        let status = 'inactive'; // default to inactive (off shelf)
+        // Check if item is in a transaction (active or completed)
+  const transactionInfo = itemToTransactionMap.get(item.item_id);
 
-        if (item.listing_status === true) {
-          status = 'active'; // on shelf
-        } else if (item.listing_status === false) {
-          // Check if it's sold or just inactive
-          // For now, assume false = inactive (you may need additional field to mark as sold)
-          status = 'inactive';
+        // Determine status based on transaction status first, then listing_status
+        let status;
+
+        if (transactionInfo) {
+          // Item has a transaction (waiting, in_transaction, or sold)
+          status = transactionInfo.status;
+        } else {
+          // No transaction - check listing_status
+          status = item.listing_status ? 'active' : 'inactive';
         }
 
         return {
@@ -413,6 +445,7 @@ const loadListings = async () => {
           name: item.title,
           image: item.image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item',
           status: status,
+          transactionId: transactionInfo?.transactionId,
           publishedDate: formatDate(item.created_at),
           updatedDate: formatDate(item.updated_at),
           price: item.price || 0,
@@ -455,7 +488,9 @@ const getStatusIcon = (status) => {
   const icons = {
     active: 'bi bi-circle-fill',
     inactive: 'bi bi-dash-circle',
-    sold: 'bi bi-check-circle'
+    sold: 'bi bi-check-circle',
+    waiting: 'bi bi-hourglass-split',
+    in_transaction: 'bi bi-clock-history'
   };
   return icons[status] || 'bi-circle';
 };
@@ -464,7 +499,9 @@ const getStatusText = (status) => {
   const texts = {
     active: '上架中',
     inactive: '已下架',
-    sold: '已售出'
+    sold: '已售出',
+    waiting: '待接受',
+    in_transaction: '交易中'
   };
   return texts[status] || status;
 };
@@ -478,7 +515,8 @@ const editListing = (id) => {
 };
 
 const viewTransaction = (id) => {
-  router.push({ name: 'TransactionDetails', params: { id } });
+  // Navigate to the transactions page
+  router.push({ name: 'TransactionRecords' });
 };
 
 // Toggle listing status (上架/下架)
@@ -842,6 +880,24 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
       color: #2196f3;
     }
   }
+
+  &.status-waiting {
+    background: #fff8e1;
+    color: #f57c00;
+
+    i {
+      color: #f57c00;
+    }
+  }
+
+  &.status-in_transaction {
+    background: #fff3e0;
+    color: #ff9800;
+
+    i {
+      color: #ff9800;
+    }
+  }
 }
 
 .stats-cell {
@@ -1070,6 +1126,16 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 
     &.status-sold {
       background: rgba(33, 150, 243, 0.9);
+      color: white;
+    }
+
+    &.status-waiting {
+      background: rgba(245, 124, 0, 0.9);
+      color: white;
+    }
+
+    &.status-in_transaction {
+      background: rgba(255, 152, 0, 0.9);
       color: white;
     }
   }
