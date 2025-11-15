@@ -1,80 +1,78 @@
 <template>
-  <div class="achievements-section">
-    <div class="achievements-header">
-      <h3 class="achievements-title">
-        成就徽章
-        <span v-if="showCarbonTotal" class="carbon-total">總碳足跡節省: {{ totalCarbon.toFixed(1) }} kg</span>
-      </h3>
+  <div class="transaction-trophies-section">
+    <div class="trophies-header">
+      <h3 class="trophies-title">交易成就</h3>
       <button class="view-all-btn" @click="showModal = true">
         <i class="bi bi-grid-3x3-gap"></i>
         查看全部
       </button>
     </div>
     
-    <!-- Horizontal Badge Row -->
-    <div class="badges-row-container">
-      <div class="badges-row" :class="{ 'expanded': isExpanded }">
+    <!-- Horizontal Trophy Row -->
+    <div class="trophies-row-container">
+      <div class="trophies-row" :class="{ 'expanded': isExpanded }">
         <div
-          v-for="(badge, index) in displayedBadges"
-          :key="badge.id"
-          :class="['badge-item', { 'unlocked': badge.unlocked, 'current': index === currentBadgeIndex }]"
-          @click="onBadgeClick(badge, index)"
+          v-for="(trophy, index) in displayedTrophies"
+          :key="trophy.id"
+          :class="['trophy-item', { 'unlocked': trophy.unlocked, 'current': index === currentTrophyIndex }]"
+          @click="onTrophyClick(trophy, index)"
         >
-          <div class="badge-icon-wrapper">
-            <img :src="badge.image" :alt="badge.label" class="badge-image" />
-            <div v-if="!badge.unlocked && showProgress" class="progress-badge">
-              {{ badge.progress }}%
+          <div class="trophy-icon-wrapper">
+            <span class="trophy-icon">{{ trophy.icon }}</span>
+            <div v-if="!trophy.unlocked && showProgress" class="progress-badge">
+              {{ trophy.progress }}%
             </div>
           </div>
-          <span class="badge-label">{{ badge.label }}</span>
+          <span class="trophy-label">{{ trophy.label }}</span>
         </div>
         
         <!-- Expand Indicator -->
         <div 
-          v-if="!isExpanded && badges.length > 1" 
+          v-if="!isExpanded && trophies.length > 1" 
           class="expand-indicator"
           @click="expandRow"
         >
-          <span class="badge-count">+{{ badges.length - 1 }}</span>
+          <span class="trophy-count">+{{ trophies.length - 1 }}</span>
           <i class="bi bi-chevron-right"></i>
         </div>
       </div>
     </div>
 
-    <!-- Badge Modal -->
+    <!-- Trophy Modal -->
     <div v-if="showModal" class="modal-overlay" @click="showModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h4>成就徽章</h4>
+          <h4>交易成就</h4>
           <button class="modal-close" @click="showModal = false">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
         <div class="modal-body">
-          <div class="badges-grid">
+          <div class="trophies-grid">
             <div
-              v-for="badge in badges"
-              :key="badge.id"
-              :class="['badge-grid-item', { 'unlocked': badge.unlocked, 'selected': selectedBadges.includes(badge.id) }]"
-              @click="toggleBadgeSelection(badge.id)"
+              v-for="trophy in trophies"
+              :key="trophy.id"
+              :class="['trophy-grid-item', { 'unlocked': trophy.unlocked, 'selected': selectedTrophies.includes(trophy.id) }]"
+              @click="toggleTrophySelection(trophy.id)"
             >
-              <div class="badge-icon-wrapper">
-                <img :src="badge.image" :alt="badge.label" class="badge-image" />
-                <div v-if="badge.unlocked" class="check-mark">
+              <div class="trophy-icon-wrapper">
+                <span class="trophy-icon">{{ trophy.icon }}</span>
+                <div v-if="trophy.unlocked" class="check-mark">
                   <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <div v-if="!badge.unlocked && showProgress" class="progress-badge">
-                  {{ badge.progress }}%
+                <div v-if="!trophy.unlocked && showProgress" class="progress-badge">
+                  {{ trophy.progress }}%
                 </div>
               </div>
-              <span class="badge-label">{{ badge.label }}</span>
-              <span v-if="!badge.unlocked && showThreshold" class="badge-requirement">{{ badge.threshold }} kg</span>
+              <span class="trophy-label">{{ trophy.label }}</span>
+              <span v-if="!trophy.unlocked && showThreshold" class="trophy-requirement">{{ trophy.threshold }}</span>
+              <span v-if="trophy.unlocked" class="trophy-points">+{{ trophy.points }}P</span>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showModal = false">取消</button>
-          <button class="btn-primary" @click="saveBadgeSelection">儲存</button>
+          <button class="btn-primary" @click="saveTrophySelection">儲存</button>
         </div>
       </div>
     </div>
@@ -84,20 +82,14 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 
-// Import badge images
-import badge1 from '../assets/badges/1badge.png';
-import badge2 from '../assets/badges/2badge.png';
-import badge3 from '../assets/badges/3badge.png';
-import badge4 from '../assets/badges/4badge.png';
-
 const props = defineProps({
-  totalCarbon: {
+  totalSales: {
     type: Number,
     default: 0
   },
-  showCarbonTotal: {
-    type: Boolean,
-    default: false
+  totalPurchases: {
+    type: Number,
+    default: 0
   },
   showProgress: {
     type: Boolean,
@@ -109,124 +101,147 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['badge-click']);
+const emit = defineEmits(['trophy-click']);
 
 // State
 const isExpanded = ref(false);
 const showModal = ref(false);
-const selectedBadges = ref([]); // Badges selected to display on profile
-const currentBadgeIndex = ref(0); // Currently displayed badge index
+const selectedTrophies = ref([]);
+const currentTrophyIndex = ref(0);
 
-// Load saved badge selections from localStorage
-onMounted(() => {
-  const saved = localStorage.getItem('selectedCarbonBadges');
-  if (saved) {
-    selectedBadges.value = JSON.parse(saved);
-  } else {
-    // Default: select first unlocked badge or first badge
-    const firstUnlocked = badges.value.findIndex(b => b.unlocked);
-    if (firstUnlocked >= 0) {
-      selectedBadges.value = [badges.value[firstUnlocked].id];
-      currentBadgeIndex.value = firstUnlocked;
-    } else {
-      selectedBadges.value = [badges.value[0].id];
-    }
-  }
-});
-
-// Calculate badges based on totalCarbon
-const badges = computed(() => {
-  const carbon = props.totalCarbon;
+// Calculate trophies based on transactions
+const trophies = computed(() => {
+  const sales = props.totalSales;
+  const purchases = props.totalPurchases;
+  const total = sales + purchases;
 
   return [
     {
-      id: 1,
-      label: '環保新手',
-      image: badge1,
-      description: '減少 10 公斤碳排放，開啟環保旅程',
-      threshold: 10,
-      unlocked: carbon >= 10,
-      progress: Math.min((carbon / 10) * 100, 100),
-      remainingKg: Math.max(10 - carbon, 0)
+      id: 'first_sale',
+      label: '首次出售',
+      icon: '🎉',
+      description: '完成第一筆交易',
+      threshold: '1筆',
+      points: 10,
+      unlocked: sales >= 1,
+      progress: Math.min((sales / 1) * 100, 100),
+      category: 'sales'
     },
     {
-      id: 2,
-      label: '環保達人',
-      image: badge2,
-      description: '減少 50 公斤碳排放，感謝您的貢獻',
-      threshold: 50,
-      unlocked: carbon >= 50,
-      progress: Math.min((carbon / 50) * 100, 100),
-      remainingKg: Math.max(50 - carbon, 0)
+      id: 'seller_5',
+      label: '新手賣家',
+      icon: '📦',
+      description: '完成5筆銷售',
+      threshold: '5筆',
+      points: 20,
+      unlocked: sales >= 5,
+      progress: Math.min((sales / 5) * 100, 100),
+      category: 'sales'
     },
     {
-      id: 3,
-      label: '環保高手',
-      image: badge3,
-      description: '減少 100 公斤碳排放，您是環保實踐家',
-      threshold: 100,
-      unlocked: carbon >= 100,
-      progress: Math.min((carbon / 100) * 100, 100),
-      remainingKg: Math.max(100 - carbon, 0)
+      id: 'seller_10',
+      label: '活躍賣家',
+      icon: '💼',
+      description: '完成10筆銷售',
+      threshold: '10筆',
+      points: 30,
+      unlocked: sales >= 10,
+      progress: Math.min((sales / 10) * 100, 100),
+      category: 'sales'
     },
     {
-      id: 4,
-      label: '環保大師',
-      image: badge4,
-      description: '減少 200 公斤碳排放，環保精神值得敬佩',
-      threshold: 200,
-      unlocked: carbon >= 200,
-      progress: Math.min((carbon / 200) * 100, 100),
-      remainingKg: Math.max(200 - carbon, 0)
+      id: 'seller_50',
+      label: '專業賣家',
+      icon: '🏆',
+      description: '完成50筆銷售',
+      threshold: '50筆',
+      points: 100,
+      unlocked: sales >= 50,
+      progress: Math.min((sales / 50) * 100, 100),
+      category: 'sales'
+    },
+    {
+      id: 'buyer_10',
+      label: '購物達人',
+      icon: '🛍️',
+      description: '完成10筆購買',
+      threshold: '10筆',
+      points: 30,
+      unlocked: purchases >= 10,
+      progress: Math.min((purchases / 10) * 100, 100),
+      category: 'purchases'
+    },
+    {
+      id: 'transaction_100',
+      label: '百筆交易',
+      icon: '⚡',
+      description: '累積完成100筆交易',
+      threshold: '100筆',
+      points: 150,
+      unlocked: total >= 100,
+      progress: Math.min((total / 100) * 100, 100),
+      category: 'total'
     }
   ];
 });
 
-// Displayed badges (selected ones or all if expanded)
-const displayedBadges = computed(() => {
+// Load saved trophy selections
+onMounted(() => {
+  const saved = localStorage.getItem('selectedTransactionTrophies');
+  if (saved) {
+    selectedTrophies.value = JSON.parse(saved);
+  } else {
+    const firstUnlocked = trophies.value.findIndex(t => t.unlocked);
+    if (firstUnlocked >= 0) {
+      selectedTrophies.value = [trophies.value[firstUnlocked].id];
+      currentTrophyIndex.value = firstUnlocked;
+    } else {
+      selectedTrophies.value = [trophies.value[0].id];
+    }
+  }
+});
+
+// Displayed trophies
+const displayedTrophies = computed(() => {
   if (isExpanded.value) {
-    return badges.value;
+    return trophies.value;
   }
-  // Show only selected badges, or first badge if none selected
-  if (selectedBadges.value.length > 0) {
-    return badges.value.filter(b => selectedBadges.value.includes(b.id));
+  if (selectedTrophies.value.length > 0) {
+    return trophies.value.filter(t => selectedTrophies.value.includes(t.id));
   }
-  return [badges.value[0]];
+  return [trophies.value[0]];
 });
 
 function expandRow() {
   isExpanded.value = true;
 }
 
-function onBadgeClick(badge, index) {
+function onTrophyClick(trophy, index) {
   if (!isExpanded.value) {
-    // If collapsed, expand on click
     expandRow();
   } else {
-    // If expanded, emit click event
-    emit('badge-click', badge);
+    emit('trophy-click', trophy);
   }
-  currentBadgeIndex.value = index;
+  currentTrophyIndex.value = index;
 }
 
-function toggleBadgeSelection(badgeId) {
-  const index = selectedBadges.value.indexOf(badgeId);
+function toggleTrophySelection(trophyId) {
+  const index = selectedTrophies.value.indexOf(trophyId);
   if (index > -1) {
-    selectedBadges.value.splice(index, 1);
+    selectedTrophies.value.splice(index, 1);
   } else {
-    selectedBadges.value.push(badgeId);
+    selectedTrophies.value.push(trophyId);
   }
 }
 
-function saveBadgeSelection() {
-  localStorage.setItem('selectedCarbonBadges', JSON.stringify(selectedBadges.value));
+function saveTrophySelection() {
+  localStorage.setItem('selectedTransactionTrophies', JSON.stringify(selectedTrophies.value));
   isExpanded.value = false;
   showModal.value = false;
-  // Update current badge index to first selected
-  if (selectedBadges.value.length > 0) {
-    const firstSelected = badges.value.findIndex(b => selectedBadges.value.includes(b.id));
+  if (selectedTrophies.value.length > 0) {
+    const firstSelected = trophies.value.findIndex(t => selectedTrophies.value.includes(t.id));
     if (firstSelected >= 0) {
-      currentBadgeIndex.value = firstSelected;
+      currentTrophyIndex.value = firstSelected;
     }
   }
 }
@@ -235,10 +250,11 @@ function saveBadgeSelection() {
 <style scoped lang="scss">
 @import '@/styles/variables';
 
-.achievements-section {
+.transaction-trophies-section {
   position: relative;
+  margin-top: 20px;
 
-  .achievements-header {
+  .trophies-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -246,25 +262,12 @@ function saveBadgeSelection() {
     flex-wrap: wrap;
     gap: 10px;
 
-    .achievements-title {
+    .trophies-title {
       font-family: 'Noto Sans TC', sans-serif;
       font-size: 18px;
       font-weight: 600;
       color: #1e1e1e;
       margin: 0;
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-
-      .carbon-total {
-        font-size: 14px;
-        font-weight: 500;
-        color: $primary;
-        background: #e6f4f0;
-        padding: 6px 12px;
-        border-radius: 20px;
-      }
     }
 
     .view-all-btn {
@@ -290,8 +293,8 @@ function saveBadgeSelection() {
   }
 }
 
-// Horizontal Badge Row
-.badges-row-container {
+// Horizontal Trophy Row
+.trophies-row-container {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -307,7 +310,7 @@ function saveBadgeSelection() {
   }
 }
 
-.badges-row {
+.trophies-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -316,7 +319,7 @@ function saveBadgeSelection() {
   min-width: fit-content;
 }
 
-.badge-item {
+.trophy-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -325,7 +328,7 @@ function saveBadgeSelection() {
   flex-shrink: 0;
   transition: all 0.3s;
 
-  .badge-icon-wrapper {
+  .trophy-icon-wrapper {
     position: relative;
     width: 60px;
     height: 60px;
@@ -336,16 +339,13 @@ function saveBadgeSelection() {
     background-color: #f0f7f5;
     border: 2px solid #e0e0e0;
     margin-bottom: 6px;
-    overflow: hidden;
     transition: all 0.3s;
 
-    .badge-image {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+    .trophy-icon {
+      font-size: 32px;
+      line-height: 1;
       transition: filter 0.3s;
       filter: grayscale(100%) opacity(0.6);
-      padding: 8px;
     }
 
     .progress-badge {
@@ -373,7 +373,7 @@ function saveBadgeSelection() {
     }
   }
 
-  .badge-label {
+  .trophy-label {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 11px;
     color: #999;
@@ -389,28 +389,28 @@ function saveBadgeSelection() {
   }
 
   &.unlocked {
-    .badge-icon-wrapper {
+    .trophy-icon-wrapper {
       border-color: $primary;
       background-color: #e6f4f0;
 
-      .badge-image {
+      .trophy-icon {
         filter: grayscale(0%) opacity(1);
       }
     }
-    .badge-label {
+    .trophy-label {
       color: #1e1e1e;
     }
   }
 
   &.current {
-    .badge-icon-wrapper {
+    .trophy-icon-wrapper {
       transform: scale(1.1);
       box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
     }
   }
 
   &:hover {
-    .badge-icon-wrapper {
+    .trophy-icon-wrapper {
       transform: scale(1.05);
     }
   }
@@ -430,7 +430,7 @@ function saveBadgeSelection() {
   transition: all 0.3s;
   gap: 4px;
 
-  .badge-count {
+  .trophy-count {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 12px;
     font-weight: 600;
@@ -447,14 +447,14 @@ function saveBadgeSelection() {
     background: #f0f7f5;
     color: $primary;
 
-    .badge-count,
+    .trophy-count,
     i {
       color: $primary;
     }
   }
 }
 
-// Modal Styles
+// Modal Styles (same as AchievementBadges)
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -540,13 +540,13 @@ function saveBadgeSelection() {
   flex: 1;
 }
 
-.badges-grid {
+.trophies-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 16px;
 }
 
-.badge-grid-item {
+.trophy-grid-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -556,13 +556,21 @@ function saveBadgeSelection() {
   border-radius: 12px;
   transition: all 0.3s;
 
-  .badge-icon-wrapper {
+  .trophy-icon-wrapper {
     width: 80px;
     height: 80px;
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+    .trophy-icon {
+      font-size: 48px;
+    }
   }
 
-  .badge-label {
+  .trophy-label {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 13px;
     font-weight: 500;
@@ -571,10 +579,19 @@ function saveBadgeSelection() {
     margin-bottom: 4px;
   }
 
-  .badge-requirement {
+  .trophy-requirement {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 11px;
     color: #999;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .trophy-points {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: $primary;
     text-align: center;
   }
 
@@ -635,15 +652,9 @@ function saveBadgeSelection() {
 
 // Responsive Design
 @media (max-width: 767.98px) {
-  .achievements-header {
-    .achievements-title {
+  .trophies-header {
+    .trophies-title {
       font-size: 16px !important;
-      flex-direction: column;
-      align-items: flex-start !important;
-
-      .carbon-total {
-        font-size: 13px;
-      }
     }
 
     .view-all-btn {
@@ -652,15 +663,19 @@ function saveBadgeSelection() {
     }
   }
 
-  .badge-item {
+  .trophy-item {
     min-width: 60px;
 
-    .badge-icon-wrapper {
+    .trophy-icon-wrapper {
       width: 50px;
       height: 50px;
+
+      .trophy-icon {
+        font-size: 28px;
+      }
     }
 
-    .badge-label {
+    .trophy-label {
       font-size: 10px;
     }
   }
@@ -670,38 +685,46 @@ function saveBadgeSelection() {
     max-height: 90vh;
   }
 
-  .badges-grid {
+  .trophies-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 12px;
   }
 
-  .badge-grid-item {
-    .badge-icon-wrapper {
+  .trophy-grid-item {
+    .trophy-icon-wrapper {
       width: 60px;
       height: 60px;
+
+      .trophy-icon {
+        font-size: 36px;
+      }
     }
 
-    .badge-label {
+    .trophy-label {
       font-size: 12px;
     }
   }
 }
 
 @media (max-width: 575.98px) {
-  .badge-item {
+  .trophy-item {
     min-width: 55px;
 
-    .badge-icon-wrapper {
+    .trophy-icon-wrapper {
       width: 45px;
       height: 45px;
+
+      .trophy-icon {
+        font-size: 24px;
+      }
     }
 
-    .badge-label {
+    .trophy-label {
       font-size: 9px;
     }
   }
 
-  .badges-grid {
+  .trophies-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }

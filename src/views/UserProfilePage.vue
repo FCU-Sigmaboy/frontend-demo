@@ -75,17 +75,17 @@
               </div>
 
               <div class="user-stats">
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToDashboard">
                   <i class="bi bi-leaf"></i>
                   <span class="stat-value">{{ userPoints }}</span>
                   <span class="stat-label">點數</span>
                 </div>
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToManageListings">
                   <i class="bi bi-box-seam"></i>
                   <span class="stat-value">{{ userStats.listings }}</span>
                   <span class="stat-label">刊登中</span>
                 </div>
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToFavorites">
                   <i class="bi bi-heart"></i>
                   <span class="stat-value">{{ userStats.favorites }}</span>
                   <span class="stat-label">收藏</span>
@@ -112,6 +112,13 @@
                 :show-progress="true"
                 :show-threshold="true"
                 @badge-click="openBadgeModal"
+              />
+              <TransactionTrophies
+                :total-sales="userStats.sales"
+                :total-purchases="userStats.purchases"
+                :show-progress="true"
+                :show-threshold="true"
+                @trophy-click="openTrophyModal"
               />
             </div>
           </div>
@@ -413,6 +420,7 @@ import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import AchievementBadges from '../components/AchievementBadges.vue';
+import TransactionTrophies from '../components/TransactionTrophies.vue';
 import { Modal } from 'bootstrap';
 
 // Badge images are now imported inside AchievementBadges component
@@ -703,6 +711,18 @@ const openBadgeModal = (badge) => {
   }
 };
 
+const openTrophyModal = (trophy) => {
+  // For now, use the same modal structure as badges
+  selectedBadge.value = {
+    ...trophy,
+    image: null, // Trophies use icons, not images
+    remainingKg: null
+  };
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.show();
+  }
+};
+
 const goToEditProfile = () => {
   router.push({ name: 'EditProfile' });
 };
@@ -734,6 +754,14 @@ const goToReviews = () => {
 const goToFollowers = (tab = 'followers') => {
   const targetTab = tab === 'following' ? 'following' : 'followers';
   router.push({ name: 'MyFollowers', query: { tab: targetTab } });
+};
+
+const goToDashboard = () => {
+  router.push({ name: 'Dashboard' });
+};
+
+const goToFavorites = () => {
+  router.push({ name: 'Favorites' });
 };
 
 // Get number of visible cards based on screen width
@@ -925,6 +953,15 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 8px;
     white-space: nowrap;
     min-width: fit-content;
+
+    &.clickable {
+      cursor: pointer;
+      transition: opacity 0.3s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
 
     i {
       font-size: 24px;
