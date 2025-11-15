@@ -179,6 +179,21 @@ async function handleLoadMore(page) {
   padding: 30px 20px;
 }
 
+// Ensure consistent card heights and alignment
+// Bootstrap's row already handles flex, we just need to ensure cards fill height
+.row.g-4 {
+  > [class*='col-'] {
+    display: flex;
+    flex-direction: column;
+
+    > * {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
 // Loading State
 .loading-state {
   display: flex;

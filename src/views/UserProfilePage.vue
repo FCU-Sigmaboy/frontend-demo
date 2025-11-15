@@ -113,6 +113,13 @@
                 :show-threshold="true"
                 @badge-click="openBadgeModal"
               />
+              <TransactionTrophies
+                :total-sales="userStats.sales"
+                :total-purchases="userStats.purchases"
+                :show-progress="true"
+                :show-threshold="true"
+                @trophy-click="openTrophyModal"
+              />
             </div>
           </div>
         </section>
@@ -413,6 +420,7 @@ import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import AchievementBadges from '../components/AchievementBadges.vue';
+import TransactionTrophies from '../components/TransactionTrophies.vue';
 import { Modal } from 'bootstrap';
 
 // Badge images are now imported inside AchievementBadges component
@@ -698,6 +706,18 @@ onBeforeUnmount(() => {
 // Methods
 const openBadgeModal = (badge) => {
   selectedBadge.value = badge;
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.show();
+  }
+};
+
+const openTrophyModal = (trophy) => {
+  // For now, use the same modal structure as badges
+  selectedBadge.value = {
+    ...trophy,
+    image: null, // Trophies use icons, not images
+    remainingKg: null
+  };
   if (badgeModalInstance.value) {
     badgeModalInstance.value.show();
   }
