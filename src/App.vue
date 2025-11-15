@@ -2,16 +2,21 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useMessageStore } from './stores/message'
+import { useTransactionStore } from './stores/transaction'
 import { subscribeToUserPresence } from './api/conversationAPI_v2'
 
 const authStore = useAuthStore()
 const messageStore = useMessageStore()
+const transactionStore = useTransactionStore()
 const presenceChannel = ref(null)
+const realtimeUserId = ref(null)
 
 async function startPresenceTracking() {
   if (presenceChannel.value) return
 
+  console.log('[App] Starting presence tracking')
   presenceChannel.value = subscribeToUserPresence((presenceState) => {
+    console.log('[App] Presence update received:', presenceState)
     messageStore.updateOnlineUsers(presenceState)
   })
 
@@ -34,24 +39,63 @@ async function startPresenceTracking() {
 
 function stopPresenceTracking() {
   if (presenceChannel.value) {
+    console.log('[App] Stopping presence tracking')
     presenceChannel.value.unsubscribe()
     presenceChannel.value = null
   }
 }
 
+async function startTransactionTracking(userId) {
+  if (!userId) return
+
+  if (realtimeUserId.value === userId && transactionStore.isRealtimeActive) {
+    console.log('[App] Transaction tracking already active for user:', userId)
+    return
+  }
+
+  realtimeUserId.value = userId
+
+  try {
+    console.log('[App] Fetching transactions & starting realtime for user:', userId)
+    await transactionStore.fetchAllTransactions(true)
+    transactionStore.startRealtime(userId)
+  } catch (error) {
+    console.error('[App] Failed to start transaction tracking', error)
+  }
+}
+
+function stopTransactionTracking() {
+  realtimeUserId.value = null
+  console.log('[App] Stopping transaction tracking')
+  transactionStore.stopRealtime()
+  transactionStore.clearAll()
+}
+
 // 監聽登入狀態
 watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
+  console.log('[App] Auth state changed. Logged in:', isLoggedIn)
   if (isLoggedIn) {
     // 使用者登入後，載入對話並啟動監聽
     await messageStore.loadConversations()
     messageStore.startGlobalMessageListener()
     await startPresenceTracking()
+    await startTransactionTracking(authStore.user?.id)
   } else {
     // 使用者登出，重置訊息 store
     messageStore.reset()
     stopPresenceTracking()
+    stopTransactionTracking()
   }
 })
+
+// watch(() => authStore.user?.id, async (userId) => {
+//   console.log('[App] User ID watcher triggered. userId:', userId)
+//   if (userId) {
+//     await startTransactionTracking(userId)
+//   } else {
+//     stopTransactionTracking()
+//   }
+// }, { immediate: true })
 
 onMounted(async () => {
   await authStore.initAuth()
@@ -67,6 +111,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   messageStore.stopGlobalMessageListener()
   stopPresenceTracking()
+  stopTransactionTracking()
 })
 </script>
 

@@ -961,16 +961,23 @@ export function useMessagePage() {
       const receiverId = selectedConversation.value._raw.other_user.id;
 
       // 調用發起交易 API
-      const { initiateTransaction } = await import('@/api/transaction_before_meetAPI');
-      const result = await initiateTransaction(item.id, receiverId);
+      const transactionApi = await import('@/api/transaction_before_meetAPI');
+      const result = await transactionApi.initiateTransaction(item.id, receiverId);
 
       console.log('Transaction initiated:', result);
 
       // 如果有備註，更新備註
       if (note) {
-        const { updateGiverNote } = await import('@/api/transaction_before_meetAPI');
-        await updateGiverNote(result.transaction_id, note);
+        await transactionApi.updateGiverNote(result.transaction_id, note);
       }
+
+      // 立即刷新交易資料，避免等待 realtime 才更新
+      transactionStore.fetchAllTransactions(true).catch(err => {
+        console.error('Failed to refresh transactions after initiation:', err);
+      });
+
+      // 關閉交易視窗
+      showTransactionModal.value = false;
 
       // 顯示成功訊息，包含交易確認碼
       alert(`交易已發起成功！\n\n商品：${item.title}\n交易確認碼：${result.code}\n\n請妥善保管交易確認碼，見面時買家需要輸入此確認碼完成交易。`);

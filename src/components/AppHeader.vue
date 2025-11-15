@@ -52,6 +52,36 @@
                 <i class="bi bi-heart"></i>
               </BButton>
               <BTooltip target="favorites-btn" placement="bottom">我的收藏</BTooltip>
+              <!-- Transactions Icon (Desktop) -->
+              <BButton
+                id="transactions-btn"
+                variant="link"
+                class="icon-button transaction-button d-none d-lg-flex"
+                @click="router.push({ name: 'TransactionRecords' })"
+              >
+                <i class="bi bi-receipt"></i>
+                <div class="transaction-badges" aria-hidden="true">
+                  <span
+                    v-if="pendingConfirmationCount > 0"
+                    class="transaction-badge badge-pending"
+                  >
+                    {{ pendingConfirmationCount > 99 ? '99+' : pendingConfirmationCount }}
+                  </span>
+                  <span
+                    v-if="inTransactionCount > 0"
+                    class="transaction-badge badge-active"
+                  >
+                    {{ inTransactionCount > 99 ? '99+' : inTransactionCount }}
+                  </span>
+                </div>
+              </BButton>
+                <BTooltip target="transactions-btn" placement="bottom">
+                  <div class="transactions-tooltip">
+                    <strong>我的交易</strong>
+                    <div>待確認 ({{ pendingConfirmationCount }})</div>
+                    <div>交易中 ({{ inTransactionCount }})</div>
+                  </div>
+                </BTooltip>
 
               <!-- Message/Chat Icon (Desktop) -->
               <BButton
@@ -235,6 +265,27 @@
                   <i class="bi bi-heart"></i>
                   <span>我的收藏</span>
                 </li>
+                <li @click="handleMenuAction('TransactionRecords')" class="menu-item-with-badge">
+                  <i class="bi bi-receipt"></i>
+                  <span>我的交易</span>
+                  <span
+                    v-if="pendingConfirmationCount > 0 || inTransactionCount > 0"
+                    class="menu-transaction-badges"
+                  >
+                    <span
+                      v-if="pendingConfirmationCount > 0"
+                      class="menu-transaction-badge badge-pending"
+                    >
+                      {{ pendingConfirmationCount > 99 ? '99+' : pendingConfirmationCount }}
+                    </span>
+                    <span
+                      v-if="inTransactionCount > 0"
+                      class="menu-transaction-badge badge-active"
+                    >
+                      {{ inTransactionCount > 99 ? '99+' : inTransactionCount }}
+                    </span>
+                  </span>
+                </li>
                 <li @click="handleMenuAction('Messages')" class="menu-item-with-badge">
                   <i class="bi bi-chat-left"></i>
                   <span>聊天訊息</span>
@@ -345,11 +396,13 @@ import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
 import { useMessageStore } from '@/stores/message';
+import { useTransactionStore } from '@/stores/transaction';
 
 // Router & Auth Store
 const router = useRouter();
 const authStore = useAuthStore();
 const messageStore = useMessageStore();
+const transactionStore = useTransactionStore();
 
 // Logo Images
 import logoImage from '../assets/Logo.png';
@@ -380,6 +433,9 @@ const hasNewAchievements = computed(() => {
   return false;
 });
 
+const pendingConfirmationCount = computed(() => transactionStore.confirming.receiver?.length ?? 0);
+const inTransactionCount = computed(() => (transactionStore.pending.giver?.length ?? 0) + (transactionStore.pending.receiver?.length ?? 0));
+
 // Unread message count
 const unreadMessageCount = computed(() => {
   return messageStore.totalUnreadCount;
@@ -396,6 +452,14 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
   if (isLoggedIn) {
     // Profile data is already loaded by authStore
     console.log('User logged in, balance:', authStore.profileData?.profile_details?.balance);
+  }
+}, { immediate: true });
+
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    transactionStore.fetchAllTransactions().catch((error) => {
+      console.error('[AppHeader] 無法初始化交易資料', error);
+    });
   }
 }, { immediate: true });
 
@@ -662,6 +726,53 @@ const navigateToCategory = (categoryId, subCategoryId) => {
       animation: badge-pulse 2s ease-in-out infinite;
     }
   }
+}
+
+.transaction-button {
+  position: relative;
+
+  .transaction-badges {
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .transaction-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #f2efeb;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1e1e1e;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+
+  .transaction-badge.badge-pending {
+    background: #ffe8d0;
+    color: #d45b00;
+  }
+
+  .transaction-badge.badge-active {
+    background: #e0f4ff;
+    color: #0072b1;
+  }
+}
+
+.transactions-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
 }
 
 @keyframes badge-pulse {
@@ -1073,6 +1184,35 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     }
 
     &.menu-item-with-badge {
+      gap: 10px;
+
+      .menu-transaction-badges {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+        flex: 0 0 auto;
+      }
+
+      .menu-transaction-badge {
+        min-width: 24px;
+        text-align: center;
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1e1e1e;
+      }
+
+      .menu-transaction-badge.badge-pending {
+        background: #ffe8d0;
+        color: #d45b00;
+      }
+
+      .menu-transaction-badge.badge-active {
+        background: #e0f4ff;
+        color: #0072b1;
+      }
+
       .menu-message-badge {
         background: #ff4757;
         color: white;
