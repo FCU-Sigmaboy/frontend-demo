@@ -4,12 +4,22 @@ import { useAuthStore } from './stores/auth'
 import { useMessageStore } from './stores/message'
 import { useTransactionStore } from './stores/transaction'
 import { subscribeToUserPresence } from './api/conversationAPI_v2'
+import { BToastOrchestrator } from 'bootstrap-vue-next'
+import { useTransactionToast } from './composables/useTransactionToast'
 
 const authStore = useAuthStore()
 const messageStore = useMessageStore()
 const transactionStore = useTransactionStore()
 const presenceChannel = ref(null)
 const realtimeUserId = ref(null)
+
+const {
+  showTransactionReceivedToast,
+  showTransactionAcceptedToast,
+  showTransactionCompletedToast,
+  showTransactionRejectedToast,
+  showTransactionCancelledToast
+} = useTransactionToast()
 
 async function startPresenceTracking() {
   if (presenceChannel.value) return
@@ -45,6 +55,16 @@ function stopPresenceTracking() {
   }
 }
 
+function setupTransactionCallbacks() {
+  transactionStore.setRealtimeCallbacks({
+    onTransactionReceived: showTransactionReceivedToast,
+    onTransactionAccepted: showTransactionAcceptedToast,
+    onTransactionCompleted: showTransactionCompletedToast,
+    onTransactionRejected: showTransactionRejectedToast,
+    onTransactionCancelled: showTransactionCancelledToast
+  })
+}
+
 async function startTransactionTracking(userId) {
   if (!userId) return
 
@@ -57,7 +77,8 @@ async function startTransactionTracking(userId) {
 
   try {
     console.log('[App] Fetching transactions & starting realtime for user:', userId)
-    await transactionStore.fetchAllTransactions(true)
+    setupTransactionCallbacks()
+    await transactionStore.fetchAllTransactions(false) // 使用快取，不強制重新載入
     transactionStore.startRealtime(userId)
   } catch (error) {
     console.error('[App] Failed to start transaction tracking', error)
@@ -118,6 +139,7 @@ onBeforeUnmount(() => {
 <template>
   <div id="app">
     <router-view />
+    <BToastOrchestrator teleport-to="body" />
   </div>
 </template>
 
@@ -140,6 +162,70 @@ body {
 #app {
   min-height: 100vh;
   min-width: 360px;
+}
+
+/* Toast positioning - avoid header overlap */
+.custom-toast-position {
+  top: 100px !important;
+  margin-top: 20px !important;
+  z-index: 9999 !important;
+}
+
+/* Fallback for all toast containers */
+.b-toast-container,
+.b-toaster,
+.b-toaster-top-right,
+.b-toaster-top-end,
+[class*="b-toast"],
+[class*="b-toaster"] {
+  top: 100px !important;
+  z-index: 9999 !important;
+}
+
+/* More specific selectors */
+div[class*="toast"][class*="top"],
+.toast-container {
+  top: 100px !important;
+  z-index: 9999 !important;
+}
+
+/* Toast styling - clean white background */
+.toast {
+  background-color: #ffffff !important;
+  border: 1px solid #e0e0e0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.toast-header {
+  background-color: #ffffff !important;
+  border-bottom: none !important;
+  color: #333333 !important;
+  padding-bottom: 0.25rem !important;
+}
+
+.toast-body {
+  background-color: #ffffff !important;
+  color: #666666 !important;
+  padding-top: 0.25rem !important;
+  white-space: pre-line !important;
+}
+
+/* Remove variant background colors */
+.toast.bg-info,
+.toast.bg-success,
+.toast.bg-warning,
+.toast.bg-secondary,
+.toast.bg-danger {
+  background-color: #ffffff !important;
+}
+
+.toast.bg-info .toast-header,
+.toast.bg-success .toast-header,
+.toast.bg-warning .toast-header,
+.toast.bg-secondary .toast-header,
+.toast.bg-danger .toast-header {
+  background-color: #ffffff !important;
+  color: #333333 !important;
 }
 
 /* Import Google Fonts */

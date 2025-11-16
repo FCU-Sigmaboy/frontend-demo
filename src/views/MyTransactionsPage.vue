@@ -278,6 +278,17 @@
                       <span class="meta-value price">{{ transaction.item_price }} 點</span>
                     </div>
                   </div>
+
+                  <!-- Action Buttons for Completed Transactions (Only for Buyer) -->
+                  <div class="transaction-actions" v-if="transaction.role === 'receiver'">
+                    <button
+                      class="btn-action btn-review"
+                      @click.stop="handleWriteReview(transaction)"
+                    >
+                      <i class="bi bi-star-fill"></i>
+                      填寫評價
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -319,6 +330,13 @@
       :transaction="selectedTransactionForReject"
       @confirm="handleRejectModalSubmit"
     />
+
+    <!-- Create Review Modal -->
+    <CreateReviewModal
+      v-model="showReviewModal"
+      :transaction="selectedTransactionForReview"
+      @submit="handleReviewSubmit"
+    />
   </div>
 </template>
 
@@ -326,6 +344,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTransactionStore } from '@/stores/transaction';
+import { useReviewStore } from '@/stores/review';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -333,11 +352,13 @@ import ConfirmTransactionModal from '../components/transaction/ConfirmTransactio
 import InputCodeModal from '../components/transaction/InputCodeModal.vue';
 import ViewCodeModal from '../components/transaction/ViewCodeModal.vue';
 import RejectTransactionModal from '../components/transaction/RejectTransactionModal.vue';
+import CreateReviewModal from '../components/transaction/CreateReviewModal.vue';
 import { buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_before_meetAPI';
 import { finalizeTransactionWithCode } from '@/api/transaction_meetAPI';
 
 const router = useRouter();
 const transactionStore = useTransactionStore();
+const reviewStore = useReviewStore();
 
 // State
 const userPoints = ref(500);
@@ -351,6 +372,8 @@ const showViewCodeModal = ref(false);
 const selectedCodeTransaction = ref(null);
 const showRejectModal = ref(false);
 const selectedTransactionForReject = ref(null);
+const showReviewModal = ref(false);
+const selectedTransactionForReview = ref(null);
 
 // Computed
 const confirmingTransactions = computed(() => {
@@ -485,6 +508,38 @@ const handleInputCodeSubmit = async (code) => {
 const handleViewCode = (transaction) => {
   selectedCodeTransaction.value = transaction;
   showViewCodeModal.value = true;
+};
+
+const handleWriteReview = (transaction) => {
+  // 買家填寫評價
+  selectedTransactionForReview.value = transaction;
+  showReviewModal.value = true;
+};
+
+const handleReviewSubmit = async (reviewData) => {
+  if (!selectedTransactionForReview.value) return;
+
+  try {
+    isLoading.value = true;
+
+    // 使用 review store 建立評價
+    await reviewStore.addReview({
+      transaction_id: selectedTransactionForReview.value.transaction_id,
+      score: reviewData.score,
+      comment: reviewData.comment
+    });
+
+    alert('評價已送出！感謝您的回饋。');
+
+    // 重新載入交易列表
+    await fetchTransactions(true);
+  } catch (error) {
+    console.error('Failed to submit review:', error);
+    alert(`送出評價失敗：${error.message}`);
+  } finally {
+    isLoading.value = false;
+    selectedTransactionForReview.value = null;
+  }
 };
 
 // Lifecycle
@@ -1015,6 +1070,23 @@ onMounted(() => {
       &:hover {
         transform: none;
         box-shadow: none;
+      }
+    }
+
+    &.btn-review {
+      background: #fff3e0;
+      color: #f57c00;
+      border: 1px solid #ffc107;
+
+      &:hover {
+        background: #ffc107;
+        color: #1e1e1e;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+      }
+
+      &:active {
+        transform: translateY(0);
       }
     }
   }

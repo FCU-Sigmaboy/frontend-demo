@@ -28,8 +28,14 @@
           </button>
         </div>
 
+        <!-- Loading State -->
+        <div v-if="isLoading" class="loading-state">
+          <div class="spinner"></div>
+          <p>載入中...</p>
+        </div>
+
         <!-- Reviews List -->
-        <div v-if="reviews.length > 0" class="reviews-list">
+        <div v-else-if="reviews.length > 0" class="reviews-list">
           <div v-for="review in reviews" :key="review.id" class="review-card">
             <div class="review-header">
               <div class="reviewer-info" @click="goToUserProfile(review.reviewer.id)">
@@ -86,59 +92,52 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useReviewStore } from '@/stores/review';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 
 const router = useRouter();
+const reviewStore = useReviewStore();
 
 // State
 const userPoints = ref(500);
 
-// Mock reviews data
-const reviews = ref([
-  {
-    id: 1,
+// Computed - 從 store 獲取資料
+const reviews = computed(() => {
+  // 轉換 store 資料格式以符合 template 需求
+  return reviewStore.reviews.map(review => ({
+    id: review.review_id,
     reviewer: {
-      id: 1,
-      name: '使用者名稱',
-      avatar: 'https://placehold.co/48/6fb8a5/ffffff?text=U1'
+      id: review.reviewer_id,
+      name: review.reviewer_nickname,
+      avatar: review.reviewer_avatar
     },
-    rating: 4,
-    comment: '好棒的交易！',
-    date: '1個月',
-    transaction: {
-      name: 'iPhone 13 Pro',
-      image: 'https://placehold.co/60x60/6fb8a5/ffffff?text=Phone'
-    }
-  },
-  {
-    id: 2,
-    reviewer: {
-      id: 2,
-      name: '使用者名稱',
-      avatar: 'https://placehold.co/48/5a9d8c/ffffff?text=U2'
-    },
-    rating: 5,
-    comment: '非常好的賣家，商品狀況完美！',
-    date: '1個月',
-    transaction: {
-      name: '復古沙發',
-      image: 'https://placehold.co/60x60/5a9d8c/ffffff?text=Sofa'
-    }
-  }
-]);
-
-// Computed
-const averageRating = computed(() => {
-  if (reviews.value.length === 0) return 0;
-  const sum = reviews.value.reduce((acc, review) => acc + review.rating, 0);
-  return sum / reviews.value.length;
+    rating: review.score,
+    comment: review.comment,
+    date: review.formatted_date,
+    transaction: review.item_id ? {
+      name: review.item_title,
+      image: review.item_image
+    } : null
+  }));
 });
 
+const averageRating = computed(() => reviewStore.averageRating);
+const isLoading = computed(() => reviewStore.isLoading);
+
 // Methods
+const fetchMyReviews = async () => {
+  try {
+    await reviewStore.fetchReviews();
+  } catch (error) {
+    console.error('Failed to fetch reviews:', error);
+    alert(`載入評價失敗：${error.message}`);
+  }
+};
+
 const goToTransactionRecords = () => {
   router.push({ name: 'TransactionRecords' });
 };
@@ -146,6 +145,11 @@ const goToTransactionRecords = () => {
 const goToUserProfile = (userId) => {
   router.push({ name: 'PublicUserProfile', params: { id: userId } });
 };
+
+// Lifecycle
+onMounted(() => {
+  fetchMyReviews();
+});
 </script>
 
 <style scoped lang="scss">
@@ -259,6 +263,39 @@ const goToUserProfile = (userId) => {
       background: #5fa795;
     }
   }
+}
+
+// Loading State
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f0f0f0;
+    border-top-color: $primary;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    color: #999;
+    margin: 0;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 // Reviews List

@@ -455,13 +455,14 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
   }
 }, { immediate: true });
 
-watch(() => authStore.isLoggedIn, (isLoggedIn) => {
-  if (isLoggedIn) {
-    transactionStore.fetchAllTransactions().catch((error) => {
-      console.error('[AppHeader] 無法初始化交易資料', error);
-    });
-  }
-}, { immediate: true });
+// 交易資料的初始化已在 App.vue 中統一處理，不需要在此重複呼叫
+// watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+//   if (isLoggedIn) {
+//     transactionStore.fetchAllTransactions().catch((error) => {
+//       console.error('[AppHeader] 無法初始化交易資料', error);
+//     });
+//   }
+// }, { immediate: true });
 
 const categoriesStore = useCategoriesStore()
 
