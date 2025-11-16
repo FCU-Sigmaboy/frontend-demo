@@ -68,7 +68,14 @@
             <div class="form-section">
               <label class="section-label">大頭貼</label>
               <div class="avatar-upload-section">
-                <div class="avatar-preview">
+                <div
+                  class="avatar-preview"
+                  :class="{ 'drag-over': isDraggingAvatar }"
+                  @dragover.prevent="handleDragOver"
+                  @dragleave.prevent="handleDragLeave"
+                  @drop.prevent="handleDrop"
+                  @click="triggerFileInput"
+                >
                   <img
                     v-if="formData.avatar"
                     :src="formData.avatar"
@@ -77,6 +84,14 @@
                     referrerpolicy="no-referrer"
                   />
                   <i v-else class="bi bi-person-circle default-avatar"></i>
+                  <div v-if="isDraggingAvatar" class="drag-overlay">
+                    <i class="bi bi-cloud-upload"></i>
+                    <span>放開以上傳</span>
+                  </div>
+                  <div v-else class="change-overlay">
+                    <i class="bi bi-camera-fill"></i>
+                    <span>點擊或拖曳更換</span>
+                  </div>
                 </div>
                 <div class="upload-actions">
                   <button type="button" class="upload-btn" @click="triggerFileInput">
@@ -218,6 +233,14 @@
     </main>
 
     <AppFooter />
+
+    <!-- Image Cropper Modal -->
+    <ImageCropper
+      v-model:show="showCropper"
+      :image-src="cropperImageSrc"
+      @confirm="handleCroppedImage"
+      @cancel="handleCropperCancel"
+    />
   </div>
 </template>
 
@@ -232,6 +255,7 @@ import { getCurrentPosition } from '../api/location';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import ImageCropper from '../components/ImageCropper.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -251,6 +275,9 @@ const fileInput = ref(null);
 const showOfficeAddress = ref(false);
 const originalProfile = ref(null); // Store original profile data
 const isLoadingProfile = ref(true); // Loading state for profile data
+const isDraggingAvatar = ref(false);
+const showCropper = ref(false);
+const cropperImageSrc = ref('');
 
 const formData = ref({
   avatar: authStore.userAvatar || '',
@@ -293,12 +320,17 @@ const triggerFileInput = () => {
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
+  processImageFile(file);
+};
 
+const processImageFile = (file) => {
   // Validate file type
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
   if (!validTypes.includes(file.type)) {
     alert('僅支援 JPG、PNG、WEBP、GIF 格式的圖片');
-    event.target.value = '';
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
     return;
   }
 
@@ -309,10 +341,70 @@ const handleFileUpload = (event) => {
   if (file.size > maxSize) {
     const sizeLimit = isAnimated ? '2MB' : '5MB';
     alert(`${isAnimated ? '動畫' : ''}圖片大小不能超過 ${sizeLimit}`);
-    event.target.value = '';
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
     return;
   }
 
+  // GIF files bypass cropper to preserve animation
+  if (isAnimated) {
+    // Store the File object directly for upload
+    formData.value.avatarFile = file;
+
+    // Create preview using FileReader
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      formData.value.avatar = e.target.result; // Preview only
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Show cropper modal for static images
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      cropperImageSrc.value = e.target.result;
+      showCropper.value = true;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+const handleDragOver = (event) => {
+  event.preventDefault();
+  isDraggingAvatar.value = true;
+};
+
+const handleDragLeave = (event) => {
+  // Only set to false if leaving the dropzone entirely
+  const rect = event.currentTarget.getBoundingClientRect();
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  // Check if mouse is outside the dropzone
+  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    isDraggingAvatar.value = false;
+  }
+};
+
+const handleDrop = (event) => {
+  event.preventDefault();
+  isDraggingAvatar.value = false;
+
+  const files = Array.from(event.dataTransfer.files);
+  const imageFile = files.find(file => file.type.startsWith('image/'));
+
+  if (!imageFile) {
+    alert('請拖曳圖片檔案');
+    return;
+  }
+
+  processImageFile(imageFile);
+};
+
+const handleCroppedImage = async (blob) => {
+  // Convert blob to File
+  const file = new File([blob], 'profile-picture.webp', { type: 'image/webp' });
+  
   // Store the File object for later upload
   formData.value.avatarFile = file;
 
@@ -321,7 +413,14 @@ const handleFileUpload = (event) => {
   reader.onload = (e) => {
     formData.value.avatar = e.target.result; // Preview only
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(blob);
+};
+
+const handleCropperCancel = () => {
+  cropperImageSrc.value = '';
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
 };
 
 const removeAvatar = () => {
@@ -864,6 +963,11 @@ onMounted(() => {
 
 .avatar-preview {
   flex-shrink: 0;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 50%;
+  overflow: hidden;
 
   .preview-image,
   .default-avatar {
@@ -871,11 +975,56 @@ onMounted(() => {
     height: 120px;
     border-radius: 50%;
     object-fit: cover;
+    display: block;
   }
 
   .default-avatar {
     font-size: 120px;
     color: #e0e0e0;
+  }
+
+  .change-overlay,
+  .drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 50%;
+
+    i {
+      font-size: 24px;
+      color: white;
+    }
+
+    span {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 12px;
+      color: white;
+      font-weight: 500;
+    }
+  }
+
+  .drag-overlay {
+    opacity: 1;
+    background: rgba(111, 184, 165, 0.8);
+  }
+
+  &:hover .change-overlay {
+    opacity: 1;
+  }
+
+  &.drag-over {
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(111, 184, 165, 0.4);
   }
 }
 
