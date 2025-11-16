@@ -219,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -341,10 +341,10 @@ const handleMessage = async () => {
 };
 
 const goToProduct = (productId) => {
-  // 重新載入頁面以顯示新的商品資訊
+  // 切換路由，watch 會自動重新載入商品資料
   router.push({ name: 'ItemDetail', params: { id: productId } });
-  // 頁面切換後重新載入商品資料
-  loadProductDetails();
+  // 滾動到頁面頂部
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const handleFavoriteToggle = (data) => {
@@ -503,6 +503,16 @@ const loadProductDetails = async () => {
 const retryLoadProduct = () => {
   loadProductDetails();
 };
+
+// 監聽路由參數變化
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      loadProductDetails();
+    }
+  }
+);
 
 onMounted(async () => {
   await authStore.initAuth();
