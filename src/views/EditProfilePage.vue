@@ -227,6 +227,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
+import { uploadProfilePicture } from '../api/upload_imageAPI';
 import { getCurrentPosition } from '../api/location';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -253,6 +254,7 @@ const isLoadingProfile = ref(true); // Loading state for profile data
 
 const formData = ref({
   avatar: authStore.userAvatar || '',
+  avatarFile: null, // Store the File object for upload
   nickname: authStore.userName || '',
   loginMethod: 'Google',
   location: '', // Stores district name like '西屯區'
@@ -308,15 +310,20 @@ const handleFileUpload = (event) => {
     return;
   }
 
+  // Store the File object for later upload
+  formData.value.avatarFile = file;
+
+  // Create preview using FileReader
   const reader = new FileReader();
   reader.onload = (e) => {
-    formData.value.avatar = e.target.result;
+    formData.value.avatar = e.target.result; // Preview only
   };
   reader.readAsDataURL(file);
 };
 
 const removeAvatar = () => {
   formData.value.avatar = '';
+  formData.value.avatarFile = null;
   if (fileInput.value) {
     fileInput.value.value = '';
   }
@@ -566,8 +573,16 @@ const handleSubmit = async () => {
     if (formData.value.nickname !== originalProfile.value?.nickname) {
       userData.nickname = formData.value.nickname;
     }
-    if (formData.value.avatar !== originalProfile.value?.profile_picture_url) {
-      userData.profile_picture_url = formData.value.avatar;
+
+    // Upload avatar if a new file was selected
+    if (formData.value.avatarFile) {
+      console.log('📤 Uploading new avatar...');
+      const avatarUrl = await uploadProfilePicture(
+        formData.value.avatarFile,
+        authStore.user?.id
+      );
+      userData.profile_picture_url = avatarUrl;
+      console.log('✅ Avatar uploaded:', avatarUrl);
     }
 
     // Prepare profileData (empty for now, no balance/carbon changes from this page)

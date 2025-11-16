@@ -108,3 +108,47 @@ export async function uploadItemImages(files, userId, itemId, shouldCompress = t
 
     return Promise.all(uploadPromises);
 }
+
+/**
+ * 【功能】上傳大頭貼到 Supabase Storage (自動壓縮)
+ * @param {File} file - 圖片檔案
+ * @param {string} userId - 使用者 ID
+ * @param {boolean} shouldCompress - 是否需要壓縮（預設 true）
+ * @returns {Promise<string>} - 回傳圖片的公開 URL
+ *
+ * @example
+ * // 上傳大頭貼（自動壓縮）
+ * const avatarUrl = await uploadProfilePicture(file, userId);
+ *
+ * // 然後更新 profile
+ * await updateMyProfile({ profile_picture_url: avatarUrl }, null, null);
+ */
+export async function uploadProfilePicture(file, userId, shouldCompress = true) {
+    // 如果需要壓縮，則先壓縮
+    const fileToUpload = shouldCompress ? await compressImage(file) : file;
+
+    // 產生安全的檔名（避免中文或特殊字元）
+    const safeFilename = generateSafeFilename(fileToUpload.name);
+    const filePath = `${userId}/${safeFilename}`;
+
+    // 上傳檔案到 avatars bucket
+    const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, fileToUpload, {
+            cacheControl: 'public, max-age=31536000, immutable',
+            upsert: true // 允許覆蓋舊頭貼
+        });
+
+    if (error) {
+        console.error('大頭貼上傳失敗:', error);
+        throw new Error(error.message);
+    }
+
+    // 獲取公開 URL
+    const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(data.path, { download: false });
+
+    console.log(`✅ 大頭貼上傳成功: ${publicUrl}`);
+    return publicUrl;
+}
