@@ -119,8 +119,8 @@
               </tr>
             </tbody>
 
-            <!-- Actual Listing Rows with Transition -->
-            <TransitionGroup v-else name="list" tag="tbody">
+            <!-- Actual Listing Rows -->
+            <tbody v-else>
               <tr v-for="listing in filteredListings" :key="listing.id" class="listing-row">
                 <!-- Product Info -->
                 <td class="col-image">
@@ -163,7 +163,7 @@
                     <button
                       v-if="listing.status === 'waiting' || listing.status === 'in_transaction'"
                       class="btn-sm btn-view"
-                      @click="router.push({ name: 'TransactionRecords' })"
+                      @click="viewTransaction(listing.id)"
                       title="查看交易"
                     >
                       查看交易
@@ -213,13 +213,59 @@
                   </div>
                 </td>
               </tr>
-            </TransitionGroup>
+            </tbody>
           </table>
 
           <!-- Empty State -->
           <div v-if="!isLoading && filteredListings.length === 0" class="empty-state">
             <i class="bi bi-inbox"></i>
             <p>找不到符合條件的刊登</p>
+          </div>
+        </div>
+
+        <!-- Pagination Controls (Desktop) -->
+        <div v-if="!isLoading && allFilteredListings.length > 5" class="pagination-container desktop-view">
+          <div class="pagination-info">
+            顯示第 {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, allFilteredListings.length) }} 項,共 {{ allFilteredListings.length }} 項
+          </div>
+          <div class="pagination-controls">
+            <button
+              class="pagination-btn"
+              :disabled="currentPage === 1"
+              @click="prevPage"
+            >
+              <i class="bi bi-chevron-left"></i>
+              上一頁
+            </button>
+
+            <button
+              v-for="(page, index) in pageNumbers"
+              :key="index"
+              class="pagination-btn page-number"
+              :class="{ active: page === currentPage, ellipsis: page === '...' }"
+              :disabled="page === '...'"
+              @click="typeof page === 'number' ? goToPage(page) : null"
+            >
+              {{ page }}
+            </button>
+
+            <button
+              class="pagination-btn"
+              :disabled="currentPage === totalPages"
+              @click="nextPage"
+            >
+              下一頁
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <div class="items-per-page">
+            <label for="itemsPerPage">每頁顯示：</label>
+            <select id="itemsPerPage" v-model.number="itemsPerPage" @change="currentPage = 1">
+              <option :value="5">5 項</option>
+              <option :value="10">10 項</option>
+              <option :value="20">20 項</option>
+              <option :value="50">50 項</option>
+            </select>
           </div>
         </div>
 
@@ -296,7 +342,7 @@
                 <template v-if="listing.status === 'waiting' || listing.status === 'in_transaction'">
                   <button
                     class="btn-card btn-view btn-primary"
-                    @click="router.push({ name: 'TransactionRecords' })"
+                    @click="viewTransaction(listing.id)"
                   >
                     <i class="bi bi-eye"></i>
                     查看交易
@@ -354,6 +400,40 @@
             <p>找不到符合條件的刊登</p>
           </div>
         </div>
+
+        <!-- Pagination Controls (Mobile) -->
+        <div v-if="!isLoading && allFilteredListings.length > 5" class="pagination-container mobile-view">
+          <div class="pagination-info-mobile">
+            第 {{ currentPage }} / {{ totalPages }} 頁 (共 {{ allFilteredListings.length }} 項)
+          </div>
+          <div class="pagination-controls-mobile">
+            <button
+              class="pagination-btn-mobile"
+              :disabled="currentPage === 1"
+              @click="prevPage"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+
+            <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+
+            <button
+              class="pagination-btn-mobile"
+              :disabled="currentPage === totalPages"
+              @click="nextPage"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <div class="items-per-page-mobile">
+            <select v-model.number="itemsPerPage" @change="currentPage = 1">
+              <option :value="5">5 項/頁</option>
+              <option :value="10">10 項/頁</option>
+              <option :value="20">20 項/頁</option>
+              <option :value="50">50 項/頁</option>
+            </select>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -389,6 +469,10 @@ const searchQuery = ref('');
 const activeFilter = ref('all');
 const listings = ref([]);
 const isLoading = ref(true);
+
+// Pagination state
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
 
 // Sorting state
 const sortKey = ref('');
@@ -451,8 +535,8 @@ const stats = computed(() => {
   return { all, active, inactive, sold };
 });
 
-// Computed filtered listings
-const filteredListings = computed(() => {
+// Computed filtered listings (with filtering and sorting applied)
+const allFilteredListings = computed(() => {
   let filtered = listings.value;
 
   // Filter by status
@@ -504,6 +588,82 @@ const filteredListings = computed(() => {
   return filtered;
 });
 
+// Computed total pages
+const totalPages = computed(() => {
+  return Math.ceil(allFilteredListings.value.length / itemsPerPage.value);
+});
+
+// Computed paginated listings (for display)
+const filteredListings = computed(() => {
+  // Ensure current page doesn't exceed total pages
+  if (currentPage.value > totalPages.value && totalPages.value > 0) {
+    currentPage.value = totalPages.value;
+  }
+
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return allFilteredListings.value.slice(start, end);
+});
+
+// Pagination methods
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+// Get page numbers to display
+const pageNumbers = computed(() => {
+  const pages = [];
+  const maxVisible = 5;
+
+  if (totalPages.value <= maxVisible) {
+    // Show all pages if total is small
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i);
+    }
+  } else {
+    // Show smart pagination
+    if (currentPage.value <= 3) {
+      // Near start
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages.value);
+    } else if (currentPage.value >= totalPages.value - 2) {
+      // Near end
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages.value - 3; i <= totalPages.value; i++) pages.push(i);
+    } else {
+      // Middle
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage.value - 1);
+      pages.push(currentPage.value);
+      pages.push(currentPage.value + 1);
+      pages.push('...');
+      pages.push(totalPages.value);
+    }
+  }
+
+  return pages;
+});
+
 // Load listings from API
 const loadListings = async () => {
   try {
@@ -534,7 +694,7 @@ const loadListings = async () => {
       // Transform API data to match component expectations
       listings.value = items.map(item => {
         // Check if item is in a transaction (active or completed)
-  const transactionInfo = itemToTransactionMap.get(item.item_id);
+        const transactionInfo = itemToTransactionMap.get(item.item_id);
 
         // Determine status based on transaction status first, then listing_status
         let status;
@@ -588,6 +748,7 @@ const formatDate = (dateString) => {
 // Set filter
 const setFilter = (filter) => {
   activeFilter.value = filter;
+  currentPage.value = 1; // Reset to first page when filter changes
 };
 
 // Sorting methods
@@ -600,6 +761,7 @@ const sortBy = (key) => {
     sortKey.value = key;
     sortOrder.value = 'asc';
   }
+  // No need to reset page - sorting happens within current page for animation to work
 };
 
 const getSortIcon = (key) => {
@@ -641,8 +803,13 @@ const editListing = (id) => {
 };
 
 const viewTransaction = (id) => {
-  // Navigate to the transactions page
-  router.push({ name: 'TransactionRecords' });
+  const listing = listings.value.find(l => l.id === id);
+  const transactionId = listing?.transactionId;
+
+  router.push({
+    name: 'TransactionRecords',
+    query: transactionId ? { transactionId } : {}
+  });
 };
 
 // Toggle listing status (上架/下架)
@@ -708,6 +875,11 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
   if (isLoggedIn && listings.value.length === 0 && !isLoading.value) {
     loadListings();
   }
+});
+
+// Watch for search query changes and reset to first page
+watch(searchQuery, () => {
+  currentPage.value = 1;
 });
 </script>
 
@@ -963,45 +1135,6 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
       font-size: 14px;
       color: #1e1e1e;
       vertical-align: middle;
-    }
-  }
-}
-
-// List transition animations for table rows
-// Move animation - when items change position during sort
-.list-move {
-  transition: transform 0.4s cubic-bezier(0.59, 0.12, 0.34, 0.95);
-}
-
-// Enter animation - new items appearing
-.list-enter-active {
-  transition: all 0.4s cubic-bezier(0.59, 0.12, 0.34, 0.95);
-}
-
-.list-enter-from {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-// Leave animation - items disappearing
-.list-leave-active {
-  transition: all 0.4s cubic-bezier(0.59, 0.12, 0.34, 0.95);
-  position: absolute;
-  width: 100%;
-}
-
-.list-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-// Make table rows relative for absolute positioning to work
-.listings-table {
-  tbody {
-    position: relative;
-
-    tr {
-      position: relative;
     }
   }
 }
@@ -1728,6 +1861,245 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 
     i {
       font-size: 12px;
+    }
+  }
+}
+
+// Pagination Styles
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-family: 'Noto Sans TC', sans-serif;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e1e1e;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 12px;
+  }
+
+  &:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: $primary;
+    color: $primary;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &.page-number {
+    min-width: 40px;
+    padding: 8px 12px;
+    justify-content: center;
+
+    &.active {
+      background: $primary;
+      border-color: $primary;
+      color: white;
+      font-weight: 600;
+    }
+
+    &.ellipsis {
+      border: none;
+      cursor: default;
+      background: transparent;
+
+      &:hover {
+        background: transparent;
+        border: none;
+      }
+    }
+  }
+}
+
+.items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+
+  label {
+    font-weight: 500;
+  }
+
+  select {
+    padding: 8px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #1e1e1e;
+    cursor: pointer;
+    background: white;
+    transition: all 0.3s;
+
+    &:hover {
+      border-color: $primary;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
+    }
+  }
+}
+
+// Mobile Pagination Styles
+.pagination-container.mobile-view {
+  display: none;
+}
+
+.pagination-info-mobile {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.pagination-controls-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.pagination-btn-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 16px;
+    color: #1e1e1e;
+  }
+
+  &:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: $primary;
+
+    i {
+      color: $primary;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.page-indicator {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e1e1e;
+  min-width: 60px;
+  text-align: center;
+}
+
+.items-per-page-mobile {
+  width: 100%;
+  text-align: center;
+
+  select {
+    width: 120px;
+    padding: 8px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    color: #1e1e1e;
+    cursor: pointer;
+    background: white;
+    transition: all 0.3s;
+
+    &:hover {
+      border-color: $primary;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
+    }
+  }
+}
+
+@media (max-width: 767.98px) {
+  .pagination-container.desktop-view {
+    display: none !important;
+  }
+
+  .pagination-container.mobile-view {
+    display: flex !important;
+    flex-direction: column;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .pagination-container.desktop-view {
+    .pagination-info {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .pagination-controls {
+      width: 100%;
+    }
+
+    .items-per-page {
+      width: 100%;
+      justify-content: center;
     }
   }
 }

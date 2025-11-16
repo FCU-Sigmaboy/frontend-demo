@@ -99,7 +99,8 @@
               <div
                 v-for="transaction in paginatedTransactions"
                 :key="transaction.transaction_id"
-                class="transaction-card"
+                :data-transaction-id="transaction.transaction_id"
+                :class="['transaction-card', { 'highlighted': highlightedTransactionId === transaction.transaction_id }]"
               >
                 <div class="card-header">
                   <div class="transaction-type" :class="transaction.role">
@@ -183,7 +184,8 @@
               <div
                 v-for="transaction in paginatedTransactions"
                 :key="transaction.transaction_id"
-                class="transaction-card"
+                :data-transaction-id="transaction.transaction_id"
+                :class="['transaction-card', { 'highlighted': highlightedTransactionId === transaction.transaction_id }]"
               >
                 <div class="card-header">
                   <div class="transaction-type" :class="transaction.role">
@@ -269,7 +271,8 @@
               <div
                 v-for="transaction in paginatedTransactions"
                 :key="transaction.transaction_id"
-                class="transaction-card"
+                :data-transaction-id="transaction.transaction_id"
+                :class="['transaction-card', { 'highlighted': highlightedTransactionId === transaction.transaction_id }]"
               >
                 <div class="card-header">
                   <div class="transaction-type" :class="transaction.role">
@@ -445,8 +448,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useTransactionStore } from '@/stores/transaction';
 import { useReviewStore } from '@/stores/review';
 import AppHeader from '../components/AppHeader.vue';
@@ -461,6 +464,7 @@ import { buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_be
 import { finalizeTransactionWithCode } from '@/api/transaction_meetAPI';
 
 const router = useRouter();
+const route = useRoute();
 const transactionStore = useTransactionStore();
 const reviewStore = useReviewStore();
 
@@ -484,6 +488,8 @@ const showRejectModal = ref(false);
 const selectedTransactionForReject = ref(null);
 const showReviewModal = ref(false);
 const selectedTransactionForReview = ref(null);
+const highlightedTransactionId = ref(null);
+const isNavigatingToTransaction = ref(false);
 
 // Computed
 const confirmingTransactions = computed(() => {
@@ -764,22 +770,129 @@ const handlePageJump = () => {
   }
 };
 
+// 根據 transactionId 找到交易並切換到對應的 tab 和 role
+const navigateToTransaction = async (transactionId) => {
+  if (!transactionId) return;
+
+  const id = parseInt(transactionId);
+  if (isNaN(id)) return;
+
+  // 標記正在導航中，避免 watch 干擾
+  isNavigatingToTransaction.value = true;
+
+  // 等待交易資料載入
+  await fetchTransactions();
+
+  // 在所有交易中尋找
+  let found = false;
+  let targetTab = '';
+  let targetRole = '';
+
+  // 搜尋 confirming
+  const confirmingTransaction = confirmingTransactions.value.find(t => t.transaction_id === id);
+  if (confirmingTransaction) {
+    found = true;
+    targetTab = 'confirming';
+    targetRole = confirmingTransaction.role;
+  }
+
+  // 搜尋 pending
+  if (!found) {
+    const pendingTransaction = pendingTransactions.value.find(t => t.transaction_id === id);
+    if (pendingTransaction) {
+      found = true;
+      targetTab = 'pending';
+      targetRole = pendingTransaction.role;
+    }
+  }
+
+  // 搜尋 completed
+  if (!found) {
+    const completedTransaction = completedTransactions.value.find(t => t.transaction_id === id);
+    if (completedTransaction) {
+      found = true;
+      targetTab = 'completed';
+      targetRole = completedTransaction.role;
+    }
+  }
+
+  if (found) {
+    // 切換到對應的 tab（先不改 roleTab，避免被 watch 重置）
+    activeTab.value = targetTab;
+
+    // 等待 activeTab 的 watch 執行完畢
+    await nextTick();
+
+    // 現在設定 roleTab
+    roleTab.value = targetRole;
+
+    // 再次等待 DOM 更新
+    await nextTick();
+
+    // 找到交易在當前列表中的索引
+    const transactionIndex = displayTransactions.value.findIndex(t => t.transaction_id === id);
+
+    if (transactionIndex !== -1) {
+      // 計算應該在哪一頁
+      const targetPage = Math.floor(transactionIndex / pageSize.value) + 1;
+      currentPage.value = targetPage;
+      jumpToPageInput.value = targetPage;
+
+      // 再次等待 DOM 更新
+      await nextTick();
+
+      // 高亮該交易
+      highlightedTransactionId.value = id;
+
+      // 滾動到該交易卡片
+      setTimeout(() => {
+        const card = document.querySelector(`[data-transaction-id="${id}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // 5 秒後移除高亮
+          setTimeout(() => {
+            highlightedTransactionId.value = null;
+          }, 5000);
+        }
+      }, 100);
+    }
+  }
+
+  // 導航完成，解除標記
+  isNavigatingToTransaction.value = false;
+};
+
 // Lifecycle
-onMounted(() => {
-  fetchTransactions();
+onMounted(async () => {
+  await fetchTransactions();
+  
+  // 檢查是否有 transactionId 參數
+  const transactionId = route.query.transactionId;
+  if (transactionId) {
+    await navigateToTransaction(transactionId);
+    // 清除 URL 參數，避免刷新頁面時重複跳轉
+    router.replace({ query: {} });
+  }
 });
 
 // Watch activeTab to reset roleTab and pagination
 watch(activeTab, () => {
-  roleTab.value = 'receiver';
-  currentPage.value = 1;
-  jumpToPageInput.value = 1;
+  // 如果正在導航到特定交易，不要重置 roleTab
+  if (!isNavigatingToTransaction.value) {
+    roleTab.value = 'receiver';
+    currentPage.value = 1;
+    jumpToPageInput.value = 1;
+  }
 });
 
 // Watch roleTab to reset pagination
 watch(roleTab, () => {
-  currentPage.value = 1;
-  jumpToPageInput.value = 1;
+  // 如果正在導航到特定交易，不要重置分頁
+  if (!isNavigatingToTransaction.value) {
+    currentPage.value = 1;
+    jumpToPageInput.value = 1;
+  }
 });
 </script>
 
@@ -1185,6 +1298,20 @@ watch(roleTab, () => {
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s;
+
+  &.highlighted {
+    animation: highlight-pulse 2s ease-in-out;
+    box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.4), 0 4px 16px rgba(111, 184, 165, 0.3);
+  }
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.4), 0 4px 16px rgba(111, 184, 165, 0.3);
+  }
 }
 
 .card-header {
