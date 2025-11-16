@@ -49,6 +49,42 @@
           </div>
         </div>
 
+        <!-- Role Tabs (買入/賣出) -->
+        <div class="tabs-section" v-if="currentTransactions.length > 0">
+          <div class="tabs-container">
+            <button
+              :class="['tab-btn', { active: roleTab === 'receiver' }]"
+              @click="roleTab = 'receiver'"
+            >
+              <i class="bi bi-bag-fill"></i>
+              <span>買入</span>
+              <span class="tab-count">{{ receiverTransactions.length }}</span>
+            </button>
+            <button
+              :class="['tab-btn', { active: roleTab === 'giver' }]"
+              @click="roleTab = 'giver'"
+            >
+              <i class="bi bi-cash-stack"></i>
+              <span>賣出</span>
+              <span class="tab-count">{{ giverTransactions.length }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pagination Info -->
+        <div class="pagination-info" v-if="displayTransactions.length > 0">
+          <span class="total-count">共 {{ displayTransactions.length }} 筆交易</span>
+          <span class="page-size-selector">
+            每頁顯示
+            <select v-model.number="pageSize" @change="handlePageSizeChange">
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+            </select>
+            筆
+          </span>
+        </div>
+
         <!-- Transaction List -->
         <div class="transactions-section">
           <!-- Loading State -->
@@ -59,9 +95,9 @@
 
           <!-- Confirming Transactions Tab -->
           <div v-else-if="activeTab === 'confirming'">
-            <div v-if="confirmingTransactions.length > 0" class="transactions-list">
+            <div v-if="paginatedTransactions.length > 0" class="transactions-list">
               <div
-                v-for="transaction in confirmingTransactions"
+                v-for="transaction in paginatedTransactions"
                 :key="transaction.transaction_id"
                 class="transaction-card"
               >
@@ -143,9 +179,9 @@
 
           <!-- Pending Transactions Tab -->
           <div v-else-if="activeTab === 'pending'">
-            <div v-if="pendingTransactions.length > 0" class="transactions-list">
+            <div v-if="paginatedTransactions.length > 0" class="transactions-list">
               <div
-                v-for="transaction in pendingTransactions"
+                v-for="transaction in paginatedTransactions"
                 :key="transaction.transaction_id"
                 class="transaction-card"
               >
@@ -229,9 +265,9 @@
 
           <!-- Completed Transactions Tab -->
           <div v-else-if="activeTab === 'completed'">
-            <div v-if="completedTransactions.length > 0" class="transactions-list">
+            <div v-if="paginatedTransactions.length > 0" class="transactions-list">
               <div
-                v-for="transaction in completedTransactions"
+                v-for="transaction in paginatedTransactions"
                 :key="transaction.transaction_id"
                 class="transaction-card"
               >
@@ -282,11 +318,20 @@
                   <!-- Action Buttons for Completed Transactions (Only for Buyer) -->
                   <div class="transaction-actions" v-if="transaction.role === 'receiver'">
                     <button
+                      v-if="!transaction.reviewed_at"
                       class="btn-action btn-review"
                       @click.stop="handleWriteReview(transaction)"
                     >
                       <i class="bi bi-star-fill"></i>
                       填寫評價
+                    </button>
+                    <button
+                      v-else
+                      class="btn-action btn-reviewed"
+                      disabled
+                    >
+                      <i class="bi bi-check-circle-fill"></i>
+                      已評價
                     </button>
                   </div>
                 </div>
@@ -295,6 +340,65 @@
             <div v-else class="empty-state">
               <i class="bi bi-check-circle-fill"></i>
               <p>目前沒有已完成的交易</p>
+            </div>
+          </div>
+
+          <!-- Pagination Controls -->
+          <div class="pagination-controls" v-if="totalPages > 1">
+            <button
+              class="pagination-btn"
+              :disabled="currentPage === 1"
+              @click="goToPage(1)"
+            >
+              <i class="bi bi-chevron-double-left"></i>
+            </button>
+            <button
+              class="pagination-btn"
+              :disabled="currentPage === 1"
+              @click="goToPage(currentPage - 1)"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+
+            <div class="pagination-pages">
+              <button
+                v-for="page in visiblePages"
+                :key="page"
+                :class="['pagination-page', { active: page === currentPage }]"
+                @click="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+            </div>
+
+            <button
+              class="pagination-btn"
+              :disabled="currentPage === totalPages"
+              @click="goToPage(currentPage + 1)"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            <button
+              class="pagination-btn"
+              :disabled="currentPage === totalPages"
+              @click="goToPage(totalPages)"
+            >
+              <i class="bi bi-chevron-double-right"></i>
+            </button>
+
+            <div class="page-jump">
+              <span>前往</span>
+              <input
+                type="number"
+                v-model.number="jumpToPageInput"
+                @keyup.enter="handlePageJump"
+                min="1"
+                :max="totalPages"
+              />
+              <span>頁</span>
+              <button class="jump-btn" @click="handlePageJump">
+                <i class="bi bi-arrow-right-short"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -341,7 +445,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTransactionStore } from '@/stores/transaction';
 import { useReviewStore } from '@/stores/review';
@@ -360,10 +464,16 @@ const router = useRouter();
 const transactionStore = useTransactionStore();
 const reviewStore = useReviewStore();
 
+const { completed } = transactionStore;
+
 // State
 const userPoints = ref(500);
 const activeTab = ref('confirming');
+const roleTab = ref('receiver'); // 'receiver' (買入), 'giver' (賣出)
 const isLoading = ref(false);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const jumpToPageInput = ref(1);
 const showConfirmModal = ref(false);
 const selectedTransaction = ref(null);
 const showInputCodeModal = ref(false);
@@ -389,6 +499,85 @@ const pendingTransactions = computed(() => {
 const completedTransactions = computed(() => {
   const transactions = transactionStore.allCompletedTransactions || [];
   return [...transactions].sort((a, b) => b.transaction_id - a.transaction_id);
+});
+
+// 當前選中 tab 的交易列表
+const currentTransactions = computed(() => {
+  if (activeTab.value === 'confirming') {
+    return confirmingTransactions.value;
+  } else if (activeTab.value === 'pending') {
+    return pendingTransactions.value;
+  } else if (activeTab.value === 'completed') {
+    return completedTransactions.value;
+  }
+  return [];
+});
+
+// 根據角色篩選的交易列表
+const receiverTransactions = computed(() => {
+  return currentTransactions.value.filter(t => t.role === 'receiver');
+});
+
+const giverTransactions = computed(() => {
+  return currentTransactions.value.filter(t => t.role === 'giver');
+});
+
+// 顯示的交易列表（結合 activeTab 和 roleTab）
+const displayTransactions = computed(() => {
+  if (roleTab.value === 'receiver') {
+    return receiverTransactions.value;
+  } else if (roleTab.value === 'giver') {
+    return giverTransactions.value;
+  }
+  return [];
+});
+
+// 分頁相關計算
+const totalPages = computed(() => {
+  return Math.ceil(displayTransactions.value.length / pageSize.value);
+});
+
+// 當前頁的交易列表
+const paginatedTransactions = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return displayTransactions.value.slice(start, end);
+});
+
+// 可見的頁碼按鈕
+const visiblePages = computed(() => {
+  const pages = [];
+  const total = totalPages.value;
+  const current = currentPage.value;
+
+  if (total <= 7) {
+    // 如果總頁數 <= 7，顯示所有頁碼
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    // 總是顯示第一頁
+    pages.push(1);
+
+    if (current <= 3) {
+      // 當前頁在前面
+      pages.push(2, 3, 4, 5);
+      pages.push('...');
+      pages.push(total);
+    } else if (current >= total - 2) {
+      // 當前頁在後面
+      pages.push('...');
+      pages.push(total - 4, total - 3, total - 2, total - 1, total);
+    } else {
+      // 當前頁在中間
+      pages.push('...');
+      pages.push(current - 1, current, current + 1);
+      pages.push('...');
+      pages.push(total);
+    }
+  }
+
+  return pages;
 });
 
 // Methods
@@ -531,8 +720,17 @@ const handleReviewSubmit = async (reviewData) => {
 
     alert('評價已送出！感謝您的回饋。');
 
-    // 重新載入交易列表
-    await fetchTransactions(true);
+    // 在本地更新交易的 reviewed_at 字段
+    const transactionId = selectedTransactionForReview.value.transaction_id;
+    const role = selectedTransactionForReview.value.role;
+
+    // 找到對應的交易並更新
+    const transactions = completed[role];
+    const transactionIndex = transactions.findIndex(t => t.transaction_id === transactionId);
+
+    if (transactionIndex !== -1) {
+      transactions[transactionIndex].reviewed_at = new Date().toISOString();
+    }
   } catch (error) {
     console.error('Failed to submit review:', error);
     alert(`送出評價失敗：${error.message}`);
@@ -542,9 +740,46 @@ const handleReviewSubmit = async (reviewData) => {
   }
 };
 
+// 分頁相關方法
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+  jumpToPageInput.value = page;
+
+  // 滾動到頁面頂部
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const handlePageSizeChange = () => {
+  currentPage.value = 1;
+  jumpToPageInput.value = 1;
+};
+
+const handlePageJump = () => {
+  const page = jumpToPageInput.value;
+  if (page >= 1 && page <= totalPages.value) {
+    goToPage(page);
+  } else {
+    jumpToPageInput.value = currentPage.value;
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   fetchTransactions();
+});
+
+// Watch activeTab to reset roleTab and pagination
+watch(activeTab, () => {
+  roleTab.value = 'receiver';
+  currentPage.value = 1;
+  jumpToPageInput.value = 1;
+});
+
+// Watch roleTab to reset pagination
+watch(roleTab, () => {
+  currentPage.value = 1;
+  jumpToPageInput.value = 1;
 });
 </script>
 
@@ -705,6 +940,197 @@ onMounted(() => {
     .tab-count {
       background: $primary;
       color: white;
+    }
+  }
+}
+
+// Pagination Info
+.pagination-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-family: 'Noto Sans TC', sans-serif;
+
+  .total-count {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #666;
+
+    select {
+      padding: 6px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      background: white;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        border-color: $primary;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $primary;
+        box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
+      }
+    }
+  }
+}
+
+// Pagination Controls
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 30px 20px;
+  margin-top: 24px;
+
+  .pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #1e1e1e;
+
+    i {
+      font-size: 16px;
+    }
+
+    &:hover:not(:disabled) {
+      border-color: $primary;
+      color: $primary;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(111, 184, 165, 0.2);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+      background: #f5f5f5;
+    }
+  }
+
+  .pagination-pages {
+    display: flex;
+    gap: 6px;
+  }
+
+  .pagination-page {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    border-radius: 6px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e1e1e;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:hover:not(.active) {
+      border-color: $primary;
+      color: $primary;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(111, 184, 165, 0.2);
+    }
+
+    &.active {
+      background: $primary;
+      color: white;
+      border-color: $primary;
+      cursor: default;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+  }
+
+  .page-jump {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 16px;
+    padding-left: 16px;
+    border-left: 1px solid #e0e0e0;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+
+    input {
+      width: 60px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      text-align: center;
+      transition: all 0.3s;
+
+      &:focus {
+        outline: none;
+        border-color: $primary;
+        box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.1);
+      }
+
+      /* Remove spinner */
+      &::-webkit-inner-spin-button,
+      &::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+      }
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .jump-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid $primary;
+      background: $primary;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      i {
+        font-size: 20px;
+      }
+
+      &:hover {
+        background: #5fa795;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(111, 184, 165, 0.3);
+      }
     }
   }
 }
@@ -1089,6 +1515,19 @@ onMounted(() => {
         transform: translateY(0);
       }
     }
+
+    &.btn-reviewed {
+      background: #e8f5e9;
+      color: #4caf50;
+      border: 1px solid #4caf50;
+      cursor: not-allowed;
+      opacity: 0.8;
+
+      &:hover {
+        transform: none;
+        box-shadow: none;
+      }
+    }
   }
 }
 
@@ -1107,6 +1546,26 @@ onMounted(() => {
 
     .page-title {
       font-size: 24px;
+    }
+  }
+
+  .pagination-info {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .pagination-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .page-jump {
+      margin-left: 0;
+      padding-left: 0;
+      border-left: none;
+      width: 100%;
+      justify-content: center;
+      margin-top: 8px;
     }
   }
 
