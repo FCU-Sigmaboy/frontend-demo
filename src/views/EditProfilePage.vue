@@ -95,7 +95,7 @@
                   <input
                     ref="fileInput"
                     type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                     style="display: none"
                     @change="handleFileUpload"
                   />
@@ -295,17 +295,20 @@ const handleFileUpload = (event) => {
   if (!file) return;
 
   // Validate file type
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
   if (!validTypes.includes(file.type)) {
-    alert('僅支援 JPG、PNG、WEBP 格式的圖片');
+    alert('僅支援 JPG、PNG、WEBP、GIF 格式的圖片');
     event.target.value = '';
     return;
   }
 
-  // Validate file size (max 5MB)
-  const maxSize = 5 * 1024 * 1024;
+  // Validate file size (stricter limit for animated formats)
+  const isAnimated = file.type === 'image/gif';
+  const maxSize = isAnimated ? 2 * 1024 * 1024 : 5 * 1024 * 1024; // 2MB for GIF, 5MB for others
+
   if (file.size > maxSize) {
-    alert('圖片大小不能超過 5MB');
+    const sizeLimit = isAnimated ? '2MB' : '5MB';
+    alert(`${isAnimated ? '動畫' : ''}圖片大小不能超過 ${sizeLimit}`);
     event.target.value = '';
     return;
   }

@@ -110,22 +110,29 @@ export async function uploadItemImages(files, userId, itemId, shouldCompress = t
 }
 
 /**
- * 【功能】上傳大頭貼到 Supabase Storage (自動壓縮)
+ * 【功能】上傳大頭貼到 Supabase Storage (自動壓縮靜態圖片)
  * @param {File} file - 圖片檔案
  * @param {string} userId - 使用者 ID
- * @param {boolean} shouldCompress - 是否需要壓縮（預設 true）
+ * @param {boolean} shouldCompress - 是否需要壓縮（預設 true，但 GIF 會自動跳過壓縮）
  * @returns {Promise<string>} - 回傳圖片的公開 URL
  *
  * @example
- * // 上傳大頭貼（自動壓縮）
+ * // 上傳大頭貼（靜態圖片會自動壓縮，GIF 不壓縮）
  * const avatarUrl = await uploadProfilePicture(file, userId);
  *
  * // 然後更新 profile
  * await updateMyProfile({ profile_picture_url: avatarUrl }, null, null);
  */
 export async function uploadProfilePicture(file, userId, shouldCompress = true) {
-    // 如果需要壓縮，則先壓縮
-    const fileToUpload = shouldCompress ? await compressImage(file) : file;
+    // 檢查是否為 GIF 動畫格式（不壓縮以保留動畫）
+    const isAnimated = file.type === 'image/gif';
+
+    // 如果需要壓縮且不是 GIF，則先壓縮
+    const fileToUpload = (shouldCompress && !isAnimated) ? await compressImage(file) : file;
+
+    if (isAnimated) {
+        console.log('🎬 Detected GIF animation, skipping compression');
+    }
 
     // 產生安全的檔名（避免中文或特殊字元）
     const safeFilename = generateSafeFilename(fileToUpload.name);
