@@ -1,6 +1,6 @@
 <template>
   <div class="transaction-records-page">
-    <AppHeader :user-points="userPoints" />
+  <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
       <div class="records-container">
@@ -138,7 +138,7 @@
                     </div>
                     <div class="meta-row">
                       <span class="meta-label">交易金額</span>
-                      <span class="meta-value price">{{ transaction.item_price }} 點</span>
+                      <span class="meta-value price">{{ formatPoints(transaction.item_price) }}</span>
                     </div>
                   </div>
 
@@ -233,7 +233,7 @@
                     </div>
                     <div class="meta-row">
                       <span class="meta-label">交易金額</span>
-                      <span class="meta-value price">{{ transaction.item_price }} 點</span>
+                      <span class="meta-value price">{{ formatPoints(transaction.item_price) }}</span>
                     </div>
                   </div>
 
@@ -314,7 +314,7 @@
                     </div>
                     <div class="meta-row">
                       <span class="meta-label">交易金額</span>
-                      <span class="meta-value price">{{ transaction.item_price }} 點</span>
+                      <span class="meta-value price">{{ formatPoints(transaction.item_price) }}</span>
                     </div>
                   </div>
 
@@ -462,6 +462,7 @@ import RejectTransactionModal from '../components/transaction/RejectTransactionM
 import CreateReviewModal from '../components/transaction/CreateReviewModal.vue';
 import { buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_before_meetAPI';
 import { finalizeTransactionWithCode } from '@/api/transaction_meetAPI';
+import { formatPoints } from '@/utils/formatPoints';
 
 const router = useRouter();
 const route = useRoute();
@@ -586,6 +587,8 @@ const visiblePages = computed(() => {
   return pages;
 });
 
+// (AppHeader expects numeric userPoints prop; keep userPoints as Number)
+
 // Methods
 const fetchTransactions = async (forceRefresh = false) => {
   isLoading.value = true;
@@ -687,7 +690,7 @@ const handleInputCodeSubmit = async (code) => {
     isLoading.value = true;
     const result = await finalizeTransactionWithCode(selectedTransactionForCode.value.transaction_id, code);
 
-    alert(`交易完成！\n\n您的新點數餘額：${result.new_balance} 點`);
+  alert(`交易完成！\n\n您的新點數餘額：${formatPoints(result.new_balance)}`);
 
     // 重新載入交易列表
     await fetchTransactions(true);

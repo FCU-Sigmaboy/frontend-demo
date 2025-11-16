@@ -1,6 +1,6 @@
 <template>
   <div class="manage-listings-page">
-    <AppHeader :user-points="userPoints" />
+  <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
       <!-- Breadcrumb -->
@@ -145,7 +145,7 @@
                 <td class="col-date">{{ listing.updatedDate }}</td>
 
                 <!-- Price -->
-                <td class="col-price">{{ listing.price }}p</td>
+                <td class="col-price">{{ formatPoints(listing.price) }}</td>
 
                 <!-- Stats -->
                 <td class="col-stats">
@@ -319,7 +319,7 @@
               <div class="card-details">
                 <div class="detail-row">
                   <span class="detail-label">點數</span>
-                  <span class="detail-value price">{{ listing.price }}p</span>
+                  <span class="detail-value price">{{ formatPoints(listing.price) }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="detail-label">被收藏</span>
@@ -452,6 +452,7 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import FilterTabs from '../components/FilterTabs.vue';
+import { formatPoints } from '@/utils/formatPoints';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -744,6 +745,8 @@ const formatDate = (dateString) => {
     day: '2-digit'
   }).replace(/\//g, '/');
 };
+
+// (AppHeader expects numeric userPoints prop; keep userPoints as Number)
 
 // Set filter
 const setFilter = (filter) => {

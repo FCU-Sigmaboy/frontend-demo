@@ -75,7 +75,7 @@
                           {{ message.relatedItem?.title || message.related_item_title || `物品 #${message.related_item_id}` }}
                         </span>
                         <span v-if="message.relatedItemPrice" class="reference-meta">
-                          {{ message.relatedItemPrice }} P
+                          {{ message.relatedItemPrice }} 點
                         </span>
                       </div>
                     </div>
