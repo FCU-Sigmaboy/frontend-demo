@@ -693,7 +693,12 @@ export function useMessagePage() {
     if (messageStore.selectedConversationId !== conversation.id) {
       messageStore.selectedConversationId = conversation.id;
     }
-    messagesLoading.value = true;
+
+    // 檢查快取，如果有快取則不顯示載入中狀態
+    const cached = messageStore.getCachedMessages(conversation.id);
+    if (!cached) {
+      messagesLoading.value = true;
+    }
 
     currentPage.value = 1;
     hasMoreMessages.value = true;
@@ -709,7 +714,12 @@ export function useMessagePage() {
 
       applyItemMetadataToMessages();
 
-      if (messageStore.currentMessages.length < 50) {
+      // 從快取中取得 hasMore 資訊
+      const updatedCache = messageStore.getCachedMessages(conversation.id);
+      if (updatedCache) {
+        hasMoreMessages.value = updatedCache.hasMore;
+        currentPage.value = Math.max(...Array.from(updatedCache.loadedPages));
+      } else if (messageStore.currentMessages.length < 50) {
         hasMoreMessages.value = false;
       }
 

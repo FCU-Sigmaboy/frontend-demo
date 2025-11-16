@@ -34,7 +34,63 @@ export const useMessageStore = defineStore('message', () => {
   const TYPING_EXPIRY_MS = 4000
   const sentMessageReadReceipts = ref(new Map()) // Map<string, boolean>
 
+  // 訊息快取：Map<conversationId, { messages: Array, loadedPages: Set, hasMore: boolean, lastFetch: timestamp }>
+  const messagesCache = ref(new Map())
+  const CACHE_EXPIRY_MS = 5 * 60 * 1000 // 5 分鐘快取過期
+
+  // 對話列表快取
+  const conversationsLastFetch = ref(null)
+  const CONVERSATIONS_CACHE_EXPIRY_MS = 2 * 60 * 1000 // 2 分鐘快取過期
+
   // ===== 工具函式 =====
+
+  // 快取相關函數
+  function getCachedMessages(conversationId) {
+    const cached = messagesCache.value.get(conversationId)
+    if (!cached) return null
+
+    // 檢查快取是否過期
+    const now = Date.now()
+    if (now - cached.lastFetch > CACHE_EXPIRY_MS) {
+      messagesCache.value.delete(conversationId)
+      return null
+    }
+
+    return cached
+  }
+
+  function setCachedMessages(conversationId, messages, page = 1, hasMore = true) {
+    const existing = messagesCache.value.get(conversationId)
+    const loadedPages = existing?.loadedPages || new Set()
+    loadedPages.add(page)
+
+    messagesCache.value.set(conversationId, {
+      messages: [...messages],
+      loadedPages,
+      hasMore,
+      lastFetch: Date.now()
+    })
+  }
+
+  function updateCachedMessages(conversationId, updater) {
+    const cached = getCachedMessages(conversationId)
+    if (!cached) return
+
+    const updated = updater(cached.messages)
+    messagesCache.value.set(conversationId, {
+      ...cached,
+      messages: updated,
+      lastFetch: Date.now()
+    })
+  }
+
+  function clearMessageCache(conversationId = null) {
+    if (conversationId) {
+      messagesCache.value.delete(conversationId)
+    } else {
+      messagesCache.value.clear()
+    }
+  }
 
   function loadMessageDraftsFromStorage() {
     if (typeof window === 'undefined') return {}
@@ -458,10 +514,19 @@ export const useMessageStore = defineStore('message', () => {
   // ===== Actions =====
 
   // 載入所有對話
-  async function loadConversations() {
+  async function loadConversations(forceRefresh = false) {
     if (isLoadingConversations.value) {
       console.log('⏳ Conversations load already in progress, skipping...')
       return
+    }
+
+    // 檢查快取是否有效
+    if (!forceRefresh && conversationsLastFetch.value) {
+      const cacheAge = Date.now() - conversationsLastFetch.value
+      if (cacheAge < CONVERSATIONS_CACHE_EXPIRY_MS && conversations.value.length > 0) {
+        console.log(`📦 Using cached conversations (${conversations.value.length} items, age: ${Math.round(cacheAge / 1000)}s)`)
+        return
+      }
     }
 
     isLoadingConversations.value = true
@@ -495,6 +560,7 @@ export const useMessageStore = defineStore('message', () => {
           _raw: conv // 保存原始資料以供後續使用
         }))
 
+        conversationsLastFetch.value = Date.now()
         console.log(`✅ Loaded ${conversations.value.length} conversations, total unread: ${totalUnreadCount.value}`)
       }
     } catch (err) {
@@ -507,10 +573,26 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   // 載入指定對話的訊息
-  async function loadMessages(conversationId) {
+  async function loadMessages(conversationId, forceRefresh = false) {
     if (isLoadingMessages.value) {
       console.log('⏳ Messages load already in progress, skipping...')
       return
+    }
+
+    // 檢查快取
+    if (!forceRefresh) {
+      const cached = getCachedMessages(conversationId)
+      if (cached) {
+        console.log(`📦 Using cached messages for conversation ${conversationId} (${cached.messages.length} messages)`)
+        currentMessages.value = cached.messages
+        selectedConversationId.value = conversationId
+
+        // 標記為已讀
+        await markAsRead(conversationId)
+        updateConversationUnreadCount(conversationId, 0)
+
+        return
+      }
     }
 
     isLoadingMessages.value = true
@@ -519,7 +601,12 @@ export const useMessageStore = defineStore('message', () => {
       const data = await getMessages(conversationId, 1, 50)
 
       if (data) {
-        currentMessages.value = normalizeMessagesPayload(data)
+        const normalizedMessages = normalizeMessagesPayload(data)
+        currentMessages.value = normalizedMessages
+
+        // 儲存到快取
+        const hasMore = data.length >= 50
+        setCachedMessages(conversationId, normalizedMessages, 1, hasMore)
 
         selectedConversationId.value = conversationId
 
@@ -546,6 +633,13 @@ export const useMessageStore = defineStore('message', () => {
       return []
     }
 
+    // 檢查這一頁是否已經載入過
+    const cached = getCachedMessages(conversationId)
+    if (cached?.loadedPages.has(page)) {
+      console.log(`📦 Page ${page} already loaded from cache for conversation ${conversationId}`)
+      return []
+    }
+
     isLoadingMessages.value = true
 
     try {
@@ -557,8 +651,29 @@ export const useMessageStore = defineStore('message', () => {
         // 將舊訊息添加到當前訊息列表的開頭
         currentMessages.value = [...olderMessages, ...currentMessages.value]
 
+        // 更新快取
+        if (cached) {
+          const hasMore = data.length >= pageSize
+          cached.loadedPages.add(page)
+          messagesCache.value.set(conversationId, {
+            messages: [...currentMessages.value],
+            loadedPages: cached.loadedPages,
+            hasMore,
+            lastFetch: Date.now()
+          })
+        }
+
         console.log(`✅ Loaded ${olderMessages.length} more messages (page ${page}) for conversation ${conversationId}`)
         return olderMessages
+      }
+
+      // 沒有更多訊息了
+      if (cached) {
+        messagesCache.value.set(conversationId, {
+          ...cached,
+          hasMore: false,
+          lastFetch: Date.now()
+        })
       }
 
       return []
@@ -762,7 +877,7 @@ export const useMessageStore = defineStore('message', () => {
 
       if (!exists && !hasOptimisticVersion) {
         console.log('[Message] 添加新的 realtime 訊息:', messageId)
-        currentMessages.value.push({
+        const newMessageObj = {
           id: messageId,
           content: content,
           created_at: createdAt,
@@ -778,7 +893,11 @@ export const useMessageStore = defineStore('message', () => {
           },
           metadata: newMessage.metadata,
           _clientId: messageId // 使用真實 ID 作為 clientId
-        })
+        }
+        currentMessages.value.push(newMessageObj)
+
+        // 同時更新快取
+        updateCachedMessages(conversationId, (messages) => [...messages, newMessageObj])
 
         // 只有在訊息頁面、在底部且不是自己發的，才自動標記為已讀
         if (!isMine && isInMessagesPage.value && isAtMessagesBottom.value) {
@@ -801,6 +920,33 @@ export const useMessageStore = defineStore('message', () => {
         }
       } else if (hasOptimisticVersion) {
         console.log('[Message] 跳過 realtime 訊息（已有樂觀版本）:', messageId)
+      }
+    } else {
+      // 不是當前對話，但可能在快取中，也要更新快取
+      const cached = getCachedMessages(conversationId)
+      if (cached) {
+        const exists = cached.messages.some(m => m.id === messageId)
+        if (!exists) {
+          console.log('[Message] 更新非當前對話的快取:', conversationId)
+          const newMessageObj = {
+            id: messageId,
+            content: content,
+            created_at: createdAt,
+            is_mine: isMine,
+            is_read: isMine ? (getSentMessageReadReceipt(messageId) || false) : (newMessage.is_read || false),
+            message_type: newMessage.message_type || 'text',
+            related_item_id: relatedItemId,
+            related_item_title: relatedItemTitle,
+            sender: {
+              id: senderId,
+              name: newMessage.sender_name || '未知使用者',
+              avatar: newMessage.sender_avatar || null
+            },
+            metadata: newMessage.metadata,
+            _clientId: messageId
+          }
+          updateCachedMessages(conversationId, (messages) => [...messages, newMessageObj])
+        }
       }
     }
   }
@@ -897,6 +1043,8 @@ export const useMessageStore = defineStore('message', () => {
     typingChannels.clear()
     typingChannelReady.clear()
     saveMessageDraftsToStorage({})
+    clearMessageCache() // 清除訊息快取
+    conversationsLastFetch.value = null // 清除對話列表快取時間
     console.log(' Message store reset')
   }
 
@@ -939,6 +1087,9 @@ export const useMessageStore = defineStore('message', () => {
     clearSelectedConversation,
     setIsInMessagesPage,
     setIsAtMessagesBottom,
-    reset
+    reset,
+    // Cache management
+    getCachedMessages,
+    clearMessageCache
   }
 })
