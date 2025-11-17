@@ -90,16 +90,28 @@
                     v-for="(image, index) in formData.images"
                     :key="index"
                     class="image-item"
+                    :class="{ 'is-cover': index === 0 }"
+                    @click="openImageEditor(index)"
                   >
                     <img :src="image" alt="Product Image" class="uploaded-image" />
                     <button
                       type="button"
                       class="remove-image-btn"
-                      @click="removeImage(index)"
+                      @click.stop="removeImage(index)"
                     >
                       <i class="bi bi-x-circle-fill"></i>
                     </button>
                     <span v-if="index === 0" class="cover-badge">封面</span>
+                    <button
+                      type="button"
+                      class="edit-image-btn"
+                      @click.stop="openImageEditor(index)"
+                    >
+                      <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                      <span class="visually-hidden">
+                        調整第 {{ index + 1 }} 張照片
+                      </span>
+                    </button>
                   </div>
 
                   <!-- Upload Button -->
@@ -321,6 +333,14 @@
     </main>
 
     <AppFooter />
+
+    <ImageCropper
+      v-model:show="showImageCropper"
+      :image-src="cropperImageSrc"
+      title="調整商品照片"
+      @confirm="handleImageEditConfirm"
+      @cancel="handleImageEditCancel"
+    />
   </div>
 </template>
 
@@ -334,6 +354,7 @@ import { compressImage } from '../api/upload_imageAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import ImageCropper from '../components/ImageCropper.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -358,6 +379,9 @@ const isLoading = ref(!!route.params.id); // 如果是編輯模式，初始為 t
 const isDragging = ref(false);
 const imageInput = ref(null);
 const subCategories = ref([]);
+const showImageCropper = ref(false);
+const cropperImageSrc = ref('');
+const editingImageIndex = ref(null);
 const userLocations = ref({
   primary: null,
   secondary: null
@@ -532,6 +556,38 @@ const handleImageUpload = async (event) => {
 const removeImage = (index) => {
   formData.value.images.splice(index, 1);
   formData.value.imageFiles.splice(index, 1);
+};
+
+const openImageEditor = (index) => {
+  const targetImage = formData.value.images[index];
+  if (!targetImage) return;
+  editingImageIndex.value = index;
+  cropperImageSrc.value = targetImage;
+  showImageCropper.value = true;
+};
+
+const handleImageEditConfirm = (blob) => {
+  if (editingImageIndex.value === null) return;
+
+  const index = editingImageIndex.value;
+  const editedFile = new File([blob], `listing-image-${index + 1}.webp`, { type: 'image/webp' });
+  formData.value.imageFiles[index] = editedFile;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    formData.value.images.splice(index, 1, e.target.result);
+  };
+  reader.readAsDataURL(blob);
+
+  showImageCropper.value = false;
+  cropperImageSrc.value = '';
+  editingImageIndex.value = null;
+};
+
+const handleImageEditCancel = () => {
+  showImageCropper.value = false;
+  cropperImageSrc.value = '';
+  editingImageIndex.value = null;
 };
 
 // Drag and Drop handlers
@@ -1003,11 +1059,26 @@ const handleSubmit = async () => {
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
+  cursor: zoom-in;
+  border: 1px solid transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-visible {
+    outline: none;
+    border-color: rgba(4, 112, 97, 0.6);
+    box-shadow: 0 0 0 2px rgba(4, 112, 97, 0.2);
+  }
+
+  &:hover .uploaded-image,
+  &:focus-within .uploaded-image {
+    filter: brightness(0.95);
+  }
 
   .uploaded-image {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: #f5f8f7;
   }
 
   .remove-image-btn {
@@ -1047,6 +1118,63 @@ const handleSubmit = async () => {
     font-weight: 600;
     border-radius: 4px;
   }
+
+  .edit-image-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: none;
+    background: rgba(30, 30, 30, 0.65);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, opacity 0.2s;
+    opacity: 0;
+    pointer-events: none;
+
+    &:hover {
+      background: rgba(4, 112, 97, 0.8);
+      transform: scale(1.05);
+    }
+
+    i {
+      font-size: 16px;
+    }
+  }
+
+  &:hover .edit-image-btn,
+  &:focus-within .edit-image-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (hover: none) {
+  .image-item {
+    cursor: pointer;
+
+    .edit-image-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .upload-placeholder {
