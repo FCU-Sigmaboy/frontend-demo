@@ -9,23 +9,7 @@
 
         <!-- Hero Banner with Upload -->
         <div class="hero-banner" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload('cover')">
-          <img v-if="coverImageUrl" :src="coverImageUrl" alt="關於我們封面圖" class="hero-image" @error="handleImageError('cover')" />
-          <div v-else class="hero-placeholder">
-            <i class="bi bi-image"></i>
-          </div>
-
-          <div v-if="isAdmin" class="upload-overlay">
-            <div v-if="isUploading" class="upload-status">
-              <div class="spinner-border text-light" role="status">
-                <span class="visually-hidden">上傳中...請稍候</span>
-              </div>
-              <p>上傳中...請稍後</p>
-            </div>
-            <div v-else class="upload-prompt">
-              <i class="bi bi-camera-fill"></i>
-              <p>點擊更換封面圖片</p>
-            </div>
-          </div>
+          <img :src="coverImageUrl" alt="關於我們封面圖" class="hero-image" />
         </div>
         <input
           v-if="isAdmin"
@@ -46,7 +30,7 @@
           <BRow class="image-grid">
             <BCol v-for="(item, index) in visionItems" :key="index" cols="12" md="4" class="mb-4">
               <div class="vision-image-wrapper" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload(`vision-${index}`)">
-                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="`願景圖片 ${index + 1}`" class="vision-image" @error="handleImageError(`vision-${index}`)" />
+                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="`願景圖片 ${index + 1}`" class="vision-image" />
                 <div v-else class="image-placeholder">
                   <i :class="item.icon"></i>
                 </div>
@@ -119,14 +103,18 @@ import Breadcrumb from '../components/Breadcrumb.vue';
 import { useAuthStore } from '../stores/auth';
 import { uploadImage } from '../api/uploadImage';
 import { supabase } from '../lib/supabase';
+import marketImage from '../assets/market.jpg';
+import airplaneImage from '../assets/airplane.jpg';
+import handImage from '../assets/hand.jpg';
+import hopeImage from '../assets/hope.jpg';
 
 const authStore = useAuthStore();
 const fileInput = ref(null);
-const coverImageUrl = ref(null);
+const coverImageUrl = ref(marketImage);
 const visionItems = ref([
-  { imageUrl: null, icon: 'bi bi-recycle' },
-  { imageUrl: null, icon: 'bi bi-people' },
-  { imageUrl: null, icon: 'bi bi-heart' },
+  { imageUrl: hopeImage, icon: 'bi bi-recycle' },
+  { imageUrl: handImage, icon: 'bi bi-people' },
+  { imageUrl: airplaneImage, icon: 'bi bi-heart' },
 ]);
 const isUploading = ref(false);
 const currentUploadTarget = ref(null);
@@ -190,35 +178,12 @@ const handleFileChange = async (event) => {
 };
 
 const loadInitialImages = async () => {
-  const getPublicUrlWithCacheBust = (fileName) => {
-    const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName);
-    // Add a timestamp to break the cache and force re-fetch
-    const separator = publicUrl.includes('?') ? '&' : '?';
-    return `${publicUrl}${separator}t=${new Date().getTime()}`;
-  };
-
-  coverImageUrl.value = getPublicUrlWithCacheBust('about-us-cover.jpg');
-  visionItems.value[0].imageUrl = getPublicUrlWithCacheBust('about-us-vision-1.jpg');
-  visionItems.value[1].imageUrl = getPublicUrlWithCacheBust('about-us-vision-2.jpg');
-  visionItems.value[2].imageUrl = getPublicUrlWithCacheBust('about-us-vision-3.jpg');
-};
-
-const handleImageError = (target) => {
-  console.warn(`Image failed to load for target: ${target}. Showing placeholder.`);
-  if (target === 'cover') {
-    coverImageUrl.value = null;
-  } else if (target.startsWith('vision-')) {
-    try {
-      const index = parseInt(target.split('-')[1], 10);
-      visionItems.value[index].imageUrl = null;
-    } catch (e) {
-      console.error("Could not handle image error for vision item:", e);
-    }
-  }
+  // Since we are using local images as defaults, we don't need to fetch from Supabase on initial load.
+  // The upload function will handle updating the images.
 };
 
 onMounted(() => {
-  loadInitialImages();
+  // No need to load initial images from Supabase if we are using local defaults.
 });
 </script>
 
