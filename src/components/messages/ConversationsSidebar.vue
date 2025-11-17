@@ -34,7 +34,7 @@
           :class="['conversation-item', { active: selectedId === conversation.id }]"
           @click="handleSelect(conversation)"
         >
-          <div class="conv-avatar" @click.stop="goToUserProfile(conversation)">
+          <div class="conv-avatar">
             <img
               :src="conversation.user.avatar"
               :alt="conversation.user.name"
@@ -45,7 +45,7 @@
 
           <div class="conv-content">
             <div class="conv-header">
-              <h3 class="conv-name" @click.stop="goToUserProfile(conversation)">{{ conversation.user.name }}</h3>
+              <h3 class="conv-name">{{ conversation.user.name }}</h3>
               <span class="conv-time">{{ conversation.lastMessage.time }}</span>
             </div>
             <div class="conv-preview">
@@ -75,9 +75,6 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
 
 const props = defineProps({
   loading: {
@@ -124,12 +121,6 @@ function selectFilter(filterId) {
 
 function handleSelect(conversation) {
   emit('select', conversation);
-}
-
-function goToUserProfile(conversation) {
-  if (conversation?._raw?.other_user?.id) {
-    router.push({ name: 'PublicUserProfile', params: { id: conversation._raw.other_user.id } });
-  }
 }
 </script>
 
