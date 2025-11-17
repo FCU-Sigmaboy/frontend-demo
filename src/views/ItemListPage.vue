@@ -4,33 +4,7 @@
 
     <main class="main-content">
       <!-- Breadcrumb -->
-      <div class="breadcrumb-section">
-        <div class="breadcrumb-container">
-          <nav class="breadcrumb">
-            <router-link to="/" class="breadcrumb-link">首頁</router-link>
-            <span class="breadcrumb-separator">&gt;</span>
-            <router-link to="/items" class="breadcrumb-link" v-if="selectedCategory !== 0 || selectedSubCategory !== 0">物品列表</router-link>
-            <span class="breadcrumb-current" v-else>物品列表</span>
-
-            <template v-if="selectedCategory !== 0">
-              <span class="breadcrumb-separator">&gt;</span>
-              <router-link
-                :to="`/items?category=${selectedCategory}`"
-                class="breadcrumb-link"
-                v-if="selectedSubCategory !== 0"
-              >
-                {{ mainCategoryName }}
-              </router-link>
-              <span class="breadcrumb-current" v-else>{{ mainCategoryName }}</span>
-            </template>
-
-            <template v-if="selectedSubCategory !== 0">
-              <span class="breadcrumb-separator">&gt;</span>
-              <span class="breadcrumb-current">{{ subCategoryName }}</span>
-            </template>
-          </nav>
-        </div>
-      </div>
+      <Breadcrumb :items="breadcrumbItems" />
 
       <!-- Search Bar Section -->
       <section class="search-section">
@@ -114,6 +88,7 @@ import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 import SearchBar from '../components/SearchBar.vue';
 import ProductCard from '../components/ProductCard.vue';
 import CategoryTabs from '../components/CategoryTabs.vue';
@@ -243,6 +218,39 @@ const subCategoryName = computed(() => {
   if (selectedSubCategory.value === 0) return '';
   const subCat = categoriesStore.getSubCategoryById(selectedSubCategory.value);
   return subCat?.name || '';
+});
+
+// 麵包屑項目
+const breadcrumbItems = computed(() => {
+  const items = [];
+
+  // 第一層：物品列表
+  if (selectedCategory.value !== 0 || selectedSubCategory.value !== 0) {
+    items.push({ label: '物品列表', to: { name: 'ItemList' } });
+  } else {
+    items.push({ label: '物品列表' });
+    return items;
+  }
+
+  // 第二層：主分類
+  if (selectedCategory.value !== 0) {
+    if (selectedSubCategory.value !== 0) {
+      items.push({
+        label: mainCategoryName.value,
+        to: { name: 'ItemList', query: { category: selectedCategory.value } }
+      });
+    } else {
+      items.push({ label: mainCategoryName.value });
+      return items;
+    }
+  }
+
+  // 第三層：子分類
+  if (selectedSubCategory.value !== 0) {
+    items.push({ label: subCategoryName.value });
+  }
+
+  return items;
 });
 
 const pageTitle = computed(() => {

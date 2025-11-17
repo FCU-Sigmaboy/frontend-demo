@@ -3,21 +3,20 @@
     <AppHeader :user-points="userPoints" />
 
     <main class="main-content">
-      <div class="followers-container">
-        <!-- Breadcrumb -->
-        <nav class="breadcrumb">
-          <a href="/" class="breadcrumb-link">首頁</a>
-          <i class="bi bi-chevron-right"></i>
-          <span class="breadcrumb-current">我的追蹤</span>
-        </nav>
+      <!-- Breadcrumb -->
+      <Breadcrumb :items="[
+        { label: '我的檔案', to: { name: 'UserProfile' } },
+        { label: '我的追蹤' }
+      ]" />
 
+      <div class="followers-container">
         <!-- Tabs -->
         <div class="tabs-section">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             :class="['tab-btn', { active: activeTab === tab.id }]"
-            @click="activeTab = tab.id"
+            @click="handleTabClick(tab.id)"
           >
             {{ tab.label }}
             <span v-if="tab.count" class="tab-count">({{ tab.count }})</span>
@@ -33,79 +32,103 @@
             placeholder="搜尋"
             class="search-input"
           />
-          <button class="filter-btn">
-            <i class="bi bi-funnel"></i>
-            篩選
-          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <FilterTabs
+          :items="activeTab === 'followers' ? filteredFollowers : filteredFollowing"
+          :filters="filterOptions"
+          @update:sortedItems="handleSortedItems"
+        />
+
+        <!-- Loading Skeleton -->
+        <div v-if="isLoading" class="users-list">
+          <div v-for="i in 4" :key="`skeleton-${i}`" class="skeleton-user-card">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-info">
+              <div class="skeleton-name"></div>
+              <div class="skeleton-follow-date"></div>
+            </div>
+            <div class="skeleton-button"></div>
+          </div>
         </div>
 
         <!-- Followers List (追蹤者) -->
-        <div v-show="activeTab === 'followers'" class="users-list">
+        <TransitionGroup
+          v-if="activeTab === 'followers' && !isLoading"
+          name="user-list"
+          tag="div"
+          class="users-list"
+        >
           <div
-            v-for="user in filteredFollowers"
-            :key="user.id"
+            v-for="user in displayedUsers"
+            :key="user.user_id"
             class="user-card"
           >
-            <div class="user-clickable-area" @click="goToUserProfile(user.id)">
+            <div class="user-clickable-area" @click="goToUserProfile(user.user_id)">
               <img
-                :src="user.avatar"
-                :alt="user.name"
+                :src="user.profile_picture_url || defaultAvatar"
+                :alt="user.nickname || '未知使用者'"
                 class="user-avatar"
               />
               <div class="user-info">
-                <h3 class="user-name">{{ user.name }}</h3>
-                <p class="user-handle">@{{ user.handle }}</p>
+                <h3 class="user-name">{{ user.nickname || '未知使用者' }}</h3>
+                <p class="user-follow-date">{{ formatFollowerText(user.followed_at) }}</p>
               </div>
             </div>
-            <span class="follow-date">{{ user.followDate }}</span>
             <button
-              :class="['follow-btn', { following: user.isFollowing }]"
+              :class="['follow-btn', { following: user.is_following_back }]"
               @click.stop="toggleFollow(user)"
             >
-              {{ user.isFollowing ? '追蹤中' : '追蹤回去' }}
+              <span v-if="user.is_following_back" class="btn-text">追蹤中</span>
+              <span v-else class="btn-text">回追</span>
             </button>
           </div>
 
           <!-- Empty State -->
-          <div v-if="filteredFollowers.length === 0" class="empty-state">
+          <div v-if="displayedUsers.length === 0" :key="'empty-followers'" class="empty-state">
             <i class="bi bi-people"></i>
             <p>尚無追蹤者</p>
           </div>
-        </div>
+        </TransitionGroup>
 
         <!-- Following List (追蹤中) -->
-        <div v-show="activeTab === 'following'" class="users-list">
+        <TransitionGroup
+          v-if="activeTab === 'following' && !isLoading"
+          name="user-list"
+          tag="div"
+          class="users-list"
+        >
           <div
-            v-for="user in filteredFollowing"
-            :key="user.id"
+            v-for="user in displayedUsers"
+            :key="user.user_id"
             class="user-card"
           >
-            <div class="user-clickable-area" @click="goToUserProfile(user.id)">
+            <div class="user-clickable-area" @click="goToUserProfile(user.user_id)">
               <img
-                :src="user.avatar"
-                :alt="user.name"
+                :src="user.profile_picture_url || defaultAvatar"
+                :alt="user.nickname || '未知使用者'"
                 class="user-avatar"
               />
               <div class="user-info">
-                <h3 class="user-name">{{ user.name }}</h3>
-                <p class="user-handle">@{{ user.handle }}</p>
+                <h3 class="user-name">{{ user.nickname || '未知使用者' }}</h3>
+                <p class="user-follow-date">{{ formatFollowingText(user.followed_at) }}</p>
               </div>
             </div>
-            <span class="follow-date">{{ user.followDate }}</span>
             <button
               class="follow-btn following"
               @click.stop="unfollow(user)"
             >
-              追蹤中
+              <span class="btn-text">追蹤中</span>
             </button>
           </div>
 
           <!-- Empty State -->
-          <div v-if="filteredFollowing.length === 0" class="empty-state">
+          <div v-if="displayedUsers.length === 0" :key="'empty-following'" class="empty-state">
             <i class="bi bi-people"></i>
             <p>尚未追蹤任何人</p>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
     </main>
 
@@ -114,143 +137,259 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
+import FilterTabs from '../components/FilterTabs.vue';
+import {
+  getMyFollowers,
+  getMyFollowing,
+  followUser,
+  unfollowUser
+} from '@/api/followAPI';
 
 const router = useRouter();
+const route = useRoute();
+const validTabs = ['followers', 'following'];
+
+const getInitialTab = () => {
+  const tabFromRoute = route.query.tab;
+  return typeof tabFromRoute === 'string' && validTabs.includes(tabFromRoute)
+    ? tabFromRoute
+    : 'followers';
+};
 
 // State
 const userPoints = ref(500);
-const activeTab = ref('followers');
+const activeTab = ref(getInitialTab());
 const searchQuery = ref('');
+const isLoading = ref(false);
 
-const tabs = [
-  { id: 'followers', label: '追蹤者', count: 4 },
-  { id: 'following', label: '追蹤中', count: 3 }
-];
+// Data
+const followers = ref([]);
+const following = ref([]);
+const sortedDisplayItems = ref([]);
+const defaultAvatar = 'https://placehold.co/48/6fb8a5/ffffff?text=U';
 
-// Mock followers data
-const followers = ref([
+watch([activeTab, searchQuery], () => {
+  sortedDisplayItems.value = [];
+});
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (typeof newTab === 'string' && validTabs.includes(newTab)) {
+      activeTab.value = newTab;
+    }
+  }
+);
+
+const formatFollowDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}/${month}/${day}`;
+};
+
+const formatFollowerText = (dateString) => {
+  const formatted = formatFollowDate(dateString);
+  return formatted ? `於 ${formatted} 追蹤了你` : '';
+};
+
+const formatFollowingText = (dateString) => {
+  const formatted = formatFollowDate(dateString);
+  return formatted ? `在 ${formatted} 開始追蹤` : '';
+};
+
+// Filter options
+const filterOptions = [
   {
     id: 1,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/6fb8a5/ffffff?text=U1',
-    followDate: '2025/10/10',
-    isFollowing: false
+    label: '追蹤日期',
+    sortKey: 'followed_at',
+    defaultOrder: 'desc',
+    ascText: '早到晚',
+    descText: '晚到早'
   },
   {
     id: 2,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/5a9d8c/ffffff?text=U2',
-    followDate: '2025/10/10',
-    isFollowing: true
-  },
-  {
-    id: 3,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/4a8b7d/ffffff?text=U3',
-    followDate: '2025/10/10',
-    isFollowing: false
-  },
-  {
-    id: 4,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/3a7a6e/ffffff?text=U4',
-    followDate: '2025/10/10',
-    isFollowing: true
+    label: '名稱',
+    sortKey: ['nickname', 'username'],
+    defaultOrder: 'asc',
+    ascText: 'A-Z',
+    descText: 'Z-A'
   }
+];
+
+// Tabs (動態更新計數)
+const tabs = computed(() => [
+  { id: 'followers', label: '追蹤者', count: followers.value.length },
+  { id: 'following', label: '追蹤中', count: following.value.length }
 ]);
 
-// Mock following data
-const following = ref([
-  {
-    id: 5,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/6fb8a5/ffffff?text=U5',
-    followDate: '2025/10/10'
-  },
-  {
-    id: 6,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/5a9d8c/ffffff?text=U6',
-    followDate: '2025/10/10'
-  },
-  {
-    id: 7,
-    name: '使用者名稱',
-    handle: '使用者帳號',
-    avatar: 'https://placehold.co/48/4a8b7d/ffffff?text=U7',
-    followDate: '2025/10/10'
-  }
-]);
-
-// Computed
+// Computed - 依搜尋條件過濾列表
 const filteredFollowers = computed(() => {
-  if (!searchQuery.value) return followers.value;
+  const list = followers.value || [];
+  if (!searchQuery.value) return list;
 
-  return followers.value.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    user.handle.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  const query = searchQuery.value.toLowerCase();
+  return list.filter(user => {
+    const nickname = (user.nickname || '').toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const displayName = (user.display_name || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return [nickname, username, displayName, email].some(field => field.includes(query));
+  });
 });
 
 const filteredFollowing = computed(() => {
-  if (!searchQuery.value) return following.value;
+  const list = following.value || [];
+  if (!searchQuery.value) return list;
 
-  return following.value.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    user.handle.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  const query = searchQuery.value.toLowerCase();
+  return list.filter(user => {
+    const nickname = (user.nickname || '').toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const displayName = (user.display_name || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return [nickname, username, displayName, email].some(field => field.includes(query));
+  });
 });
 
-// Methods
-const toggleFollow = (user) => {
-  user.isFollowing = !user.isFollowing;
+// 顯示的使用者列表（經過排序）
+const displayedUsers = computed(() => {
+  return sortedDisplayItems.value.length > 0
+    ? sortedDisplayItems.value
+    : (activeTab.value === 'followers' ? filteredFollowers.value : filteredFollowing.value);
+});
 
-  if (user.isFollowing) {
-    // Add to following list
-    following.value.push({
-      ...user,
-      followDate: new Date().toISOString().split('T')[0].replace(/-/g, '/')
+// 處理排序後的資料
+const handleSortedItems = (items) => {
+  sortedDisplayItems.value = items;
+};
+
+const handleTabClick = (tabId) => {
+  if (validTabs.includes(tabId)) {
+    activeTab.value = tabId;
+    router.replace({
+      path: route.path,
+      query: { ...route.query, tab: tabId }
     });
-    tabs[1].count++;
-  } else {
-    // Remove from following list
-    const index = following.value.findIndex(f => f.id === user.id);
-    if (index > -1) {
-      following.value.splice(index, 1);
-      tabs[1].count--;
+  }
+};
+
+// API Methods - 載入資料
+const loadFollowers = async () => {
+  try {
+    isLoading.value = true;
+    const data = await getMyFollowers({
+      page: 1,
+      pageSize: 100,
+      sortBy: 'followed_at',
+      sortDirection: 'desc',
+      search: searchQuery.value,
+    });
+    followers.value = data;
+  } catch (error) {
+    console.error('載入追蹤者列表失敗:', error);
+    alert('載入追蹤者列表失敗，請稍後再試');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const loadFollowing = async () => {
+  try {
+    isLoading.value = true;
+    const data = await getMyFollowing({
+      page: 1,
+      pageSize: 100,
+      sortBy: 'followed_at',
+      sortDirection: 'desc',
+      search: searchQuery.value
+    });
+    following.value = data;
+  } catch (error) {
+    console.error('載入追蹤中列表失敗:', error);
+    alert('載入追蹤中列表失敗，請稍後再試');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 追蹤/取消追蹤操作
+const toggleFollow = async (user) => {
+  try {
+    const targetUserId = user.user_id;
+    if (!targetUserId) return;
+
+    if (user.is_following_back) {
+      // 取消追蹤
+      await unfollowUser(targetUserId);
+      user.is_following_back = false;
+
+      // 從追蹤中列表移除
+      const index = following.value.findIndex(f => f.user_id === targetUserId);
+      if (index > -1) {
+        following.value.splice(index, 1);
+      }
+    } else {
+      // 追蹤回去
+      await followUser(targetUserId);
+      user.is_following_back = true;
+
+      // 重新載入追蹤中列表
+      await loadFollowing();
+    }
+
+    // 重新載入追蹤者列表以更新狀態
+    await loadFollowers();
+  } catch (error) {
+    console.error('操作失敗:', error);
+    alert(error.message || '操作失敗，請稍後再試');
+    if (typeof user.is_following_back === 'boolean') {
+      user.is_following_back = !user.is_following_back; // 還原狀態
     }
   }
 };
 
-const unfollow = (user) => {
-  if (confirm(`確定要取消追蹤 ${user.name}？`)) {
-    const index = following.value.findIndex(f => f.id === user.id);
+const unfollow = async (user) => {
+  try {
+    const targetUserId = user.user_id;
+    if (!targetUserId) return;
+
+    await unfollowUser(targetUserId);
+
+    // 從追蹤中列表移除
+    const index = following.value.findIndex(f => f.user_id === targetUserId);
     if (index > -1) {
       following.value.splice(index, 1);
-      tabs[1].count--;
     }
 
-    // Update followers list if user is there
-    const follower = followers.value.find(f => f.id === user.id);
-    if (follower) {
-      follower.isFollowing = false;
+    // 更新追蹤者列表中的狀態
+    const followerIndex = followers.value.findIndex(f => f.user_id === targetUserId);
+    if (followerIndex > -1) {
+      followers.value[followerIndex].is_following_back = false;
     }
+  } catch (error) {
+    console.error('取消追蹤失敗:', error);
+    alert(error.message || '取消追蹤失敗，請稍後再試');
   }
 };
 
 const goToUserProfile = (userId) => {
   router.push({ name: 'PublicUserProfile', params: { id: userId } });
 };
+
+// 初始化載入資料
+onMounted(async () => {
+  await Promise.all([loadFollowers(), loadFollowing()]);
+});
 </script>
 
 <style scoped lang="scss">
@@ -265,13 +404,16 @@ const goToUserProfile = (userId) => {
 
 .main-content {
   flex: 1;
-  padding: 30px 0 60px;
+  padding: 0 0 30px 0;
+  overflow: hidden;
 }
 
 .followers-container {
-  max-width: 900px;
+  max-width: 1600px;
+  min-height: 70vh;
   margin: 0 auto;
   padding: 0 20px;
+  overflow: hidden;
 }
 
 // Breadcrumb
@@ -400,11 +542,110 @@ const goToUserProfile = (userId) => {
   }
 }
 
+// Filter Tabs Wrapper (添加底部間距)
+.followers-container {
+  :deep(.filter-tabs-wrapper) {
+    margin-bottom: 30px;
+  }
+}
+
 // Users List
 .users-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+}
+
+// User List Animation
+.user-list-move {
+  transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.user-list-enter-active {
+  transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.user-list-leave-active {
+  transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
+  position: absolute;
+  width: calc(100% - 40px);
+}
+
+.user-list-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
+}
+
+.user-list-leave-to {
+  opacity: 0;
+  transform: translateX(100%) scale(0.9);
+}
+
+// Skeleton User Card
+.skeleton-user-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-name {
+  width: 120px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-follow-date {
+  width: 80px;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-button {
+  width: 80px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .user-card {
@@ -455,19 +696,12 @@ const goToUserProfile = (userId) => {
       margin: 0 0 4px 0;
     }
 
-    .user-handle {
+    .user-follow-date {
       font-family: 'Noto Sans TC', sans-serif;
       font-size: 13px;
       color: #999;
       margin: 0;
     }
-  }
-
-  .follow-date {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 13px;
-    color: #999;
-    flex-shrink: 0;
   }
 
   .follow-btn {
@@ -496,21 +730,13 @@ const goToUserProfile = (userId) => {
         background: #dc3545;
         border-color: #dc3545;
 
-        &::before {
-          content: '取消追蹤';
+        .btn-text {
+          display: none;
         }
 
         &::after {
-          content: '';
+          content: '取消追蹤';
         }
-      }
-
-      &::after {
-        content: '追蹤中';
-      }
-
-      &:not(:hover)::before {
-        content: '';
       }
     }
   }
@@ -549,18 +775,14 @@ const goToUserProfile = (userId) => {
 
   .followers-container {
     padding: 0 15px;
+
+    :deep(.filter-tabs-wrapper) {
+      margin-bottom: 25px;
+    }
   }
 
   .user-card {
     flex-wrap: wrap;
-
-    .follow-date {
-      order: 4;
-      width: 100%;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #f0f0f0;
-    }
   }
 }
 
@@ -571,6 +793,10 @@ const goToUserProfile = (userId) => {
 
   .followers-container {
     padding: 0 10px;
+
+    :deep(.filter-tabs-wrapper) {
+      margin-bottom: 20px;
+    }
   }
 
   .breadcrumb {
@@ -598,7 +824,7 @@ const goToUserProfile = (userId) => {
         font-size: 14px;
       }
 
-      .user-handle {
+      .user-follow-date {
         font-size: 12px;
       }
     }

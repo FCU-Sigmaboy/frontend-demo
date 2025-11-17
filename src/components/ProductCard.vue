@@ -34,15 +34,17 @@
         </button>
       </div>
 
-      <!-- Price -->
-      <p class="product-price"><i class="bi bi-leaf points-icon" style="font-size: 1rem;"></i> {{ new Intl.NumberFormat().format(product.price) }} </p>
+      <!-- Price - Carousell-style Minimal Design -->
+      <div class="product-price">
+        <i class="bi bi-leaf"></i>
+        <span class="price-amount">{{ new Intl.NumberFormat().format(product.price) }}</span>
+      </div>
 
       <!-- Location and Distance -->
       <div class="product-meta">
         <i class="bi bi-geo-alt-fill"></i>
         <span>{{ product.formatted_address }}</span>
-        <span class="separator">•</span>
-        <span>{{ Math.round(product.distance_km * 100) / 100 }} km</span>
+        <span v-if="authStore.user"><span class="separator">•</span>{{ Math.round(product.distance_km * 100) / 100 }} km</span>
       </div>
 
       <!-- Posted Time -->
@@ -60,6 +62,7 @@ import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '@/stores/favorites';
 import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
+import { createOrGetConversation } from '@/api/conversationAPI_v2';
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
@@ -89,7 +92,8 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['contact-seller']);
+// 移除 emit，改為直接處理
+// const emit = defineEmits(['contact-seller']);
 
 // Handle both data structures (with nested user or flat seller data)
 const sellerName = computed(() => {
@@ -101,7 +105,7 @@ const sellerAvatar = computed(() => {
 });
 
 const sellerId = computed(() => {
-  return props.product.user?.id || props.product.seller_id || null;
+  return props.product.user?.id;
 });
 
 const isOwner = computed(() => {
@@ -110,7 +114,7 @@ const isOwner = computed(() => {
 });
 
 // 收藏狀態 - 用於立即更新 UI
-const localFavoriteState = ref(props.product.favorited_at !== null);
+const localFavoriteState = ref(props.product.favorited_at);
 
 // 已收藏狀態
 const isFavorite = computed(() => {
@@ -124,7 +128,12 @@ const formattedTime = computed(() => {
 
 // 切換收藏狀態
 let timeoutId = null;
-const toggleFavorite = () => {
+const toggleFavorite = async () => {
+  if (!authStore.user) {
+    await authStore.signInWithGoogle();
+    return;
+  }
+
   // 立即更新狀態,提供即時視覺回饋
   localFavoriteState.value = !localFavoriteState.value;
   
@@ -141,8 +150,39 @@ const toggleFavorite = () => {
   }, 500);
 };
 
-const handleContact = () => {
-  emit('contact-seller', props.product.item_id);
+const handleContact = async () => {
+  // 檢查是否登入
+  if (!authStore.user) {
+    await authStore.signInWithGoogle();
+    return;
+  }
+
+  // 檢查是否為自己的商品
+  if (isOwner.value) {
+    alert('無法與自己的商品發起對話');
+    return;
+  }
+
+  try {
+    // 使用 v2 API: createOrGetConversation(otherUserId, initialItemId)
+    const conversation = await createOrGetConversation(
+      sellerId.value,
+      props.product.item_id
+    );
+
+    // 導航到訊息頁面，並傳遞物品資訊以便在輸入框上方顯示
+    router.push({
+      name: 'Messages',
+      query: {
+        conversationId: conversation.conversation_id,
+        itemId: props.product.item_id,
+        itemTitle: props.product.title
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create conversation:', error);
+    alert('無法開啟對話，請稍後再試');
+  }
 };
 
 const goToSellerProfile = () => {
@@ -162,9 +202,11 @@ const goToSellerProfile = () => {
   overflow: hidden;
   transition: all 0.3s;
   height: 100%;
+  width: 100%;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 
   &:hover {
     transform: translateY(-5px);
@@ -270,8 +312,8 @@ const goToSellerProfile = () => {
       display: block;
       bottom: 10px;
       right: 10px;
-      width: 26.4px;
-      height: 26.4px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       background-color: transparent;
       border: none;
@@ -283,7 +325,7 @@ const goToSellerProfile = () => {
       transition: all 0.3s;
 
       i {
-        font-size: 16px;
+        font-size: 20px;
         color: #1e1e1e;
       }
 
@@ -329,12 +371,30 @@ const goToSellerProfile = () => {
   -webkit-box-orient: vertical;
 }
 
-.product-price {
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  color: #1e1e1e;
-  margin: 0;
-  font-weight: 400;
+// Price Section - Carousell-Inspired Minimal Design (Bootstrap 5 Compatible)
+// Using high specificity to override any existing styles
+.product-card .product-body .product-price {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 6px 0 !important;
+
+  // Leaf Icon - Prominent but clean
+  i.bi-leaf {
+    font-size: 18px !important;
+    color: $primary !important;
+    flex-shrink: 0 !important;
+  }
+
+  // Price Amount - Clear and Bold (Bootstrap 5 sizing)
+  .price-amount,
+  span.price-amount {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #1e1e1e !important;
+    line-height: 1.2 !important;
+  }
 }
 
 .product-meta {
@@ -356,13 +416,23 @@ const goToSellerProfile = () => {
   }
 }
 
+// Bootstrap 5 lg breakpoint
 @media (max-width: 991.98px) {
   .product-name {
     font-size: 14px;
   }
 
-  .product-price {
-    font-size: 14px;
+  .product-card .product-body .product-price {
+    gap: 7px !important;
+
+    i.bi-leaf {
+      font-size: 17px !important;
+    }
+
+    .price-amount,
+    span.price-amount {
+      font-size: 19px !important;
+    }
   }
 
   .seller-name {
@@ -376,8 +446,18 @@ const goToSellerProfile = () => {
       font-size: 15px;
     }
   }
+
+  .name-and-favorite-button-wrapper .favorite-btn {
+    width: 40px;
+    height: 40px;
+
+    i {
+      font-size: 22px;
+    }
+  }
 }
 
+// Bootstrap 5 sm breakpoint
 @media (max-width: 575.98px) {
   .card-header {
     padding: 8px;
@@ -397,8 +477,17 @@ const goToSellerProfile = () => {
     font-size: 13px;
   }
 
-  .product-price {
-    font-size: 13px;
+  .product-card .product-body .product-price {
+    gap: 6px !important;
+
+    i.bi-leaf {
+      font-size: 16px !important;
+    }
+
+    .price-amount,
+    span.price-amount {
+      font-size: 18px !important;
+    }
   }
 
   .seller-name {
@@ -410,6 +499,15 @@ const goToSellerProfile = () => {
 
     i {
       font-size: 14px;
+    }
+  }
+
+  .name-and-favorite-button-wrapper .favorite-btn {
+    width: 44px;
+    height: 44px;
+
+    i {
+      font-size: 24px;
     }
   }
 }

@@ -7,13 +7,49 @@
       <Breadcrumb :items="[{ label: '個人資料' }]" />
 
       <div class="profile-container">
+        <!-- Loading Skeleton for Profile Header -->
+    <section v-if="showProfileSkeleton" class="profile-header">
+          <div class="header-content">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-user-info-section">
+              <div class="skeleton-name"></div>
+              <div class="skeleton-email"></div>
+              <div class="skeleton-follow-stats">
+                <div class="skeleton-follow-stat"></div>
+                <div class="skeleton-follow-stat"></div>
+              </div>
+              <div class="skeleton-user-stats">
+                <div class="skeleton-stat-item" v-for="i in 3" :key="`stat-${i}`"></div>
+              </div>
+              <div class="skeleton-action-buttons">
+                <div class="skeleton-button"></div>
+                <div class="skeleton-button"></div>
+              </div>
+            </div>
+            <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
+              <div class="skeleton-badges">
+                <div class="skeleton-badge" v-for="i in 4" :key="`badge-${i}`">
+                  <div class="skeleton-badge-icon"></div>
+                  <div class="skeleton-badge-content">
+                    <div class="skeleton-badge-title"></div>
+                    <div class="skeleton-badge-progress">
+                      <div class="skeleton-badge-progress-bar"></div>
+                    </div>
+                    <div class="skeleton-badge-meta"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Profile Header Section -->
-        <section class="profile-header">
+        <section v-else class="profile-header">
           <div class="header-content">
             <div class="user-avatar-section">
               <img
-                v-if="authStore.userAvatar"
-                :src="authStore.userAvatar"
+                v-if="displayAvatar"
+                :src="displayAvatar"
                 alt="User Avatar"
                 class="user-avatar"
                 referrerpolicy="no-referrer"
@@ -22,34 +58,34 @@
             </div>
 
             <div class="user-info-section">
-              <h1 class="user-name">{{ authStore.userName || '使用者' }}</h1>
+              <h1 class="user-name">{{ displayName }}</h1>
               <p class="user-email">{{ authStore.userEmail }}</p>
 
               <!-- Followers/Following Stats -->
               <div class="follow-stats">
-                <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">0</span>
+                <button class="follow-stat-btn" @click="goToFollowers('following')">
+                  <span class="stat-number">{{ profileData?.following_count || 0 }}</span>
                   <span class="stat-text">追蹤中</span>
                 </button>
                 <span class="stat-divider">|</span>
-                <button class="follow-stat-btn" @click="goToFollowers">
-                  <span class="stat-number">0</span>
+                <button class="follow-stat-btn" @click="goToFollowers('followers')">
+                  <span class="stat-number">{{ profileData?.followers_count || 0 }}</span>
                   <span class="stat-text">追蹤者</span>
                 </button>
               </div>
 
               <div class="user-stats">
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToDashboard">
                   <i class="bi bi-leaf"></i>
                   <span class="stat-value">{{ userPoints }}</span>
                   <span class="stat-label">點數</span>
                 </div>
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToManageListings">
                   <i class="bi bi-box-seam"></i>
                   <span class="stat-value">{{ userStats.listings }}</span>
                   <span class="stat-label">刊登中</span>
                 </div>
-                <div class="stat-item">
+                <div class="stat-item clickable" @click="goToFavorites">
                   <i class="bi bi-heart"></i>
                   <span class="stat-value">{{ userStats.favorites }}</span>
                   <span class="stat-label">收藏</span>
@@ -68,29 +104,22 @@
               </div>
             </div>
 
-            <div class="achievements-section col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
-              <h3 class="achievements-title">
-                成就徽章
-                <span class="carbon-total">總碳足跡節省: {{ userCarbonSaved.toFixed(1) }} kg</span>
-              </h3>
-              <div class="achievements-stepper">
-                <div class="unlocked-line" :style="{ width: unlockedLineWidth }"></div>
-                <div
-                    v-for="badge in achievements"
-                    :key="badge.id"
-                    :class="['step-item', { 'unlocked': badge.unlocked }]"
-                    @click="openBadgeModal(badge)"
-                >
-                  <div class="step-circle">
-                    <img :src="badge.image" :alt="badge.label" class="step-image" />
-                    <div v-if="!badge.unlocked" class="progress-overlay">
-                      <span class="progress-text">{{ badge.progress }}%</span>
-                    </div>
-                  </div>
-                  <span class="step-label">{{ badge.label }}</span>
-                  <span v-if="!badge.unlocked" class="step-requirement">{{ badge.threshold }} kg</span>
-                </div>
-              </div>
+            <!-- Achievement Badges -->
+            <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
+              <AchievementBadges
+                :total-carbon="userCarbonSaved"
+                :show-carbon-total="true"
+                :show-progress="true"
+                :show-threshold="true"
+                @badge-click="openBadgeModal"
+              />
+              <TransactionTrophies
+                :total-sales="userStats.sales"
+                :total-purchases="userStats.purchases"
+                :show-progress="true"
+                :show-threshold="true"
+                @trophy-click="openTrophyModal"
+              />
             </div>
           </div>
         </section>
@@ -125,12 +154,26 @@
               </div>
             </div>
 
-            <!-- Loading State -->
-            <div v-if="isLoadingListings" class="loading-state">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">載入中...</span>
+            <!-- Loading Skeleton -->
+            <div v-if="isLoadingListings" class="listings-sections">
+              <div class="listing-section">
+                <div class="subsection-header">
+                  <div class="skeleton-subsection-title"></div>
+                  <div class="skeleton-subsection-count"></div>
+                </div>
+                <div class="desktop-grid">
+                  <div class="listings-grid">
+                    <div v-for="i in 4" :key="`skeleton-${i}`" class="skeleton-product-card">
+                      <div class="skeleton-image"></div>
+                      <div class="skeleton-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p>載入中...</p>
             </div>
 
             <!-- Has Listings -->
@@ -167,7 +210,7 @@
                   <button
                     class="carousel-arrow prev"
                     @click="scrollActivePrev"
-                    :disabled="activeScrollIndex === 0"
+                    :disabled="isActivePrevDisabled"
                   >
                     <i class="bi bi-chevron-left"></i>
                   </button>
@@ -185,7 +228,7 @@
                   <button
                     class="carousel-arrow next"
                     @click="scrollActiveNext"
-                    :disabled="activeScrollIndex >= activeListings.length - 1"
+                    :disabled="isActiveNextDisabled"
                   >
                     <i class="bi bi-chevron-right"></i>
                   </button>
@@ -224,7 +267,7 @@
                   <button
                     class="carousel-arrow prev"
                     @click="scrollInactivePrev"
-                    :disabled="inactiveScrollIndex === 0"
+                    :disabled="isInactivePrevDisabled"
                   >
                     <i class="bi bi-chevron-left"></i>
                   </button>
@@ -242,7 +285,7 @@
                   <button
                     class="carousel-arrow next"
                     @click="scrollInactiveNext"
-                    :disabled="inactiveScrollIndex >= inactiveListings.length - 1"
+                    :disabled="isInactiveNextDisabled"
                   >
                     <i class="bi bi-chevron-right"></i>
                   </button>
@@ -351,8 +394,8 @@
                       {{ selectedBadge.progress }}%
                     </div>
                   </div>
-                  <p class="text-muted small mb-0">
-                    還需 <strong class="text-primary">{{ selectedBadge.remainingKg.toFixed(1) }} kg</strong> 即可解鎖
+                  <p v-if="selectedBadge.remainingKg > 0" class="text-muted small mb-0">
+                    還需 <strong class="text-primary">{{ selectedBadge.remainingKg?.toFixed(1) || '0.0' }} kg</strong> 即可解鎖
                   </p>
                 </div>
               </div>
@@ -371,28 +414,30 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { getMyItems } from '../api/get_myItemsAPI';
-import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
+import AchievementBadges from '../components/AchievementBadges.vue';
+import TransactionTrophies from '../components/TransactionTrophies.vue';
 import { Modal } from 'bootstrap';
 
-// --- 徽章圖片 ---
-// 請確保您將上傳的圖片放置在 'src/assets/images/' 路徑下
-import badgeRookie from '../assets/1badge.png';
-import badgeAdept from '../assets/2badge.png';
-import badgeExpert from '../assets/3badge.png';
-import badgeMaster from '../assets/4badge.png';
+// Badge images are now imported inside AchievementBadges component
 
 const router = useRouter();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 
-// State
-const userPoints = ref(500);
-const userCarbonSaved = ref(0); // 使用者節省的碳足跡 (kg)
+// Computed: 從 auth store 獲取使用者的點數
+const userPoints = computed(() => {
+  const balance = authStore.profileData?.profile_details?.balance || 0;
+  // 超過一百萬顯示 999,999+，否則加上千分位格式
+  if (balance > 1000000) {
+    return '999,999+';
+  }
+  return balance.toLocaleString('zh-TW');
+});
 const activeTab = ref('listings');
 const myListings = ref([]);
 const isLoadingListings = ref(false);
@@ -419,64 +464,37 @@ const userStats = computed(() => ({
   sales: 3
 }));
 
-// Achievement Badges (Updated with carbon footprint thresholds)
-const achievementThresholds = [
-  { id: 1, label: '環保新手', threshold: 10, image: badgeRookie, description: '節省 10kg 碳足跡，開啟您的環保旅程！' },
-  { id: 2, label: '環保達人', threshold: 50, image: badgeAdept, description: '節省 50kg 碳足跡，感謝您為地球的貢獻！' },
-  { id: 3, label: '環保高手', threshold: 100, image: badgeExpert, description: '節省 100kg 碳足跡，您是環保的實踐家！' },
-  { id: 4, label: '環保大師', threshold: 200, image: badgeMaster, description: '節省 200kg 碳足跡，您的環保精神值得敬佩！' },
-];
+// 直接使用 authStore 的 profileData，不需要重複呼叫 API
+const profileData = computed(() => authStore.profileData);
 
-// Computed achievements with unlock status and progress
-const achievements = computed(() => {
-  return achievementThresholds.map((badge, index) => {
-    const unlocked = userCarbonSaved.value >= badge.threshold;
-    const nextThreshold = badge.threshold;
-    const prevThreshold = index > 0 ? achievementThresholds[index - 1].threshold : 0;
-
-    // Calculate progress to next badge (0-100%)
-    let progress = 0;
-    if (unlocked) {
-      progress = 100;
-    } else {
-      const rangeSize = nextThreshold - prevThreshold;
-      const currentProgress = userCarbonSaved.value - prevThreshold;
-      progress = Math.max(0, Math.min(100, (currentProgress / rangeSize) * 100));
-    }
-
-    return {
-      ...badge,
-      unlocked,
-      progress: Math.round(progress),
-      currentKg: userCarbonSaved.value,
-      remainingKg: Math.max(0, nextThreshold - userCarbonSaved.value)
-    };
-  });
+const userCarbonSaved = computed(() => {
+  return profileData.value?.profile_details?.carbon_saved_kg || 0;
 });
 
-// Computed property for unlocked line width (Added)
-const unlockedSteps = computed(() => {
-  return achievements.value.filter(b => b.unlocked).length;
+// 優先使用 profileData 的自定義資料，避免顯示閃爍
+// 只有在 profileData 存在時才使用，否則繼續顯示 loading
+const displayAvatar = computed(() => {
+  return profileData.value?.profile_picture_url || '';
 });
 
-const unlockedLineWidth = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) {
-    return '0%';
+const displayName = computed(() => {
+  if (!profileData.value) {
+    return '使用者';
   }
-  // 寬度是 (已解鎖 - 1) / (總數 - 1) * 75% (線條總寬度)
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 75}%`;
+  return profileData.value.nickname || '使用者';
 });
 
-// 給手機版使用的寬度計算 (Added)
-const unlockedLineWidthMobile = computed(() => {
-  const totalSteps = achievements.value.length;
-  if (unlockedSteps.value <= 1) return '0%';
-  // 在手機版，線條總寬度是 80%
-  const percentage = (unlockedSteps.value - 1) / (totalSteps - 1);
-  return `${percentage * 80}%`;
+const showProfileSkeleton = computed(() => {
+  if (!authStore.isLoggedIn) {
+    return false;
+  }
+  if (authStore.isLoadingProfile) {
+    return true;
+  }
+  return !profileData.value;
 });
+
+// Achievement badges are now calculated inside AchievementBadges component
 
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
@@ -486,7 +504,7 @@ const tabs = computed(() => [
 ]);
 
 const favoriteItems = computed(() => {
-  console.log('🎯 Favorites from store:', favoritesStore.favoriteItems.length);
+  console.log('Favorites from store:', favoritesStore.favoriteItems.length);
   return favoritesStore.favoriteItems;
 });
 const purchaseHistory = ref([]);
@@ -510,27 +528,42 @@ const displayedInactiveListings = computed(() => {
   return inactiveListings.value.slice(0, inactiveDisplayLimit.value);
 });
 
-// Fetch user's carbon footprint data
-const fetchUserCarbonData = async () => {
+// Computed properties for carousel arrow disabled states
+const isActivePrevDisabled = computed(() => {
+  return activeScrollIndex.value === 0;
+});
+
+const isActiveNextDisabled = computed(() => {
+  const visibleCards = getVisibleCardsCount();
+  return activeScrollIndex.value >= activeListings.value.length - visibleCards;
+});
+
+const isInactivePrevDisabled = computed(() => {
+  return inactiveScrollIndex.value === 0;
+});
+
+const isInactiveNextDisabled = computed(() => {
+  const visibleCards = getVisibleCardsCount();
+  return inactiveScrollIndex.value >= inactiveListings.value.length - visibleCards;
+});
+
+// 確保 profile 資料已載入
+const ensureProfileLoaded = async () => {
   if (!authStore.isLoggedIn) {
-    console.warn('[Carbon] Not logged in, skipping fetch');
+    console.warn('[Profile] Not logged in, skipping');
     return;
   }
 
   try {
-    console.log('[Carbon] Fetching user carbon data');
-    const profileData = await getMyProfileForEdit();
-
-    if (profileData?.profile_details?.carbon_saved_kg) {
-      userCarbonSaved.value = parseFloat(profileData.profile_details.carbon_saved_kg);
-      console.log('[Carbon] User saved:', userCarbonSaved.value, 'kg');
+    // 如果 authStore 還沒載入 profileData，等待載入完成
+    if (!authStore.profileData) {
+      console.log('[Profile] Loading from auth store');
+      await authStore.loadCustomProfile();
     } else {
-      userCarbonSaved.value = 0;
-      console.log('[Carbon] No data found, default to 0 kg');
+      console.log('[Profile] Profile data already loaded');
     }
   } catch (error) {
-    console.error('[Carbon] Failed to fetch:', error);
-    userCarbonSaved.value = 0;
+    console.error('[Profile] Failed to load profile data:', error);
   }
 };
 
@@ -596,9 +629,9 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
     dataLoaded = true;
     // Load all data in parallel to improve performance
     await Promise.allSettled([
-      fetchUserCarbonData(),
+      ensureProfileLoaded(),
       fetchMyListings(),
-      favoritesStore.count === 0 ? 
+      favoritesStore.count === 0 ?
         favoritesStore.loadFavorites({
           page: 1,
           size: 100,
@@ -611,8 +644,24 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
         })
       : Promise.resolve()
     ]);
+  } else if (!isLoggedIn) {
+    dataLoaded = false;
   }
 }, { immediate: true }); // Run immediately on mount
+
+// Reset carousel scroll positions when window is resized
+const handleResize = () => {
+  activeScrollIndex.value = 0;
+  inactiveScrollIndex.value = 0;
+
+  // Re-scroll to ensure proper positioning
+  if (activeCarousel.value) {
+    scrollCarousel(activeCarousel.value, 0);
+  }
+  if (inactiveCarousel.value) {
+    scrollCarousel(inactiveCarousel.value, 0);
+  }
+};
 
 // Fetch data on mount if user is already logged in and data hasn't been loaded yet
 onMounted(async () => {
@@ -620,9 +669,9 @@ onMounted(async () => {
     dataLoaded = true;
     // Load all data in parallel to improve performance
     await Promise.allSettled([
-      fetchUserCarbonData(),
+      ensureProfileLoaded(),
       fetchMyListings(),
-      favoritesStore.count === 0 ? 
+      favoritesStore.count === 0 ?
         favoritesStore.loadFavorites({
           page: 1,
           size: 100,
@@ -636,20 +685,39 @@ onMounted(async () => {
       : Promise.resolve()
     ]);
   }
+
   if (badgeModalRef.value) {
     badgeModalInstance.value = new Modal(badgeModalRef.value);
   }
+
+  // Add window resize listener to reset carousel positions
+  window.addEventListener('resize', handleResize);
 });
 
 onBeforeUnmount(() => {
   if (badgeModalInstance.value) {
     badgeModalInstance.value.dispose();
   }
+
+  // Remove resize listener
+  window.removeEventListener('resize', handleResize);
 });
 
 // Methods
 const openBadgeModal = (badge) => {
   selectedBadge.value = badge;
+  if (badgeModalInstance.value) {
+    badgeModalInstance.value.show();
+  }
+};
+
+const openTrophyModal = (trophy) => {
+  // For now, use the same modal structure as badges
+  selectedBadge.value = {
+    ...trophy,
+    image: null, // Trophies use icons, not images
+    remainingKg: null
+  };
   if (badgeModalInstance.value) {
     badgeModalInstance.value.show();
   }
@@ -683,35 +751,58 @@ const goToReviews = () => {
   router.push({ name: 'MyReviews' });
 };
 
-const goToFollowers = () => {
-  router.push({ name: 'MyFollowers' });
+const goToFollowers = (tab = 'followers') => {
+  const targetTab = tab === 'following' ? 'following' : 'followers';
+  router.push({ name: 'MyFollowers', query: { tab: targetTab } });
 };
 
-// Carousel scroll functions for mobile
+const goToDashboard = () => {
+  router.push({ name: 'Dashboard' });
+};
+
+const goToFavorites = () => {
+  router.push({ name: 'Favorites' });
+};
+
+// Get number of visible cards based on screen width
+const getVisibleCardsCount = () => {
+  const width = window.innerWidth;
+  if (width < 768) return 1; // Mobile: 1 card
+  if (width < 1200) return 2; // Tablet: 2 cards
+  return 1; // This shouldn't be used since desktop uses grid, but default to 1
+};
+
+// Carousel scroll functions for mobile and tablet
 const scrollActivePrev = () => {
+  const visibleCards = getVisibleCardsCount();
   if (activeScrollIndex.value > 0) {
-    activeScrollIndex.value--;
+    activeScrollIndex.value = Math.max(0, activeScrollIndex.value - visibleCards);
     scrollCarousel(activeCarousel.value, activeScrollIndex.value);
   }
 };
 
 const scrollActiveNext = () => {
-  if (activeScrollIndex.value < activeListings.value.length - 1) {
-    activeScrollIndex.value++;
+  const visibleCards = getVisibleCardsCount();
+  const maxIndex = Math.max(0, activeListings.value.length - visibleCards);
+  if (activeScrollIndex.value < maxIndex) {
+    activeScrollIndex.value = Math.min(maxIndex, activeScrollIndex.value + visibleCards);
     scrollCarousel(activeCarousel.value, activeScrollIndex.value);
   }
 };
 
 const scrollInactivePrev = () => {
+  const visibleCards = getVisibleCardsCount();
   if (inactiveScrollIndex.value > 0) {
-    inactiveScrollIndex.value--;
+    inactiveScrollIndex.value = Math.max(0, inactiveScrollIndex.value - visibleCards);
     scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
   }
 };
 
 const scrollInactiveNext = () => {
-  if (inactiveScrollIndex.value < inactiveListings.value.length - 1) {
-    inactiveScrollIndex.value++;
+  const visibleCards = getVisibleCardsCount();
+  const maxIndex = Math.max(0, inactiveListings.value.length - visibleCards);
+  if (inactiveScrollIndex.value < maxIndex) {
+    inactiveScrollIndex.value = Math.min(maxIndex, inactiveScrollIndex.value + visibleCards);
     scrollCarousel(inactiveCarousel.value, inactiveScrollIndex.value);
   }
 };
@@ -720,8 +811,13 @@ const scrollCarousel = (carouselRef, index) => {
   if (carouselRef) {
     const track = carouselRef.querySelector('.carousel-track');
     if (track) {
-      const itemWidth = track.querySelector('.carousel-item')?.offsetWidth || 0;
-      const gap = 16; // gap between items
+      const items = track.querySelectorAll('.carousel-item');
+      if (items.length === 0) return;
+
+      const itemWidth = items[0].offsetWidth;
+      const trackStyles = window.getComputedStyle(track);
+      const gap = parseFloat(trackStyles.gap) || 12;
+
       const scrollPosition = index * (itemWidth + gap);
       track.style.transform = `translateX(-${scrollPosition}px)`;
     }
@@ -858,6 +954,15 @@ const scrollCarousel = (carouselRef, index) => {
     white-space: nowrap;
     min-width: fit-content;
 
+    &.clickable {
+      cursor: pointer;
+      transition: opacity 0.3s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+
     i {
       font-size: 24px;
       color: $primary;
@@ -910,144 +1015,6 @@ const scrollCarousel = (carouselRef, index) => {
   &:hover {
     background: $primary;
     color: white;
-  }
-}
-
-// Achievement Badges (Updated)
-.achievements-section {
-  .achievements-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 20px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .carbon-total {
-      font-size: 14px;
-      font-weight: 500;
-      color: $primary;
-      background: #e6f4f0;
-      padding: 6px 12px;
-      border-radius: 20px;
-    }
-  }
-}
-
-.achievements-stepper {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50px;
-    left: 12.5%;
-    width: 75%;
-    height: 4px;
-    background: #e9ecef;
-    z-index: 0;
-    transform: translateY(-50%);
-  }
-
-  .unlocked-line {
-    position: absolute;
-    top: 50px;
-    left: 12.5%;
-    height: 4px;
-    background: $primary;
-    z-index: 1;
-    transform: translateY(-50%);
-    transition: width 0.5s ease;
-  }
-
-  .step-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-    text-align: center;
-    cursor: pointer;
-
-    .step-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 8px;
-      background-color: #f0f7f5;
-      border: 2px solid #e0e0e0;
-      transition: all 0.3s;
-      padding: 10px;
-      box-sizing: border-box;
-      overflow: hidden;
-      position: relative;
-
-      .step-image {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        transition: filter 0.3s;
-        filter: grayscale(100%) opacity(0.6);
-      }
-
-      .progress-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(111, 184, 165, 0.9);
-        padding: 4px 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        .progress-text {
-          font-family: 'Noto Sans TC', sans-serif;
-          font-size: 11px;
-          font-weight: 700;
-          color: white;
-        }
-      }
-    }
-
-    .step-label {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      color: #999;
-      font-weight: 500;
-      transition: all 0.3s;
-    }
-
-    .step-requirement {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 11px;
-      color: #999;
-      margin-top: 2px;
-    }
-
-    &.unlocked {
-      .step-circle {
-        border-color: $primary;
-        background-color: #e6f4f0;
-
-        .step-image {
-          filter: grayscale(0%) opacity(1);
-        }
-      }
-      .step-label {
-        color: #1e1e1e;
-      }
-    }
   }
 }
 
@@ -1176,8 +1143,6 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 12px;
   }
 
-
-
   .manage-btn {
     display: inline-flex;
     align-items: center;
@@ -1296,8 +1261,23 @@ const scrollCarousel = (carouselRef, index) => {
 
 .listings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(4, 1fr); // Default: 4 columns for large screens
   gap: 20px;
+
+  // 1200-1399px: 3 columns
+  @media (max-width: 1399.98px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  // 768-1199px: 2 columns
+  @media (max-width: 1199.98px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  // <768px: 1 column (but carousel will be shown instead)
+  @media (max-width: 767.98px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .transactions-list {
@@ -1399,32 +1379,99 @@ const scrollCarousel = (carouselRef, index) => {
     min-width: 300px;
   }
 
-  .achievements-section {
+  // Achievement badges section responsive
+  .col-xl-6.col-lg-6 {
     width: 100%;
-    margin-top: 0 !important;
+  }
+}
+
+// Specific fix for carousel layout issues
+.listing-section {
+  // Desktop Grid Layout (1200px+)
+  .desktop-grid {
+    display: block;
+
+    @media (max-width: 1199.98px) {
+      display: none; // Hide desktop grid on smaller screens
+    }
   }
 
-  .achievements-stepper {
-    gap: 18px;
+  // Mobile Carousel Layout
+  .mobile-carousel {
+    display: none; // Default: hide mobile carousel
 
-    .step-item {
-      .step-circle {
-        width: 90px;
-        height: 90px;
-        padding: 9px;
+    // Tablet Layout (768px - 1199px): Show 2 cards with arrows
+    @media (max-width: 1199.98px) and (min-width: 768px) {
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+
+      .carousel-container {
+        flex: 1;
+        overflow: hidden;
       }
 
-      .step-label {
-        font-size: 13px;
+      .carousel-track {
+        display: flex;
+        gap: 20px; // Consistent gap
+        transition: transform 0.3s ease;
       }
-    }
 
-    &::before {
-      top: 45px;
-    }
+      .carousel-item {
+        flex: 0 0 calc(50% - 10px) !important; // 2 cards per view (50% each - half gap)
+        max-width: calc(50% - 10px) !important;
+        min-width: calc(50% - 10px) !important;
+        box-sizing: border-box !important;
 
-    .unlocked-line {
-      top: 45px;
+        // Ensure ProductCard doesn't get overridden by global styles
+        .product-card {
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          border: 0.1px solid $primary !important; // Maintain original border
+        }
+      }
+
+      .carousel-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: white !important;
+        border: 1px solid $primary !important;
+        border-radius: 50% !important;
+        color: $primary !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        flex-shrink: 0 !important;
+        z-index: 10 !important;
+
+        i {
+          font-size: 16px !important;
+        }
+
+        &:hover:not(:disabled) {
+          background: $primary !important;
+          color: white !important;
+        }
+
+        &:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        &.prev {
+          order: -1;
+        }
+
+        &.next {
+          order: 1;
+        }
+      }
     }
   }
 }
@@ -1491,33 +1538,40 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .achievements-stepper {
-    gap: 16px;
-
-    .step-item {
-      .step-circle {
-        width: 85px;
-        height: 85px;
-        padding: 8px;
-      }
-
-      .step-label {
-        font-size: 13px;
-      }
-    }
-
-    &::before {
-      top: 42px;
-    }
-
-    .unlocked-line {
-      top: 42px;
-    }
+  // Skeleton responsive
+  .skeleton-avatar {
+    width: 120px;
+    height: 120px;
   }
 
-  .listings-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 18px;
+  .skeleton-user-info-section {
+    align-items: center;
+  }
+
+  .skeleton-name {
+    width: 180px;
+  }
+
+  .skeleton-email {
+    width: 130px;
+  }
+
+  .skeleton-follow-stats {
+    justify-content: center;
+  }
+
+  .skeleton-badges {
+    gap: 12px;
+  }
+
+  .skeleton-badge {
+    width: 100%;
+    max-width: none;
+  }
+
+  .skeleton-badge-icon {
+    width: 56px;
+    height: 56px;
   }
 }
 
@@ -1604,50 +1658,6 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .achievements-section {
-    width: 100%;
-  }
-
-  .achievements-title {
-    flex-direction: column;
-    align-items: flex-start !important;
-    gap: 10px;
-    font-size: 16px !important;
-
-    .carbon-total {
-      font-size: 13px;
-    }
-  }
-
-  .achievements-stepper {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px 16px;
-
-    &::before {
-      display: none;
-    }
-
-    .unlocked-line {
-      display: none;
-    }
-
-    .step-item {
-      .step-circle {
-        width: 75px;
-        height: 75px;
-        padding: 8px;
-      }
-
-      .step-label {
-        font-size: 12px;
-      }
-
-      .step-requirement {
-        font-size: 10px;
-      }
-    }
-  }
-
   .tab-btn {
     padding: 16px 20px;
     font-size: 14px;
@@ -1658,6 +1668,94 @@ const scrollCarousel = (carouselRef, index) => {
 
     span:not(.tab-count) {
       display: none;
+    }
+  }
+
+  .skeleton-badges {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .skeleton-badge {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  // Mobile Layout: Show carousel with 1 card at a time
+  .listing-section {
+    .mobile-carousel {
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+
+      .carousel-container {
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .carousel-track {
+        display: flex;
+        gap: 15px; // Smaller gap for mobile
+        transition: transform 0.3s ease;
+      }
+
+      .carousel-item {
+        flex: 0 0 100% !important; // 1 card per view
+        max-width: 100% !important;
+        min-width: 100% !important;
+        box-sizing: border-box !important;
+
+        // Ensure ProductCard doesn't get overridden by global styles
+        .product-card {
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          border: 0.1px solid $primary !important;
+        }
+      }
+
+      .carousel-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: white !important;
+        border: 1px solid $primary !important;
+        border-radius: 50% !important;
+        color: $primary !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        flex-shrink: 0 !important;
+        z-index: 10 !important;
+
+        i {
+          font-size: 16px !important;
+        }
+
+        &:hover:not(:disabled) {
+          background: $primary !important;
+          color: white !important;
+        }
+
+        &:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        &.prev {
+          order: -1;
+        }
+
+        &.next {
+          order: 1;
+        }
+      }
     }
   }
 }
@@ -1742,103 +1840,13 @@ const scrollCarousel = (carouselRef, index) => {
     }
   }
 
-  .achievements-title {
-    font-size: 15px !important;
-
-    .carbon-total {
-      font-size: 12px;
-      padding: 4px 10px;
-    }
-  }
-
-  .achievements-stepper {
-    gap: 16px 12px;
-
-    .step-item {
-      .step-circle {
-        width: 65px;
-        height: 65px;
-        padding: 6px;
-      }
-
-      .step-label {
-        font-size: 11px;
-      }
-
-      .step-requirement {
-        font-size: 9px;
-      }
-    }
-  }
-
-  .listings-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  // Mobile: Hide desktop grid, show carousel
-  .desktop-grid {
-    display: none;
-  }
-
-  .mobile-carousel {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    position: relative;
-  }
-
-  .carousel-container {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .carousel-track {
-    display: flex;
-    gap: 12px;
-    transition: transform 0.3s ease;
-  }
-
-  .carousel-item {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-
+  // Adjust carousel arrow size for smaller screens
   .carousel-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 32px;
     height: 32px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 50%;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
-    flex-shrink: 0;
 
     i {
       font-size: 16px;
-    }
-
-    &:hover:not(:disabled) {
-      background: $primary;
-      color: white;
-      transform: scale(1.1);
-    }
-
-    &:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    &.prev {
-      order: -1;
-    }
-
-    &.next {
-      order: 1;
     }
   }
 
@@ -1852,6 +1860,293 @@ const scrollCarousel = (carouselRef, index) => {
     p {
       font-size: 15px;
     }
+  }
+
+  // Skeleton responsive for small screens
+  .skeleton-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .skeleton-name {
+    width: 150px;
+    height: 24px;
+  }
+
+  .skeleton-email {
+    width: 120px;
+  }
+
+  .skeleton-button {
+    width: 100px;
+    height: 40px;
+  }
+
+  .skeleton-badge {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 14px;
+  }
+
+  .skeleton-badge-icon {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Override global card styles that interfere with ProductCard */
+.listings-sections .product-card,
+.mobile-carousel .product-card {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0.1px solid $primary !important; // Preserve original border
+}
+
+// Skeleton Loading Styles
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-user-info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-name {
+  width: 250px;
+  height: 32px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-email {
+  width: 200px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-follow-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.skeleton-follow-stat {
+  width: 80px;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-user-stats {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.skeleton-stat-item {
+  width: 100px;
+  height: 40px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.skeleton-button {
+  width: 150px;
+  height: 44px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badges {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skeleton-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  width: calc(50% - 16px);
+  min-width: 220px;
+  max-width: 260px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.skeleton-badge-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+}
+
+.skeleton-badge-title,
+.skeleton-badge-meta {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge-title {
+  width: 70%;
+}
+
+.skeleton-badge-meta {
+  width: 50%;
+}
+
+.skeleton-badge-progress {
+  height: 10px;
+  width: 100%;
+  border-radius: 6px;
+  background: #f3f3f3;
+  overflow: hidden;
+}
+
+.skeleton-badge-progress-bar {
+  height: 100%;
+  width: 60%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-subsection-title {
+  width: 100px;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-subsection-count {
+  width: 60px;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-product-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-product-card > .skeleton-image,
+.skeleton-product-card > .skeleton-content {
+  width: 100%;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 1199.98px) {
+  .skeleton-product-card {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .skeleton-product-card {
+    flex-direction: column;
+  }
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+
+  &.short {
+    width: 60%;
   }
 }
 </style>

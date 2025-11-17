@@ -56,7 +56,15 @@ export async function searchItems(filters = {}) {
         throw new Error(error.message);
     }
 
-    // RPC 回傳的 data 就是完美的 DTO，直接回傳
+    // Note: The RPC should return latitude and longitude directly
+    // If not present, coordinates will be null and markers won't show on map
+    console.log('[searchItemsAPI] Received items:', data?.length);
+
+    if (data && data.length > 0) {
+        console.log('[searchItemsAPI] Sample item fields:', Object.keys(data[0]));
+        console.log('[searchItemsAPI] First item:', data[0]);
+    }
+
     return data;
 }
 

@@ -1,10 +1,16 @@
 import { supabase } from '@/lib/supabase.js'; // 假設您已在 src/supabaseClient.js 初始化
 
 // ===================================================================
-// ### 單一物品詳情 API - v2.5（2025-11-01）
+// ### 單一物品詳情 API - v4.0（2025-11-09）
+// ### Migration v3.0 變更說明：
+// ###   - ✅ 支援 items.use_primary_location 欄位
+// ###   - ✅ 物品可選擇使用主要或次要地點
+// ###   - ✅ 根據 use_primary_location 自動關聯正確的地點
+// ###   - ✅ 已移除 items.location_id（已於前次遷移移除）
+// ###
 // ### 特性：
 // ###   - 買家位置：自動使用資料庫位置（主要地點優先）
-// ###   - 賣家位置：自動查詢主要地點（is_primary=true）
+// ###   - 賣家位置：根據物品的 use_primary_location 決定使用主要或次要地點
 // ###   - 隱私保護：只有登入買家可查看距離資訊
 // ###   - 支援未登入用戶瀏覽物品基本資訊
 // ###   - PostGIS 精確距離計算
@@ -13,14 +19,24 @@ import { supabase } from '@/lib/supabase.js'; // 假設您已在 src/supabaseCli
 // ===================================================================
 
 /**
- * 【主要函數】獲取單一物品的完整詳情（優化版）
+ * 【主要函數】獲取單一物品的完整詳情（v4.0 優化版）
+ *
+ * 🔄 Migration v3.0 更新 (2025-11-09):
+ *   - 支援 items.use_primary_location 欄位
+ *   - 物品可選擇使用主要地點 (true) 或次要地點 (false)
+ *   - 賣家位置: items.user_id + use_primary_location → locations (user_id, is_primary)
+ *   - 買家位置: 自動從 locations 表取得登入者的主要地點
  *
  * 買家位置策略：
  *   - 自動使用資料庫中的主要地點（is_primary=true）
  *   - 若無主要地點，則使用最早建立的地點
  *   - 若無任何地點，distance_km 為 null
  *
- * 賣家位置：自動查詢該賣家的主要地點（is_primary=true）
+ * 賣家位置策略（新增）：
+ *   - 根據物品的 use_primary_location 欄位決定
+ *   - true: 使用該賣家的主要地點（is_primary=true）
+ *   - false: 使用該賣家的次要地點（is_primary=false）
+ *   - 透過 items.user_id 和 use_primary_location 關聯 locations
  *
  * 隱私保護：
  *   - 只有已登入用戶可以查看距離資訊
@@ -35,11 +51,7 @@ export async function getItemDetails(itemId) {
   try {
     // 1. 參數驗證
     if (!itemId || typeof itemId !== "number") {
-      try {
-        itemId = parseInt(itemId, 10);
-      } catch (error) {
-        throw new Error("itemId 必須是有效的數字");
-      }
+      throw new Error("itemId 必須是有效的數字");
     }
 
     if (itemId <= 0) {
@@ -55,7 +67,8 @@ export async function getItemDetails(itemId) {
       console.log("提示：未登入用戶僅能查看物品基本資訊");
     }
 
-    // 3. 呼叫優化版 RPC 函式（自動處理位置）
+    // 3. 呼叫 v3.0 優化版 RPC 函式（使用 user_id 關聯位置）
+    // Migration v2.0: 已更新為使用 items.user_id 關聯賣家位置
     const { data, error } = await supabase
       .rpc("get_item_details_with_location", {
         p_item_id: itemId,

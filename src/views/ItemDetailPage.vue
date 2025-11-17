@@ -219,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -230,6 +230,7 @@ import ProductCard from '../components/ProductCard.vue';
 import { useAuthStore } from '../stores/auth';
 import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
 import { searchItems } from '@/api/get_searchItemsAPI.js';
+import { startChat } from '@/api/conversationsAPI.js';
 
 const authStore = useAuthStore();
 
@@ -263,11 +264,11 @@ const breadcrumbItems = computed(() => {
   if (product.value.category) {
     items.push({
       label: product.value.category.main_category_name,
-      to: `/items?category=${product.value.category.main_category_id}`
+      to: { name: 'ItemList', query: { category: product.value.category.main_category_id } }
     });
     items.push({
       label: product.value.category.sub_category_name,
-      to: `/items?subCategory=${product.value.category.sub_category_id}`
+      to: { name: 'ItemList', query: { subCategory: product.value.category.sub_category_id } }
     });
   }
 
@@ -311,24 +312,65 @@ const nextImage = () => {
   }
 };
 
-const handleMessage = () => {
-  console.log('Message seller');
-  // Implement messaging logic
+const handleMessage = async () => {
+  // Check if user is logged in
+  if (!authStore.user) {
+    alert('請先登入才能發送訊息');
+    router.push('/login');
+    return;
+  }
+
+  // Don't allow messaging yourself
+  if (product.value.user?.id === authStore.user.id) {
+    alert('無法向自己發送訊息');
+    return;
+  }
+
+  try {
+    console.log('Starting chat for item:', product.value.id);
+    // Start or find conversation
+    const result = await startChat(product.value.id);
+    console.log('Chat started, conversation ID:', result.conversation_id);
+
+    // Navigate to messages page
+    router.push('/messages');
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+    alert('無法開始聊天，請稍後再試');
+  }
 };
 
 const goToProduct = (productId) => {
-  // 重新載入頁面以顯示新的商品資訊
+  // 切換路由，watch 會自動重新載入商品資料
   router.push({ name: 'ItemDetail', params: { id: productId } });
-  // 頁面切換後重新載入商品資料
-  loadProductDetails();
+  // 滾動到頁面頂部
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const handleFavoriteToggle = (data) => {
   console.log('Favorite toggled:', data);
 };
 
-const handleContactSeller = (productId) => {
-  console.log('Contact seller for product:', productId);
+const handleContactSeller = async (productId) => {
+  // Check if user is logged in
+  if (!authStore.user) {
+    alert('請先登入才能發送訊息');
+    router.push('/login');
+    return;
+  }
+
+  try {
+    console.log('Starting chat for item:', productId);
+    // Start or find conversation
+    const result = await startChat(productId);
+    console.log('Chat started, conversation ID:', result.conversation_id);
+
+    // Navigate to messages page
+    router.push('/messages');
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+    alert('無法開始聊天，請稍後再試');
+  }
 };
 
 // Image preview methods
@@ -411,27 +453,34 @@ const loadProductDetails = async () => {
   error.value = null;
 
   try {
-    const itemId = route.params.id;
+    const itemId = Number(route.params.id);
 
-    // 提供使用者位置（這裡使用預設座標，你可以改用實際的地理位置 API）
-    const userLocation = {
-      latitude: 24.179,  // 預設：台中市西屯區
-      longitude: 120.645
-    };
-
-    const options = {
-      headers: { Authorization: `Bearer ${authStore.session.access_token}` }
+    // 驗證 itemId
+    if (!itemId || itemId <= 0) {
+      error.value = '無效的物品 ID';
+      return;
     }
-    console.log(options);
+
+    console.log(`Loading item details for ID: ${itemId}`);
     
-    const response = await getItemDetails(itemId, options);
+    // v4.0 API - 自動處理使用者位置和登入狀態
+    const response = await getItemDetails(itemId);
     console.log('Fetched item details:', response);
 
-    // 新的 API 回傳格式包含 success, message, data 等欄位
+    // 檢查回應格式
     if (response && response.success && response.data) {
       product.value = response.data;
+      
       // 重置圖片索引
       currentImageIndex.value = 0;
+
+      // 顯示位置資訊（如果有）
+      if (response.isAuthenticated) {
+        if (response.hasDistance && response.data.distance_km) {
+          console.log(`距離: ${response.data.distance_km} km`);
+        }
+        console.log(`位置來源: ${response.locationSource}`);
+      }
 
       // Load related products based on sub-category
       if (response.data.category?.sub_category_id) {
@@ -440,7 +489,7 @@ const loadProductDetails = async () => {
     } else {
       // Handle item not found or unavailable
       error.value = response?.message || '找不到此物品，可能已下架或不存在';
-      console.error('Item not found');
+      console.warn(`${response?.code}: ${response?.message}`);
     }
   } catch (err) {
     console.error('Error loading item details:', err);
@@ -454,6 +503,16 @@ const loadProductDetails = async () => {
 const retryLoadProduct = () => {
   loadProductDetails();
 };
+
+// 監聽路由參數變化
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      loadProductDetails();
+    }
+  }
+);
 
 onMounted(async () => {
   await authStore.initAuth();
@@ -539,6 +598,7 @@ onUnmounted(() => {
 .image-gallery {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   gap: 20px;
 }
 

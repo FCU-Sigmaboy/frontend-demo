@@ -6,166 +6,128 @@
       <div class="messages-container">
         <div class="messages-layout">
           <!-- Conversations List -->
-          <aside :class="['conversations-sidebar', { 'mobile-hidden': selectedConversation }]">
-            <div class="sidebar-header">
-              <h2 class="sidebar-title">訊息</h2>
-              <button class="filter-btn" @click="showFilterMenu = !showFilterMenu">
-                <i class="bi bi-funnel"></i>
-              </button>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="search-bar">
-              <i class="bi bi-search"></i>
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="搜尋對話..."
-                class="search-input"
-              />
-            </div>
-
-            <!-- Filter Tabs -->
-            <div class="filter-tabs">
-              <button
-                v-for="filter in filters"
-                :key="filter.id"
-                :class="['filter-tab', { active: activeFilter === filter.id }]"
-                @click="activeFilter = filter.id"
-              >
-                {{ filter.label }}
-                <span v-if="filter.count" class="filter-count">{{ filter.count }}</span>
-              </button>
-            </div>
-
-            <!-- Conversations List -->
-            <div class="conversations-list">
-              <div
-                v-for="conversation in filteredConversations"
-                :key="conversation.id"
-                :class="['conversation-item', { active: selectedConversation?.id === conversation.id }]"
-                @click="selectConversation(conversation)"
-              >
-                <div class="conv-avatar">
-                  <img
-                    :src="conversation.user.avatar"
-                    :alt="conversation.user.name"
-                    class="avatar-image"
-                  />
-                  <span v-if="conversation.user.online" class="online-indicator"></span>
-                </div>
-
-                <div class="conv-content">
-                  <div class="conv-header">
-                    <h3 class="conv-name">{{ conversation.user.name }}</h3>
-                    <span class="conv-time">{{ conversation.lastMessage.time }}</span>
-                  </div>
-                  <div class="conv-preview">
-                    <p class="preview-text">{{ conversation.lastMessage.text }}</p>
-                    <span v-if="conversation.unreadCount" class="unread-badge">
-                      {{ conversation.unreadCount }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Empty State -->
-              <div v-if="filteredConversations.length === 0" class="empty-state">
-                <i class="bi bi-chat-left-text"></i>
-                <p>尚無對話</p>
-              </div>
-            </div>
-          </aside>
+          <ConversationsSidebar
+            :loading="loading"
+            :conversations="displayConversations"
+            :selected-id="selectedConversation?.id ?? null"
+            :filters="filters"
+            v-model:search-query="searchQuery"
+            v-model:active-filter="activeFilter"
+            :mobile-hidden="!!selectedConversation"
+            @select="selectConversation"
+          />
 
           <!-- Chat Area -->
-          <div :class="['chat-area', { 'mobile-visible': selectedConversation }]">
+          <div :class="['chat-area', { 'mobile-visible': selectedConversation || messagesLoading }]">
             <!-- No Conversation Selected -->
-            <div v-if="!selectedConversation" class="no-conversation">
+            <div v-if="!selectedConversation && !messagesLoading" class="no-conversation">
               <i class="bi bi-chat-dots"></i>
               <h3>選擇對話開始聊天</h3>
               <p>從左側選擇一個對話，開始與其他使用者交流</p>
             </div>
 
-            <!-- Active Chat -->
+            <!-- Active Chat (or Loading) -->
             <div v-else class="active-chat">
               <!-- Chat Header -->
-              <div class="chat-header">
-                <button class="back-btn-mobile" @click="deselectConversation">
-                  <i class="bi bi-arrow-left"></i>
-                </button>
+              <ChatHeader
+                v-if="selectedConversation || messagesLoading"
+                :conversation="selectedConversation"
+                :show-more-menu="showMoreMenu"
+                :messages-loading="messagesLoading"
+                @back="deselectConversation"
+                @toggle-menu="showMoreMenu = !showMoreMenu"
+                @archive="handleArchiveConversation"
+              />
 
-                <div class="chat-user-info">
-                  <img
-                    :src="selectedConversation.user.avatar"
-                    :alt="selectedConversation.user.name"
-                    class="user-avatar"
-                  />
-                  <div class="user-details">
-                    <h3 class="user-name">{{ selectedConversation.user.name }}</h3>
-                    <span class="user-status">
-                      {{ selectedConversation.user.online ? '上線中' : '離線' }}
-                    </span>
-                  </div>
-                </div>
+              <ChatMessages
+                :register-messages-area="registerMessagesArea"
+                :messages-loading="messagesLoading"
+                :grouped-messages="groupedMessages"
+                :is-loading-more-messages="isLoadingMoreMessages"
+                @scroll="handleMessagesScroll"
+                @open-item="openItemPage"
+                @retry="retryMessage"
+              />
 
-                <button class="more-btn">
-                  <i class="bi bi-three-dots-vertical"></i>
-                </button>
-              </div>
-
-              <!-- Product Context (if applicable) -->
-              <div v-if="selectedConversation.product" class="product-context">
-                <img
-                  :src="selectedConversation.product.image"
-                  :alt="selectedConversation.product.name"
-                  class="product-image"
+              <div
+                class="chat-overlay-stack"
+                :class="{
+                  'has-scroll-button': showScrollToBottomBtn,
+                  'has-pending-reference': !!pendingItemReference,
+                  'has-typing-indicator': showBottomTypingIndicator && !!selectedConversation
+                }"
+              >
+                <ChatScrollControls
+                  :show-scroll-to-bottom-btn="showScrollToBottomBtn"
+                  :scroll-button-label="scrollButtonLabel"
+                  :pending-item-reference="pendingItemReference"
+                  @scroll-to-bottom="scrollToBottom"
                 />
-                <div class="product-info">
-                  <h4 class="product-name">{{ selectedConversation.product.name }}</h4>
-                  <p class="product-price">NT$ {{ selectedConversation.product.price }}</p>
-                </div>
-                <button class="view-product-btn" @click="goToProduct(selectedConversation.product.id)">
-                  查看
-                </button>
-              </div>
 
-              <!-- Messages Area -->
-              <div ref="messagesArea" class="messages-area">
-                <div v-for="message in messages" :key="message.id" class="message-wrapper">
-                  <!-- Date Divider -->
-                  <div v-if="message.showDate" class="date-divider">
-                    <span>{{ message.date }}</span>
+                <!-- Pending Item Reference (above input, outside wrapper for animation) -->
+                <transition name="item-reference-slide">
+                  <div v-if="pendingItemReference" class="pending-item-reference">
+                    <div class="reference-info">
+                      <img
+                        v-if="pendingItemReference.image"
+                        :src="pendingItemReference.image"
+                        alt="提及物品"
+                        class="reference-thumbnail"
+                      />
+                      <i v-else class="bi bi-box-seam"></i>
+                      <div class="reference-details">
+                        <span class="reference-label">提及物品</span>
+                        <span class="reference-title">{{ pendingItemReference.title }}</span>
+                        <span v-if="pendingItemPrice" class="reference-meta">{{ pendingItemPrice }}</span>
+                      </div>
+                    </div>
+                    <button class="remove-reference-btn" @click="removePendingItemReference">
+                      <i class="bi bi-x"></i>
+                    </button>
                   </div>
+                </transition>
 
-                  <!-- Message -->
-                  <div :class="['message', { 'message-sent': message.isSent, 'message-received': !message.isSent }]">
-                    <div class="message-content">
-                      <p class="message-text">{{ message.text }}</p>
-                      <span class="message-time">{{ message.time }}</span>
+                <transition name="typing-indicator-slide">
+                  <div
+                    v-if="showBottomTypingIndicator && selectedConversation"
+                    class="typing-indicator-wrapper"
+                  >
+                    <div class="typing-indicator" aria-live="polite">
+                      <span class="typing-dots" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </span>
+                      <span class="typing-text">{{ typingIndicatorBaseText }}...</span>
                     </div>
                   </div>
-                </div>
+                </transition>
               </div>
 
               <!-- Input Area -->
-              <div class="input-area">
-                <button class="attach-btn" @click="handleAttachment">
-                  <i class="bi bi-paperclip"></i>
-                </button>
-                <input
-                  v-model="messageInput"
-                  type="text"
-                  placeholder="輸入訊息..."
-                  class="message-input"
-                  @keypress.enter="sendMessage"
-                />
-                <button
-                  class="send-btn"
-                  :disabled="!messageInput.trim()"
-                  @click="sendMessage"
-                >
-                  <i class="bi bi-send-fill"></i>
-                </button>
+              <div class="input-area-wrapper">
+                <div class="input-area">
+                  <button class="attach-btn" @click="handleAttachment" title="附件">
+                    <i class="bi bi-paperclip"></i>
+                  </button>
+                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="提出交易">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </button>
+                  <input
+                    v-model="messageInput"
+                    type="text"
+                    placeholder="輸入訊息..."
+                    class="message-input"
+                    @keypress.enter="sendMessage"
+                  />
+                  <button
+                    class="send-btn"
+                    :disabled="!messageInput.trim()"
+                    @click="sendMessage"
+                  >
+                    <i class="bi bi-send-fill"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -173,472 +135,149 @@
       </div>
     </main>
 
-    <AppFooter />
+    <!-- Transaction Modal -->
+    <TransactionModal
+      v-model="showTransactionModal"
+      :conversation-items="conversationItems"
+      :loading="isLoadingTransactionItems"
+      :current-user-id="currentUser?.id"
+      @confirm="handleTransactionConfirm"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
-import AppFooter from '../components/AppFooter.vue';
+import ConversationsSidebar from '@/components/messages/ConversationsSidebar.vue';
+import ChatHeader from '@/components/messages/ChatHeader.vue';
+import ChatMessages from '@/components/messages/ChatMessages.vue';
+import ChatScrollControls from '@/components/messages/ChatScrollControls.vue';
+import TransactionModal from '@/components/messages/TransactionModal.vue';
+import { useMessagePage } from '@/composables/useMessagePage';
 
-const router = useRouter();
-
-// State
-const userPoints = ref(500);
-const searchQuery = ref('');
-const activeFilter = ref('all');
-const selectedConversation = ref(null);
-const messageInput = ref('');
-const messagesArea = ref(null);
-const showFilterMenu = ref(false);
-
-const filters = [
-  { id: 'all', label: '全部', count: 5 },
-  { id: 'unread', label: '未讀', count: 2 },
-  { id: 'buying', label: '購買中', count: 2 },
-  { id: 'selling', label: '出售中', count: 3 }
-];
-
-// Mock conversations
-const conversations = ref([
-  {
-    id: 1,
-    user: {
-      name: '王小明',
-      avatar: 'https://placehold.co/48/6fb8a5/ffffff?text=WM',
-      online: true
-    },
-    product: {
-      id: 1,
-      name: 'iPhone 13 Pro',
-      price: 25000,
-      image: 'https://placehold.co/60x60/6fb8a5/ffffff?text=Phone'
-    },
-    lastMessage: {
-      text: '你好，請問這個還在嗎？',
-      time: '10:30'
-    },
-    unreadCount: 2,
-    type: 'buying'
-  },
-  {
-    id: 2,
-    user: {
-      name: '李美麗',
-      avatar: 'https://placehold.co/48/5a9d8c/ffffff?text=LM',
-      online: false
-    },
-    product: {
-      id: 2,
-      name: '二手沙發',
-      price: 5000,
-      image: 'https://placehold.co/60x60/5a9d8c/ffffff?text=Sofa'
-    },
-    lastMessage: {
-      text: '好的，謝謝！',
-      time: '昨天'
-    },
-    unreadCount: 0,
-    type: 'selling'
-  },
-  {
-    id: 3,
-    user: {
-      name: '陳大明',
-      avatar: 'https://placehold.co/48/4a8b7d/ffffff?text=CD',
-      online: true
-    },
-    product: null,
-    lastMessage: {
-      text: '下午3點可以面交嗎？',
-      time: '2天前'
-    },
-    unreadCount: 0,
-    type: 'buying'
-  }
-]);
-
-const messages = ref([]);
-
-// Computed
-const filteredConversations = computed(() => {
-  let filtered = conversations.value;
-
-  // Filter by type
-  if (activeFilter.value !== 'all') {
-    if (activeFilter.value === 'unread') {
-      filtered = filtered.filter(c => c.unreadCount > 0);
-    } else {
-      filtered = filtered.filter(c => c.type === activeFilter.value);
-    }
-  }
-
-  // Filter by search
-  if (searchQuery.value) {
-    filtered = filtered.filter(c =>
-      c.user.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    );
-  }
-
-  return filtered;
-});
-
-// Methods
-const selectConversation = (conversation) => {
-  selectedConversation.value = conversation;
-
-  // Mark as read
-  conversation.unreadCount = 0;
-
-  // Load messages (mock data)
-  messages.value = [
-    {
-      id: 1,
-      text: '你好！',
-      time: '10:25',
-      isSent: false,
-      showDate: true,
-      date: '今天'
-    },
-    {
-      id: 2,
-      text: '嗨！有什麼可以幫忙的嗎？',
-      time: '10:26',
-      isSent: true,
-      showDate: false
-    },
-    {
-      id: 3,
-      text: '請問這個還在嗎？',
-      time: '10:30',
-      isSent: false,
-      showDate: false
-    }
-  ];
-
-  // Scroll to bottom
-  nextTick(() => {
-    if (messagesArea.value) {
-      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-    }
-  });
-};
-
-const deselectConversation = () => {
-  selectedConversation.value = null;
-};
-
-const sendMessage = () => {
-  if (!messageInput.value.trim()) return;
-
-  const newMessage = {
-    id: messages.value.length + 1,
-    text: messageInput.value,
-    time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-    isSent: true,
-    showDate: false
-  };
-
-  messages.value.push(newMessage);
-  messageInput.value = '';
-
-  // Update conversation last message
-  if (selectedConversation.value) {
-    selectedConversation.value.lastMessage = {
-      text: newMessage.text,
-      time: newMessage.time
-    };
-  }
-
-  // Scroll to bottom
-  nextTick(() => {
-    if (messagesArea.value) {
-      messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
-    }
-  });
-};
-
-const handleAttachment = () => {
-  console.log('Handle attachment');
-  // Implement file attachment logic
-};
-
-const goToProduct = (productId) => {
-  router.push({ name: 'ItemDetail', params: { id: productId } });
-};
+const {
+  userPoints,
+  searchQuery,
+  activeFilter,
+  messageInput,
+  messagesArea,
+  showMoreMenu,
+  messagesLoading,
+  pendingItemReference,
+  pendingItemPrice,
+  showScrollToBottomBtn,
+  isLoadingMoreMessages,
+  scrollButtonLabel,
+  showBottomTypingIndicator,
+  typingIndicatorBaseText,
+  loading,
+  filters,
+  displayConversations,
+  selectedConversation,
+  currentUser,
+  groupedMessages,
+  selectConversation,
+  deselectConversation,
+  handleArchiveConversation,
+  handleAttachment,
+  sendMessage,
+  retryMessage,
+  openItemPage,
+  removePendingItemReference,
+  handleMessagesScroll,
+  registerMessagesArea,
+  scrollToBottom,
+  // Transaction Modal
+  showTransactionModal,
+  isLoadingTransactionItems,
+  conversationItems,
+  handleOpenTransactionModal,
+  handleTransactionConfirm
+} = useMessagePage();
 </script>
 
 <style scoped lang="scss">
 @import '@/styles/variables';
+
+:global(.typing-indicator-slide-enter-active),
+:global(.typing-indicator-slide-leave-active) {
+  transition: max-height 0.28s ease,
+              padding-top 0.28s ease,
+              padding-bottom 0.28s ease,
+              opacity 0.2s ease;
+}
+
+:global(.typing-indicator-slide-enter-from),
+:global(.typing-indicator-slide-leave-to) {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+}
+
+:global(.typing-indicator-slide-enter-to),
+:global(.typing-indicator-slide-leave-from) {
+  max-height: 56px;
+  padding-top: 0;
+  padding-bottom: 10px;
+  opacity: 1;
+}
+
+// ============================================
+// Z-Index 層級說明 (Z-Index Hierarchy)
+// ============================================
+// 1000: .keyboard-open .input-area-wrapper (鍵盤開啟時的輸入框)
+// 100:  .input-area-wrapper (一般輸入框)
+// 60:   .scroll-to-bottom-btn-floating (回到最新按鈕 - ChatScrollControls)
+// 50:   .pending-item-reference (物品引用卡片)
+// 10:   .input-area-wrapper (手機版)
+// ============================================
 
 .messages-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #f9f9f9;
+  
+  // Mobile viewport fix - use fallback pattern
+  @supports (-webkit-touch-callout: none) {
+    height: -webkit-fill-available;
+    max-height: -webkit-fill-available;
+  }
+  
+  // Ensure touch scrolling works properly on mobile
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation; // Allow native scrolling
 }
 
 .main-content {
   flex: 1;
   padding: 0;
   overflow: hidden;
+  // Ensure content doesn't get hidden by footer on mobile
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .messages-container {
   max-width: 1600px;
   margin: 0 auto;
-  height: calc(100vh - 50px); // Subtract header height
+  display: flex;
+  flex-direction: column;
+  // Calculate height properly on mobile devices
+  height: calc(100vh - 50px - env(safe-area-inset-bottom, 0px));
+  
+  // iOS Safari support
+  @supports (-webkit-touch-callout: none) {
+    height: calc(-webkit-fill-available - 50px - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .messages-layout {
   display: flex;
+  flex: 1;
+  background: white;
   height: 100%;
-  background: white;
-}
-
-// Conversations Sidebar
-.conversations-sidebar {
-  width: 380px;
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-  background: white;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
-
-  .sidebar-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: #1e1e1e;
-    margin: 0;
-  }
-
-  .filter-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    i {
-      font-size: 18px;
-      color: #666;
-    }
-
-    &:hover {
-      background: #f5f5f5;
-    }
-  }
-}
-
-// Search Bar
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #e0e0e0;
-
-  i {
-    font-size: 16px;
-    color: #999;
-  }
-
-  .search-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #1e1e1e;
-    outline: none;
-
-    &::placeholder {
-      color: #999;
-    }
-  }
-}
-
-// Filter Tabs
-.filter-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e0e0e0;
-  overflow-x: auto;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.filter-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid #d0d0d0;
-  border-radius: 20px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #666;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  .filter-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    background: #e0e0e0;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-  }
-
-  &:hover {
-    border-color: $primary;
-    color: $primary;
-  }
-
-  &.active {
-    background: $primary;
-    border-color: $primary;
-    color: white;
-
-    .filter-count {
-      background: rgba(255, 255, 255, 0.3);
-      color: white;
-    }
-  }
-}
-
-// Conversations List
-.conversations-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.conversation-item {
-  display: flex;
-  gap: 12px;
-  padding: 16px 24px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-bottom: 1px solid #f0f0f0;
-
-  &:hover {
-    background: #f9f9f9;
-  }
-
-  &.active {
-    background: #f0faf8;
-    border-left: 3px solid $primary;
-  }
-}
-
-.conv-avatar {
-  position: relative;
-  flex-shrink: 0;
-
-  .avatar-image {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .online-indicator {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 12px;
-    height: 12px;
-    background: #00b894;
-    border: 2px solid white;
-    border-radius: 50%;
-  }
-}
-
-.conv-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.conv-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-
-  .conv-name {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0;
-  }
-
-  .conv-time {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 12px;
-    color: #999;
-    flex-shrink: 0;
-  }
-}
-
-.conv-preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-
-  .preview-text {
-    flex: 1;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #666;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .unread-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    background: $primary;
-    border-radius: 10px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    color: white;
-    flex-shrink: 0;
-  }
 }
 
 // Chat Area
@@ -686,216 +325,262 @@ const goToProduct = (productId) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0; // Allow flex item to shrink
+  position: relative; // 為浮動按鈕定位
+  overflow: hidden; // Prevent scroll on chat container itself - only messages-area should scroll
 }
 
-.chat-header {
+.chat-overlay-stack {
+  display: flex;
+  flex-direction: column;
+  // gap: 10px;
+  position: relative;
+  padding-top: 0;
+  background-color: #f9f9f9;
+}
+
+.chat-overlay-stack.has-scroll-button {
+  padding-top: 12px;
+}
+
+.chat-overlay-stack.has-pending-reference {
+  gap: 12px;
+}
+
+.chat-overlay-stack.has-typing-indicator {
+  gap: 10px;
+}
+
+.typing-indicator-wrapper {
+  padding: 0 24px 10px;
+  max-height: 56px;
+  overflow: hidden;
+}
+
+.typing-indicator {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e0e0e0;
+  gap: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 12px;
+  color: #4a4a4a;
+  opacity: 0.9;
+  overflow: hidden;
+  background: transparent !important;
+}
 
-  .back-btn-mobile {
-    display: none;
+.typing-text,
+.typing-dots {
+  position: relative;
+  z-index: 1;
+}
+
+.typing-text {
+  font-weight: 500;
+  color: #555;
+}
+
+.typing-dots {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: $primary;
+  opacity: 0.25;
+  animation: typing-dot 1.2s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 0.6;
+  }
+}
+
+
+// Item Reference Slide Transition (向下沉到輸入框後方)
+.item-reference-slide-enter-active {
+  transition: all 0.8s ease-out;
+}
+
+.item-reference-slide-leave-active {
+  transition: opacity 0.3s ease-in, 
+              transform 0.4s ease-in,
+              max-height 0.4s ease-in,
+              padding 0.4s ease-in,
+              background-color 0.3s ease-in,
+              border-color 0.3s ease-in;
+}
+
+.item-reference-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.item-reference-slide-leave-to {
+  opacity: 0;
+  transform: translateY(100px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+// ============================================
+// Keyframes
+// ============================================
+
+@keyframes messagePop {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes messageContentPop {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// ============================================
+// 輸入框和物品引用 (Input Area & Item Reference)
+// ============================================
+
+// Input Area Wrapper (包含輸入框)
+.input-area-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  z-index: 100; // 最高層級,確保在所有元素上方
+}
+
+// Pending Item Reference (在輸入框上方，獨立於 wrapper 外)
+.pending-item-reference {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #f0faf8;
+  border-bottom: 1px solid #e0e0e0;
+  border-top: 1px solid #e0e0e0;
+  overflow: hidden;
+  position: relative;
+  z-index: 50; // 比 input-area-wrapper (100) 低,會沉到輸入框後方
+  
+  // 背景色參與過渡動畫,避免白色殘影
+  &.item-reference-slide-leave-active {
+    background: transparent;
+    border-color: transparent;
   }
 
-  .chat-user-info {
-    flex: 1;
+  .reference-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    color: $primary;
 
-    .user-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
+    i {
+      font-size: 16px;
     }
 
-    .user-details {
+    .reference-thumbnail {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .reference-details {
       display: flex;
       flex-direction: column;
+      gap: 2px;
+      color: #1e1e1e;
+      line-height: 1.2;
+    }
 
-      .user-name {
-        font-family: 'Noto Sans TC', sans-serif;
-        font-size: 16px;
-        font-weight: 600;
-        color: #1e1e1e;
-        margin: 0;
-      }
+    .reference-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: $primary;
+    }
 
-      .user-status {
-        font-family: 'Noto Sans TC', sans-serif;
-        font-size: 12px;
-        color: $primary;
-      }
+    .reference-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e1e1e;
+    }
+
+    .reference-meta {
+      font-size: 12px;
+      color: rgba(30, 30, 30, 0.65);
     }
   }
 
-  .more-btn {
-    width: 36px;
-    height: 36px;
+  .remove-reference-btn {
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: 8px;
+    border-radius: 50%;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
 
     i {
-      font-size: 18px;
+      font-size: 20px;
       color: #666;
     }
 
     &:hover {
-      background: #f5f5f5;
-    }
-  }
-}
+      background: rgba(0, 0, 0, 0.05);
 
-// Product Context
-.product-context {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #e0e0e0;
-
-  .product-image {
-    width: 60px;
-    height: 60px;
-    border-radius: 8px;
-    object-fit: cover;
-  }
-
-  .product-info {
-    flex: 1;
-    min-width: 0;
-
-    .product-name {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: #1e1e1e;
-      margin: 0 0 4px 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .product-price {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: $primary;
-      margin: 0;
-    }
-  }
-
-  .view-product-btn {
-    padding: 8px 16px;
-    background: white;
-    border: 1px solid $primary;
-    border-radius: 6px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: $primary;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    &:hover {
-      background: $primary;
-      color: white;
-    }
-  }
-}
-
-// Messages Area
-.messages-area {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
-  background: #f9f9f9;
-}
-
-.message-wrapper {
-  margin-bottom: 16px;
-}
-
-.date-divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 20px 0;
-
-  span {
-    padding: 6px 16px;
-    background: white;
-    border-radius: 12px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 12px;
-    color: #999;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-}
-
-.message {
-  display: flex;
-  margin-bottom: 8px;
-
-  &.message-sent {
-    justify-content: flex-end;
-
-    .message-content {
-      background: $primary;
-      color: white;
-      border-radius: 16px 16px 4px 16px;
-
-      .message-time {
-        color: rgba(255, 255, 255, 0.8);
+      i {
+        color: #1e1e1e;
       }
     }
-  }
-
-  &.message-received {
-    justify-content: flex-start;
-
-    .message-content {
-      background: white;
-      color: #1e1e1e;
-      border-radius: 16px 16px 16px 4px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
-      .message-time {
-        color: #999;
-      }
-    }
-  }
-}
-
-.message-content {
-  max-width: 70%;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  .message-text {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-    margin: 0;
-    word-wrap: break-word;
-  }
-
-  .message-time {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 11px;
-    align-self: flex-end;
   }
 }
 
@@ -906,9 +591,9 @@ const goToProduct = (productId) => {
   gap: 12px;
   padding: 16px 24px;
   background: white;
-  border-top: 1px solid #e0e0e0;
 
   .attach-btn,
+  .transaction-btn,
   .send-btn {
     width: 40px;
     height: 40px;
@@ -929,6 +614,20 @@ const goToProduct = (productId) => {
 
     &:hover {
       background: #f5f5f5;
+    }
+  }
+
+  .transaction-btn {
+    i {
+      color: $primary;
+    }
+
+    &:hover {
+      background: rgba(111, 184, 165, 0.1);
+
+      i {
+        color: darken($primary, 10%);
+      }
     }
   }
 
@@ -1004,37 +703,6 @@ const goToProduct = (productId) => {
     height: calc(100vh - 60px);
   }
 
-  .conversations-sidebar {
-    width: 320px;
-
-    &.mobile-hidden {
-      display: none;
-    }
-  }
-
-  .chat-header {
-    .back-btn-mobile {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      background: transparent;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-
-      i {
-        font-size: 20px;
-        color: #1e1e1e;
-      }
-
-      &:hover {
-        background: #f5f5f5;
-      }
-    }
-  }
-
   .chat-area {
     &.mobile-visible {
       display: flex;
@@ -1049,23 +717,122 @@ const goToProduct = (productId) => {
 @media (max-width: 575.98px) {
   .messages-layout {
     flex-direction: column;
-  }
-
-  .conversations-sidebar {
-    width: 100%;
-    border-right: none;
-
-    &.mobile-hidden {
-      display: none;
-    }
+    overflow: hidden; // Critical: Prevent layout from scrolling
   }
 
   .chat-area {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; // Allow flex item to shrink
+    overflow: hidden; // Prevent outer container from scrolling
   }
 
-  .message-content {
-    max-width: 85%;
+  .active-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    height: -webkit-fill-available; // For iOS Safari
+    flex: 1;
+    min-height: 0; // Critical for nested flex containers
+    overflow: hidden; // Only messages-area should scroll
+    background: #f9f9f9; // 與 messages-area 和 chat-overlay-stack 背景一致
+  }
+
+  .chat-overlay-stack {
+    padding-bottom: 64px; // 為固定在底部的 input-area-wrapper 預留空間 (12px padding-top + 40px content + 12px padding-bottom)
+  }
+
+  // 固定 input-area-wrapper 在底部
+  .input-area-wrapper {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 64px; // 固定高度
+    z-index: 100; // 保持與桌面版一致
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05); // 增加陰影效果
+  }
+
+  .pending-item-reference {
+    padding: 10px 16px;
+
+    .reference-info {
+      gap: 6px;
+
+      i {
+        font-size: 14px;
+      }
+
+      .reference-label {
+        font-size: 12px;
+      }
+
+      .reference-title {
+        font-size: 13px;
+      }
+    }
+
+    .remove-reference-btn {
+      width: 26px;
+      height: 26px;
+
+      i {
+        font-size: 18px;
+      }
+    }
+  }
+
+  .input-area {
+    padding: 12px 16px;
+    height: 100%; // 填滿 input-area-wrapper 的高度
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  .message-input {
+    padding: 10px 12px; // Smaller input for mobile
+  }
+
+  .attach-btn,
+  .transaction-btn,
+  .send-btn {
+    width: 36px;
+    height: 36px;
+
+    i {
+      font-size: 18px;
+    }
+  }
+
+  // Fix for iOS Safari virtual keyboard
+  @supports (-webkit-touch-callout: none) {
+    .input-area-wrapper .input-area {
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
   }
 }
+
+// Adjust layout when virtual keyboard is open
+:global(.keyboard-open) .messages-page .messages-container {
+  height: auto;
+  min-height: 50vh;
+}
+
+:global(.keyboard-open) .messages-page .messages-area {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+:global(.keyboard-open) .messages-page .input-area-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
 </style>

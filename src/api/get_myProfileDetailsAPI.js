@@ -76,8 +76,36 @@ export async function getMyProfileForEdit() {
         data.profile_details = null; // 確保有這個欄位
     }
 
+    // 6. 查詢追蹤數量
+    if (data) {
+        // 查詢「追蹤中」數量 (我追蹤了誰)
+        const { count: followingCount, error: followingError } = await supabase
+            .from('following')
+            .select('*', { count: 'exact', head: true })
+            .eq('follower_id', user.id);
 
-    // 6. data 本身就是您要的巢狀 JSON，直接回傳
+        if (followingError) {
+            console.error('查詢 following_count 失敗:', followingError);
+            data.following_count = 0;
+        } else {
+            data.following_count = followingCount || 0;
+        }
+
+        // 查詢「追蹤者」數量 (誰追蹤了我)
+        const { count: followersCount, error: followersError } = await supabase
+            .from('following')
+            .select('*', { count: 'exact', head: true })
+            .eq('following_id', user.id);
+
+        if (followersError) {
+            console.error('查詢 followers_count 失敗:', followersError);
+            data.followers_count = 0;
+        } else {
+            data.followers_count = followersCount || 0;
+        }
+    }
+
+    // 7. data 本身就是您要的巢狀 JSON，直接回傳
     return data;
 }
 
@@ -88,6 +116,8 @@ export async function getMyProfileForEdit() {
   "profile_picture_url": "https://.../storage/.../joseph.jpg",
   "avg_rating": "4.80",
   "created_at": "2025-01-15T08:00:00.123+00:00",
+  "following_count": 100,
+  "followers_count": 80,
   "profile_details": {
     "balance": 500,
     "carbon_saved_kg": "25.50",

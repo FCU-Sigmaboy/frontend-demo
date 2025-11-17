@@ -61,7 +61,16 @@
         class="scroll-top-btn"
         @click="scrollToTop"
       >
-        <i class="bi bi-arrow-up-circle-fill"></i>
+        <i class="bi bi-arrow-up"></i>
+      </button>
+
+      <!-- Map View Toggle Button -->
+      <button
+        class="view-toggle-btn"
+        @click="toggleToMapView"
+      >
+        <i class="bi bi-map"></i>
+        <span class="toggle-text">顯示地圖</span>
       </button>
     </main>
 
@@ -83,8 +92,11 @@ import ProductCard from '../components/ProductCard.vue';
 import { supabase } from '@/lib/supabase';
 import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
+import { startChat } from '@/api/conversationsAPI.js';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 // State
 const userPoints = ref(500);
@@ -149,9 +161,26 @@ const handleFavoriteToggle = (data) => {
   // Implement favorite logic
 };
 
-const handleContactSeller = (productId) => {
-  console.log('Contact seller for product:', productId);
-  // Implement contact logic
+const handleContactSeller = async (productId) => {
+  // Check if user is logged in
+  if (!authStore.user) {
+    alert('請先登入才能發送訊息');
+    router.push('/login');
+    return;
+  }
+
+  try {
+    console.log('Starting chat for item:', productId);
+    // Start or find conversation
+    const result = await startChat(productId);
+    console.log('Chat started, conversation ID:', result.conversation_id);
+
+    // Navigate to messages page
+    router.push('/messages');
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+    alert('無法開始聊天，請稍後再試');
+  }
 };
 
 const goToProductDetail = (productId) => {
@@ -164,6 +193,10 @@ const handleScroll = () => {
 
 const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const toggleToMapView = () => {
+  router.push({ name: 'MapSearch' });
 };
 
 // Lifecycle
@@ -333,29 +366,77 @@ onUnmounted(() => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: white;
-  border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   i {
-    font-size: 32px;
+    font-size: 20px;
     color: #1e1e1e;
   }
 
   &:hover {
-    background-color: #f5f5f5;
-    transform: translateY(-5px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    border-color: rgba(0, 0, 0, 0.12);
   }
 
   &:active {
-    transform: translateY(-3px);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// Map/List View Toggle Button
+.view-toggle-btn {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 998;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  i {
+    font-size: 18px;
+    color: #1e1e1e;
+  }
+
+  .toggle-text {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e1e1e;
+    letter-spacing: 0.3px;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: translateX(-50%) translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
+  &:active {
+    transform: translateX(-50%) translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -433,14 +514,54 @@ onUnmounted(() => {
     gap: 12px;
   }
 
+  // Scroll to Top Button - Mobile: center bottom
   .scroll-top-btn {
-    width: 40px;
-    height: 40px;
-    bottom: 20px;
-    right: 20px;
+    width: 48px;
+    height: 48px;
+    bottom: 24px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
 
     i {
-      font-size: 24px;
+      font-size: 18px;
+    }
+
+    &:hover {
+      transform: translateX(-50%) translateY(-3px);
+    }
+
+    &:active {
+      transform: translateX(-50%) translateY(-1px);
+    }
+  }
+
+  // Map/List Toggle Button - Mobile: same size as FAB, positioned above it
+  .view-toggle-btn {
+    bottom: 90px; // Above the floating action button
+    right: 24px;
+    left: auto;
+    transform: none;
+    padding: 0;
+    border-radius: 50%;
+    width: 56px; // Match FAB size
+    height: 56px; // Match FAB size
+    justify-content: center;
+
+    .toggle-text {
+      display: none; // Hide text on mobile
+    }
+
+    i {
+      font-size: 22px;
+    }
+
+    &:hover {
+      transform: translateY(-3px);
+    }
+
+    &:active {
+      transform: translateY(-1px);
     }
   }
 }

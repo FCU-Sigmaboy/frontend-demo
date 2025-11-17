@@ -77,3 +77,22 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Add specificity to prevent global .card styling from affecting ProductCard */
+.user-profile-page .product-card,
+.user-profile-page .carousel-item .product-card {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Prevent pinch zoom and double-tap zoom on mobile */
+html {
+  touch-action: manipulation; /* 禁止雙指縮放、雙擊放大 */
+  overscroll-behavior-x: none; /* 防止水平滑動造成的頁面切換 */
+}
+
+body {
+  touch-action: manipulation; /* 禁止雙指縮放、雙擊放大 */
+  overscroll-behavior-x: none; /* 防止水平滑動造成的頁面切換 */
+  /* 保留 overscroll-behavior-y 給子元件控制（如下拉刷新） */
+}

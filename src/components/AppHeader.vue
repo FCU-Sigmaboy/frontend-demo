@@ -5,51 +5,105 @@
         <div class="header-content">
           <!-- Left Side: Logo & Navigation -->
           <div class="header-left">
-            <a href="/" class="logo-link">
-              <img :src="logoImage" alt="台中易起來" class="header-logo" />
-            </a>
+            <div class="logo-link" @click="router.push({ name: 'Home' })" style="cursor: pointer;">
+              <img :src="logoImage" alt="台中易起來" class="header-logo desktop-logo" />
+              <img :src="iconImage" alt="台中易起來" class="header-logo mobile-logo" />
+            </div>
 
             <BNav class="category-nav d-none d-lg-flex">
               <BNavItem
                 v-for="category in categories.slice(0, 4)"
                 :key="category.id"
-                :href="`/items?category=${category.id}`"
+                @click="router.push({ name: 'ItemList', query: { category: category.id } })"
                 class="category-link"
+                style="cursor: pointer;"
               >
                 {{ category.name }}
               </BNavItem>
 
             </BNav>
-            <!-- All Categories Button -->
+            <!-- All Categories Button (Desktop Only) -->
             <BButton
+              id="all-categories-btn"
               variant="link"
-              class="all-categories-btn"
+              class="all-categories-btn d-none d-lg-flex"
               @click="toggleAllCategories"
             >
               <i class="bi bi-grid-3x3-gap"></i>
               <span>所有分類</span>
             </BButton>
+            <BTooltip target="all-categories-btn" placement="bottom">瀏覽所有商品分類</BTooltip>
           </div>
 
           <!-- Right Side Actions -->
           <div class="header-right">
 
-            
+
             <!-- 已登入：顯示使用者資訊 -->
             <template v-if="authStore.isLoggedIn">
 
               <!-- Favorites/Liked Icon (Desktop) -->
-              <BButton variant="link" class="icon-button d-none d-lg-flex" @click="router.push({ name: 'Favorites' })">
+              <BButton
+                id="favorites-btn"
+                variant="link"
+                class="icon-button d-none d-lg-flex"
+                @click="router.push({ name: 'Favorites' })"
+              >
                 <i class="bi bi-heart"></i>
               </BButton>
+              <BTooltip target="favorites-btn" placement="bottom">我的收藏</BTooltip>
+              <!-- Transactions Icon (Desktop) -->
+              <BButton
+                id="transactions-btn"
+                variant="link"
+                class="icon-button transaction-button d-none d-lg-flex"
+                @click="router.push({ name: 'TransactionRecords' })"
+              >
+                <i class="bi bi-receipt"></i>
+                <div class="transaction-badges" aria-hidden="true">
+                  <span
+                    v-if="pendingConfirmationCount > 0"
+                    class="transaction-badge badge-pending"
+                  >
+                    {{ pendingConfirmationCount > 99 ? '99+' : pendingConfirmationCount }}
+                  </span>
+                  <span
+                    v-if="inTransactionCount > 0"
+                    class="transaction-badge badge-active"
+                  >
+                    {{ inTransactionCount > 99 ? '99+' : inTransactionCount }}
+                  </span>
+                </div>
+              </BButton>
+                <BTooltip target="transactions-btn" placement="bottom">
+                  <div class="transactions-tooltip">
+                    <strong>我的交易</strong>
+                    <div>待確認 ({{ pendingConfirmationCount }})</div>
+                    <div>交易中 ({{ inTransactionCount }})</div>
+                  </div>
+                </BTooltip>
 
               <!-- Message/Chat Icon (Desktop) -->
-              <BButton variant="link" class="icon-button d-none d-lg-flex" @click="router.push({ name: 'Messages' })">
+              <BButton
+                id="messages-btn"
+                variant="link"
+                class="icon-button message-button d-none d-lg-flex"
+                @click="router.push({ name: 'Messages' })"
+              >
                 <i class="bi bi-chat-left"></i>
+                <span v-if="unreadMessageCount > 0" class="message-badge">
+                  {{ unreadMessageCount > 99 ? '99+' : unreadMessageCount }}
+                </span>
               </BButton>
+              <BTooltip target="messages-btn" placement="bottom">聊天訊息</BTooltip>
 
               <!-- User Profile (Desktop) -->
-              <div class="user-info d-none d-lg-flex" @click="router.push({ name: 'UserProfile' })" style="cursor: pointer;">
+              <div
+                id="user-profile-info"
+                class="user-info d-none d-lg-flex"
+                @click="router.push({ name: 'UserProfile' })"
+                style="cursor: pointer;"
+              >
                 <img
                   v-if="authStore.userAvatar"
                   :src="authStore.userAvatar"
@@ -60,22 +114,65 @@
                 <i v-else class="bi bi-person-circle user-avatar-icon"></i>
                 <span class="user-name">Hi, {{ authStore.userName }}</span>
               </div>
+              <BTooltip target="user-profile-info" placement="bottom">個人檔案</BTooltip>
 
               <!-- Points Display (Desktop) -->
-              <div class="points-display d-none d-lg-flex">
+              <div
+                id="points-display"
+                class="points-display d-none d-lg-flex"
+                @click="router.push({ name: 'Dashboard' })"
+                style="cursor: pointer;"
+              >
                 <i class="bi bi-leaf points-icon" style="font-size: 1.2rem;"></i>
-                <span class="points-value">{{ userPoints }}</span>
+                <span class="points-value">{{ userBalance }}</span>
+                <span v-if="hasNewAchievements" class="notification-dot"></span>
               </div>
-              
-              <!-- Post Button (Desktop) -->
-             <BButton class="post-button d-none d-lg-flex" @click="router.push({ name: 'CreateListing' })">
+              <BTooltip target="points-display" placement="bottom">點擊查看點數儀表板</BTooltip>
+
+              <!-- Post Button (Desktop Only) -->
+             <BButton
+               id="post-btn"
+               class="post-button d-none d-lg-flex"
+               @click="router.push({ name: 'CreateListing' })"
+             >
                刊登
              </BButton>
+             <BTooltip target="post-btn" placement="bottom">刊登新物品</BTooltip>
 
               <!-- Logout Button -->
-              <BButton variant="outline" class="logout-button d-none d-lg-flex" @click="handleLogout">
+              <BButton
+                id="logout-btn"
+                variant="outline"
+                class="logout-button d-none d-lg-flex"
+                @click="handleLogout"
+              >
                 登出
               </BButton>
+              <BTooltip target="logout-btn" placement="bottom">登出帳號</BTooltip>
+
+              <!-- Mobile: Post Button + Points + Avatar (Always Visible) -->
+              <div class="mobile-user-section d-lg-none">
+                <BButton
+                  class="post-button mobile-post-button"
+                  @click="router.push({ name: 'CreateListing' })"
+                >
+                  刊登
+                </BButton>
+                <div class="mobile-points" @click="router.push({ name: 'Dashboard' })" style="cursor: pointer;">
+                  <i class="bi bi-leaf"></i>
+                  <span>{{ userBalance }}</span>
+                  <span v-if="hasNewAchievements" class="notification-dot-mobile"></span>
+                </div>
+                <img
+                  v-if="authStore.userAvatar"
+                  :src="authStore.userAvatar"
+                  alt="User Avatar"
+                  class="mobile-avatar"
+                  @click="router.push({ name: 'UserProfile' })"
+                  referrerpolicy="no-referrer"
+                />
+                <i v-else class="bi bi-person-circle mobile-avatar-icon" @click="router.push({ name: 'UserProfile' })"></i>
+              </div>
 
             </template>
 
@@ -85,13 +182,18 @@
                 <i class="bi bi-google"></i>
                 <span>使用 Google 登入</span>
               </BButton>
+
+              <!-- Mobile: Login Button -->
+              <BButton class="mobile-login-btn d-lg-none" @click="handleGoogleLogin">
+                登入
+              </BButton>
             </template>
 
             <!-- Hamburger Menu (Mobile) -->
             <BButton
               variant="link"
               class="hamburger-button d-lg-none"
-              @click="toggleMobileMenu"
+              @click="toggleUnifiedMenu"
             >
               <i class="bi bi-list"></i>
             </BButton>
@@ -100,39 +202,96 @@
       </BContainer>
     </BNavbar>
 
-    <!-- Mobile Menu Overlay -->
+    <!-- Unified Mobile Menu (Categories + User Menu) -->
     <Transition name="menu">
-      <div v-if="showMobileMenu" class="mobile-menu-overlay d-lg-none" @click="closeMobileMenu">
-        <div class="mobile-menu-content" @click.stop>
-          <div class="mobile-menu-header">
-            <div class="menu-user-section">
-              <img
-                v-if="authStore.userAvatar"
-                :src="authStore.userAvatar"
-                alt="User Avatar"
-                class="user-icon-img"
-                referrerpolicy="no-referrer"
-              />
-              <i v-else class="bi bi-person-circle user-icon"></i>
-              <span class="user-greeting">Hi, {{ authStore.userName }}</span>
-            </div>
-            <BButton variant="link" class="close-button" @click="closeMobileMenu">
+      <div v-if="showUnifiedMenu" class="unified-menu-overlay d-lg-none" @click="closeUnifiedMenu">
+        <div class="unified-menu-content" @click.stop>
+          <!-- Header -->
+          <div class="unified-menu-header">
+            <h3 class="menu-title">所有分類</h3>
+            <BButton variant="link" class="close-button" @click="closeUnifiedMenu">
               <i class="bi bi-x-lg"></i>
             </BButton>
           </div>
 
-          <div class="mobile-menu-body">
-            <!-- 已登入狀態 -->
-            <template v-if="authStore.isLoggedIn">
-              <div class="menu-user-section">
-                <span class="user-greeting">我的點數</span>
-                <span class="menu-points"><i class="bi bi-leaf"></i> {{ userPoints }}</span>
+          <div class="unified-menu-body">
+            <!-- Category Search -->
+            <div class="category-search">
+              <i class="bi bi-search"></i>
+              <input type="text" placeholder="搜尋分類..." v-model="categorySearch" />
+            </div>
+
+            <!-- Categories Section -->
+            <div class="categories-section">
+              <div v-for="cat in filteredCategories" :key="cat.id" class="category-section">
+                <div class="category-item expandable" @click="toggleCategory(cat.id)">
+                  <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
+                    <i :class="['bi', cat.icon]"></i>
+                  </div>
+                  <span class="category-name">{{ cat.name }}</span>
+                  <i
+                    :class="['bi', expandedCategories.includes(cat.id) ? 'bi-chevron-up' : 'bi-chevron-down']"
+                    class="expand-icon"
+                  ></i>
+                </div>
+
+                <!-- Subcategories -->
+                <Transition name="subcategory">
+                  <div v-if="expandedCategories.includes(cat.id)" class="subcategory-list">
+                    <div
+                      v-for="sub in cat.sub_categories"
+                      :key="sub.id"
+                      class="subcategory-item"
+                      @click="navigateToCategory(cat.id, sub.id)"
+                    >
+                      {{ sub.name }}
+                    </div>
+                  </div>
+                </Transition>
               </div>
-              
-              <ul class="menu-list">
-                <li v-for="item in mobileMenuItems" :key="item.id" @click="handleMobileMenuClick(item)">
-                  <i :class="['bi', item.icon]"></i>
-                  <span>{{ item.name }}</span>
+            </div>
+
+            <!-- Divider -->
+            <div class="menu-divider"></div>
+
+            <!-- User Menu Items -->
+            <template v-if="authStore.isLoggedIn">
+              <ul class="user-menu-list">
+                <li @click="handleMenuAction('UserProfile')">
+                  <i class="bi bi-person"></i>
+                  <span>個人檔案</span>
+                </li>
+                <li @click="handleMenuAction('Favorites')">
+                  <i class="bi bi-heart"></i>
+                  <span>我的收藏</span>
+                </li>
+                <li @click="handleMenuAction('TransactionRecords')" class="menu-item-with-badge">
+                  <i class="bi bi-receipt"></i>
+                  <span>我的交易</span>
+                  <span
+                    v-if="pendingConfirmationCount > 0 || inTransactionCount > 0"
+                    class="menu-transaction-badges"
+                  >
+                    <span
+                      v-if="pendingConfirmationCount > 0"
+                      class="menu-transaction-badge badge-pending"
+                    >
+                      {{ pendingConfirmationCount > 99 ? '99+' : pendingConfirmationCount }}
+                    </span>
+                    <span
+                      v-if="inTransactionCount > 0"
+                      class="menu-transaction-badge badge-active"
+                    >
+                      {{ inTransactionCount > 99 ? '99+' : inTransactionCount }}
+                    </span>
+                  </span>
+                </li>
+                <li @click="handleMenuAction('Messages')" class="menu-item-with-badge">
+                  <i class="bi bi-chat-left"></i>
+                  <span>聊天訊息</span>
+                  <span v-if="unreadMessageCount > 0" class="menu-message-badge">
+                    {{ unreadMessageCount > 99 ? '99+' : unreadMessageCount }}
+                  </span>
                 </li>
                 <li @click="handleLogout" class="logout-item">
                   <i class="bi bi-box-arrow-right"></i>
@@ -141,11 +300,11 @@
               </ul>
             </template>
 
-            <!-- 未登入狀態 -->
+            <!-- Not logged in prompt -->
             <template v-else>
-              <div class="menu-login-section">
-                <p class="login-prompt">請先登入以使用完整功能</p>
-                <BButton class="google-login-button-mobile" @click="handleGoogleLogin">
+              <div class="menu-login-prompt">
+                <p>登入以使用完整功能</p>
+                <BButton class="login-prompt-btn" @click="handleGoogleLogin">
                   <i class="bi bi-google"></i>
                   <span>使用 Google 登入</span>
                 </BButton>
@@ -156,7 +315,7 @@
       </div>
     </Transition>
 
-    <!-- All Categories Offcanvas -->
+    <!-- All Categories Offcanvas (Desktop Only) -->
     <Transition name="offcanvas">
       <div v-if="showAllCategories" class="all-categories-offcanvas" @click="closeAllCategories">
         <div class="offcanvas-content" @click.stop>
@@ -194,7 +353,7 @@
               </div> -->
 
               <!-- Main Categories with Expandable Subcategories -->
-              <div v-for="cat in categories" :key="cat.id" class="category-section">
+              <div v-for="cat in filteredCategories" :key="cat.id" class="category-section">
                 <div class="category-item expandable" @click="toggleCategory(cat.id)">
                   <div class="category-icon-wrapper" :style="{ backgroundColor: cat.color }">
                     <i :class="['bi', cat.icon]"></i>
@@ -209,15 +368,15 @@
                 <!-- Subcategories -->
                 <Transition name="subcategory">
                   <div v-if="expandedCategories.includes(cat.id)" class="subcategory-list">
-                    <a
+                    <div
                       v-for="sub in cat.sub_categories"
                       :key="sub.id"
-                      :href="`/items?category=${cat.id}&subCategory=${sub.id}`"
                       class="subcategory-item"
-                      @click="closeAllCategories"
+                      @click="navigateToCategory(cat.id, sub.id)"
+                      style="cursor: pointer;"
                     >
                       {{ sub.name }}
-                    </a>
+                    </div>
                   </div>
                 </Transition>
               </div>
@@ -230,34 +389,80 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { BNavbar, BContainer, BNav, BNavItem, BButton } from 'bootstrap-vue-next';
+import { BNavbar, BContainer, BNav, BNavItem, BButton, BTooltip } from 'bootstrap-vue-next';
 import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
+import { useMessageStore } from '@/stores/message';
+import { useTransactionStore } from '@/stores/transaction';
 
 // Router & Auth Store
 const router = useRouter();
 const authStore = useAuthStore();
+const messageStore = useMessageStore();
+const transactionStore = useTransactionStore();
 
-// Logo Image
+// Logo Images
 import logoImage from '../assets/Logo.png';
+import iconImage from '../assets/icon.png';
 
 // Props
 const props = defineProps({
   userPoints: {
     type: Number,
-    default: 500
+    default: 0
   }
 });
 
+// Computed: 從 auth store 獲取使用者的點數
+const userBalance = computed(() => {
+  // Priority: Auth store profile data > Props default
+  const balance = authStore.profileData?.profile_details?.balance || props.userPoints;
+  // 超過一百萬顯示 999,999+，否則加上千分位格式
+  if (balance > 1000000) {
+    return '999,999+';
+  }
+  return balance.toLocaleString('zh-TW');
+});
+
+// Has new badges or achievements
+const hasNewAchievements = computed(() => {
+  // You can add logic here to track new achievements
+  return false;
+});
+
+const pendingConfirmationCount = computed(() => transactionStore.confirming.receiver?.length ?? 0);
+const inTransactionCount = computed(() => (transactionStore.pending.giver?.length ?? 0) + (transactionStore.pending.receiver?.length ?? 0));
+
+// Unread message count
+const unreadMessageCount = computed(() => {
+  return messageStore.totalUnreadCount;
+});
+
 // State
-const showMobileMenu = ref(false);
+const showUnifiedMenu = ref(false);
 const showAllCategories = ref(false);
 const categorySearch = ref('');
 const expandedCategories = ref([]);
 
+// Initialize profile when user logs in
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    // Profile data is already loaded by authStore
+    console.log('User logged in, balance:', authStore.profileData?.profile_details?.balance);
+  }
+}, { immediate: true });
+
+// 交易資料的初始化已在 App.vue 中統一處理，不需要在此重複呼叫
+// watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+//   if (isLoggedIn) {
+//     transactionStore.fetchAllTransactions().catch((error) => {
+//       console.error('[AppHeader] 無法初始化交易資料', error);
+//     });
+//   }
+// }, { immediate: true });
 
 const categoriesStore = useCategoriesStore()
 
@@ -269,34 +474,53 @@ if (!categoriesStore.isLoaded) {
 
 const categories = computed(() => categoriesStore.categories);
 
-const mobileMenuItems = [
-  { id: 1, name: '個人檔案', icon: 'bi-person', route: 'UserProfile' },
-  { id: 2, name: '刊登物品', icon: 'bi-plus-circle', route: 'CreateListing' },
-  { id: 3, name: '我的收藏', icon: 'bi-heart', route: 'Favorites' },
-  { id: 4, name: '聊天訊息', icon: 'bi-chat-left', route: 'Messages' }
-];
+// Filtered categories based on search
+const filteredCategories = computed(() => {
+  if (!categorySearch.value) {
+    return categories.value;
+  }
+
+  const searchLower = categorySearch.value.toLowerCase();
+
+  return categories.value.map(cat => {
+    // Check if category name matches
+    const categoryMatches = cat.name.toLowerCase().includes(searchLower);
+
+    // Filter subcategories that match
+    const matchedSubcategories = cat.sub_categories?.filter(sub =>
+      sub.name.toLowerCase().includes(searchLower)
+    ) || [];
+
+    // Return category if it matches or has matching subcategories
+    if (categoryMatches || matchedSubcategories.length > 0) {
+      return {
+        ...cat,
+        sub_categories: categoryMatches ? cat.sub_categories : matchedSubcategories
+      };
+    }
+
+    return null;
+  }).filter(cat => cat !== null);
+});
 
 // Methods
-const toggleMobileMenu = () => {
-  showMobileMenu.value = !showMobileMenu.value;
-  if (showMobileMenu.value) {
+const toggleUnifiedMenu = () => {
+  showUnifiedMenu.value = !showUnifiedMenu.value;
+  if (showUnifiedMenu.value) {
     document.body.style.overflow = 'hidden';
   } else {
     document.body.style.overflow = '';
   }
 };
 
-const closeMobileMenu = () => {
-  showMobileMenu.value = false;
+const closeUnifiedMenu = () => {
+  showUnifiedMenu.value = false;
   document.body.style.overflow = '';
 };
 
-const handleMobileMenuClick = (item) => {
-  console.log('Menu item clicked:', item.name);
-  closeMobileMenu();
-  if (item.route) {
-    router.push({ name: item.route });
-  }
+const handleMenuAction = (routeName) => {
+  closeUnifiedMenu();
+  router.push({ name: routeName });
 };
 
 // 使用 Supabase Google Login
@@ -314,8 +538,9 @@ const handleGoogleLogin = async () => {
 // 登出
 const handleLogout = async () => {
   await authStore.signOut();
+  router.push({ name: 'Home' });
   console.log('已登出');
-  closeMobileMenu();
+  closeUnifiedMenu();
 };
 
 // All Categories Toggle
@@ -342,6 +567,16 @@ const toggleCategory = (categoryId) => {
     expandedCategories.value.push(categoryId);
   }
 };
+
+// Navigate to category with subcategory
+const navigateToCategory = (categoryId, subCategoryId) => {
+  router.push({
+    name: 'ItemList',
+    query: { category: categoryId, subCategory: subCategoryId }
+  });
+  closeAllCategories();
+  closeUnifiedMenu();
+};
 </script>
 
 <style scoped lang="scss">
@@ -350,7 +585,7 @@ const toggleCategory = (categoryId) => {
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 9000; // High enough to be above search components
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -372,6 +607,7 @@ const toggleCategory = (categoryId) => {
   width: 100%;
   height: 50px;
   margin: auto;
+  overflow: hidden; // Prevent content from breaking out
 }
 
 // Left Side
@@ -379,11 +615,14 @@ const toggleCategory = (categoryId) => {
   display: flex;
   align-items: center;
   gap: 30px;
+  flex-shrink: 1; // Allow shrinking if needed
+  min-width: 0; // Allow content to shrink below content size
 
   .logo-link {
     display: flex;
     align-items: center;
     text-decoration: none;
+    flex-shrink: 0; // Logo should never shrink
   }
 
   .header-logo {
@@ -391,14 +630,39 @@ const toggleCategory = (categoryId) => {
     width: auto;
     object-fit: contain;
   }
+
+  .desktop-logo {
+    display: none; // Hidden by default
+  }
+
+  .mobile-logo {
+    display: block; // Show icon by default (mobile first)
+    height: 40px;
+  }
+
+  // Width >= 450px: Switch to full logo
+  @media (min-width: 450px) {
+    .desktop-logo {
+      display: block;
+      height: 35px;
+    }
+
+    .mobile-logo {
+      display: none;
+    }
+  }
 }
 
 .category-nav {
   display: flex;
   gap: 30px;
   margin: 0;
+  flex-shrink: 1; // Allow shrinking at medium screens
+  min-width: 0;
 
   .category-link {
+    white-space: nowrap; // Prevent text wrapping
+
     :deep(a) {
       font-family: 'Noto Sans TC', 'Inter', sans-serif;
       font-size: 16px;
@@ -418,6 +682,8 @@ const toggleCategory = (categoryId) => {
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0; // Right side buttons should not shrink
+  white-space: nowrap; // Prevent wrapping
 }
 
 .icon-button {
@@ -429,6 +695,7 @@ const toggleCategory = (categoryId) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 
   i {
     font-size: 24px;
@@ -438,12 +705,99 @@ const toggleCategory = (categoryId) => {
   &:hover i {
     color: $primary;
   }
+
+  &.message-button {
+    .message-badge {
+      position: absolute;
+      top: -4px;
+      right: -8px;
+      background: #ff4757;
+      color: white;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 10px;
+      min-width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+      animation: badge-pulse 2s ease-in-out infinite;
+    }
+  }
+}
+
+.transaction-button {
+  position: relative;
+
+  .transaction-badges {
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .transaction-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #f2efeb;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1e1e1e;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+
+  .transaction-badge.badge-pending {
+    background: #ffe8d0;
+    color: #d45b00;
+  }
+
+  .transaction-badge.badge-active {
+    background: #e0f4ff;
+    color: #0072b1;
+  }
+}
+
+.transactions-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+}
+
+@keyframes badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .points-display {
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: 80px; // Ensure consistent spacing
+  position: relative;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: rgba(111, 184, 165, 0.1);
+  }
 
   .points-icon {
     background: #f2efeb;
@@ -458,9 +812,21 @@ const toggleCategory = (categoryId) => {
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 20px; // Increased from 16px
+    font-weight: 700; // Bolder to make it more prominent
     color: $primary;
+    min-width: 30px; // Ensure consistent width
+  }
+
+  .notification-dot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff6b6b;
+    border-radius: 50%;
+    border: 2px solid #f2efeb;
   }
 }
 
@@ -579,8 +945,100 @@ const toggleCategory = (categoryId) => {
   }
 }
 
-// Mobile Menu Overlay
-.mobile-menu-overlay {
+// Mobile User Section (Post Button + Points + Avatar)
+.mobile-user-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .mobile-post-button {
+    font-size: 14px;
+    min-width: 50px;
+    height: 30px;
+    padding: 0 10px;
+  }
+}
+
+.mobile-points {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #e8f5f1;
+  border-radius: 12px;
+  padding: 4px 10px;
+  position: relative;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #d0ebe4;
+  }
+
+  i {
+    font-size: 16px;
+    color: $primary;
+  }
+
+  span {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: $primary;
+  }
+
+  .notification-dot-mobile {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff6b6b;
+    border-radius: 50%;
+    border: 2px solid #f2efeb;
+  }
+}
+
+.mobile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.mobile-avatar-icon {
+  font-size: 32px;
+  color: #1e1e1e;
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.mobile-login-btn {
+  background-color: $primary;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 16px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #5fa795;
+  }
+}
+
+// Unified Mobile Menu (Categories + User Menu)
+.unified-menu-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -592,9 +1050,9 @@ const toggleCategory = (categoryId) => {
   justify-content: flex-end;
 }
 
-.mobile-menu-content {
-  width: 80%;
-  max-width: 300px;
+.unified-menu-content {
+  width: 85%;
+  max-width: 380px;
   background: white;
   height: 100%;
   display: flex;
@@ -602,16 +1060,20 @@ const toggleCategory = (categoryId) => {
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
 }
 
-.mobile-menu-header {
+.unified-menu-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 20px;
+  padding: 20px 20px;
   border-bottom: 1px solid #e0e0e0;
+  background: white;
 
-  .menu-logo {
-    height: 30px;
-    width: auto;
+  .menu-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0;
   }
 
   .close-button {
@@ -626,106 +1088,74 @@ const toggleCategory = (categoryId) => {
   }
 }
 
-.mobile-menu-body {
+.unified-menu-body {
   flex: 1;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
-.menu-user-section {
+.category-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 15px;
+  gap: 12px;
+  background: #f5f5f5;
   border-radius: 8px;
-
-  .user-icon-img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .user-icon {
-    font-size: 32px;
-    color: #1e1e1e;
-  }
-
-  .user-greeting {
-    flex: 1;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    color: #1e1e1e;
-  }
-}
-
-.menu-login-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 30px 15px;
-  text-align: center;
-
-  .login-prompt {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    color: #666;
-    margin: 0;
-  }
-}
-
-.google-login-button-mobile {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background-color: white;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  font-family: 'Noto Sans TC', 'Roboto', sans-serif;
-  font-size: 16px;
-  font-weight: 500;
-  color: #3c4043;
-  padding: 12px 24px;
-  width: 100%;
-  transition: all 0.3s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 12px 16px;
+  margin: 20px 20px 15px;
 
   i {
-    font-size: 20px;
-    color: #4285f4;
+    font-size: 18px;
+    color: #666;
   }
 
-  &:hover {
-    background-color: #f8f9fa;
-    border-color: #d2d4d7;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #1e1e1e;
+    outline: none;
+
+    &::placeholder {
+      color: #999;
+    }
   }
 }
 
-.menu-list {
+.categories-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-divider {
+  height: 8px;
+  background-color: #f5f5f5;
+  margin: 15px 0;
+}
+
+.user-menu-list {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 20px;
 
   li {
     display: flex;
     align-items: center;
     gap: 15px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
+    font-size: 16px;
     color: #1e1e1e;
-    padding: 18px 10px;
+    padding: 14px 10px;
     cursor: pointer;
     transition: background-color 0.3s;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
 
     i {
-      font-size: 22px;
+      font-size: 20px;
       color: #1e1e1e;
-      width: 24px;
+      width: 22px;
       text-align: center;
     }
 
@@ -734,7 +1164,8 @@ const toggleCategory = (categoryId) => {
     }
 
     &:hover {
-      background-color: #f5f5f5;
+      background-color: #f9f9f9;
+      border-radius: 8px;
     }
 
     &:last-child {
@@ -752,22 +1183,99 @@ const toggleCategory = (categoryId) => {
         background-color: #fff5f5;
       }
     }
+
+    &.menu-item-with-badge {
+      gap: 10px;
+
+      .menu-transaction-badges {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+        flex: 0 0 auto;
+      }
+
+      .menu-transaction-badge {
+        min-width: 24px;
+        text-align: center;
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1e1e1e;
+      }
+
+      .menu-transaction-badge.badge-pending {
+        background: #ffe8d0;
+        color: #d45b00;
+      }
+
+      .menu-transaction-badge.badge-active {
+        background: #e0f4ff;
+        color: #0072b1;
+      }
+
+      .menu-message-badge {
+        background: #ff4757;
+        color: white;
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 12px;
+        min-width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;
+        box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+      }
+    }
   }
 }
 
-.menu-points {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 20px;
-  font-weight: 400;
+.menu-login-prompt {
   display: flex;
-  gap: 5px;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-around;
-  background: transparent;
-  color: $primary;
+  gap: 15px;
+  padding: 30px 20px;
+  text-align: center;
 
-  i {
-    font-size: 24px;
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #666;
+    margin: 0;
+  }
+
+  .login-prompt-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: white;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', 'Roboto', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: #3c4043;
+    padding: 12px 24px;
+    width: 100%;
+    transition: all 0.3s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    i {
+      font-size: 18px;
+      color: #4285f4;
+    }
+
+    &:hover {
+      background-color: #f8f9fa;
+      border-color: #d2d4d7;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
   }
 }
 
@@ -776,7 +1284,7 @@ const toggleCategory = (categoryId) => {
 .menu-leave-active {
   transition: opacity 0.3s ease;
 
-  .mobile-menu-content {
+  .unified-menu-content {
     transition: transform 0.3s ease;
   }
 }
@@ -785,7 +1293,7 @@ const toggleCategory = (categoryId) => {
 .menu-leave-to {
   opacity: 0;
 
-  .mobile-menu-content {
+  .unified-menu-content {
     transform: translateX(100%);
   }
 }
@@ -883,7 +1391,7 @@ const toggleCategory = (categoryId) => {
   background: #f5f5f5;
   border-radius: 8px;
   padding: 12px 16px;
-  margin: 0 24px 20px;
+  margin: 24px 20px;
 
   i {
     font-size: 18px;
@@ -1041,7 +1549,44 @@ const toggleCategory = (categoryId) => {
   opacity: 1;
 }
 
+
+
+// Progressive responsive breakpoints
+@media (max-width: 1400px) {
+  .header-left {
+    gap: 20px; // Reduce gap from 30px
+  }
+
+  .category-nav {
+    gap: 20px; // Reduce gap from 30px
+  }
+
+  .header-right {
+    gap: 15px; // Reduce gap from 20px
+  }
+}
+
 @media (max-width: 1300px) {
+  .header-left {
+    gap: 15px;
+  }
+
+  .category-nav {
+    gap: 15px;
+  }
+
+  .header-right {
+    gap: 12px;
+  }
+
+  // Hide user name text to save space
+  .user-name {
+    display: none;
+  }
+}
+
+@media (max-width: 1200px) {
+  // Hide category nav but keep all categories button
   .category-nav {
     display: none !important;
     width: 0;

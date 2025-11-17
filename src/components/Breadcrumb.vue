@@ -2,7 +2,7 @@
   <div class="breadcrumb-section">
     <div class="breadcrumb-container">
       <nav class="breadcrumb">
-        <router-link to="/" class="breadcrumb-link">首頁</router-link>
+        <router-link :to="{ name: 'Home' }" class="breadcrumb-link">首頁</router-link>
         <template v-for="(item, index) in items" :key="index">
           <span class="breadcrumb-separator">&gt;</span>
           <router-link

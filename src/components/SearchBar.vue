@@ -42,8 +42,7 @@
           :text="selectedDistanceLabel"
           variant="link"
           class="distance-dropdown"
-          strategy="fixed"
-          :teleport="true"
+          strategy="absolute"
         >
           <BDropdownItem
             v-for="option in distance_options"
@@ -261,11 +260,12 @@ watch(() => route.query.distance, (newDistance) => {
     gap: 8px;
     padding: 0 16px;
     height: 100%;
+    position: relative;
   }
 
   .distance-dropdown {
     height: 100%;
-    position: relative;
+    position: static;
     z-index: 1000;
     padding-right: 16px;
 
@@ -456,7 +456,8 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 575.98px) {
   .search-bar-wrapper {
-    padding: 0 12px;
+    padding: 0 16px;
+    max-width: 100%;
   }
 
   .search-bar {
@@ -464,8 +465,10 @@ watch(() => route.query.distance, (newDistance) => {
     gap: 0;
 
     .search-input-section {
-      padding: 0 12px;
+      padding: 0 10px;
       gap: 6px;
+      min-width: 0;
+      flex: 1;
 
       .search-icon {
         font-size: 16px;
@@ -473,27 +476,49 @@ watch(() => route.query.distance, (newDistance) => {
 
       .search-input {
         font-size: 13px;
+        min-width: 60px;
       }
     }
 
     .location-section {
-      padding: 0 8px;
+      padding: 0 6px;
 
       .location-icon {
         display: none;
       }
     }
 
+    .distance-section {
+      padding: 0 6px;
+      position: relative;
+
+      .location-icon {
+        font-size: 16px;
+      }
+    }
+
     .location-dropdown,
     .distance-dropdown {
-      padding: 0 8px;
+      padding-right: 6px;
+      position: static;
 
       :deep(.btn) {
-        font-size: 13px;
+        font-size: 12px;
+        gap: 2px;
 
         &::after {
           font-size: 10px;
+          margin-left: 2px;
         }
+      }
+
+      :deep(.dropdown-menu) {
+        position: absolute !important;
+        right: 0 !important;
+        left: auto !important;
+        transform: none !important;
+        top: 100% !important;
+        margin-top: 8px !important;
       }
     }
 
@@ -502,9 +527,9 @@ watch(() => route.query.distance, (newDistance) => {
     }
 
     .search-btn {
-      font-size: 14px;
-      padding: 0 16px;
-      min-width: 70px;
+      font-size: 13px;
+      padding: 0 12px;
+      min-width: 60px;
     }
   }
 }
