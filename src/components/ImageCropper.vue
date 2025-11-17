@@ -2,7 +2,7 @@
   <div v-if="show" class="image-cropper-modal" @click.self="handleCancel">
     <div class="cropper-container" @click.stop>
       <div class="cropper-header">
-        <h3 class="cropper-title">編輯大頭貼</h3>
+        <h3 class="cropper-title">{{ title }}</h3>
         <button class="close-btn" @click="handleCancel" aria-label="關閉">
           <i class="bi bi-x-lg"></i>
         </button>
@@ -81,6 +81,10 @@ const props = defineProps({
   imageSrc: {
     type: String,
     default: ''
+  },
+  title: {
+    type: String,
+    default: '編輯大頭貼'
   }
 });
 
