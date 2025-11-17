@@ -23,6 +23,7 @@
 <script setup>
 import { ref, onMounted, watch, onBeforeUnmount, nextTick } from 'vue'
 import { loadLeaflet } from '@/utils/openStreetMapLoader'
+import { useCategoriesStore } from '@/stores/categories'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -37,6 +38,9 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   shadowUrl: markerShadow
 })
+
+// Get categories store
+const categoriesStore = useCategoriesStore()
 
 // Props
 const props = defineProps({
@@ -77,6 +81,7 @@ const markers = ref([])
 const userMarker = ref(null)
 const radiusCircle = ref(null)
 const tileLayer = ref(null)
+const currentZoom = ref(13)
 
 // Initialize map
 async function initializeMap() {
@@ -84,6 +89,11 @@ async function initializeMap() {
   error.value = null
 
   try {
+    // Load categories if not already loaded
+    if (!categoriesStore.isLoaded) {
+      await categoriesStore.fetchCategories()
+    }
+
     // Load Leaflet library
     await loadLeaflet()
 
@@ -118,9 +128,16 @@ async function initializeMap() {
       maxZoom: 19
     }).addTo(map.value)
 
+    // Initialize current zoom
+    currentZoom.value = map.value.getZoom()
+
     // Add event listeners
     map.value.on('moveend', handleBoundsChanged)
-    map.value.on('zoomend', handleBoundsChanged)
+    map.value.on('zoomend', () => {
+      currentZoom.value = map.value.getZoom()
+      handleBoundsChanged()
+      renderItemMarkers() // Re-render markers on zoom change
+    })
 
     // Render initial markers and overlays
     await renderUserMarker()
@@ -196,21 +213,45 @@ async function renderSearchRadius() {
   ).addTo(map.value)
 }
 
-// Group items by location (within ~10 meters)
-function groupItemsByLocation(items) {
+// Get category icon from store
+function getCategoryIcon(item) {
+  if (!item.main_category_id) {
+    return 'bi-box'
+  }
+
+  const mainCategory = categoriesStore.mainCategories.find(cat => cat.id === item.main_category_id)
+  return mainCategory?.icon || 'bi-box'
+}
+
+// Get category color from store
+function getCategoryColor(item) {
+  if (!item.main_category_id) {
+    return '#6FB8A5'
+  }
+
+  const mainCategory = categoriesStore.mainCategories.find(cat => cat.id === item.main_category_id)
+  return mainCategory?.color || '#6FB8A5'
+}
+
+// Group items by location based on zoom level
+function groupItemsByLocation(items, zoom) {
   const groups = []
-  const threshold = 0.0001 // Approximately 10 meters
+
+  // Dynamic threshold based on zoom level
+  // zoom 11-12: 0.01 (約 1km) - 很多物品會被分組
+  // zoom 13-14: 0.001 (約 100m) - 中等分組
+  // zoom 15+: 0.0001 (約 10m) - 只有非常近的才分組
+  let threshold
+  if (zoom < 13) {
+    threshold = 0.01 // 約 1km
+  } else if (zoom < 15) {
+    threshold = 0.001 // 約 100m
+  } else {
+    threshold = 0.0001 // 約 10m
+  }
 
   items.forEach(item => {
-    console.log('[MapContainer] Processing item:', {
-      title: item.title,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      debug_location: item.debug_item_location_wkb
-    })
-
     if (!item.latitude || !item.longitude) {
-      console.log('[MapContainer] Skipping item - no coordinates:', item.title)
       return
     }
 
@@ -235,124 +276,180 @@ function groupItemsByLocation(items) {
   return groups
 }
 
+// Create fan-out markers for items at the same location
+function createFanOutMarkers(group, zoom) {
+  const itemCount = group.items.length
+
+  // If zoom < 15 or only 1-3 items, use regular grouping
+  if (zoom < 15 || itemCount <= 3) {
+    return [{
+      latitude: group.latitude,
+      longitude: group.longitude,
+      items: group.items
+    }]
+  }
+
+  // For zoom >= 15 and more than 3 items, create fan-out effect
+  const fanOutPositions = []
+  const radius = 0.0002 // About 20 meters
+  const angleStep = (2 * Math.PI) / itemCount
+
+  group.items.forEach((item, index) => {
+    const angle = angleStep * index
+    const offsetLat = Math.cos(angle) * radius
+    const offsetLng = Math.sin(angle) * radius
+
+    fanOutPositions.push({
+      latitude: group.latitude + offsetLat,
+      longitude: group.longitude + offsetLng,
+      items: [item] // Single item per marker in fan-out mode
+    })
+  })
+
+  return fanOutPositions
+}
+
 // Render item markers
 async function renderItemMarkers() {
   if (!map.value) return
-
-  console.log('[MapContainer] renderItemMarkers called with items:', props.items)
-  console.log('[MapContainer] Items count:', props.items?.length)
 
   // Remove existing markers
   markers.value.forEach(marker => marker.remove())
   markers.value = []
 
-  // Group items by location
-  const locationGroups = groupItemsByLocation(props.items)
-  console.log('[MapContainer] Location groups:', locationGroups)
+  const zoom = currentZoom.value
 
+  // Group items by location (distance depends on zoom)
+  const locationGroups = groupItemsByLocation(props.items, zoom)
+
+  // Process each location group
   locationGroups.forEach(group => {
-    const itemCount = group.items.length
-    const firstItem = group.items[0]
+    // Create fan-out positions if needed
+    const markerPositions = createFanOutMarkers(group, zoom)
 
-    console.log('[MapContainer] Creating marker for group:', {
-      latitude: group.latitude,
-      longitude: group.longitude,
-      itemCount,
-      firstItem: firstItem.title
-    })
+    // Create marker for each position
+    markerPositions.forEach(position => {
+      const itemCount = position.items.length
+      const firstItem = position.items[0]
 
-    // Check if any item in the group is favorited
-    const hasFavorited = group.items.some(item => item.favorited_at)
-    const color = hasFavorited ? '#FF6B6B' : '#6FB8A5'
+      // Check if all items are from the same seller
+      const sameSeller = itemCount > 1 && position.items.every(item => item.user?.id === firstItem.user?.id)
 
-    let markerHtml = ''
-
-    if (itemCount === 1) {
-      // Single item - show price
-      const priceText = `NT$${Math.floor(firstItem.price)}`
-      markerHtml = `
-        <div class="marker-pin" style="color: ${color}">
-          <svg width="50" height="60" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25 0 C15 0 7 8 7 18 C7 28 25 50 25 50 S43 28 43 18 C43 8 35 0 25 0 Z"
-                  fill="${color}" stroke="white" stroke-width="2"/>
-            <rect x="5" y="10" width="40" height="16" rx="3" fill="white" opacity="0.95"/>
-            <text x="25" y="21" font-family="Arial, sans-serif" font-size="10"
-                  font-weight="bold" text-anchor="middle" fill="${color}">
-              ${priceText}
-            </text>
-            ${firstItem.favorited_at ? '<circle cx="25" cy="5" r="4" fill="white"/><text x="25" y="7.5" font-size="6" text-anchor="middle">❤️</text>' : ''}
-          </svg>
-        </div>
-      `
-    } else {
-      // Multiple items - show count
-      markerHtml = `
-        <div class="marker-pin marker-cluster" style="color: ${color}">
-          <svg width="50" height="60" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25 0 C15 0 7 8 7 18 C7 28 25 50 25 50 S43 28 43 18 C43 8 35 0 25 0 Z"
-                  fill="${color}" stroke="white" stroke-width="2"/>
-            <circle cx="25" cy="16" r="12" fill="white" opacity="0.95"/>
-            <text x="25" y="22" font-family="Arial, sans-serif" font-size="14"
-                  font-weight="bold" text-anchor="middle" fill="${color}">
-              ${itemCount}
-            </text>
-            ${hasFavorited ? '<circle cx="25" cy="5" r="4" fill="white"/><text x="25" y="7.5" font-size="6" text-anchor="middle">❤️</text>' : ''}
-          </svg>
-        </div>
-      `
-    }
-
-    // Create custom marker icon
-    const markerIcon = L.divIcon({
-      className: 'item-marker',
-      html: markerHtml,
-      iconSize: [50, 60],
-      iconAnchor: [25, 60],
-      popupAnchor: [0, -60]
-    })
-
-    const marker = L.marker(
-      [parseFloat(group.latitude), parseFloat(group.longitude)],
-      {
-        icon: markerIcon,
-        title: itemCount === 1 ? firstItem.title : `${itemCount} 個物品`,
-        zIndexOffset: 500
-      }
-    ).addTo(map.value)
-
-    // Add click listener
-    marker.on('click', () => {
+      // Use category color for single item, or default color for clusters
+      let color
       if (itemCount === 1) {
-        // Single item - emit as before
-        emit('marker-click', firstItem)
+        // Single item - use category color or favorited color
+        color = firstItem.favorited_at ? '#FF6B6B' : getCategoryColor(firstItem)
       } else {
-        // Multiple items - emit first item (or could emit array)
-        // You might want to handle this differently in parent component
-        emit('marker-click', firstItem, group.items)
+        // Multiple items - check if any is favorited
+        const hasFavorited = position.items.some(item => item.favorited_at)
+        color = hasFavorited ? '#FF6B6B' : '#6FB8A5'
       }
 
-      // Add bounce effect
-      const element = marker.getElement()
-      if (element) {
-        element.classList.add('marker-bounce')
-        setTimeout(() => {
-          element.classList.remove('marker-bounce')
-        }, 700)
+      let markerHtml = ''
+      let iconSize = [40, 40]
+      let iconAnchor = [20, 20]
+
+      if (itemCount > 1 && sameSeller) {
+        // Multiple items from same seller - show profile picture
+        const profilePicture = firstItem.user?.profile_picture_url || 'https://placehold.co/40/1e1e1e/ffffff?text=' + (firstItem.user?.nickname?.charAt(0) || 'U')
+        iconSize = [40, 50]
+        iconAnchor = [20, 50]
+
+        markerHtml = `
+          <div class="marker-pin seller-marker">
+            <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
+              <!-- Pin shape -->
+              <path d="M20 0 C12 0 6 6 6 14 C6 22 20 40 20 40 S34 22 34 14 C34 6 28 0 20 0 Z"
+                    fill="${color}" stroke="white" stroke-width="2"/>
+            </svg>
+            <!-- Profile picture -->
+            <div style="position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 2px solid white; background: white;">
+              <img src="${profilePicture}" alt="seller" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/24/1e1e1e/ffffff?text=${firstItem.user?.nickname?.charAt(0) || 'U'}'">
+            </div>
+            <!-- Item count badge -->
+            <div style="position: absolute; top: -5px; right: 5px; background: ${color}; color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 2px solid white;">
+              ${itemCount}
+            </div>
+          </div>
+        `
+      } else if (itemCount > 1) {
+        // Multiple items from different sellers - show circle with count
+        markerHtml = `
+          <div class="marker-circle">
+            <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
+              <text x="20" y="27" font-family="Arial, sans-serif" font-size="16"
+                    font-weight="bold" text-anchor="middle" fill="white">
+                ${itemCount}
+              </text>
+            </svg>
+          </div>
+        `
+      } else {
+        // Single item - show pin with category icon
+        const categoryIcon = getCategoryIcon(firstItem)
+        iconSize = [40, 50]
+        iconAnchor = [20, 50]
+
+        markerHtml = `
+          <div class="marker-pin">
+            <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
+              <!-- Pin shape -->
+              <path d="M20 0 C12 0 6 6 6 14 C6 22 20 40 20 40 S34 22 34 14 C34 6 28 0 20 0 Z"
+                    fill="${color}" stroke="white" stroke-width="2"/>
+
+              <!-- Icon background circle -->
+              <circle cx="20" cy="14" r="10" fill="white" opacity="0.95"/>
+            </svg>
+
+            <!-- Bootstrap icon -->
+            <i class="${categoryIcon}" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 16px; color: ${color};"></i>
+          </div>
+        `
       }
+
+      // Create custom marker icon
+      const markerIcon = L.divIcon({
+        className: 'item-marker',
+        html: markerHtml,
+        iconSize: iconSize,
+        iconAnchor: iconAnchor,
+        popupAnchor: [0, -iconAnchor[1]]
+      })
+
+      const marker = L.marker(
+        [parseFloat(position.latitude), parseFloat(position.longitude)],
+        {
+          icon: markerIcon,
+          title: itemCount === 1 ? firstItem.title : `${itemCount} 個物品`,
+          zIndexOffset: 500
+        }
+      ).addTo(map.value)
+
+      // Add click listener
+      marker.on('click', () => {
+        if (itemCount === 1) {
+          // Single item - emit as before
+          emit('marker-click', firstItem)
+        } else {
+          // Multiple items - emit first item (or could emit array)
+          // You might want to handle this differently in parent component
+          emit('marker-click', firstItem, position.items)
+        }
+
+        // Add bounce effect
+        const element = marker.getElement()
+        if (element) {
+          element.classList.add('marker-bounce')
+          setTimeout(() => {
+            element.classList.remove('marker-bounce')
+          }, 700)
+        }
+      })
+
+      markers.value.push(marker)
     })
-
-    // Add hover effect
-    marker.on('mouseover', () => {
-      const element = marker.getElement()
-      if (element && !element.classList.contains('marker-bounce')) {
-        element.classList.add('marker-bounce')
-        setTimeout(() => {
-          element.classList.remove('marker-bounce')
-        }, 700)
-      }
-    })
-
-    markers.value.push(marker)
   })
 }
 
@@ -557,13 +654,47 @@ onBeforeUnmount(() => {
   background: transparent;
   border: none;
 
-  // Cluster marker (multiple items)
-  .marker-cluster {
+  // Circle marker (multiple items)
+  .marker-circle {
     cursor: pointer;
     transition: transform 0.2s ease;
 
     &:hover {
-      transform: scale(1.1);
+      transform: scale(1.15);
+    }
+
+    svg {
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+  }
+
+  // Pin marker (single item)
+  .marker-pin {
+    position: relative;
+    cursor: pointer;
+    pointer-events: auto;
+
+    svg {
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      transition: filter 0.2s ease;
+    }
+
+    &:hover svg {
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+    }
+
+    i {
+      pointer-events: none;
+    }
+
+    // Ensure child elements don't block hover
+    * {
+      pointer-events: none;
+    }
+
+    // But keep the pin itself interactive
+    & {
+      pointer-events: auto;
     }
   }
 }

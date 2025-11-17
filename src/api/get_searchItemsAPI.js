@@ -56,16 +56,27 @@ export async function searchItems(filters = {}) {
         throw new Error(error.message);
     }
 
-    // Note: The RPC should return latitude and longitude directly
-    // If not present, coordinates will be null and markers won't show on map
-    console.log('[searchItemsAPI] Received items:', data?.length);
+    // Parse approximate_location to extract latitude and longitude
+    const parsedData = data?.map(item => {
+        let latitude = null;
+        let longitude = null;
 
-    if (data && data.length > 0) {
-        console.log('[searchItemsAPI] Sample item fields:', Object.keys(data[0]));
-        console.log('[searchItemsAPI] First item:', data[0]);
-    }
+        // Extract coordinates from approximate_location
+        if (item.approximate_location) {
+            latitude = item.approximate_location.latitude;
+            longitude = item.approximate_location.longitude;
+        }
 
-    return data;
+        return {
+            ...item,
+            latitude,
+            longitude
+        };
+    });
+
+    console.log('[searchItemsAPI] Parsed items with coordinates:', parsedData?.filter(i => i.latitude).length, '/', parsedData?.length);
+
+    return parsedData || data;
 }
 
 // data 範例
