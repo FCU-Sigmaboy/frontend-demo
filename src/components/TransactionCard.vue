@@ -4,9 +4,10 @@
     <h3 class="product-name">{{ productName }}</h3>
 
     <!-- Unlisted Status Warning -->
-    <div v-if="!listingStatus" class="unlisted-warning">
+    <div v-if="!listingStatus || isInTransaction" class="unlisted-warning">
       <i class="bi bi-exclamation-circle-fill"></i>
-      <span>此物品已下架</span>
+      <span v-if="isInTransaction">此物品{{ transactionStatusText }}（已下架）</span>
+      <span v-else>此物品已下架</span>
     </div>
 
     <!-- Price and Condition -->
@@ -93,9 +94,10 @@
       <button
         v-else
         class="btn-primary"
+        :disabled="isInTransaction"
         @click="router.push({ name: 'EditListing', params: { id: props.productId } })"
       >
-        編輯物品
+        {{ isInTransaction ? '物品交易中或已售出無法編輯' : '編輯物品' }}
       </button>
     </div>
   </div>
@@ -180,6 +182,14 @@ const props = defineProps({
   rating: {
     type: [String, Number],
     default: 0
+  },
+  isInTransaction: {
+    type: Boolean,
+    default: false
+  },
+  transactionStatusText: {
+    type: String,
+    default: null
   }
 });
 
