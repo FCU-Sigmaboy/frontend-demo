@@ -44,10 +44,6 @@
               {{ achievement.progress }}%
             </div>
 
-            <!-- Check mark for unlocked -->
-            <div v-if="achievement.unlocked" class="check-mark">
-              <i class="bi bi-check-circle-fill"></i>
-            </div>
           </div>
           <span class="achievement-label">{{ achievement.label }}</span>
         </div>
@@ -120,11 +116,6 @@
                 <!-- Lock icon for locked -->
                 <div v-if="!achievement.unlocked" class="lock-overlay">
                   <i class="bi bi-lock-fill"></i>
-                </div>
-
-                <!-- Check mark for unlocked -->
-                <div v-if="achievement.unlocked" class="check-mark">
-                  <i class="bi bi-check-circle-fill"></i>
                 </div>
 
                 <!-- Progress badge -->
@@ -658,6 +649,9 @@ function saveAchievementSelection() {
   background: #f9f9f9;
   transition: all 0.3s;
   gap: 4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 0;
 
   .achievement-count {
     font-family: 'Noto Sans TC', sans-serif;
@@ -1013,6 +1007,10 @@ function saveAchievementSelection() {
     }
   }
 
+  .achievements-row {
+    align-items: flex-start;
+  }
+
   .achievement-item {
     min-width: 60px;
 
@@ -1032,6 +1030,13 @@ function saveAchievementSelection() {
     .achievement-label {
       font-size: 10px;
     }
+  }
+
+  .expand-indicator {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    margin-top: 0;
   }
 
   .modal-content {
@@ -1065,6 +1070,10 @@ function saveAchievementSelection() {
 }
 
 @media (max-width: 575.98px) {
+  .achievements-row {
+    align-items: flex-start;
+  }
+
   .achievement-item {
     min-width: 55px;
 
@@ -1083,6 +1092,21 @@ function saveAchievementSelection() {
 
     .achievement-label {
       font-size: 9px;
+    }
+  }
+
+  .expand-indicator {
+    width: 45px;
+    height: 45px;
+    min-width: 45px;
+    margin-top: 0;
+
+    .achievement-count {
+      font-size: 10px;
+    }
+
+    i {
+      font-size: 14px;
     }
   }
 
