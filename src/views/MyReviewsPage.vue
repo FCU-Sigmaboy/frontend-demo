@@ -12,20 +12,7 @@
 
         <!-- Page Header -->
         <div class="page-header">
-          <h1 class="page-title">我的評價 ({{ reviews.length }})</h1>
-          <div class="rating-summary">
-            <div class="stars">
-              <i
-                v-for="n in 5"
-                :key="n"
-                :class="['bi', n <= Math.floor(averageRating) ? 'bi-star-fill' : 'bi-star']"
-              ></i>
-            </div>
-            <span class="rating-score">{{ averageRating.toFixed(1) }}</span>
-          </div>
-          <button class="action-btn" @click="goToTransactionRecords">
-            交易紀錄
-          </button>
+          <h1 class="page-title">我的評價</h1>
         </div>
 
         <!-- Loading State -->
@@ -34,9 +21,51 @@
           <p>載入中...</p>
         </div>
 
-        <!-- Reviews List -->
-        <div v-else-if="reviews.length > 0" class="reviews-list">
-          <div v-for="review in reviews" :key="review.id" class="review-card">
+        <!-- Reviews Content -->
+        <div v-else-if="reviews.length > 0">
+          <!-- Filter Tabs -->
+          <div class="filter-section">
+            <FilterTabs
+              :items="reviews"
+              :filters="filterOptions"
+              @update:sortedItems="handleFilteredReviews"
+            />
+          </div>
+          <!-- Rating Summary Section -->
+          <div class="rating-summary-section">
+            <div class="rating-overview">
+              <div class="rating-score-large">{{ averageRating.toFixed(1) }}</div>
+              <div class="rating-stars-large">
+                <i
+                  v-for="n in 5"
+                  :key="n"
+                  :class="['bi', n <= Math.floor(averageRating) ? 'bi-star-fill' : 'bi-star']"
+                ></i>
+              </div>
+              <p class="rating-count">{{ reviews.length }} 則評價</p>
+            </div>
+
+            <div class="rating-breakdown">
+              <div
+                v-for="rating in [5, 4, 3, 2, 1]"
+                :key="rating"
+                class="rating-bar-item"
+              >
+                <span class="rating-label">{{ rating }} 星</span>
+                <div class="rating-bar">
+                  <div
+                    class="rating-bar-fill"
+                    :style="{ width: `${getRatingPercentage(rating)}%` }"
+                  ></div>
+                </div>
+                <span class="rating-percentage">{{ getRatingCount(rating) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reviews List -->
+          <div class="reviews-list">
+          <div v-for="review in paginatedReviews" :key="review.id" class="review-card">
             <div class="review-header">
               <div class="reviewer-info" @click="goToUserProfile(review.reviewer.id)">
                 <img
@@ -76,6 +105,54 @@
               </div>
             </div>
           </div>
+          </div>
+
+          <!-- Pagination Controls -->
+          <div v-if="filteredReviews.length > itemsPerPage" class="pagination-container">
+            <div class="pagination-info">
+              顯示第 {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, filteredReviews.length) }} 項，共 {{ filteredReviews.length }} 項
+            </div>
+            <div class="pagination-controls">
+              <button
+                class="pagination-btn"
+                :disabled="currentPage === 1"
+                @click="prevPage"
+              >
+                <i class="bi bi-chevron-left"></i>
+                上一頁
+              </button>
+
+              <button
+                v-for="(page, index) in pageNumbers"
+                :key="index"
+                class="pagination-btn page-number"
+                :class="{ active: page === currentPage, ellipsis: page === '...' }"
+                :disabled="page === '...'"
+                @click="typeof page === 'number' ? goToPage(page) : null"
+              >
+                {{ page }}
+              </button>
+
+              <button
+                class="pagination-btn"
+                :disabled="currentPage === totalPages"
+                @click="nextPage"
+              >
+                下一頁
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+
+            <div class="items-per-page">
+              <label for="itemsPerPage">每頁顯示：</label>
+              <select id="itemsPerPage" v-model.number="itemsPerPage" @change="currentPage = 1">
+                <option :value="5">5</option>
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <!-- Empty State -->
@@ -98,6 +175,7 @@ import { useReviewStore } from '@/stores/review';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import FilterTabs from '../components/FilterTabs.vue';
 
 const router = useRouter();
 const reviewStore = useReviewStore();
@@ -144,6 +222,148 @@ const goToTransactionRecords = () => {
 
 const goToUserProfile = (userId) => {
   router.push({ name: 'PublicUserProfile', params: { id: userId } });
+};
+
+// Filter options for FilterTabs
+const filterOptions = [
+  {
+    id: 1,
+    label: '全部評價',
+    type: 'filter',
+    filterFn: () => true,
+    sortable: false
+  },
+  {
+    id: 2,
+    label: '5星評價',
+    type: 'filter',
+    filterKey: 'rating',
+    filterValue: 5,
+    sortable: false
+  },
+  {
+    id: 3,
+    label: '4星評價',
+    type: 'filter',
+    filterKey: 'rating',
+    filterValue: 4,
+    sortable: false
+  },
+  {
+    id: 4,
+    label: '3星以下',
+    type: 'filter',
+    filterFn: (review) => review.rating <= 3,
+    sortable: false
+  },
+  {
+    id: 5,
+    label: '最新評價',
+    type: 'sort',
+    sortKey: 'date',
+    defaultOrder: 'desc',
+    ascText: '早到晚',
+    descText: '晚到早'
+  }
+];
+
+// Filtered reviews from FilterTabs
+const filteredReviews = ref([]);
+
+// Handle filtered reviews from FilterTabs
+const handleFilteredReviews = (items) => {
+  filteredReviews.value = items;
+  currentPage.value = 1; // Reset to first page when filter changes
+};
+
+// Pagination
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
+// Computed total pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredReviews.value.length / itemsPerPage.value);
+});
+
+// Computed paginated reviews (for display)
+const paginatedReviews = computed(() => {
+  // Ensure current page doesn't exceed total pages
+  if (currentPage.value > totalPages.value && totalPages.value > 0) {
+    currentPage.value = totalPages.value;
+  }
+
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredReviews.value.slice(start, end);
+});
+
+// Pagination methods
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+// Get page numbers to display
+const pageNumbers = computed(() => {
+  const pages = [];
+  const maxVisible = 5;
+
+  if (totalPages.value <= maxVisible) {
+    // Show all pages if total is small
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i);
+    }
+  } else {
+    // Show smart pagination
+    if (currentPage.value <= 3) {
+      // Near start
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages.value);
+    } else if (currentPage.value >= totalPages.value - 2) {
+      // Near end
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages.value - 3; i <= totalPages.value; i++) pages.push(i);
+    } else {
+      // Middle
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage.value - 1);
+      pages.push(currentPage.value);
+      pages.push(currentPage.value + 1);
+      pages.push('...');
+      pages.push(totalPages.value);
+    }
+  }
+
+  return pages;
+});
+
+// Rating helpers
+const getRatingCount = (rating) => {
+  return reviews.value.filter(r => r.rating === rating).length;
+};
+
+const getRatingPercentage = (rating) => {
+  if (reviews.value.length === 0) return 0;
+  return (getRatingCount(rating) / reviews.value.length) * 100;
 };
 
 // Lifecycle
@@ -204,64 +424,108 @@ onMounted(() => {
 
 // Page Header
 .page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   margin-bottom: 30px;
-  flex-wrap: wrap;
 
   .page-title {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     color: #1e1e1e;
     margin: 0;
   }
+}
 
-  .rating-summary {
+// Rating Summary Section
+.rating-summary-section {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 40px;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
+}
+
+.rating-overview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  .rating-score-large {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: #1e1e1e;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .rating-stars-large {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
+    gap: 4px;
+    margin-bottom: 12px;
 
-    .stars {
-      display: flex;
-      gap: 4px;
+    i {
+      font-size: 24px;
+      color: #ffc107;
 
-      i {
-        font-size: 18px;
-        color: #ffc107;
-
-        &.bi-star {
-          color: #e0e0e0;
-        }
+      &.bi-star {
+        color: #e0e0e0;
       }
-    }
-
-    .rating-score {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-      color: #1e1e1e;
     }
   }
 
-  .action-btn {
-    padding: 10px 24px;
-    background: $primary;
-    border: none;
-    border-radius: 8px;
+  .rating-count {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
-    font-weight: 500;
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s;
+    color: #666;
+    margin: 0;
+  }
+}
 
-    &:hover {
-      background: #5fa795;
+.rating-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.rating-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .rating-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    width: 50px;
+    flex-shrink: 0;
+  }
+
+  .rating-bar {
+    flex: 1;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+
+    .rating-bar-fill {
+      height: 100%;
+      background: $primary;
+      transition: width 0.3s ease;
     }
+  }
+
+  .rating-percentage {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    width: 30px;
+    flex-shrink: 0;
+    text-align: right;
   }
 }
 
@@ -449,7 +713,144 @@ onMounted(() => {
   }
 }
 
+// Filter Section
+.filter-section {
+  margin-bottom: 30px;
+}
+
+// Pagination Container
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.pagination-info {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #666;
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #1e1e1e;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: $primary;
+    color: $primary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.page-number {
+    min-width: 40px;
+    justify-content: center;
+
+    &.active {
+      background: $primary;
+      color: white;
+      border-color: $primary;
+    }
+
+    &.ellipsis {
+      border: none;
+      cursor: default;
+
+      &:hover {
+        background: white;
+        color: #1e1e1e;
+      }
+    }
+  }
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+  }
+
+  select {
+    padding: 6px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #1e1e1e;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s;
+
+    &:hover {
+      border-color: $primary;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+    }
+  }
+}
+
 // Responsive
+@media (max-width: 991.98px) {
+  .rating-summary-section {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 24px;
+  }
+
+  .pagination-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .items-per-page {
+    justify-content: center;
+  }
+}
+
 @media (max-width: 767.98px) {
   .main-content {
     padding: 20px 0 50px;
@@ -460,16 +861,13 @@ onMounted(() => {
   }
 
   .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-
-    .rating-summary {
-      width: 100%;
+    .page-title {
+      font-size: 24px;
     }
+  }
 
-    .action-btn {
-      width: 100%;
-    }
+  .rating-summary-section {
+    padding: 20px;
   }
 
   .review-card {
@@ -494,6 +892,10 @@ onMounted(() => {
     .page-title {
       font-size: 20px;
     }
+  }
+
+  .rating-summary-section {
+    padding: 16px;
   }
 
   .review-card {
