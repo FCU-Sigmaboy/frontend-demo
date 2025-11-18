@@ -201,26 +201,38 @@ export async function getPointsTransactions(params = {}) {
 }
 
 /**
- * Daily sign-in
- * @returns {Promise<object>} - { success, points_awarded, streak_day, next_reward }
+ * Daily sign-in (calls Supabase RPC: daily_check_in)
+ * @returns {Promise<object>} - { success, message, points_awarded, streak_day, next_reward, new_balance }
  */
 export async function dailySignIn() {
+  // 1. Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
-  // Example response
-  const exampleResult = {
-    success: true,
-    points_awarded: 20,
-    streak_day: 8,
-    next_reward: 5,
-    message: '簽到成功！'
-  };
+  console.log('dailySignIn called - calling RPC: daily_check_in');
 
-  console.log('dailySignIn called');
-  console.log('Returning example result:', exampleResult);
+  // 2. Call the RPC function (no parameters needed)
+  const { data, error } = await supabase.rpc('daily_check_in');
 
-  return exampleResult;
+  // 3. Error handling (catches RAISE EXCEPTION from RPC)
+  if (error) {
+    console.error('Supabase daily_check_in RPC error:', error);
+    throw new Error(error.message || '每日簽到失敗');
+  }
+
+  console.log('daily_check_in RPC response:', data);
+
+  // 4. Return the RPC result
+  // Expected format:
+  // {
+  //   success: true/false,
+  //   message: "簽到成功！",
+  //   points_awarded: 5,
+  //   streak_day: 8,
+  //   next_reward: 6,
+  //   new_balance: 1005
+  // }
+  return data;
 }
 
 /**

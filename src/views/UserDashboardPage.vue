@@ -132,12 +132,32 @@ async function handleSignIn() {
     const result = await pointsStore.performDailySignIn();
 
     if (result.success) {
-      // Show success message
-      alert(`簽到成功！獲得 ${result.points_awarded} 點數\n連續簽到 ${result.streak_day} 天`);
+      // Build success message
+      let message = `${result.message}\n\n`;
+      message += `🎁 獲得點數: ${result.points_awarded} P\n`;
+      message += `🔥 連續簽到: ${result.streak_day} 天\n`;
+
+      if (result.new_balance !== undefined) {
+        message += `💰 當前餘額: ${result.new_balance} P\n`;
+      }
+
+      if (result.next_reward > 0) {
+        message += `\n📅 再簽到 ${result.next_reward} 天可獲得下個獎勵！`;
+      } else {
+        message += `\n🎉 已達成所有簽到里程碑！`;
+      }
+
+      alert(message);
+
+      // Refresh dashboard to show updated data
+      await loadDashboardData();
+    } else {
+      // Handle already signed in case
+      alert(result.message || '您今天已經簽到過了');
     }
   } catch (error) {
     console.error('Sign-in error:', error);
-    alert('簽到失敗，請稍後再試');
+    alert(`簽到失敗: ${error.message || '請稍後再試'}`);
   }
 }
 

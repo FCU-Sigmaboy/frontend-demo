@@ -100,21 +100,16 @@
               </div>
             </div>
 
-            <!-- Achievement Badges -->
+            <!-- Combined Achievements & Badges -->
             <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
-              <AchievementBadges
+              <CombinedAchievements
                 :total-carbon="userCarbonSaved"
+                :total-sales="userStats.sales"
+                :total-purchases="userStats.purchases"
                 :show-carbon-total="true"
                 :show-progress="true"
                 :show-threshold="true"
-                @badge-click="openBadgeModal"
-              />
-              <TransactionTrophies
-                :total-sales="userStats.sales"
-                :total-purchases="userStats.purchases"
-                :show-progress="true"
-                :show-threshold="true"
-                @trophy-click="openTrophyModal"
+                @achievement-click="openAchievementModal"
               />
             </div>
           </div>
@@ -455,8 +450,24 @@
           </div>
           <div class="modal-body text-center">
             <div v-if="selectedBadge">
-              <img :src="selectedBadge.image" :alt="selectedBadge.label" class="img-fluid mb-3" style="max-height: 150px;" />
+              <!-- Display image for badges -->
+              <img
+                v-if="selectedBadge.type === 'badge' && selectedBadge.image"
+                :src="selectedBadge.image"
+                :alt="selectedBadge.label"
+                class="img-fluid mb-3"
+                style="max-height: 150px;"
+              />
+              <!-- Display emoji icon for trophies -->
+              <div v-else-if="selectedBadge.type === 'trophy' && selectedBadge.icon" class="trophy-icon-large mb-3">
+                {{ selectedBadge.icon }}
+              </div>
+
               <p class="mb-3">{{ selectedBadge.description }}</p>
+              <p v-if="selectedBadge.points" class="achievement-points-display mb-3">
+                <i class="bi bi-award-fill"></i>
+                +{{ selectedBadge.points }} 點數
+              </p>
 
               <div v-if="selectedBadge.unlocked" class="badge-status unlocked">
                 <i class="bi bi-check-circle-fill"></i>
@@ -464,7 +475,7 @@
               </div>
               <div v-else class="badge-status locked">
                 <div class="progress-info">
-                  <p class="mb-2"><strong>目前進度：{{ selectedBadge.progress }}%</strong></p>
+                  <p class="mb-2"><strong>目前進度：{{ Math.round(selectedBadge.progress) }}%</strong></p>
                   <div class="progress mb-2" style="height: 20px;">
                     <div
                       class="progress-bar bg-success"
@@ -474,11 +485,14 @@
                       aria-valuemin="0"
                       aria-valuemax="100"
                     >
-                      {{ selectedBadge.progress }}%
+                      {{ Math.round(selectedBadge.progress) }}%
                     </div>
                   </div>
-                  <p v-if="selectedBadge.remainingKg > 0" class="text-muted small mb-0">
+                  <p v-if="selectedBadge.remainingKg !== undefined && selectedBadge.remainingKg > 0" class="text-muted small mb-0">
                     還需 <strong class="text-primary">{{ selectedBadge.remainingKg?.toFixed(1) || '0.0' }} kg</strong> 即可解鎖
+                  </p>
+                  <p v-else-if="selectedBadge.threshold" class="text-muted small mb-0">
+                    需達成 <strong class="text-primary">{{ selectedBadge.threshold }}</strong> 即可解鎖
                   </p>
                 </div>
               </div>
@@ -503,8 +517,7 @@ import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
-import AchievementBadges from '../components/AchievementBadges.vue';
-import TransactionTrophies from '../components/TransactionTrophies.vue';
+import CombinedAchievements from '../components/CombinedAchievements.vue';
 import { Modal } from 'bootstrap';
 
 // Badge images are now imported inside AchievementBadges component
@@ -800,20 +813,8 @@ onBeforeUnmount(() => {
 });
 
 // Methods
-const openBadgeModal = (badge) => {
-  selectedBadge.value = badge;
-  if (badgeModalInstance.value) {
-    badgeModalInstance.value.show();
-  }
-};
-
-const openTrophyModal = (trophy) => {
-  // For now, use the same modal structure as badges
-  selectedBadge.value = {
-    ...trophy,
-    image: null, // Trophies use icons, not images
-    remainingKg: null
-  };
+const openAchievementModal = (achievement) => {
+  selectedBadge.value = achievement;
   if (badgeModalInstance.value) {
     badgeModalInstance.value.show();
   }
@@ -1134,6 +1135,27 @@ const scrollCarousel = (carouselRef, index) => {
 }
 
 // Badge Modal Styles
+.trophy-icon-large {
+  font-size: 80px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.achievement-points-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: $primary;
+
+  i {
+    font-size: 20px;
+  }
+}
+
 .badge-status {
   margin-top: 16px;
   padding: 16px;
