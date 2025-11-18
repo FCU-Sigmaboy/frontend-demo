@@ -5,8 +5,8 @@
         <div class="modal-container">
           <div class="modal-header">
             <h2 class="modal-title">
-              <i class="bi bi-x-circle"></i>
-              拒絕交易
+              <i class="bi bi-arrow-counterclockwise"></i>
+              撤回交易
             </h2>
             <button class="close-btn" @click="closeModal">
               <i class="bi bi-x-lg"></i>
@@ -27,7 +27,7 @@
                   <span class="info-value price">{{ transaction?.item_price }} 點</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">賣家</span>
+                  <span class="info-label">買家</span>
                   <span class="info-value">{{ transaction?.other_user_nickname }}</span>
                 </div>
                 <div v-if="transaction?.giver_note" class="info-item">
@@ -39,16 +39,16 @@
               <!-- Warning -->
               <div class="warning-box">
                 <i class="bi bi-info-circle"></i>
-                <p>拒絕後需要再次提案才能交易</p>
+                <p>撤回後商品將重新上架，買家需要再次提案才能交易</p>
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
             <button class="btn-cancel" @click="closeModal">取消</button>
-            <button class="btn-reject" @click="confirmReject">
-              <i class="bi bi-x-circle"></i>
-              確認拒絕
+            <button class="btn-confirm" @click="confirmCancel">
+              <i class="bi bi-arrow-counterclockwise"></i>
+              確認撤回
             </button>
           </div>
         </div>
@@ -75,7 +75,7 @@ function closeModal() {
   emit('update:modelValue', false);
 }
 
-function confirmReject() {
+function confirmCancel() {
   emit('confirm');
   closeModal();
 }
@@ -128,7 +128,7 @@ function confirmReject() {
 
     i {
       font-size: 24px;
-      color: #d32f2f;
+      color: #f57c00;
     }
   }
 
@@ -307,14 +307,14 @@ function confirmReject() {
     }
   }
 
-  .btn-reject {
-    background: #d32f2f;
+  .btn-confirm {
+    background: #f57c00;
     color: white;
 
     &:hover {
-      background: #b71c1c;
+      background: #e65100;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+      box-shadow: 0 4px 12px rgba(245, 124, 0, 0.3);
     }
 
     &:active {
