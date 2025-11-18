@@ -575,22 +575,21 @@ function saveAchievementSelection() {
 
     .check-mark {
       position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 20px;
-      height: 20px;
+      top: -4px;
+      right: -4px;
+      width: 22px;
+      height: 22px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: $primary;
       background: white;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.9);
       z-index: 2;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
       i {
-        font-size: 14px;
+        font-size: 18px;
         line-height: 1;
       }
     }
