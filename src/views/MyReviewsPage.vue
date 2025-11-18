@@ -95,13 +95,14 @@
 
             <!-- Transaction Info (if applicable) -->
             <div v-if="review.transaction" class="transaction-info">
-              <div class="transaction-item">
+              <div class="transaction-item clickable" @click="goToProductDetail(review.transaction.id)">
                 <img
                   :src="review.transaction.image"
                   :alt="review.transaction.name"
                   class="transaction-image"
                 />
                 <span class="transaction-name">{{ review.transaction.name }}</span>
+                <i class="bi bi-chevron-right"></i>
               </div>
             </div>
           </div>
@@ -197,6 +198,7 @@ const reviews = computed(() => {
     comment: review.comment,
     date: review.formatted_date,
     transaction: review.item_id ? {
+      id: review.item_id,
       name: review.item_title,
       image: review.item_image
     } : null
@@ -222,6 +224,10 @@ const goToTransactionRecords = () => {
 
 const goToUserProfile = (userId) => {
   router.push({ name: 'PublicUserProfile', params: { id: userId } });
+};
+
+const goToProductDetail = (itemId) => {
+  router.push({ name: 'ItemDetail', params: { id: itemId } });
 };
 
 // Filter options for FilterTabs
@@ -663,6 +669,27 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  transition: all 0.3s;
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: #e8e8e8;
+      transform: translateX(4px);
+
+      .transaction-name {
+        color: $primary;
+      }
+
+      i {
+        color: $primary;
+      }
+    }
+  }
 
   .transaction-image {
     width: 60px;
@@ -677,6 +704,14 @@ onMounted(() => {
     font-size: 14px;
     font-weight: 500;
     color: #1e1e1e;
+    flex: 1;
+    transition: color 0.3s;
+  }
+
+  i {
+    font-size: 16px;
+    color: #999;
+    transition: color 0.3s;
   }
 }
 
