@@ -85,6 +85,10 @@ const props = defineProps({
   title: {
     type: String,
     default: '編輯大頭貼'
+  },
+  aspectRatioLocked: {
+    type: Boolean,
+    default: true  // 預設鎖定方形,適用於大頭貼
   }
 });
 
@@ -103,7 +107,8 @@ const imageAspectRatio = ref(1);
 
 const cropBoxX = ref(0);
 const cropBoxY = ref(0);
-const cropBoxSize = ref(200);
+const cropBoxWidth = ref(200);
+const cropBoxHeight = ref(200);
 
 const isDragging = ref(false);
 const isResizing = ref(false);
@@ -112,7 +117,8 @@ const dragStartX = ref(0);
 const dragStartY = ref(0);
 const dragStartCropX = ref(0);
 const dragStartCropY = ref(0);
-const dragStartCropSize = ref(0);
+const dragStartCropWidth = ref(0);
+const dragStartCropHeight = ref(0);
 
 let ctx = null;
 let img = null;
@@ -121,8 +127,8 @@ const cropBoxStyle = computed(() => {
   return {
     left: `${cropBoxX.value}px`,
     top: `${cropBoxY.value}px`,
-    width: `${cropBoxSize.value}px`,
-    height: `${cropBoxSize.value}px`
+    width: `${cropBoxWidth.value}px`,
+    height: `${cropBoxHeight.value}px`
   };
 });
 
@@ -187,10 +193,19 @@ const loadImage = () => {
     imageX.value = (containerWidth - displayWidth) / 2;
     imageY.value = (containerHeight - displayHeight) / 2;
 
-    // Initialize crop box (square, centered)
-    cropBoxSize.value = Math.min(displayWidth, displayHeight) * 0.8;
-    cropBoxX.value = imageX.value + (imageWidth.value - cropBoxSize.value) / 2;
-    cropBoxY.value = imageY.value + (imageHeight.value - cropBoxSize.value) / 2;
+    // Initialize crop box
+    if (props.aspectRatioLocked) {
+      // Square crop box for locked aspect ratio
+      const size = Math.min(displayWidth, displayHeight) * 0.8;
+      cropBoxWidth.value = size;
+      cropBoxHeight.value = size;
+    } else {
+      // Free aspect ratio
+      cropBoxWidth.value = displayWidth * 0.8;
+      cropBoxHeight.value = displayHeight * 0.8;
+    }
+    cropBoxX.value = imageX.value + (imageWidth.value - cropBoxWidth.value) / 2;
+    cropBoxY.value = imageY.value + (imageHeight.value - cropBoxHeight.value) / 2;
 
     drawImage();
   };
@@ -215,7 +230,7 @@ const drawImage = () => {
 
   ctx.save();
   ctx.beginPath();
-  ctx.rect(cropBoxX.value, cropBoxY.value, cropBoxSize.value, cropBoxSize.value);
+  ctx.rect(cropBoxX.value, cropBoxY.value, cropBoxWidth.value, cropBoxHeight.value);
   ctx.clip();
   ctx.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
   ctx.restore();
@@ -223,7 +238,7 @@ const drawImage = () => {
   // Draw crop box border
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
-  ctx.strokeRect(cropBoxX.value, cropBoxY.value, cropBoxSize.value, cropBoxSize.value);
+  ctx.strokeRect(cropBoxX.value, cropBoxY.value, cropBoxWidth.value, cropBoxHeight.value);
 };
 
 const updateZoom = () => {
@@ -254,7 +269,8 @@ const startResize = (direction, e) => {
   dragStartY.value = clientY;
   dragStartCropX.value = cropBoxX.value;
   dragStartCropY.value = cropBoxY.value;
-  dragStartCropSize.value = cropBoxSize.value;
+  dragStartCropWidth.value = cropBoxWidth.value;
+  dragStartCropHeight.value = cropBoxHeight.value;
 };
 
 const handleMouseMove = (e) => {
@@ -285,82 +301,81 @@ const handleMove = (clientX, clientY) => {
     let newY = dragStartCropY.value + deltaY;
 
     // Constrain to canvas bounds
-    newX = Math.max(0, Math.min(newX, canvas.value.width - cropBoxSize.value));
-    newY = Math.max(0, Math.min(newY, canvas.value.height - cropBoxSize.value));
+    newX = Math.max(0, Math.min(newX, canvas.value.width - cropBoxWidth.value));
+    newY = Math.max(0, Math.min(newY, canvas.value.height - cropBoxHeight.value));
 
     cropBoxX.value = newX;
     cropBoxY.value = newY;
   } else if (isResizing.value) {
     // Resize crop box
     const minSize = 100;
-    const maxSize = Math.min(canvas.value.width, canvas.value.height);
-
-    let newSize = dragStartCropSize.value;
+    let newWidth = dragStartCropWidth.value;
+    let newHeight = dragStartCropHeight.value;
     let newX = dragStartCropX.value;
     let newY = dragStartCropY.value;
 
-    // Calculate size change based on direction
-    // For corner handles, use the larger absolute delta to maintain square aspect
-    if (resizeDirection.value === 'se') {
-      // Southeast corner - both X and Y increase
-      const delta = Math.max(deltaX, deltaY);
-      newSize = dragStartCropSize.value + delta;
-    } else if (resizeDirection.value === 'nw') {
-      // Northwest corner - both X and Y decrease
-      const delta = Math.min(deltaX, deltaY); // Most negative
-      newSize = dragStartCropSize.value - delta;
-      newX = dragStartCropX.value + delta;
-      newY = dragStartCropY.value + delta;
-    } else if (resizeDirection.value === 'ne') {
-      // Northeast corner - X increases, Y decreases
-      const delta = Math.max(deltaX, -deltaY);
-      newSize = dragStartCropSize.value + delta;
-      newY = dragStartCropY.value - delta;
-    } else if (resizeDirection.value === 'sw') {
-      // Southwest corner - X decreases, Y increases
-      const delta = Math.max(-deltaX, deltaY);
-      newSize = dragStartCropSize.value + delta;
-      newX = dragStartCropX.value - delta;
-    } else if (resizeDirection.value.includes('e')) {
-      // Resize from right edge
-      newSize = dragStartCropSize.value + deltaX;
-    } else if (resizeDirection.value.includes('w')) {
-      // Resize from left edge
-      newSize = dragStartCropSize.value - deltaX;
-      newX = dragStartCropX.value + deltaX;
-    } else if (resizeDirection.value.includes('s')) {
-      // Resize from bottom edge
-      newSize = dragStartCropSize.value + deltaY;
-    } else if (resizeDirection.value.includes('n')) {
-      // Resize from top edge
-      newSize = dragStartCropSize.value - deltaY;
-      newY = dragStartCropY.value + deltaY;
-    }
+    if (props.aspectRatioLocked) {
+      // Locked aspect ratio (square)
+      const maxSize = Math.min(canvas.value.width, canvas.value.height);
+      const startSize = Math.min(dragStartCropWidth.value, dragStartCropHeight.value);
+      let newSize = startSize;
 
-    // Constrain size
-    newSize = Math.max(minSize, Math.min(maxSize, newSize));
-
-    // Constrain position to keep within canvas
-    newX = Math.max(0, Math.min(newX, canvas.value.width - newSize));
-    newY = Math.max(0, Math.min(newY, canvas.value.height - newSize));
-
-    // If position was constrained, adjust size accordingly
-    if (resizeDirection.value.includes('w') || resizeDirection.value === 'nw' || resizeDirection.value === 'sw') {
-      const actualDeltaX = newX - dragStartCropX.value;
-      if (actualDeltaX !== deltaX && actualDeltaX !== -deltaX) {
-        newSize = dragStartCropSize.value - actualDeltaX;
-        newSize = Math.max(minSize, Math.min(maxSize, newSize));
+      // Calculate size change based on direction
+      if (resizeDirection.value === 'se') {
+        const delta = Math.max(deltaX, deltaY);
+        newSize = startSize + delta;
+      } else if (resizeDirection.value === 'nw') {
+        const delta = Math.min(deltaX, deltaY);
+        newSize = startSize - delta;
+        newX = dragStartCropX.value + delta;
+        newY = dragStartCropY.value + delta;
+      } else if (resizeDirection.value === 'ne') {
+        const delta = Math.max(deltaX, -deltaY);
+        newSize = startSize + delta;
+        newY = dragStartCropY.value - delta;
+      } else if (resizeDirection.value === 'sw') {
+        const delta = Math.max(-deltaX, deltaY);
+        newSize = startSize + delta;
+        newX = dragStartCropX.value - delta;
       }
-    }
-    if (resizeDirection.value.includes('n') || resizeDirection.value === 'nw' || resizeDirection.value === 'ne') {
-      const actualDeltaY = newY - dragStartCropY.value;
-      if (actualDeltaY !== deltaY && actualDeltaY !== -deltaY) {
-        newSize = dragStartCropSize.value - actualDeltaY;
-        newSize = Math.max(minSize, Math.min(maxSize, newSize));
+
+      newSize = Math.max(minSize, Math.min(maxSize, newSize));
+      newX = Math.max(0, Math.min(newX, canvas.value.width - newSize));
+      newY = Math.max(0, Math.min(newY, canvas.value.height - newSize));
+
+      newWidth = newSize;
+      newHeight = newSize;
+    } else {
+      // Free aspect ratio
+      if (resizeDirection.value === 'se') {
+        newWidth = dragStartCropWidth.value + deltaX;
+        newHeight = dragStartCropHeight.value + deltaY;
+      } else if (resizeDirection.value === 'nw') {
+        newWidth = dragStartCropWidth.value - deltaX;
+        newHeight = dragStartCropHeight.value - deltaY;
+        newX = dragStartCropX.value + deltaX;
+        newY = dragStartCropY.value + deltaY;
+      } else if (resizeDirection.value === 'ne') {
+        newWidth = dragStartCropWidth.value + deltaX;
+        newHeight = dragStartCropHeight.value - deltaY;
+        newY = dragStartCropY.value + deltaY;
+      } else if (resizeDirection.value === 'sw') {
+        newWidth = dragStartCropWidth.value - deltaX;
+        newHeight = dragStartCropHeight.value + deltaY;
+        newX = dragStartCropX.value + deltaX;
       }
+
+      // Constrain size
+      newWidth = Math.max(minSize, Math.min(canvas.value.width, newWidth));
+      newHeight = Math.max(minSize, Math.min(canvas.value.height, newHeight));
+
+      // Constrain position
+      newX = Math.max(0, Math.min(newX, canvas.value.width - newWidth));
+      newY = Math.max(0, Math.min(newY, canvas.value.height - newHeight));
     }
 
-    cropBoxSize.value = newSize;
+    cropBoxWidth.value = newWidth;
+    cropBoxHeight.value = newHeight;
     cropBoxX.value = newX;
     cropBoxY.value = newY;
   }
@@ -383,12 +398,6 @@ const handleTouchEnd = () => {
 const getCroppedImage = () => {
   if (!canvas.value || !img) return null;
 
-  const outputSize = 400; // Output size for profile picture
-  const outputCanvas = document.createElement('canvas');
-  outputCanvas.width = outputSize;
-  outputCanvas.height = outputSize;
-  const outputCtx = outputCanvas.getContext('2d');
-
   // Calculate source coordinates
   const scale = zoom.value;
   const scaledWidth = imageWidth.value * scale;
@@ -399,18 +408,44 @@ const getCroppedImage = () => {
   // Calculate crop area relative to image
   const cropRelativeX = (cropBoxX.value - scaledX) / scaledWidth;
   const cropRelativeY = (cropBoxY.value - scaledY) / scaledHeight;
-  const cropRelativeSize = cropBoxSize.value / scaledWidth;
+  const cropRelativeWidth = cropBoxWidth.value / scaledWidth;
+  const cropRelativeHeight = cropBoxHeight.value / scaledHeight;
 
   // Source coordinates in original image
   const srcX = cropRelativeX * img.width;
   const srcY = cropRelativeY * img.height;
-  const srcSize = cropRelativeSize * img.width;
+  const srcWidth = cropRelativeWidth * img.width;
+  const srcHeight = cropRelativeHeight * img.height;
+
+  // Output dimensions
+  let outputWidth, outputHeight;
+  if (props.aspectRatioLocked) {
+    // Square output for profile picture
+    outputWidth = 400;
+    outputHeight = 400;
+  } else {
+    // Maintain aspect ratio, max dimension 1200px
+    const maxDimension = 1200;
+    const aspectRatio = srcWidth / srcHeight;
+    if (aspectRatio > 1) {
+      outputWidth = Math.min(srcWidth, maxDimension);
+      outputHeight = outputWidth / aspectRatio;
+    } else {
+      outputHeight = Math.min(srcHeight, maxDimension);
+      outputWidth = outputHeight * aspectRatio;
+    }
+  }
+
+  const outputCanvas = document.createElement('canvas');
+  outputCanvas.width = outputWidth;
+  outputCanvas.height = outputHeight;
+  const outputCtx = outputCanvas.getContext('2d');
 
   // Draw cropped image
   outputCtx.drawImage(
     img,
-    srcX, srcY, srcSize, srcSize,
-    0, 0, outputSize, outputSize
+    srcX, srcY, srcWidth, srcHeight,
+    0, 0, outputWidth, outputHeight
   );
 
   return new Promise((resolve) => {

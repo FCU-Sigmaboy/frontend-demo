@@ -64,7 +64,7 @@
             <!-- Left Side: Image Gallery -->
             <div class="image-gallery">
               <!-- Main Image -->
-              <div class="main-image-wrapper">
+              <div class="main-image-wrapper" :style="{ backgroundImage: `url(${currentImage})` }">
                 <img
                   :src="currentImage"
                   alt="Product Image"
@@ -645,7 +645,8 @@ onUnmounted(() => {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    backdrop-filter: blur(20px) brightness(0.8);
   }
 
   .nav-arrow {
