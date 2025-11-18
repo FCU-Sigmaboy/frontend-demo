@@ -24,6 +24,7 @@
                 :current-balance="pointsStore.currentBalance"
                 :total-earned="pointsStore.totalEarned"
                 :total-spent="pointsStore.totalSpent"
+                :auto-fetch="false"
               />
             </div>
             <div class="col-lg-4">

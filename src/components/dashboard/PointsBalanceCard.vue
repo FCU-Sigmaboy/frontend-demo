@@ -6,6 +6,15 @@
           <i class="bi bi-wallet2"></i>
           點數餘額
         </h3>
+        <div v-if="syncStatusLabel" class="sync-status" role="status">
+          <span
+            v-if="isSyncing"
+            class="spinner-border spinner-border-sm text-light"
+            role="presentation"
+            aria-hidden="true"
+          ></span>
+          <span>{{ syncStatusLabel }}</span>
+        </div>
       </div>
 
       <!-- Current Balance Display -->
@@ -58,8 +67,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { usePointsProfile } from '@/composables/usePointsProfile';
 
 const props = defineProps({
   currentBalance: {
@@ -73,27 +83,63 @@ const props = defineProps({
   totalSpent: {
     type: Number,
     default: 0
+  },
+  autoFetch: {
+    type: Boolean,
+    default: true
   }
 });
 
 const router = useRouter();
+const { profile, isLoadingProfile, profileError, fetchPointsProfile } = usePointsProfile();
 
-// Computed
-const formattedBalance = computed(() => {
-  return props.currentBalance.toLocaleString('zh-TW');
+onMounted(() => {
+  if (props.autoFetch) {
+    fetchPointsProfile().catch((error) => {
+      console.error('[PointsBalanceCard] 無法同步點數資料:', error);
+    });
+  }
 });
 
-const formattedEarned = computed(() => {
-  return props.totalEarned.toLocaleString('zh-TW');
+const activeProfile = computed(() => {
+  if (profile.value) {
+    return {
+      current_balance: normalizeNumber(profile.value.current_balance),
+      total_earned: normalizeNumber(profile.value.total_earned),
+      total_spent: normalizeNumber(profile.value.total_spent)
+    };
+  }
+
+  return {
+    current_balance: normalizeNumber(props.currentBalance),
+    total_earned: normalizeNumber(props.totalEarned),
+    total_spent: normalizeNumber(props.totalSpent)
+  };
 });
 
-const formattedSpent = computed(() => {
-  return props.totalSpent.toLocaleString('zh-TW');
+const formattedBalance = computed(() => formatNumber(activeProfile.value.current_balance));
+const formattedEarned = computed(() => formatNumber(activeProfile.value.total_earned));
+const formattedSpent = computed(() => formatNumber(activeProfile.value.total_spent));
+
+const isSyncing = computed(() => props.autoFetch && isLoadingProfile.value && !profile.value);
+const hasSyncError = computed(() => props.autoFetch && !!profileError.value);
+const syncStatusLabel = computed(() => {
+  if (isSyncing.value) return '同步最新點數中...';
+  if (hasSyncError.value) return '暫時無法同步，顯示上次資料';
+  return null;
 });
+
+function formatNumber(value) {
+  return normalizeNumber(value).toLocaleString('zh-TW');
+}
+
+function normalizeNumber(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
 
 // Methods
 function goToTransactions() {
-  // Scroll to transaction history section
   const historySection = document.querySelector('.transaction-history-card');
   if (historySection) {
     historySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -143,6 +189,15 @@ function goToEarnPoints() {
   i {
     font-size: 22px;
   }
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 8px;
 }
 
 // Balance Display
