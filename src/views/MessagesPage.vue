@@ -37,6 +37,7 @@
                 @back="deselectConversation"
                 @toggle-menu="showMoreMenu = !showMoreMenu"
                 @archive="handleArchiveConversation"
+                @view-listings="handleViewListings"
               />
 
               <ChatMessages
@@ -144,6 +145,14 @@
       @confirm="handleTransactionConfirm"
     />
 
+    <!-- User Listings Modal -->
+    <UserListingsModal
+      v-model="showUserListingsModal"
+      :user-id="userListingsUserId"
+      :user-name="userListingsUserName"
+      @dm-item="handleDMFromModal"
+    />
+
   </div>
 </template>
 
@@ -154,7 +163,9 @@ import ChatHeader from '@/components/messages/ChatHeader.vue';
 import ChatMessages from '@/components/messages/ChatMessages.vue';
 import ChatScrollControls from '@/components/messages/ChatScrollControls.vue';
 import TransactionModal from '@/components/messages/TransactionModal.vue';
+import UserListingsModal from '@/components/messages/UserListingsModal.vue';
 import { useMessagePage } from '@/composables/useMessagePage';
+import { ref, computed } from 'vue';
 
 const {
   userPoints,
@@ -195,6 +206,37 @@ const {
   handleOpenTransactionModal,
   handleTransactionConfirm
 } = useMessagePage();
+
+// User Listings Modal state
+const showUserListingsModal = ref(false);
+const userListingsUserId = computed(() => selectedConversation.value?._raw?.other_user?.id || '');
+const userListingsUserName = computed(() => selectedConversation.value?.user?.name || '使用者');
+
+// Handle view listings button click
+const handleViewListings = () => {
+  if (selectedConversation.value) {
+    showUserListingsModal.value = true;
+  }
+};
+
+// Handle DM from modal - attach item and set default prompt
+const handleDMFromModal = (item) => {
+  // Close the modal
+  showUserListingsModal.value = false;
+
+  // Set the pending item reference
+  if (pendingItemReference && item) {
+    pendingItemReference.value = {
+      id: item.item_id,
+      title: item.title,
+      price: item.price,
+      image: item.image_url
+    };
+
+    // Set default message prompt
+    messageInput.value = `你好，我對「${item.title}」有興趣，請問還有嗎？`;
+  }
+};
 </script>
 
 <style scoped lang="scss">
