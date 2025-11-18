@@ -988,8 +988,12 @@ export function useMessagePage() {
       // 關閉交易視窗
       showTransactionModal.value = false;
 
-      // 顯示成功訊息，包含交易確認碼
-      alert(`交易已發起成功！\n\n商品：${item.title}\n交易確認碼：${result.code}\n\n請妥善保管交易確認碼，見面時買家需要輸入此確認碼完成交易。`);
+      // 自動發送訊息給買家
+      const autoMessage = '我已發起交易，再麻煩您確認這筆交易';
+      messageInput.value = autoMessage;
+
+      // 立即發送訊息
+      await sendMessage();
 
       // TODO: 可以導航到交易詳情頁面
       // router.push({
