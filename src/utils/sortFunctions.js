@@ -261,4 +261,33 @@ export function sortByRecommendation(itemA, itemB) {
  *     // sortable: true (預設值，可省略)
  *   }
  * ];
+ *
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FilterTabs 篩選功能
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * FilterTabs 組件現在也支援篩選模式 (type: 'filter')。
+ * 篩選功能的詳細說明和範例，請參考 filterFunctions.js
+ *
+ * 快速範例：
+ * const filters = [
+ *   {
+ *     id: 1,
+ *     label: '全部',
+ *     type: 'filter',
+ *     filterValue: null,
+ *     sortable: false
+ *   },
+ *   {
+ *     id: 2,
+ *     label: '上架中',
+ *     type: 'filter',
+ *     filterKey: 'status',
+ *     filterValue: 'active',
+ *     sortable: false
+ *   }
+ * ];
+ *
+ * 更多篩選功能請參考：@/utils/filterFunctions.js
  */

@@ -294,10 +294,6 @@ function handleSelect(conversation) {
   cursor: pointer;
   transition: opacity 0.3s;
 
-  &:hover {
-    opacity: 0.7;
-  }
-
   .avatar-image {
     width: 48px;
     height: 48px;
@@ -336,10 +332,6 @@ function handleSelect(conversation) {
     margin: 0;
     cursor: pointer;
     transition: opacity 0.3s;
-
-    &:hover {
-      opacity: 0.7;
-    }
   }
 
   .conv-time {

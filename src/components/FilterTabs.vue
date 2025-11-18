@@ -10,7 +10,7 @@
       >
         <span class="filter-label">{{ getFilterLabel(filter) }}</span>
         <span
-          v-if="activeFilter === filter.id && filter.sortable !== false"
+          v-if="activeFilter === filter.id && filter.sortable !== false && (filter.type || 'sort') === 'sort'"
           class="sort-direction"
         >{{ getSortDirectionText(filter) }}</span>
       </button>
@@ -33,17 +33,21 @@ const props = defineProps({
     // {
     //   id: number,
     //   label: string,
-    //   sortKey?: string | string[],  // 排序欄位名稱，可以是陣列（fallback）
+    //   type?: 'sort' | 'filter',       // 類型：排序或篩選，預設 'sort'
+    //   sortKey?: string | string[],    // 排序欄位名稱，可以是陣列（fallback）
     //   sortFn?: Function,              // 自訂排序函數
+    //   filterKey?: string,             // 篩選欄位名稱
+    //   filterValue?: any,              // 篩選值（可以是字串、數字、布林值等）
+    //   filterFn?: Function,            // 自訂篩選函數 (item) => boolean
     //   defaultOrder?: 'asc' | 'desc',  // 預設排序方向
-    //   ascText?: string,                // 升序時顯示的文字
-    //   descText?: string,               // 降序時顯示的文字
-    //   sortable?: boolean                // 是否可切換排序方向，預設 true
+    //   ascText?: string,               // 升序時顯示的文字
+    //   descText?: string,              // 降序時顯示的文字
+    //   sortable?: boolean              // 是否可切換排序方向，預設 true
     // }
   }
 });
 
-const emit = defineEmits(['update:sortedItems']);
+const emit = defineEmits(['update:sortedItems', 'update:filteredItems']);
 
 // 初始化排序方向
 const initSortOrder = () => {
@@ -58,14 +62,42 @@ const initSortOrder = () => {
 const activeFilter = ref(props.filters[0]?.id || 1);
 const sortOrder = ref(initSortOrder());
 
-// 排序後的項目
+// 處理後的項目（篩選 + 排序）
 const sortedItems = computed(() => {
   if (!props.items || props.items.length === 0) return [];
 
-  const items = [...props.items];
+  let items = [...props.items];
   const currentFilter = props.filters.find(f => f.id === activeFilter.value);
 
   if (!currentFilter) return items;
+
+  // 1. 先進行篩選（如果是篩選類型）
+  const filterType = currentFilter.type || 'sort';
+
+  if (filterType === 'filter') {
+    if (currentFilter.filterFn) {
+      // 使用自訂篩選函數
+      items = items.filter(currentFilter.filterFn);
+    } else if (currentFilter.filterKey !== undefined) {
+      // 使用 filterKey 和 filterValue 進行篩選
+      items = items.filter(item => {
+        const itemValue = item[currentFilter.filterKey];
+
+        // 如果 filterValue 為 null 或 undefined，表示顯示全部
+        if (currentFilter.filterValue === null || currentFilter.filterValue === undefined) {
+          return true;
+        }
+
+        // 進行值比較
+        return itemValue === currentFilter.filterValue;
+      });
+    }
+  }
+
+  // 2. 再進行排序（如果有排序欄位）
+  if (!currentFilter.sortKey && !currentFilter.sortFn) {
+    return items;
+  }
 
   // 如果提供了自訂排序函數，使用它
   if (currentFilter.sortFn) {
@@ -121,13 +153,14 @@ const sortedItems = computed(() => {
   return items;
 });
 
-// 當排序結果改變時，發送事件
+// 當排序/篩選結果改變時，發送事件
 const handleClick = (id) => {
   const filter = props.filters.find(f => f.id === id);
   const isSortable = filter?.sortable !== false; // 預設為 true
+  const filterType = filter?.type || 'sort';
 
-  if (activeFilter.value === id && isSortable) {
-    // 如果點擊的是已選中的可排序標籤，切換排序方向
+  if (activeFilter.value === id && isSortable && filterType === 'sort') {
+    // 如果點擊的是已選中的可排序標籤（且是排序類型），切換排序方向
     const currentOrder = sortOrder.value[id];
     sortOrder.value[id] = currentOrder === 'asc' ? 'desc' : 'asc';
   } else {
@@ -135,8 +168,9 @@ const handleClick = (id) => {
     activeFilter.value = id;
   }
 
-  // 發送排序後的結果
+  // 發送處理後的結果
   emit('update:sortedItems', sortedItems.value);
+  emit('update:filteredItems', sortedItems.value);
 };
 
 const getFilterLabel = (filter) => {

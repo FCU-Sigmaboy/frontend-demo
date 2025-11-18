@@ -33,6 +33,20 @@
 
       <!-- Map container -->
       <div class="map-content">
+        <!-- Floating Search Bar -->
+        <div class="floating-search-bar">
+          <SearchBar @search="handleSearch" />
+        </div>
+
+        <!-- Floating Filter Tabs -->
+        <div class="floating-filter-tabs">
+          <FilterTabs
+            :items="state.items"
+            :filters="categoryFilters"
+            @update:filteredItems="handleCategoryFilter"
+          />
+        </div>
+
         <MapContainer
           ref="mapRef"
           :center="state.userLocation"
@@ -67,20 +81,24 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { debounce } from 'lodash-es'
+import SearchBar from '@/components/SearchBar.vue'
+import FilterTabs from '@/components/FilterTabs.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
 import MapSidebar from '@/components/map/MapSidebar.vue'
 import MapItemInfoCard from '@/components/map/MapItemInfoCard.vue'
 import { getUserPrimaryLocation } from '@/api/get_userLocationAPI'
 import { searchItems } from '@/api/get_searchItemsAPI'
 import { useAuthStore } from '@/stores/auth'
+import { useCategoriesStore } from '@/stores/categories'
 import { supabase } from '@/lib/supabase'
 
 // Composables
 const router = useRouter()
 const authStore = useAuthStore()
+const categoriesStore = useCategoriesStore()
 
 // Refs
 const mapRef = ref(null)
@@ -102,6 +120,32 @@ const state = reactive({
   },
   loading: false,
   error: null
+})
+
+// Category filters for FilterTabs
+const categoryFilters = computed(() => {
+  const filters = [
+    {
+      id: 0, // Using 0 for "all categories"
+      label: '全部',
+      type: 'filter',
+      filterFn: () => true, // Don't filter on client side
+      sortable: false
+    }
+  ]
+
+  // Add main categories - use category id as filter id
+  categoriesStore.mainCategories.forEach(cat => {
+    filters.push({
+      id: cat.id, // Use category id directly as filter id
+      label: cat.name,
+      type: 'filter',
+      filterFn: () => true, // Don't filter on client side
+      sortable: false
+    })
+  })
+
+  return filters
 })
 
 // Check authentication
@@ -238,6 +282,40 @@ function goToLocationSetup() {
   router.push('/settings')
 }
 
+// Handle search from SearchBar
+function handleSearch(searchParams) {
+  console.log('[MapSearchPage] Search triggered:', searchParams)
+  state.filters.keyword = searchParams.query || ''
+  state.filters.distance_range_km = searchParams.distance ? parseInt(searchParams.distance) : 5
+  fetchItems()
+}
+
+// Handle category filter from FilterTabs
+function handleCategoryFilter() {
+  console.log('[MapSearchPage] Category filter triggered')
+
+  // Use nextTick to ensure the DOM is updated with the new active filter
+  nextTick(() => {
+    // Find which filter is currently active by checking the DOM
+    const activeTab = document.querySelector('.floating-filter-tabs .filter-tab.active')
+
+    if (activeTab) {
+      // Get the filter label to match against our categoryFilters
+      const activeLabel = activeTab.querySelector('.filter-label')?.textContent?.trim()
+      const activeFilter = categoryFilters.value.find(f => f.label === activeLabel)
+
+      if (activeFilter) {
+        // Filter id is the category id (0 means all categories)
+        state.filters.main_category_id = activeFilter.id === 0 ? null : activeFilter.id
+        console.log('[MapSearchPage] Updated category filter to:', state.filters.main_category_id)
+
+        // Re-fetch items with the new category filter
+        fetchItems()
+      }
+    }
+  })
+}
+
 // Toggle to list view
 function toggleToListView() {
   router.push({ name: 'Home' })
@@ -251,6 +329,9 @@ async function initialize() {
     // Check authentication
     const isAuthenticated = await checkAuth()
     if (!isAuthenticated) return
+
+    // Fetch categories
+    await categoriesStore.fetchCategories()
 
     // Fetch user location
     const hasLocation = await fetchUserLocation()
@@ -354,6 +435,70 @@ onMounted(() => {
   position: relative;
 }
 
+// Floating Search Bar
+.floating-search-bar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  width: calc(100% - 40px);
+  max-width: 600px;
+
+  :deep(.search-bar-wrapper) {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  :deep(.search-bar) {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15),
+                0 2px 6px rgba(0, 0, 0, 0.10);
+  }
+}
+
+// Floating Filter Tabs
+.floating-filter-tabs {
+  position: absolute;
+  top: 90px;
+  left: 20px;
+  z-index: 1000;
+  width: calc(100% - 40px);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  // 隱藏滾動條
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  :deep(.filter-tabs-wrapper) {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  :deep(.filter-tabs) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+
+    // 隱藏滾動條
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  :deep(.filter-tab) {
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
 // Responsive
 @media (max-width: 767.98px) {
   .map-search-page {
@@ -362,6 +507,19 @@ onMounted(() => {
 
   .map-content {
     height: 100%;
+  }
+
+  .floating-search-bar {
+    top: 12px;
+    left: 12px;
+    width: calc(100% - 24px);
+    max-width: none;
+  }
+
+  .floating-filter-tabs {
+    top: 75px;
+    left: 12px;
+    width: calc(100% - 24px);
   }
 }
 
