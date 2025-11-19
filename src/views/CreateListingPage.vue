@@ -75,11 +75,14 @@
               <label class="section-label">
                 商品照片 <span class="required">*</span>
               </label>
-              <p class="section-hint">最多上傳 8 張照片，第一張為封面照片。支援拖曳上傳</p>
+              <p class="section-hint">最多上傳 8 張照片，可以拖動照片到第一張做為封面照片。支援拖曳上傳</p>
 
               <div
                 class="image-upload-dropzone"
-                :class="{ 'is-dragging': isDragging }"
+                :class="{
+                  'is-dragging': isDragging,
+                  'is-disabled': isAnalyzing
+                }"
                 @dragover.prevent="handleDragOver"
                 @dragleave.prevent="handleDragLeave"
                 @drop.prevent="handleDrop"
@@ -90,10 +93,11 @@
                     v-for="(image, index) in formData.images"
                     :key="index"
                     class="image-item"
-                    :class="{ 
+                    :class="{
                       'is-cover': index === 0,
                       'is-dragging': draggedImageIndex === index,
-                      'drag-over': dragOverImageIndex === index
+                      'drag-over': dragOverImageIndex === index,
+                      'is-analyzing': isAnalyzing && index === 0
                     }"
                     draggable="true"
                     @dragstart="handleImageDragStart(index, $event)"
@@ -104,6 +108,10 @@
                     @click="openImageEditor(index)"
                   >
                     <img :src="image" alt="Product Image" class="uploaded-image" />
+
+                    <!-- AI Analyzing Icon -->
+                    <i v-if="isAnalyzing && index === 0" class="bi bi-stars bi-stars-icon"></i>
+
                     <button
                       type="button"
                       class="remove-image-btn"
@@ -153,6 +161,25 @@
               />
             </div>
 
+            <!-- AI Recognition Button -->
+            <div v-if="formData.images.length > 0 && !isEdit" class="form-section ai-section">
+              <button
+                type="button"
+                class="ai-analyze-btn"
+                :disabled="isAnalyzing"
+                @click="handleAIAnalyze"
+              >
+                <i v-if="!isAnalyzing" class="bi bi-stars"></i>
+                <i v-else class="bi bi-arrow-repeat spin"></i>
+                <span v-if="!isAnalyzing">使用 AI 辨識物品資訊</span>
+                <span v-else>AI 辨識中...</span>
+              </button>
+              <p class="ai-hint">
+                <i class="bi bi-info-circle"></i>
+                AI 會根據封面照片自動填入商品資訊,您可以再自行調整
+              </p>
+            </div>
+
             <!-- Title Field -->
             <div class="form-section">
               <label for="title" class="form-label">
@@ -160,6 +187,7 @@
               </label>
               <input
                 id="title"
+                ref="titleInput"
                 v-model="formData.title"
                 type="text"
                 class="form-input"
@@ -199,6 +227,7 @@
               </label>
               <textarea
                 id="description"
+                ref="descriptionInput"
                 v-model="formData.description"
                 class="form-textarea"
                 rows="6"
@@ -361,7 +390,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
 import { getItemById } from '../api/get_itemByIdAPI';
 import { updateMyItem } from '../api/update_myItemAPI';
-import { compressImage } from '../api/upload_imageAPI';
+import { compressImage, uploadItemImage } from '../api/upload_imageAPI';
+import { analyzeItemImage } from '../api/analyze_itemImageAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -389,6 +419,8 @@ const isSubmitting = ref(false);
 const isLoading = ref(!!route.params.id); // 如果是編輯模式，初始為 true
 const isDragging = ref(false);
 const imageInput = ref(null);
+const titleInput = ref(null);
+const descriptionInput = ref(null);
 const subCategories = ref([]);
 const showImageCropper = ref(false);
 const cropperImageSrc = ref('');
@@ -397,6 +429,7 @@ const userLocations = ref({
   primary: null,
   secondary: null
 });
+const isAnalyzing = ref(false); // AI 辨識中
 
 // 拖曳排序相關
 const draggedImageIndex = ref(null);
@@ -727,6 +760,108 @@ const handleImageDragEnd = () => {
   dragOverImageIndex.value = null;
 };
 
+// 打字機效果
+const typewriterEffect = async (text, field, delay = 50) => {
+  formData.value[field] = '';
+  for (let i = 0; i < text.length; i++) {
+    formData.value[field] += text[i];
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+};
+
+// AI 辨識功能
+const handleAIAnalyze = async () => {
+  if (formData.value.images.length === 0) {
+    alert('請先上傳至少一張照片');
+    return;
+  }
+
+  isAnalyzing.value = true;
+
+  try {
+    console.log('[handleAIAnalyze] 開始 AI 辨識...');
+
+    // 1. 先上傳第一張圖片到 Storage(用於 AI 分析)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('使用者未登入');
+    }
+
+    // 產生臨時 ID 用於圖片路徑
+    const tempItemId = `temp-ai-${Date.now()}`;
+    const firstImageFile = formData.value.imageFiles[0];
+
+    if (!firstImageFile) {
+      throw new Error('無法取得圖片檔案');
+    }
+
+    console.log('[handleAIAnalyze] 上傳圖片到 Storage...');
+    // 上傳第一張圖片(檔案已經壓縮過,傳入 false 避免重複壓縮)
+    const imageUrl = await uploadItemImage(firstImageFile, user.id, tempItemId, false);
+    console.log('[handleAIAnalyze] 圖片已上傳:', imageUrl);
+
+    // 2. 呼叫 AI 分析 API
+    console.log('[handleAIAnalyze] 呼叫 AI 分析...');
+    const result = await analyzeItemImage(imageUrl);
+
+    // 3. 滾動到標題欄位
+    if (titleInput.value) {
+      titleInput.value.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(resolve => setTimeout(resolve, 500)); // 等待滾動完成
+    }
+
+    // 4. 使用打字機效果填入標題
+    if (result.title) {
+      await typewriterEffect(result.title, 'title', 30);
+      await new Promise(resolve => setTimeout(resolve, 300)); // 標題完成後暫停
+    }
+
+    // 5. 滾動到說明欄位
+    if (descriptionInput.value && result.description) {
+      descriptionInput.value.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(resolve => setTimeout(resolve, 500)); // 等待滾動完成
+    }
+
+    // 6. 使用打字機效果填入商品說明
+    if (result.description) {
+      await typewriterEffect(result.description, 'description', 10); // 說明文字較長,速度更快
+    }
+
+    // 7. 填入其他表單資料
+    if (result.sub_category_id) {
+      formData.value.category = result.sub_category_id;
+    }
+    if (result.condition) {
+      formData.value.condition = result.condition;
+    }
+
+    console.log('[handleAIAnalyze] AI 辨識完成，信心度:', result.confidence);
+
+    // 4. 顯示警告訊息(如果有)
+    if (result.warnings && result.warnings.length > 0) {
+      console.warn('[handleAIAnalyze] AI 警告:', result.warnings);
+      alert('AI 辨識提醒：\n' + result.warnings.join('\n'));
+    }
+
+  } catch (error) {
+    console.error('[handleAIAnalyze] AI 辨識失敗:', error);
+
+    // 判斷錯誤類型並顯示對應訊息
+    let errorMessage = '伺服器忙碌中，請稍後再試。';
+
+    if (error.message && error.message.includes('未登入')) {
+      errorMessage = '請先登入後再使用 AI 辨識功能。';
+    } else if (error.message && error.message.includes('無法取得圖片')) {
+      errorMessage = '圖片處理失敗，請重新上傳圖片。';
+    } else if (error.message && error.message.includes('網路')) {
+      errorMessage = '網路連線不穩定，請檢查網路後再試。';
+    }
+
+    alert(`AI 辨識失敗\n\n${errorMessage}\n\n您可以手動填寫物品資訊。`);
+  } finally {
+    isAnalyzing.value = false;
+  }
+};
 
 const handleSubmit = async () => {
   // Validate images
@@ -1031,6 +1166,68 @@ const handleSubmit = async () => {
   }
 }
 
+// AI Section
+.ai-section {
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.ai-analyze-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #6fb8a5 0%, #5fa795 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+
+  i {
+    font-size: 20px;
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5fa795 0%, #4f9785 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(111, 184, 165, 0.4);
+  }
+
+  &:disabled {
+    background: #b0d4cb;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+}
+
+.ai-hint {
+  margin-top: 12px;
+  margin-bottom: 0;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  color: #5a7c91;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  i {
+    font-size: 14px;
+  }
+}
+
 .section-label {
   display: block;
   font-family: 'Noto Sans TC', sans-serif;
@@ -1131,6 +1328,23 @@ const handleSubmit = async () => {
     border-color: $primary;
     background: rgba(111, 184, 165, 0.05);
   }
+
+  &.is-disabled {
+    cursor: progress;
+
+    * {
+      cursor: progress !important;
+      pointer-events: none;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      cursor: progress;
+    }
+  }
 }
 
 .image-upload-grid {
@@ -1201,7 +1415,7 @@ const handleSubmit = async () => {
     background: rgba(111, 184, 165, 0.08);
     box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.2);
     transform: scale(1.08);
-    
+
     &::before {
       content: '';
       position: absolute;
@@ -1211,6 +1425,52 @@ const handleSubmit = async () => {
       z-index: 1;
       animation: pulse-drag 0.8s ease-in-out infinite;
     }
+  }
+
+  &.is-analyzing {
+    border: 2px solid #6fb8a5;
+    box-shadow: 0 0 0 4px rgba(111, 184, 165, 0.2),
+                0 0 20px rgba(111, 184, 165, 0.4);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(111, 184, 165, 0.4) 0%,
+        rgba(79, 151, 233, 0.5) 25%,
+        rgba(147, 51, 234, 0.5) 50%,
+        rgba(236, 72, 153, 0.5) 75%,
+        rgba(251, 146, 60, 0.4) 100%
+      );
+      background-size: 300% 300%;
+      animation: analyzing-gradient 4s ease-in-out infinite;
+      border-radius: 8px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .uploaded-image {
+      filter: brightness(0.6);
+    }
+  }
+
+  &.is-analyzing .bi-stars-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 64px;
+    z-index: 4;
+    pointer-events: none;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444, #ec4899, #a855f7, #6366f1);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+    animation: analyzing-icon-color 3s linear infinite;
   }
 
   .uploaded-image {
@@ -1611,6 +1871,46 @@ const handleSubmit = async () => {
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes analyzing-gradient {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.6;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.9;
+  }
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.6;
+  }
+}
+
+@keyframes analyzing-icon-pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+    text-shadow: 0 0 20px rgba(111, 184, 165, 0.8),
+                 0 0 40px rgba(111, 184, 165, 0.6);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+    text-shadow: 0 0 30px rgba(111, 184, 165, 1),
+                 0 0 60px rgba(111, 184, 165, 0.8),
+                 0 0 80px rgba(255, 255, 255, 0.6);
+  }
+}
+
+@keyframes analyzing-icon-color {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
   }
 }
 
