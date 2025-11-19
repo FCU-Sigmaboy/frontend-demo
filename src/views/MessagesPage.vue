@@ -130,8 +130,8 @@
                   <button class="attach-btn" @click="handleAttachment" title="附件">
                     <i class="bi bi-paperclip"></i>
                   </button>
-                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="發起活動">
-                    <i class="bi bi-plus-circle"></i>
+                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="發起交易">
+                    <i class="bi bi-arrow-right-circle-fill"></i>
                   </button>
                   <input
                     v-model="messageInput"
@@ -286,13 +286,123 @@ const originalSendMessage = sendMessage;
 
 const handleSendMessage = async () => {
   if (!messageInput.value.trim()) return;
-  
-  // Here we would attach the reply context to the message being sent
-  // Since we don't have backend support for replies yet (assumed), we might just prepend text or ignore.
-  // For now, let's just clear the UI state to simulate the flow.
-  
-  await sendMessage();
-  cancelReply();
+
+  // If replying to a message, send as reply type
+  if (replyingToMessage.value) {
+    const quotedText = replyingToMessage.value.text || '';
+    const replyText = messageInput.value.trim();
+    const replyContent = JSON.stringify({
+      type: 'reply',
+      '回覆的訊息內容': quotedText,
+      '你的訊息內容': replyText
+    });
+
+    // Clear the input and reply state before sending
+    const relatedItemId = pendingItemReference.value ? pendingItemReference.value.id : null;
+    const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null;
+
+    messageInput.value = '';
+    cancelReply();
+
+    // Send as reply type
+    await sendReplyMessage(replyContent, relatedItemId, relatedItemTitle);
+  } else {
+    // Normal message
+    await sendMessage();
+  }
+};
+
+// Helper to send reply messages (bypassing the normal sendMessage flow)
+const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
+  if (!selectedConversation.value) return;
+
+  const tempMessageId = `temp-${Date.now()}`;
+
+  // Parse the reply content to show properly in optimistic UI
+  let parsedReplyText = content;
+  try {
+    const parsed = JSON.parse(content);
+    parsedReplyText = parsed['你的訊息內容'] || content;
+  } catch (e) {
+    // Ignore parse errors
+  }
+
+  const optimisticMessage = {
+    id: tempMessageId,
+    content: content,
+    text: parsedReplyText,
+    created_at: new Date().toISOString(),
+    is_mine: true,
+    is_read: false,
+    message_type: 'reply', // Keep as reply for optimistic UI, backend will store as text
+    related_item_id: relatedItemId,
+    related_item_title: relatedItemTitle,
+    sender: {
+      id: currentUser.value?.id,
+      name: currentUser.value?.user_metadata?.nickname || '我',
+      avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+    },
+    metadata: null,
+    _sending: true,
+    _clientId: tempMessageId
+  };
+
+  // Import the message store method
+  const { useMessageStore } = await import('@/stores/message');
+  const messageStore = useMessageStore();
+  messageStore.currentMessages.push(optimisticMessage);
+
+  // Scroll to bottom
+  setTimeout(() => scrollToBottom(false), 100);
+
+  // Clear pending item reference if any
+  if (pendingItemReference.value) {
+    pendingItemReference.value = null;
+    if (selectedConversation.value?.id) {
+      messageStore.clearPendingItemReference(selectedConversation.value.id);
+    }
+  }
+
+  // Send to backend
+  try {
+    const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+
+    // Update the optimistic message with the real one
+    const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+    if (index !== -1) {
+      const message = messageStore.currentMessages[index];
+      const realMessageId = newMessage.message_id || newMessage.id;
+
+      const realMessageExists = messageStore.currentMessages.some(
+        (m, i) => i !== index && m.id === realMessageId
+      );
+
+      if (realMessageExists) {
+        messageStore.currentMessages.splice(index, 1);
+      } else {
+        message.id = realMessageId;
+        message.created_at = newMessage.created_at;
+        message.metadata = newMessage.metadata;
+        message._sending = false;
+
+        if (newMessage.sender_id) {
+          message.sender.id = newMessage.sender_id;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to send reply message:', err);
+
+    const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+    if (index !== -1) {
+      const message = messageStore.currentMessages[index];
+      message._sending = false;
+      message._failed = true;
+      message._failedContent = content;
+      message._failedRelatedItemId = relatedItemId;
+      message._failedRelatedItemTitle = relatedItemTitle;
+    }
+  }
 };
 </script>
 

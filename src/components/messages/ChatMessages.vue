@@ -65,6 +65,14 @@
                 </div>
               <div class="message-bubble-wrapper">
                 <div class="message-content">
+                  <!-- Reply Quote (for reply type messages) -->
+                  <div v-if="message.message_type === 'reply' && message.replyContext" class="reply-quote">
+                    <div class="reply-quote-bar"></div>
+                    <div class="reply-quote-content">
+                      <span class="reply-quote-text">{{ message.replyContext.quotedText }}</span>
+                    </div>
+                  </div>
+
                   <div
                     v-if="message.related_item_id"
                     class="item-reference"
@@ -90,7 +98,16 @@
                     </div>
                   </div>
 
-                  <p class="message-text">
+                  <!-- Transaction Link (for transaction_link type messages) -->
+                  <div v-if="message.message_type === 'transaction_link' && message.transactionLinkData" class="transaction-link-wrapper">
+                    <p class="message-text">{{ message.text || '我已發起交易，再麻煩您確認這筆交易' }}</p>
+                    <button class="transaction-link-btn" @click.stop="handleViewTransaction(message.transactionLinkData.transaction_id)">
+                      <i class="bi bi-box-arrow-up-right"></i>
+                      查看交易詳情
+                    </button>
+                  </div>
+
+                  <p v-else class="message-text">
                     {{ message.text || '[此訊息內容已移除]' }}
                   </p>
 
@@ -166,6 +183,9 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const props = defineProps({
   registerMessagesArea: {
@@ -221,6 +241,13 @@ const handleOpenItem = itemId => {
 
 const handleRetry = message => {
   emit('retry', message);
+};
+
+const handleViewTransaction = (transactionId) => {
+  router.push({
+    name: 'TransactionRecords',
+    query: { transactionId }
+  });
 };
 
 // Context Menu Methods
@@ -592,6 +619,91 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  .reply-quote {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+
+    .reply-quote-bar {
+      width: 3px;
+      min-height: 30px;
+      background-color: currentColor;
+      border-radius: 2px;
+      opacity: 0.4;
+      flex-shrink: 0;
+    }
+
+    .reply-quote-content {
+      flex: 1;
+      min-width: 0;
+
+      .reply-quote-text {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 13px;
+        line-height: 1.4;
+        opacity: 0.7;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .transaction-link-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .transaction-link-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1.5px solid rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      i {
+        font-size: 14px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.6);
+        transform: translateY(-1px);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+  }
+
+  // Override for received messages (white background)
+  .message-received .transaction-link-wrapper .transaction-link-btn {
+    background: rgba(111, 184, 165, 0.08);
+    border-color: $primary;
+    color: $primary;
+
+    &:hover {
+      background: rgba(111, 184, 165, 0.15);
+      border-color: darken($primary, 10%);
+    }
+  }
 
   .item-reference {
     display: flex;

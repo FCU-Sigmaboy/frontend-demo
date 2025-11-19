@@ -146,6 +146,65 @@ export function useMessagePage() {
     return currencyFormatter.format(numeric);
   }
 
+  function tryParseJsonContent(content) {
+    if (typeof content !== 'string') return null;
+    const trimmed = content.trim();
+    if (!trimmed.startsWith('{') || trimmed.length < 2) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function parseStructuredMessageContent(content) {
+    const parsed = tryParseJsonContent(content);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const normalizedType = parsed.type || null;
+    const transactionId = parsed.transaction_id ?? parsed.transactionId ?? null;
+    const replyText = parsed['你的訊息內容'] ?? parsed.replyText ?? null;
+    const quotedText = parsed['回覆的訊息內容'] ?? parsed.quotedText ?? null;
+
+    const isTransactionLink =
+      normalizedType === 'transaction_link' ||
+      (transactionId !== null && !replyText && !quotedText);
+
+    const isReply =
+      normalizedType === 'reply' ||
+      replyText !== null ||
+      quotedText !== null;
+
+    if (isTransactionLink) {
+      return {
+        type: 'transaction_link',
+        transactionId
+      };
+    }
+
+    if (isReply) {
+      return {
+        type: 'reply',
+        replyText,
+        quotedText
+      };
+    }
+
+    return null;
+  }
+
+  function formatConversationPreview(content) {
+    if (!content) return '開始對話...';
+    const structured = parseStructuredMessageContent(content);
+    if (structured?.type === 'transaction_link') {
+      return '查看交易詳情';
+    }
+    if (structured?.type === 'reply') {
+      return structured.replyText || '回覆了一則訊息';
+    }
+    return content;
+  }
+
   function clearUnreadDivider({ suppress = false } = {}) {
     firstUnreadMessageId.value = null;
     suppressUnreadDivider.value = suppress;
@@ -319,6 +378,7 @@ export function useMessagePage() {
       .map(convo => {
         const otherUserId = convo.other_user.id;
         const isOnline = messageStore.onlineUsers.has(otherUserId);
+        const previewText = formatConversationPreview(convo.last_message);
 
         return {
           id: convo.id,
@@ -334,7 +394,7 @@ export function useMessagePage() {
             image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
           } : null,
           lastMessage: {
-            text: convo.last_message || '開始對話...',
+            text: previewText,
             time: formatRelativeTime(convo.last_message_time)
           },
           unreadCount: convo.unread_count || 0,
@@ -605,19 +665,43 @@ export function useMessagePage() {
           }
         : null);
 
+      // Parse reply and transaction_link message types
+      let replyContext = null;
+      let transactionLinkData = null;
+      let parsedText = msg.content;
+      let effectiveMessageType = msg.message_type;
+      const structuredContent = parseStructuredMessageContent(msg.content);
+
+      if (structuredContent?.type === 'reply' || msg.message_type === 'reply') {
+        effectiveMessageType = 'reply';
+        replyContext = {
+          quotedText: structuredContent?.quotedText || '',
+          replyText: structuredContent?.replyText || msg.content || ''
+        };
+        parsedText = replyContext.replyText;
+      } else if (structuredContent?.type === 'transaction_link' || msg.message_type === 'transaction_link') {
+        effectiveMessageType = 'transaction_link';
+        transactionLinkData = {
+          transaction_id: structuredContent?.transactionId || null
+        };
+        parsedText = '交易詳情請點擊下方連結';
+      }
+
       return {
         id: msg.id,
-        text: msg.content,
+        text: parsedText,
         time: formatRelativeTime(msg.created_at),
         created_at: msg.created_at,
         isSent: msg.is_mine,
         showDate,
         date: showDate ? formatDateDivider(msg.created_at) : '',
-        message_type: msg.message_type,
+        message_type: effectiveMessageType,
         related_item_id: msg.related_item_id,
         related_item_title: relatedItemTitle,
         relatedItem,
         relatedItemPrice,
+        replyContext,
+        transactionLinkData,
         metadata: msg.metadata,
         sender: msg.sender,
         _clientId: msg._clientId || msg.id,
@@ -980,6 +1064,47 @@ export function useMessagePage() {
         await transactionApi.updateGiverNote(result.transaction_id, note);
       }
 
+      // 自動發送訊息給買家（先發送，這樣交易連結會成為最後一則訊息）
+      const autoMessage = '我已發起交易，再麻煩您確認這筆交易';
+      
+      try {
+        await messageStore.sendMessage(
+          autoMessage,
+          'text',
+          null,
+          null
+        );
+        console.log('Auto message sent');
+      } catch (msgErr) {
+        console.error('Failed to send auto message:', msgErr);
+        // Continue even if auto message fails
+      }
+
+      // 等待一下確保第一則訊息已保存
+      await waitForTicks(2);
+
+      // Send transaction link message（最後發送，這樣預覽會顯示交易連結）
+      const transactionLinkContent = JSON.stringify({
+        type: 'transaction_link',
+        transaction_id: result.transaction_id
+      });
+
+      try {
+        await messageStore.sendMessage(
+          transactionLinkContent,
+          'text',
+          null, // no related item id
+          null  // no related item title
+        );
+        console.log('Transaction link message sent');
+        
+        // 等待一下確保交易連結訊息已保存並更新對話列表
+        await waitForTicks(2);
+      } catch (msgErr) {
+        console.error('Failed to send transaction link message:', msgErr);
+        // Don't fail the whole transaction if message fails
+      }
+
       // 立即刷新交易資料，避免等待 realtime 才更新
       transactionStore.fetchAllTransactions(true).catch(err => {
         console.error('Failed to refresh transactions after initiation:', err);
@@ -987,13 +1112,6 @@ export function useMessagePage() {
 
       // 關閉交易視窗
       showTransactionModal.value = false;
-
-      // 自動發送訊息給買家
-      const autoMessage = '我已發起交易，再麻煩您確認這筆交易';
-      messageInput.value = autoMessage;
-
-      // 立即發送訊息
-      await sendMessage();
 
       // TODO: 可以導航到交易詳情頁面
       // router.push({
