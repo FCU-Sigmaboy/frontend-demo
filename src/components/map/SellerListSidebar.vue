@@ -132,7 +132,7 @@ function handleSellerClick(seller) {
 .seller-list-sidebar {
   position: fixed;
   left: 0;
-  top: 60px; // Below header
+  top: 0; // Below header
   bottom: 0;
   width: 350px;
   background: white;

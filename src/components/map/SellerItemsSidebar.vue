@@ -130,13 +130,13 @@ function handleItemClick(item) {
 
 .seller-items-sidebar {
   position: fixed;
-  left: 0;
-  top: 60px; // Below header
+  left: 350px; // Position to the right of SellerListSidebar (350px width)
+  top: 140px; // Below header
   bottom: 0;
   width: 400px;
   background: white;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
-  z-index: 1001;
+  z-index: 1002; // Higher than SellerListSidebar to appear on top
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -404,15 +404,15 @@ function handleItemClick(item) {
   }
 }
 
-// Sidebar slide animation - Desktop
+// Sidebar slide animation - Desktop (fade in/out at fixed position)
 .sidebar-slide-enter-active,
 .sidebar-slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-slide-enter-from,
 .sidebar-slide-leave-to {
-  transform: translateX(-100%);
+  opacity: 0;
 }
 
 // Responsive

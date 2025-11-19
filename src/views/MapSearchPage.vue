@@ -242,6 +242,9 @@ async function fetchItems() {
 function handleMarkerClick(item, allItems) {
   console.log('[MapSearchPage] Marker clicked:', item, 'All items:', allItems)
 
+  // Show both seller list and seller items sidebars
+  state.showSellerList = true
+
   // Always show sidebar with items (single or multiple)
   if (allItems && allItems.length > 0) {
     state.sellerItems = allItems
@@ -259,8 +262,7 @@ function closeSellerListSidebar() {
 // Handle seller click from seller list
 function handleSellerClick(seller) {
   console.log('[MapSearchPage] Seller clicked:', seller)
-  // Close seller list and show seller items
-  state.showSellerList = false
+  // Keep seller list open and show seller items
   state.sellerItems = seller.items
   state.showSellerItems = true
 }
@@ -561,7 +563,7 @@ onMounted(() => {
 // Responsive
 @media (max-width: 767.98px) {
   .map-search-page {
-    height: calc(100vh - 56px); // Adjusted for mobile header
+    height: 100vh
   }
 
   .map-content {
@@ -573,12 +575,22 @@ onMounted(() => {
     left: 12px;
     width: calc(100% - 24px);
     max-width: none;
+
+    // On mobile, don't move when sidebar is open (sidebar slides from bottom)
+    &.sidebar-open {
+      transform: none;
+    }
   }
 
   .floating-filter-tabs {
     top: 75px;
     left: 12px;
     width: calc(100% - 24px);
+
+    // On mobile, don't move when sidebar is open (sidebar slides from bottom)
+    &.sidebar-open {
+      transform: none;
+    }
   }
 }
 
