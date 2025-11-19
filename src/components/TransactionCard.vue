@@ -292,19 +292,25 @@ const toggleFollow = async () => {
 };
 
 // Initialize
-onMounted(() => {
+onMounted(async () => {
   if (props.sellerId) {
     checkFollowStatus();
   }
   // Ensure favorites are loaded
-  if (authStore.user && favoritesStore.count === 0) {
-    favoritesStore.loadFavorites();
+  if (authStore.user) {
+    await favoritesStore.loadFavorites();
   }
 });
 
 watch(() => props.sellerId, (newId) => {
   if (newId) {
     checkFollowStatus();
+  }
+});
+
+watch(() => authStore.user, async (newUser) => {
+  if (newUser) {
+    await favoritesStore.loadFavorites();
   }
 });
 
