@@ -660,6 +660,11 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   flex-shrink: 1; // Allow shrinking at medium screens
   min-width: 0;
 
+  // Adjust for medium screens to prevent breaking
+  @media (min-width: 992px) and (max-width: 1250px) {
+    gap: 15px;
+  }
+
   .category-link {
     white-space: nowrap; // Prevent text wrapping
 
@@ -669,6 +674,12 @@ const navigateToCategory = (categoryId, subCategoryId) => {
       color: #1e1e1e;
       text-decoration: none;
       transition: color 0.3s;
+
+      // Adjust font size slightly if needed
+      @media (min-width: 992px) and (max-width: 1250px) {
+        font-size: 14px;
+        padding: 0.5rem 0.5rem;
+      }
 
       &:hover {
         color: $primary;

@@ -42,18 +42,27 @@
               <span class="unread-divider-text">未讀訊息</span>
             </div>
 
-            <div
-              :class="[
-                'message',
-                {
-                  'message-sent': message.isSent,
-                  'message-received': !message.isSent,
-                  'message-grouped': message.isGrouped,
-                  'message-first-in-group': message.isFirstInGroup,
-                  'message-last-in-group': message.isLastInGroup
-                }
-              ]"
-            >
+              <div
+                :class="[
+                  'message',
+                  {
+                    'message-sent': message.isSent,
+                    'message-received': !message.isSent,
+                    'message-grouped': message.isGrouped,
+                    'message-first-in-group': message.isFirstInGroup,
+                    'message-last-in-group': message.isLastInGroup,
+                    'swiping': swipeState.messageId === message.id
+                  }
+                ]"
+                :style="swipeState.messageId === message.id ? { transform: `translateX(${swipeState.offset}px)` } : {}"
+                @contextmenu.prevent="showContextMenu($event, message)"
+                @touchstart="handleTouchStart($event, message)"
+                @touchmove="handleTouchMove($event)"
+                @touchend="handleTouchEnd($event)"
+              >
+                <div class="reply-icon-indicator" :style="{ opacity: swipeState.messageId === message.id ? Math.min(Math.abs(swipeState.offset) / 50, 1) : 0 }">
+                   <i class="bi bi-reply-fill"></i>
+                </div>
               <div class="message-bubble-wrapper">
                 <div class="message-content">
                   <div
@@ -131,6 +140,27 @@
         </div>
       </div>
     </div>
+    <!-- Context Menu -->
+    <div
+      v-if="contextMenu.visible"
+      class="context-menu"
+      :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
+      @click.stop
+    >
+      <div class="context-menu-item" @click="handleContextAction('reply')">
+        <i class="bi bi-reply"></i> 回覆
+      </div>
+      <div class="context-menu-item" @click="handleContextAction('copy')">
+        <i class="bi bi-clipboard"></i> 複製
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" @click="handleContextAction('announce')">
+        <i class="bi bi-megaphone"></i> 設為公告
+      </div>
+      <div class="context-menu-item danger" @click="handleContextAction('report')">
+        <i class="bi bi-flag"></i> 檢舉
+      </div>
+    </div>
   </div>
 </template>
 
@@ -156,12 +186,33 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['scroll', 'open-item', 'retry']);
+const emit = defineEmits(['scroll', 'open-item', 'retry', 'reply']);
 
 const localMessagesArea = ref(null);
 
+// Context Menu State
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  message: null
+});
+
+// Swipe State
+const swipeState = ref({
+  messageId: null,
+  startX: 0,
+  currentX: 0,
+  offset: 0,
+  isSwiping: false
+});
+
 const handleScroll = event => {
   emit('scroll', event);
+  // Close context menu on scroll
+  if (contextMenu.value.visible) {
+    closeContextMenu();
+  }
 };
 
 const handleOpenItem = itemId => {
@@ -170,6 +221,138 @@ const handleOpenItem = itemId => {
 
 const handleRetry = message => {
   emit('retry', message);
+};
+
+// Context Menu Methods
+const showContextMenu = (event, message) => {
+  event.preventDefault();
+  
+  // Calculate position to keep menu within viewport
+  const menuWidth = 160;
+  const menuHeight = 180;
+  let x = event.clientX;
+  let y = event.clientY;
+  
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 10;
+  }
+  
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 10;
+  }
+  
+  contextMenu.value = {
+    visible: true,
+    x,
+    y,
+    message
+  };
+  
+  // Add click listener to close menu
+  document.addEventListener('click', closeContextMenu);
+};
+
+const closeContextMenu = () => {
+  contextMenu.value.visible = false;
+  document.removeEventListener('click', closeContextMenu);
+};
+
+const handleContextAction = (action) => {
+  const message = contextMenu.value.message;
+  if (!message) return;
+  
+  switch (action) {
+    case 'reply':
+      emit('reply', message);
+      break;
+    case 'copy':
+      if (message.text) {
+        navigator.clipboard.writeText(message.text).then(() => {
+          // Could add toast notification here
+          console.log('Copied to clipboard');
+        });
+      }
+      break;
+    case 'announce':
+      console.log('Set as announcement:', message.id);
+      break;
+    case 'report':
+      console.log('Report message:', message.id);
+      break;
+  }
+  
+  closeContextMenu();
+};
+
+// Touch/Swipe Methods
+const handleTouchStart = (event, message) => {
+  // Only allow swiping on own messages or received messages? Usually both.
+  // Let's allow both for now.
+  swipeState.value = {
+    messageId: message.id,
+    startX: event.touches[0].clientX,
+    currentX: event.touches[0].clientX,
+    offset: 0,
+    isSwiping: true
+  };
+};
+
+const handleTouchMove = (event) => {
+  if (!swipeState.value.isSwiping) return;
+  
+  const currentX = event.touches[0].clientX;
+  const diff = currentX - swipeState.value.startX;
+  
+  // Only allow swiping left (negative diff)
+  // Limit the swipe distance
+  if (diff < 0 && diff > -100) {
+    swipeState.value.currentX = currentX;
+    swipeState.value.offset = diff;
+  } else if (diff >= 0) {
+    swipeState.value.offset = 0;
+  }
+};
+
+const handleTouchEnd = (event) => {
+  if (!swipeState.value.isSwiping) return;
+  
+  // Threshold for triggering reply
+  if (swipeState.value.offset < -50) {
+    // Find the message object from the ID
+    // Since we don't have direct access to the message object here easily without searching,
+    // we can pass the message in touchStart or search for it.
+    // But wait, we need to emit 'reply'.
+    // We can find the message in the props.groupedMessages if needed, 
+    // OR we can just store the message in swipeState during touchStart.
+    // Let's update handleTouchStart to store message.
+    
+    // Actually, let's just emit the reply event with the message ID or object if we can find it.
+    // Better: modify handleTouchStart to store the message object.
+    const message = findMessageById(swipeState.value.messageId);
+    if (message) {
+      emit('reply', message);
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
+  }
+  
+  // Reset state with animation
+  swipeState.value = {
+    messageId: null,
+    startX: 0,
+    currentX: 0,
+    offset: 0,
+    isSwiping: false
+  };
+};
+
+// Helper to find message
+const findMessageById = (id) => {
+  for (const group of props.groupedMessages) {
+    const msg = group.messages.find(m => m.id === id);
+    if (msg) return msg;
+  }
+  return null;
 };
 
 onMounted(() => {
@@ -716,6 +899,100 @@ onBeforeUnmount(() => {
 
   .message-bubble-wrapper {
     max-width: 85%;
+  }
+}
+
+
+// Context Menu Styles
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px 0;
+  min-width: 160px;
+  overflow: hidden;
+  animation: menu-fade-in 0.2s ease-out;
+
+  .context-menu-item {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #333;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #f5f5f5;
+    }
+
+    i {
+      font-size: 16px;
+      color: #666;
+    }
+
+    &.danger {
+      color: #ff4757;
+      
+      i {
+        color: #ff4757;
+      }
+      
+      &:hover {
+        background: #fff0f0;
+      }
+    }
+  }
+
+  .context-menu-divider {
+    height: 1px;
+    background: #eee;
+    margin: 4px 0;
+  }
+}
+
+@keyframes menu-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Swipe Styles
+.message {
+  transition: transform 0.1s linear; // Smooth follow for drag
+  position: relative;
+  
+  &.swiping {
+    transition: none; // No transition during drag for responsiveness
+  }
+}
+
+.reply-icon-indicator {
+  position: absolute;
+  right: -40px; // Position outside the message
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  pointer-events: none;
+  
+  i {
+    font-size: 16px;
   }
 }
 </style>

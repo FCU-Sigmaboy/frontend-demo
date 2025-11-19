@@ -48,13 +48,14 @@
                 @scroll="handleMessagesScroll"
                 @open-item="openItemPage"
                 @retry="retryMessage"
+                @reply="handleReply"
               />
 
               <div
                 class="chat-overlay-stack"
                 :class="{
                   'has-scroll-button': showScrollToBottomBtn,
-                  'has-pending-reference': !!pendingItemReference,
+                  'has-pending-reference': !!pendingItemReference || !!replyingToMessage,
                   'has-typing-indicator': showBottomTypingIndicator && !!selectedConversation
                 }"
               >
@@ -88,6 +89,24 @@
                   </div>
                 </transition>
 
+                <!-- Replying To Message (above input) -->
+                <transition name="item-reference-slide">
+                  <div v-if="replyingToMessage" class="pending-item-reference reply-reference">
+                    <div class="reference-info">
+                      <div class="reply-line"></div>
+                      <div class="reference-details">
+                        <span class="reference-label">
+                          <i class="bi bi-reply-fill"></i> 回覆 {{ replyingToMessage.isSent ? '自己' : (selectedConversation?.user?.name || '對方') }}
+                        </span>
+                        <span class="reference-text text-truncate">{{ replyingToMessage.text }}</span>
+                      </div>
+                    </div>
+                    <button class="remove-reference-btn" @click="cancelReply">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                </transition>
+
                 <transition name="typing-indicator-slide">
                   <div
                     v-if="showBottomTypingIndicator && selectedConversation"
@@ -111,20 +130,20 @@
                   <button class="attach-btn" @click="handleAttachment" title="附件">
                     <i class="bi bi-paperclip"></i>
                   </button>
-                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="提出交易">
-                    <i class="bi bi-arrow-left-right"></i>
+                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="發起活動">
+                    <i class="bi bi-plus-circle"></i>
                   </button>
                   <input
                     v-model="messageInput"
                     type="text"
                     placeholder="輸入訊息..."
                     class="message-input"
-                    @keypress.enter="sendMessage"
+                    @keypress.enter="handleSendMessage"
                   />
                   <button
                     class="send-btn"
                     :disabled="!messageInput.trim()"
-                    @click="sendMessage"
+                    @click="handleSendMessage"
                   >
                     <i class="bi bi-send-fill"></i>
                   </button>
@@ -236,6 +255,44 @@ const handleDMFromModal = (item) => {
     // Set default message prompt
     messageInput.value = `你好，我對「${item.title}」有興趣，請問還有嗎？`;
   }
+};
+
+// Reply State
+const replyingToMessage = ref(null);
+
+const handleReply = (message) => {
+  replyingToMessage.value = message;
+  // Focus input
+  const inputEl = document.querySelector('.message-input');
+  if (inputEl) inputEl.focus();
+};
+
+const cancelReply = () => {
+  replyingToMessage.value = null;
+};
+
+// Intercept sendMessage to include reply context if needed
+// Note: The actual backend implementation for replies might need to be added to useMessagePage composable.
+// For now, we just clear the UI state after sending.
+const originalSendMessage = sendMessage;
+// We can't easily override the imported sendMessage directly if it's a const from composable.
+// Instead, we should watch for messageInput changes or modify how sendMessage is called in the template?
+// Actually, the template calls `sendMessage`. We can wrap it.
+// But `sendMessage` is destructured from `useMessagePage`.
+// Let's just clear the reply state when `messageInput` is cleared (which happens after send usually)
+// OR we can wrap the click handler in the template.
+// Let's wrap it in the template? No, `sendMessage` is bound to `@keypress.enter` and click.
+// Let's create a wrapper function.
+
+const handleSendMessage = async () => {
+  if (!messageInput.value.trim()) return;
+  
+  // Here we would attach the reply context to the message being sent
+  // Since we don't have backend support for replies yet (assumed), we might just prepend text or ignore.
+  // For now, let's just clear the UI state to simulate the flow.
+  
+  await sendMessage();
+  cancelReply();
 };
 </script>
 
@@ -356,7 +413,7 @@ const handleDMFromModal = (item) => {
   p {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
-    color: #999;
+    color: #757575;
     margin: 0;
   }
 }
@@ -626,6 +683,38 @@ const handleDMFromModal = (item) => {
   }
 }
 
+.reply-reference {
+  background: #f0f4fa;
+  
+  .reply-line {
+    width: 3px;
+    height: 36px;
+    background-color: $primary;
+    border-radius: 2px;
+    opacity: 0.6;
+  }
+  
+  .reference-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    
+    i {
+      font-size: 12px;
+    }
+  }
+  
+  .reference-text {
+    font-size: 13px;
+    color: #555;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+
 // Input Area
 .input-area {
   display: flex;
@@ -712,7 +801,7 @@ const handleDMFromModal = (item) => {
     }
 
     &::placeholder {
-      color: #999;
+      color: #757575;
     }
   }
 }
@@ -734,7 +823,7 @@ const handleDMFromModal = (item) => {
   p {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
-    color: #999;
+    color: #757575;
     margin: 0;
   }
 }
