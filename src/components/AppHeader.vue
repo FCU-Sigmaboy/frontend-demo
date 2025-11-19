@@ -1,7 +1,7 @@
 <template>
   <header class="app-header">
     <BNavbar class="header-navbar">
-      <BContainer fluid class="px-4">
+      <BContainer fluid class="px-0">
         <div class="header-content">
           <!-- Left Side: Logo & Navigation -->
           <div class="header-left">

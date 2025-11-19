@@ -198,19 +198,23 @@ async function renderSearchRadius() {
   // Remove existing circle
   if (radiusCircle.value) {
     radiusCircle.value.remove()
+    radiusCircle.value = null
   }
 
-  radiusCircle.value = L.circle(
-    [props.userLocation.latitude, props.userLocation.longitude],
-    {
-      radius: props.searchRadius * 1000, // Convert km to meters
-      color: '#6FB8A5',
-      fillColor: '#6FB8A5',
-      fillOpacity: 0.15,
-      weight: 2,
-      interactive: false
-    }
-  ).addTo(map.value)
+  // Only render circle if searchRadius is specified (not null or undefined)
+  if (props.searchRadius !== null && props.searchRadius !== undefined) {
+    radiusCircle.value = L.circle(
+      [props.userLocation.latitude, props.userLocation.longitude],
+      {
+        radius: props.searchRadius * 1000, // Convert km to meters
+        color: '#6FB8A5',
+        fillColor: '#6FB8A5',
+        fillOpacity: 0.15,
+        weight: 2,
+        interactive: false
+      }
+    ).addTo(map.value)
+  }
 }
 
 // Get category icon from store
@@ -276,12 +280,29 @@ function groupItemsByLocation(items, zoom) {
   return groups
 }
 
-// Create fan-out markers for items at the same location
-function createFanOutMarkers(group, zoom) {
+// Simple hash function to generate deterministic pseudo-random number from string
+function hashCode(str) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash)
+}
+
+// Generate deterministic pseudo-random number between 0 and 1 based on seed
+function seededRandom(seed) {
+  const x = Math.sin(seed) * 10000
+  return x - Math.floor(x)
+}
+
+// Create markers with random jitter for items at the same location
+function createJitteredMarkers(group, zoom) {
   const itemCount = group.items.length
 
-  // If zoom < 15 or only 1-3 items, use regular grouping
-  if (zoom < 15 || itemCount <= 3) {
+  // If only 1 item, no jitter needed
+  if (itemCount === 1) {
     return [{
       latitude: group.latitude,
       longitude: group.longitude,
@@ -289,24 +310,44 @@ function createFanOutMarkers(group, zoom) {
     }]
   }
 
-  // For zoom >= 15 and more than 3 items, create fan-out effect
-  const fanOutPositions = []
-  const radius = 0.0002 // About 20 meters
-  const angleStep = (2 * Math.PI) / itemCount
+  // Determine if we should show as cluster or jitter based on zoom level
+  // At lower zoom levels (< 15), show clusters for groups with many items
+  // At higher zoom levels (>= 15), use jitter to spread them out
+  const shouldCluster = zoom < 15 && itemCount > 3
 
-  group.items.forEach((item, index) => {
-    const angle = angleStep * index
-    const offsetLat = Math.cos(angle) * radius
-    const offsetLng = Math.sin(angle) * radius
+  if (shouldCluster) {
+    // Keep as single cluster marker with count
+    return [{
+      latitude: group.latitude,
+      longitude: group.longitude,
+      items: group.items
+    }]
+  }
 
-    fanOutPositions.push({
+  // For multiple items at high zoom or small groups, add deterministic jitter
+  const jitteredPositions = []
+  // Adjust jitter radius based on zoom level
+  const baseRadius = zoom >= 15 ? 0.0001 : 0.0002 // ~10m or ~20m
+
+  group.items.forEach((item) => {
+    // Use item_id to generate deterministic random values
+    const seed = hashCode(String(item.item_id || item.id))
+
+    // Generate deterministic angle and distance based on item_id
+    const angle = seededRandom(seed) * 2 * Math.PI
+    const distance = seededRandom(seed + 1) * baseRadius
+
+    const offsetLat = Math.cos(angle) * distance
+    const offsetLng = Math.sin(angle) * distance
+
+    jitteredPositions.push({
       latitude: group.latitude + offsetLat,
       longitude: group.longitude + offsetLng,
-      items: [item] // Single item per marker in fan-out mode
+      items: [item] // Single item per marker
     })
   })
 
-  return fanOutPositions
+  return jitteredPositions
 }
 
 // Render item markers
@@ -324,38 +365,27 @@ async function renderItemMarkers() {
 
   // Process each location group
   locationGroups.forEach(group => {
-    // Create fan-out positions if needed
-    const markerPositions = createFanOutMarkers(group, zoom)
+    // Create jittered positions for items at same location
+    const markerPositions = createJitteredMarkers(group, zoom)
 
     // Create marker for each position
     markerPositions.forEach(position => {
       const itemCount = position.items.length
       const firstItem = position.items[0]
 
-      // Check if all items are from the same seller
-      const sameSeller = itemCount > 1 && position.items.every(item => item.user?.id === firstItem.user?.id)
+      // Determine pin color based on favorited status
+      const hasFavorited = position.items.some(item => item.favorited_at)
+      const color = hasFavorited ? '#FF6B6B' : getCategoryColor(firstItem)
 
-      // Use category color for single item, or default color for clusters
-      let color
-      if (itemCount === 1) {
-        // Single item - use category color or favorited color
-        color = firstItem.favorited_at ? '#FF6B6B' : getCategoryColor(firstItem)
-      } else {
-        // Multiple items - check if any is favorited
-        const hasFavorited = position.items.some(item => item.favorited_at)
-        color = hasFavorited ? '#FF6B6B' : '#6FB8A5'
-      }
+      // Get seller info
+      const profilePicture = firstItem.user?.profile_picture_url || 'https://placehold.co/40/1e1e1e/ffffff?text=' + (firstItem.user?.nickname?.charAt(0) || 'U')
 
       let markerHtml = ''
-      let iconSize = [40, 40]
-      let iconAnchor = [20, 20]
+      let iconSize = [40, 50]
+      let iconAnchor = [20, 50]
 
-      if (itemCount > 1 && sameSeller) {
-        // Multiple items from same seller - show profile picture
-        const profilePicture = firstItem.user?.profile_picture_url || 'https://placehold.co/40/1e1e1e/ffffff?text=' + (firstItem.user?.nickname?.charAt(0) || 'U')
-        iconSize = [40, 50]
-        iconAnchor = [20, 50]
-
+      if (itemCount > 1) {
+        // Multiple items - show seller profile picture with count badge
         markerHtml = `
           <div class="marker-pin seller-marker">
             <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
@@ -373,38 +403,19 @@ async function renderItemMarkers() {
             </div>
           </div>
         `
-      } else if (itemCount > 1) {
-        // Multiple items from different sellers - show circle with count
-        markerHtml = `
-          <div class="marker-circle">
-            <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
-              <text x="20" y="27" font-family="Arial, sans-serif" font-size="16"
-                    font-weight="bold" text-anchor="middle" fill="white">
-                ${itemCount}
-              </text>
-            </svg>
-          </div>
-        `
       } else {
-        // Single item - show pin with category icon
-        const categoryIcon = getCategoryIcon(firstItem)
-        iconSize = [40, 50]
-        iconAnchor = [20, 50]
-
+        // Single item - show seller profile picture without count
         markerHtml = `
-          <div class="marker-pin">
+          <div class="marker-pin seller-marker">
             <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
               <!-- Pin shape -->
               <path d="M20 0 C12 0 6 6 6 14 C6 22 20 40 20 40 S34 22 34 14 C34 6 28 0 20 0 Z"
                     fill="${color}" stroke="white" stroke-width="2"/>
-
-              <!-- Icon background circle -->
-              <circle cx="20" cy="14" r="10" fill="white" opacity="0.95"/>
             </svg>
-
-            <!-- Bootstrap icon -->
-            <i class="${categoryIcon}" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 16px; color: ${color};"></i>
+            <!-- Profile picture -->
+            <div style="position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 2px solid white; background: white;">
+              <img src="${profilePicture}" alt="seller" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/24/1e1e1e/ffffff?text=${firstItem.user?.nickname?.charAt(0) || 'U'}'">
+            </div>
           </div>
         `
       }

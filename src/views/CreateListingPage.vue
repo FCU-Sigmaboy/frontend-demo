@@ -90,7 +90,17 @@
                     v-for="(image, index) in formData.images"
                     :key="index"
                     class="image-item"
-                    :class="{ 'is-cover': index === 0 }"
+                    :class="{ 
+                      'is-cover': index === 0,
+                      'is-dragging': draggedImageIndex === index,
+                      'drag-over': dragOverImageIndex === index
+                    }"
+                    draggable="true"
+                    @dragstart="handleImageDragStart(index, $event)"
+                    @dragover="handleImageDragOver(index, $event)"
+                    @dragenter="handleImageDragEnter(index, $event)"
+                    @drop="handleImageDrop(index, $event)"
+                    @dragend="handleImageDragEnd"
                     @click="openImageEditor(index)"
                   >
                     <img :src="image" alt="Product Image" class="uploaded-image" />
@@ -338,6 +348,7 @@
       v-model:show="showImageCropper"
       :image-src="cropperImageSrc"
       title="調整商品照片"
+      :aspect-ratio-locked="false"
       @confirm="handleImageEditConfirm"
       @cancel="handleImageEditCancel"
     />
@@ -386,6 +397,10 @@ const userLocations = ref({
   primary: null,
   secondary: null
 });
+
+// 拖曳排序相關
+const draggedImageIndex = ref(null);
+const dragOverImageIndex = ref(null);
 
 const formData = ref({
   images: [],        // 預覽用的 base64 URLs
@@ -478,9 +493,10 @@ const loadItemData = async () => {
     }
 
     // Populate form with item data
+    const imageUrls = item.image_urls || [];
     formData.value = {
-      images: item.image_urls || [],
-      imageFiles: [], // Edit mode uses existing URLs, no files
+      images: imageUrls,
+      imageFiles: imageUrls.map(() => null), // 為每個現有圖片佔位 null
       title: item.title || '',
       category: item.sub_category_id || '',
       description: item.description || '',
@@ -566,18 +582,21 @@ const openImageEditor = (index) => {
   showImageCropper.value = true;
 };
 
-const handleImageEditConfirm = (blob) => {
+const handleImageEditConfirm = async (blob) => {
   if (editingImageIndex.value === null) return;
 
   const index = editingImageIndex.value;
   const editedFile = new File([blob], `listing-image-${index + 1}.webp`, { type: 'image/webp' });
-  formData.value.imageFiles[index] = editedFile;
+  
+  // Compress the cropped image
+  const compressedFile = await compressImage(editedFile);
+  formData.value.imageFiles[index] = compressedFile;
 
   const reader = new FileReader();
   reader.onload = (e) => {
     formData.value.images.splice(index, 1, e.target.result);
   };
-  reader.readAsDataURL(blob);
+  reader.readAsDataURL(compressedFile);
 
   showImageCropper.value = false;
   cropperImageSrc.value = '';
@@ -592,12 +611,15 @@ const handleImageEditCancel = () => {
 
 // Drag and Drop handlers
 const handleDragOver = (event) => {
-  isDragging.value = true;
+  // 只在外部拖曳檔案時顯示上傳提示
+  if (draggedImageIndex.value === null) {
+    isDragging.value = true;
+  }
 };
 
 const handleDragLeave = (event) => {
   // Only set to false if leaving the dropzone entirely
-  if (event.target.classList.contains('image-upload-dropzone')) {
+  if (event.target.classList.contains('image-upload-dropzone') && draggedImageIndex.value === null) {
     isDragging.value = false;
   }
 };
@@ -611,8 +633,7 @@ const handleDrop = async (event) => {
   const imageFiles = files.filter(file => file.type.startsWith('image/'));
 
   if (imageFiles.length === 0) {
-    alert('請拖曳圖片檔案');
-    return;
+    return; // 靜默失敗,可能是內部拖曳
   }
 
   const remainingSlots = 8 - formData.value.images.length;
@@ -636,6 +657,74 @@ const handleDrop = async (event) => {
     };
     reader.readAsDataURL(compressedFile);
   }
+};
+
+// 圖片拖曳排序處理
+const handleImageDragStart = (index, event) => {
+  // 檢查是否真的是從這個圖片開始拖曳(內部排序)
+  if (event.target.closest('.image-item')) {
+    event.stopPropagation();
+    draggedImageIndex.value = index;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', index.toString());
+  }
+};
+
+const handleImageDragOver = (index, event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  event.dataTransfer.dropEffect = 'move';
+  dragOverImageIndex.value = index;
+};
+
+const handleImageDragEnter = (index, event) => {
+  event.stopPropagation();
+  dragOverImageIndex.value = index;
+};
+
+const handleImageDragLeave = () => {
+  // 可選：延遲清除以避免閃爍
+};
+
+const handleImageDrop = (targetIndex, event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const sourceIndex = draggedImageIndex.value;
+  
+  // 檢查是否為內部拖曳排序
+  if (sourceIndex !== null) {
+    // 這是內部圖片排序
+    if (sourceIndex !== targetIndex) {
+      // 重新排列圖片陣列
+      const newImages = [...formData.value.images];
+      const newImageFiles = [...formData.value.imageFiles];
+      
+      const [movedImage] = newImages.splice(sourceIndex, 1);
+      const [movedFile] = newImageFiles.splice(sourceIndex, 1);
+      
+      newImages.splice(targetIndex, 0, movedImage);
+      newImageFiles.splice(targetIndex, 0, movedFile);
+      
+      formData.value.images = newImages;
+      formData.value.imageFiles = newImageFiles;
+    }
+    
+    draggedImageIndex.value = null;
+    dragOverImageIndex.value = null;
+    return; // 內部排序完成，不再繼續處理
+  }
+  
+  // 這是外部檔案拖曳到內部圖片上
+  const files = event.dataTransfer.files;
+  if (files && files.length > 0) {
+    handleDrop(event);
+  }
+};
+
+const handleImageDragEnd = () => {
+  draggedImageIndex.value = null;
+  dragOverImageIndex.value = null;
 };
 
 
@@ -664,13 +753,38 @@ const handleSubmit = async () => {
       // Update existing item
       console.log('📝 Updating item:', formData.value);
 
+      // 檢查哪些圖片需要上傳 (有對應的 File 物件)
+      const finalImageUrls = [];
+      const { data: { user } } = await supabase.auth.getUser();
+      const { uploadItemImage } = await import('../api/upload_imageAPI');
+      
+      for (let i = 0; i < formData.value.images.length; i++) {
+        const imagePreview = formData.value.images[i];
+        const imageFile = formData.value.imageFiles[i];
+        
+        // 如果有對應的 Blob/File 物件 (不是 null)，需要上傳
+        if (imageFile instanceof Blob) {
+          // 如果是 Blob 但不是 File，轉換為 File
+          const fileToUpload = imageFile instanceof File 
+            ? imageFile 
+            : new File([imageFile], `image-${i}.webp`, { type: imageFile.type });
+          // 傳入 false 因為檔案已經壓縮過
+          const uploadedUrl = await uploadItemImage(fileToUpload, user.id, itemId.value, false);
+          finalImageUrls.push(uploadedUrl);
+        } 
+        // 否則使用原有的 URL
+        else if (imagePreview.startsWith('http')) {
+          finalImageUrls.push(imagePreview);
+        }
+      }
+
       const updateData = {
         title: formData.value.title,
         description: formData.value.description,
         condition: formData.value.condition,
         price: formData.value.price,
         sub_category_id: formData.value.category,
-        image_urls: formData.value.images,
+        image_urls: finalImageUrls,
         use_primary_location: formData.value.usePrimaryLocation
       };
 
@@ -1023,6 +1137,7 @@ const handleSubmit = async () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
+  transition: all 0.3s ease;
 }
 
 .drag-overlay {
@@ -1059,9 +1174,9 @@ const handleSubmit = async () => {
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
-  cursor: zoom-in;
+  cursor: move;
   border: 1px solid transparent;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:focus-visible {
     outline: none;
@@ -1074,11 +1189,36 @@ const handleSubmit = async () => {
     filter: brightness(0.95);
   }
 
+  &.is-dragging {
+    opacity: 0.4;
+    transform: scale(0.92) rotate(2deg);
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  &.drag-over {
+    border-color: $primary;
+    background: rgba(111, 184, 165, 0.08);
+    box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.2);
+    transform: scale(1.08);
+    
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(111, 184, 165, 0.1);
+      border-radius: 8px;
+      z-index: 1;
+      animation: pulse-drag 0.8s ease-in-out infinite;
+    }
+  }
+
   .uploaded-image {
     width: 100%;
     height: 100%;
     object-fit: contain;
     background: #f5f8f7;
+    transition: filter 0.2s ease;
   }
 
   .remove-image-btn {
@@ -1462,6 +1602,15 @@ const handleSubmit = async () => {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-drag {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
