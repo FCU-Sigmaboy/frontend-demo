@@ -54,7 +54,9 @@ export const useFavoritesStore = defineStore('favorites', () => {
   }
 
   function isFavorite(itemId) {
-    return favoriteItems.value.some(item => item.item_id === itemId)
+    // Convert both to numbers for comparison to handle string vs number mismatch
+    const numericItemId = typeof itemId === 'string' ? parseInt(itemId, 10) : itemId;
+    return favoriteItems.value.some(item => item.item_id === numericItemId);
   }
 
   function clearCache() {
