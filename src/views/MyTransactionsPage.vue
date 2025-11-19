@@ -454,6 +454,8 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useTransactionStore } from '@/stores/transaction';
 import { useReviewStore } from '@/stores/review';
+import { useAuthStore } from '@/stores/auth';
+import { usePointsStore } from '@/stores/points';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -472,8 +474,23 @@ const router = useRouter();
 const route = useRoute();
 const transactionStore = useTransactionStore();
 const reviewStore = useReviewStore();
+const authStore = useAuthStore();
+const pointsStore = usePointsStore();
 
 const { completed } = transactionStore;
+
+// Helper to refresh user points/profile
+const refreshUserPoints = async () => {
+  try {
+    const promises = [
+      authStore.updateCustomProfile(),
+      pointsStore.fetchProfile(true)
+    ];
+    await Promise.all(promises);
+  } catch (error) {
+    console.error('Failed to refresh user points:', error);
+  }
+};
 
 // State
 const userPoints = ref(500);
@@ -692,6 +709,7 @@ const handleRejectModalSubmit = async () => {
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    await refreshUserPoints();
     
     // 重置篩選結果，確保重新渲染
     filteredByRole.value = [];
@@ -715,6 +733,7 @@ const handleCancelModalSubmit = async () => {
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    await refreshUserPoints();
     
     // 重置篩選結果，確保重新渲染
     filteredByRole.value = [];
@@ -738,6 +757,7 @@ const handleConfirmModalSubmit = async (note) => {
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    await refreshUserPoints();
     
     // 重置篩選結果，確保重新渲染
     filteredByRole.value = [];
@@ -767,6 +787,7 @@ const handleInputCodeSubmit = async (code) => {
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    await refreshUserPoints();
     
     // 重置篩選結果，確保重新渲染
     filteredByRole.value = [];
