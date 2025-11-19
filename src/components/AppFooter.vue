@@ -64,7 +64,6 @@ import logoImage from '../assets/Logo-white.png';
 .footer-logo {
   .logo-img {
     width: 250px;
-    height: 70px;
     object-fit: contain;
   }
 }
@@ -114,6 +113,15 @@ import logoImage from '../assets/Logo-white.png';
   color: #f9f9f9;
   margin: 0;
   line-height: 20px;
+}
+
+@media (max-width: 1200px) {
+  .footer-logo {
+    .logo-img {
+      width: 200px;
+      object-fit: contain;
+    }
+  }
 }
 
 @media (max-width: 991.98px) {
