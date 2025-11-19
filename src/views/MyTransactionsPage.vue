@@ -926,6 +926,10 @@ const navigateToTransaction = async (transactionId) => {
     // 現在設定 roleTab
     roleTab.value = targetRole;
 
+    // 手動設定 filteredByRole，確保 displayTransactions 包含目標交易
+    // 這是關鍵：FilterTabs 組件可能還沒觸發，需要手動設定篩選結果
+    filteredByRole.value = currentTransactions.value.filter(t => t.role === targetRole);
+
     // 再次等待 DOM 更新
     await nextTick();
 
@@ -938,7 +942,7 @@ const navigateToTransaction = async (transactionId) => {
       currentPage.value = targetPage;
       jumpToPageInput.value = targetPage;
 
-      // 再次等待 DOM 更新
+      // 再次等待 DOM 更新完成
       await nextTick();
 
       // 高亮該交易
@@ -949,13 +953,13 @@ const navigateToTransaction = async (transactionId) => {
         const card = document.querySelector(`[data-transaction-id="${id}"]`);
         if (card) {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
+
           // 5 秒後移除高亮
           setTimeout(() => {
             highlightedTransactionId.value = null;
           }, 5000);
         }
-      }, 100);
+      }, 300);
     }
   }
 
