@@ -113,6 +113,7 @@
                 :seller-name="product.user?.nickname"
                 :seller-avatar="product.user?.profile_picture_url"
                 :seller-id="product.user?.id"
+                :image-url="product.image_urls?.[0]"
                 :rating="product.user?.avg_rating"
                 :is-in-transaction="isInTransaction"
                 :transaction-status-text="transactionStatusText"

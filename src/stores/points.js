@@ -90,7 +90,7 @@ export const usePointsStore = defineStore('points', () => {
 
   const hasSignedInToday = computed(() => {
     if (!lastSigninDate.value) return false
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
     return lastSigninDate.value === today
   })
 
@@ -202,7 +202,7 @@ export const usePointsStore = defineStore('points', () => {
 
         profile.value.total_earned += result.points_awarded
         profile.value.daily_streak = result.streak_day
-        profile.value.last_signin_date = new Date().toISOString().split('T')[0]
+        profile.value.last_signin_date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
 
         // Invalidate cache to force refresh on next fetch
         lastProfileFetch.value = null
