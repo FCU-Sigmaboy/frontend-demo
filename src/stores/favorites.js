@@ -47,7 +47,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   async function toggleFavorite(item) {
     if (isFavorite(item.item_id)) {
-      await removeFavorite(item.item_id)
+      await removeFavorite(item)
     } else {
       await addFavorite(item)
     }
