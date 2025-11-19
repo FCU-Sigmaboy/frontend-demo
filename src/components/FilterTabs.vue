@@ -59,8 +59,16 @@ const initSortOrder = () => {
 };
 
 // 內部狀態
-const activeFilter = ref(props.filters[0]?.id || 1);
+const activeFilter = ref(props.filters[0]?.id ?? 0);
 const sortOrder = ref(initSortOrder());
+
+// Watch for filters changes and ensure activeFilter is valid
+watch(() => props.filters, (newFilters) => {
+  // If current activeFilter doesn't exist in new filters, reset to first filter
+  if (!newFilters.find(f => f.id === activeFilter.value)) {
+    activeFilter.value = newFilters[0]?.id ?? 0;
+  }
+}, { immediate: true });
 
 // 處理後的項目（篩選 + 排序）
 const sortedItems = computed(() => {
