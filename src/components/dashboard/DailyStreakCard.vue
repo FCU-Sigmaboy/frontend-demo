@@ -88,7 +88,10 @@ const milestoneProgress = computed(() => {
 
   // Find previous milestone
   const prevMilestoneIndex = MILESTONES.findIndex(m => m > current) - 1;
-  const prev = prevMilestoneIndex >= 0 ? MILESTONES[prevMilestoneIndex] : 0;
+  let prev = prevMilestoneIndex >= 0 ? MILESTONES[prevMilestoneIndex] : 0;
+
+  // UX Improvement: For the range 1->3, start from 0 to show progress on Day 1 and 2
+  if (prev === 1) prev = 0;
 
   const range = next - prev;
   const progress = current - prev;
