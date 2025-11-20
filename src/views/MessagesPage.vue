@@ -185,6 +185,7 @@ import ChatScrollControls from '@/components/messages/ChatScrollControls.vue';
 import TransactionModal from '@/components/messages/TransactionModal.vue';
 import UserListingsModal from '@/components/messages/UserListingsModal.vue';
 import { useMessagePage } from '@/composables/useMessagePage';
+import { useMessageStore } from '@/stores/message';
 import { ref, computed } from 'vue';
 
 const {
@@ -227,6 +228,8 @@ const {
   handleTransactionConfirm,
   scrollToMessage
 } = useMessagePage();
+
+const messageStore = useMessageStore();
 
 // User Listings Modal state
 const showUserListingsModal = ref(false);
@@ -294,7 +297,6 @@ const handleSendMessage = async () => {
     const quotedText = replyingToMessage.value.text || '';
     const replyText = messageInput.value.trim();
     const replyContent = JSON.stringify({
-      type: 'reply',
       '回覆的訊息內容': quotedText,
       '你的訊息內容': replyText,
       'reply_to_message_id': replyingToMessage.value.id
@@ -350,9 +352,6 @@ const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
     _clientId: tempMessageId
   };
 
-  // Import the message store method
-  const { useMessageStore } = await import('@/stores/message');
-  const messageStore = useMessageStore();
   messageStore.currentMessages.push(optimisticMessage);
 
   // Scroll to bottom
@@ -368,7 +367,7 @@ const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
 
   // Send to backend
   try {
-    const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+    const newMessage = await messageStore.sendMessage(content, 'reply', relatedItemId, relatedItemTitle);
 
     // Update the optimistic message with the real one
     const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
@@ -387,6 +386,7 @@ const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
         message.created_at = newMessage.created_at;
         message.metadata = newMessage.metadata;
         message._sending = false;
+        message._failedMessageType = undefined;
 
         if (newMessage.sender_id) {
           message.sender.id = newMessage.sender_id;
@@ -404,6 +404,7 @@ const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
       message._failedContent = content;
       message._failedRelatedItemId = relatedItemId;
       message._failedRelatedItemTitle = relatedItemTitle;
+      message._failedMessageType = 'reply';
     }
   }
 };

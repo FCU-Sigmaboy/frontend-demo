@@ -105,7 +105,7 @@
 
                   <!-- Transaction Link (for transaction_link type messages) -->
                   <div v-if="message.message_type === 'transaction_link' && message.transactionLinkData" class="transaction-link-wrapper">
-                    <p class="message-text">{{ message.text || '我已發起交易，再麻煩您確認這筆交易' }}</p>
+                    <p class="message-text">{{ message.text || '詳情請點擊下方按鈕' }}</p>
                     <button class="transaction-link-btn" @click.stop="handleViewTransaction(message.transactionLinkData.transaction_id)">
                       <i class="bi bi-box-arrow-up-right"></i>
                       查看交易詳情
@@ -469,6 +469,11 @@ onBeforeUnmount(() => {
 
   &:has(.message-first-in-group:not(.message-last-in-group)) {
     margin-bottom: 2px;
+  }
+
+  &.message-highlight .message-content {
+    box-shadow: 0 0 0 2px rgba(111, 184, 165, 0.35), 0 6px 18px rgba(0, 0, 0, 0.12);
+    transition: box-shadow 0.3s ease;
   }
 }
 

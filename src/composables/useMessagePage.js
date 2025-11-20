@@ -971,6 +971,7 @@ export function useMessagePage() {
         message._failedContent = content;
         message._failedRelatedItemId = relatedItemId;
         message._failedRelatedItemTitle = relatedItemTitle;
+        message._failedMessageType = message.message_type || 'text';
       }
     }
   }
@@ -1086,16 +1087,15 @@ export function useMessagePage() {
 
       // Send transaction link message（最後發送，這樣預覽會顯示交易連結）
       const transactionLinkContent = JSON.stringify({
-        type: 'transaction_link',
         transaction_id: result.transaction_id
       });
 
       try {
         await messageStore.sendMessage(
           transactionLinkContent,
-          'text',
-          null, // no related item id
-          null  // no related item title
+          'transaction_link',
+          null,
+          null
         );
         console.log('Transaction link message sent');
         
@@ -1152,12 +1152,13 @@ export function useMessagePage() {
     const content = failedMessage._failedContent || failedMessage.content;
     const relatedItemId = failedMessage._failedRelatedItemId || failedMessage.related_item_id;
     const relatedItemTitle = failedMessage._failedRelatedItemTitle || failedMessage.related_item_title;
+    const retryMessageType = failedMessage._failedMessageType || failedMessage.message_type || 'text';
 
     failedMessage._sending = true;
     failedMessage._failed = false;
 
     try {
-      const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+      const newMessage = await messageStore.sendMessage(content, retryMessageType, relatedItemId, relatedItemTitle);
 
       applyItemMetadataToMessages();
 
@@ -1192,6 +1193,7 @@ export function useMessagePage() {
           delete message._failedContent;
           delete message._failedRelatedItemId;
           delete message._failedRelatedItemTitle;
+          delete message._failedMessageType;
 
           if (newMessage.sender_id) {
             message.sender.id = newMessage.sender_id;

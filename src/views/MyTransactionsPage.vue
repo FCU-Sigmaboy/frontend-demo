@@ -783,11 +783,17 @@ const handleInputCodeSubmit = async (code) => {
     isLoading.value = true;
     const result = await finalizeTransactionWithCode(selectedTransactionForCode.value.transaction_id, code);
 
-  alert(`交易完成！\n\n您的新點數餘額：${formatPoints(result.new_balance)}`);
+    await refreshUserPoints();
+    const latestBalance =
+      pointsStore.currentBalance ??
+      pointsStore.profile?.current_balance ??
+      result?.new_balance ??
+      0;
+
+    alert(`交易完成！\n\n您的新點數餘額：${formatPoints(latestBalance)}`);
 
     // 重新載入交易列表
     await fetchTransactions(true);
-    await refreshUserPoints();
     
     // 重置篩選結果，確保重新渲染
     filteredByRole.value = [];
