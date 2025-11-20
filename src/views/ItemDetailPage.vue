@@ -64,7 +64,7 @@
             <!-- Left Side: Image Gallery -->
             <div class="image-gallery">
               <!-- Main Image -->
-              <div class="main-image-wrapper">
+              <div class="main-image-wrapper" :style="{ backgroundImage: `url(${currentImage})` }">
                 <img
                   :src="currentImage"
                   alt="Product Image"
@@ -113,7 +113,10 @@
                 :seller-name="product.user?.nickname"
                 :seller-avatar="product.user?.profile_picture_url"
                 :seller-id="product.user?.id"
+                :image-url="product.image_urls?.[0]"
                 :rating="product.user?.avg_rating"
+                :is-in-transaction="isInTransaction"
+                :transaction-status-text="transactionStatusText"
                 @message="handleMessage"
               />
             </div>
@@ -228,11 +231,13 @@ import TransactionCard from '../components/TransactionCard.vue';
 import ProductCard from '../components/ProductCard.vue';
 
 import { useAuthStore } from '../stores/auth';
+import { useTransactionStore } from '../stores/transaction';
 import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
 import { searchItems } from '@/api/get_searchItemsAPI.js';
-import { startChat } from '@/api/conversationsAPI.js';
+import { createOrGetConversation } from '@/api/conversation.js';
 
 const authStore = useAuthStore();
+const transactionStore = useTransactionStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -277,6 +282,26 @@ const breadcrumbItems = computed(() => {
   });
 
   return items;
+});
+
+// Transaction status check
+const transactionInfo = computed(() => {
+  if (!product.value.id) return null;
+  return transactionStore.getTransactionByItem(product.value.id);
+});
+
+const isInTransaction = computed(() => {
+  return transactionInfo.value !== null;
+});
+
+const transactionStatusText = computed(() => {
+  if (!transactionInfo.value) return null;
+  const statusMap = {
+    'waiting': '等待確認中',
+    'in_transaction': '交易進行中',
+    'sold': '已售出'
+  };
+  return statusMap[transactionInfo.value.status] || '交易中';
 });
 
 // Computed
@@ -328,8 +353,8 @@ const handleMessage = async () => {
 
   try {
     console.log('Starting chat for item:', product.value.id);
-    // Start or find conversation
-    const result = await startChat(product.value.id);
+    // Start or find conversation using V2 API
+    const result = await createOrGetConversation(product.value.user.id, product.value.id);
     console.log('Chat started, conversation ID:', result.conversation_id);
 
     // Navigate to messages page
@@ -361,8 +386,21 @@ const handleContactSeller = async (productId) => {
 
   try {
     console.log('Starting chat for item:', productId);
-    // Start or find conversation
-    const result = await startChat(productId);
+
+    // Find the product in relatedProducts to get seller ID
+    const targetProduct = relatedProducts.value.find(p => (p.item_id || p.id) === productId);
+    if (!targetProduct || !targetProduct.user?.id) {
+      throw new Error('無法找到商品資訊');
+    }
+
+    // Don't allow messaging yourself
+    if (targetProduct.user.id === authStore.user.id) {
+      alert('無法向自己發送訊息');
+      return;
+    }
+
+    // Start or find conversation using V2 API
+    const result = await createOrGetConversation(targetProduct.user.id, productId);
     console.log('Chat started, conversation ID:', result.conversation_id);
 
     // Navigate to messages page
@@ -485,6 +523,11 @@ const loadProductDetails = async () => {
       // Load related products based on sub-category
       if (response.data.category?.sub_category_id) {
         await loadRelatedProducts(response.data.category.sub_category_id, response.data.id);
+      }
+
+      // Fetch transaction data if user is logged in
+      if (authStore.user) {
+        await transactionStore.fetchAllTransactions();
       }
     } else {
       // Handle item not found or unavailable
@@ -616,7 +659,8 @@ onUnmounted(() => {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    backdrop-filter: blur(20px) brightness(0.8);
   }
 
   .nav-arrow {

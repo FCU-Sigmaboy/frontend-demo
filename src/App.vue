@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useMessageStore } from './stores/message'
 import { useTransactionStore } from './stores/transaction'
-import { subscribeToUserPresence } from './api/conversationAPI_v2'
+import { subscribeToUserPresence } from './api/conversation'
 import { BToastOrchestrator } from 'bootstrap-vue-next'
 import { useTransactionToast } from './composables/useTransactionToast'
 

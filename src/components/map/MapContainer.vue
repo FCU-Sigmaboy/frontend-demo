@@ -23,6 +23,7 @@
 <script setup>
 import { ref, onMounted, watch, onBeforeUnmount, nextTick } from 'vue'
 import { loadLeaflet } from '@/utils/openStreetMapLoader'
+import { useCategoriesStore } from '@/stores/categories'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -37,6 +38,9 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   shadowUrl: markerShadow
 })
+
+// Get categories store
+const categoriesStore = useCategoriesStore()
 
 // Props
 const props = defineProps({
@@ -77,6 +81,7 @@ const markers = ref([])
 const userMarker = ref(null)
 const radiusCircle = ref(null)
 const tileLayer = ref(null)
+const currentZoom = ref(13)
 
 // Initialize map
 async function initializeMap() {
@@ -84,6 +89,11 @@ async function initializeMap() {
   error.value = null
 
   try {
+    // Load categories if not already loaded
+    if (!categoriesStore.isLoaded) {
+      await categoriesStore.fetchCategories()
+    }
+
     // Load Leaflet library
     await loadLeaflet()
 
@@ -118,9 +128,16 @@ async function initializeMap() {
       maxZoom: 19
     }).addTo(map.value)
 
+    // Initialize current zoom
+    currentZoom.value = map.value.getZoom()
+
     // Add event listeners
     map.value.on('moveend', handleBoundsChanged)
-    map.value.on('zoomend', handleBoundsChanged)
+    map.value.on('zoomend', () => {
+      currentZoom.value = map.value.getZoom()
+      handleBoundsChanged()
+      renderItemMarkers() // Re-render markers on zoom change
+    })
 
     // Render initial markers and overlays
     await renderUserMarker()
@@ -181,36 +198,64 @@ async function renderSearchRadius() {
   // Remove existing circle
   if (radiusCircle.value) {
     radiusCircle.value.remove()
+    radiusCircle.value = null
   }
 
-  radiusCircle.value = L.circle(
-    [props.userLocation.latitude, props.userLocation.longitude],
-    {
-      radius: props.searchRadius * 1000, // Convert km to meters
-      color: '#6FB8A5',
-      fillColor: '#6FB8A5',
-      fillOpacity: 0.15,
-      weight: 2,
-      interactive: false
-    }
-  ).addTo(map.value)
+  // Only render circle if searchRadius is specified (not null or undefined)
+  if (props.searchRadius !== null && props.searchRadius !== undefined) {
+    radiusCircle.value = L.circle(
+      [props.userLocation.latitude, props.userLocation.longitude],
+      {
+        radius: props.searchRadius * 1000, // Convert km to meters
+        color: '#6FB8A5',
+        fillColor: '#6FB8A5',
+        fillOpacity: 0.15,
+        weight: 2,
+        interactive: false
+      }
+    ).addTo(map.value)
+  }
 }
 
-// Group items by location (within ~10 meters)
-function groupItemsByLocation(items) {
+// Get category icon from store
+function getCategoryIcon(item) {
+  if (!item.main_category_id) {
+    return 'bi-box'
+  }
+
+  const mainCategory = categoriesStore.mainCategories.find(cat => cat.id === item.main_category_id)
+  return mainCategory?.icon || 'bi-box'
+}
+
+// Get category color from store
+function getCategoryColor(item) {
+  if (!item.main_category_id) {
+    return '#6FB8A5'
+  }
+
+  const mainCategory = categoriesStore.mainCategories.find(cat => cat.id === item.main_category_id)
+  return mainCategory?.color || '#6FB8A5'
+}
+
+// Group items by location based on zoom level
+function groupItemsByLocation(items, zoom) {
   const groups = []
-  const threshold = 0.0001 // Approximately 10 meters
+
+  // Dynamic threshold based on zoom level
+  // zoom 11-12: 0.01 (約 1km) - 很多物品會被分組
+  // zoom 13-14: 0.001 (約 100m) - 中等分組
+  // zoom 15+: 0.0001 (約 10m) - 只有非常近的才分組
+  let threshold
+  if (zoom < 13) {
+    threshold = 0.01 // 約 1km
+  } else if (zoom < 15) {
+    threshold = 0.001 // 約 100m
+  } else {
+    threshold = 0.0001 // 約 10m
+  }
 
   items.forEach(item => {
-    console.log('[MapContainer] Processing item:', {
-      title: item.title,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      debug_location: item.debug_item_location_wkb
-    })
-
     if (!item.latitude || !item.longitude) {
-      console.log('[MapContainer] Skipping item - no coordinates:', item.title)
       return
     }
 
@@ -235,124 +280,187 @@ function groupItemsByLocation(items) {
   return groups
 }
 
+// Simple hash function to generate deterministic pseudo-random number from string
+function hashCode(str) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash)
+}
+
+// Generate deterministic pseudo-random number between 0 and 1 based on seed
+function seededRandom(seed) {
+  const x = Math.sin(seed) * 10000
+  return x - Math.floor(x)
+}
+
+// Create markers with random jitter for items at the same location
+function createJitteredMarkers(group, zoom) {
+  const itemCount = group.items.length
+
+  // If only 1 item, no jitter needed
+  if (itemCount === 1) {
+    return [{
+      latitude: group.latitude,
+      longitude: group.longitude,
+      items: group.items
+    }]
+  }
+
+  // Determine if we should show as cluster or jitter based on zoom level
+  // At lower zoom levels (< 15), show clusters for groups with many items
+  // At higher zoom levels (>= 15), use jitter to spread them out
+  const shouldCluster = zoom < 15 && itemCount > 3
+
+  if (shouldCluster) {
+    // Keep as single cluster marker with count
+    return [{
+      latitude: group.latitude,
+      longitude: group.longitude,
+      items: group.items
+    }]
+  }
+
+  // For multiple items at high zoom or small groups, add deterministic jitter
+  const jitteredPositions = []
+  // Adjust jitter radius based on zoom level
+  const baseRadius = zoom >= 15 ? 0.0001 : 0.0002 // ~10m or ~20m
+
+  group.items.forEach((item) => {
+    // Use item_id to generate deterministic random values
+    const seed = hashCode(String(item.item_id || item.id))
+
+    // Generate deterministic angle and distance based on item_id
+    const angle = seededRandom(seed) * 2 * Math.PI
+    const distance = seededRandom(seed + 1) * baseRadius
+
+    const offsetLat = Math.cos(angle) * distance
+    const offsetLng = Math.sin(angle) * distance
+
+    jitteredPositions.push({
+      latitude: group.latitude + offsetLat,
+      longitude: group.longitude + offsetLng,
+      items: [item] // Single item per marker
+    })
+  })
+
+  return jitteredPositions
+}
+
 // Render item markers
 async function renderItemMarkers() {
   if (!map.value) return
-
-  console.log('[MapContainer] renderItemMarkers called with items:', props.items)
-  console.log('[MapContainer] Items count:', props.items?.length)
 
   // Remove existing markers
   markers.value.forEach(marker => marker.remove())
   markers.value = []
 
-  // Group items by location
-  const locationGroups = groupItemsByLocation(props.items)
-  console.log('[MapContainer] Location groups:', locationGroups)
+  const zoom = currentZoom.value
 
+  // Group items by location (distance depends on zoom)
+  const locationGroups = groupItemsByLocation(props.items, zoom)
+
+  // Process each location group
   locationGroups.forEach(group => {
-    const itemCount = group.items.length
-    const firstItem = group.items[0]
+    // Create jittered positions for items at same location
+    const markerPositions = createJitteredMarkers(group, zoom)
 
-    console.log('[MapContainer] Creating marker for group:', {
-      latitude: group.latitude,
-      longitude: group.longitude,
-      itemCount,
-      firstItem: firstItem.title
-    })
+    // Create marker for each position
+    markerPositions.forEach(position => {
+      const itemCount = position.items.length
+      const firstItem = position.items[0]
 
-    // Check if any item in the group is favorited
-    const hasFavorited = group.items.some(item => item.favorited_at)
-    const color = hasFavorited ? '#FF6B6B' : '#6FB8A5'
+      // Determine pin color based on favorited status
+      const hasFavorited = position.items.some(item => item.favorited_at)
+      const color = hasFavorited ? '#FF6B6B' : getCategoryColor(firstItem)
 
-    let markerHtml = ''
+      // Get seller info
+      const profilePicture = firstItem.user?.profile_picture_url || 'https://placehold.co/40/1e1e1e/ffffff?text=' + (firstItem.user?.nickname?.charAt(0) || 'U')
 
-    if (itemCount === 1) {
-      // Single item - show price
-      const priceText = `NT$${Math.floor(firstItem.price)}`
-      markerHtml = `
-        <div class="marker-pin" style="color: ${color}">
-          <svg width="50" height="60" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25 0 C15 0 7 8 7 18 C7 28 25 50 25 50 S43 28 43 18 C43 8 35 0 25 0 Z"
-                  fill="${color}" stroke="white" stroke-width="2"/>
-            <rect x="5" y="10" width="40" height="16" rx="3" fill="white" opacity="0.95"/>
-            <text x="25" y="21" font-family="Arial, sans-serif" font-size="10"
-                  font-weight="bold" text-anchor="middle" fill="${color}">
-              ${priceText}
-            </text>
-            ${firstItem.favorited_at ? '<circle cx="25" cy="5" r="4" fill="white"/><text x="25" y="7.5" font-size="6" text-anchor="middle">❤️</text>' : ''}
-          </svg>
-        </div>
-      `
-    } else {
-      // Multiple items - show count
-      markerHtml = `
-        <div class="marker-pin marker-cluster" style="color: ${color}">
-          <svg width="50" height="60" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25 0 C15 0 7 8 7 18 C7 28 25 50 25 50 S43 28 43 18 C43 8 35 0 25 0 Z"
-                  fill="${color}" stroke="white" stroke-width="2"/>
-            <circle cx="25" cy="16" r="12" fill="white" opacity="0.95"/>
-            <text x="25" y="22" font-family="Arial, sans-serif" font-size="14"
-                  font-weight="bold" text-anchor="middle" fill="${color}">
+      let markerHtml = ''
+      let iconSize = [40, 50]
+      let iconAnchor = [20, 50]
+
+      if (itemCount > 1) {
+        // Multiple items - show seller profile picture with count badge
+        markerHtml = `
+          <div class="marker-pin seller-marker">
+            <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
+              <!-- Pin shape -->
+              <path d="M20 0 C12 0 6 6 6 14 C6 22 20 40 20 40 S34 22 34 14 C34 6 28 0 20 0 Z"
+                    fill="${color}" stroke="white" stroke-width="2"/>
+            </svg>
+            <!-- Profile picture -->
+            <div style="position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 2px solid white; background: white;">
+              <img src="${profilePicture}" alt="seller" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/24/1e1e1e/ffffff?text=${firstItem.user?.nickname?.charAt(0) || 'U'}'">
+            </div>
+            <!-- Item count badge -->
+            <div style="position: absolute; top: -5px; right: 5px; background: ${color}; color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 2px solid white;">
               ${itemCount}
-            </text>
-            ${hasFavorited ? '<circle cx="25" cy="5" r="4" fill="white"/><text x="25" y="7.5" font-size="6" text-anchor="middle">❤️</text>' : ''}
-          </svg>
-        </div>
-      `
-    }
-
-    // Create custom marker icon
-    const markerIcon = L.divIcon({
-      className: 'item-marker',
-      html: markerHtml,
-      iconSize: [50, 60],
-      iconAnchor: [25, 60],
-      popupAnchor: [0, -60]
-    })
-
-    const marker = L.marker(
-      [parseFloat(group.latitude), parseFloat(group.longitude)],
-      {
-        icon: markerIcon,
-        title: itemCount === 1 ? firstItem.title : `${itemCount} 個物品`,
-        zIndexOffset: 500
-      }
-    ).addTo(map.value)
-
-    // Add click listener
-    marker.on('click', () => {
-      if (itemCount === 1) {
-        // Single item - emit as before
-        emit('marker-click', firstItem)
+            </div>
+          </div>
+        `
       } else {
-        // Multiple items - emit first item (or could emit array)
-        // You might want to handle this differently in parent component
-        emit('marker-click', firstItem, group.items)
+        // Single item - show seller profile picture without count
+        markerHtml = `
+          <div class="marker-pin seller-marker">
+            <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
+              <!-- Pin shape -->
+              <path d="M20 0 C12 0 6 6 6 14 C6 22 20 40 20 40 S34 22 34 14 C34 6 28 0 20 0 Z"
+                    fill="${color}" stroke="white" stroke-width="2"/>
+            </svg>
+            <!-- Profile picture -->
+            <div style="position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 2px solid white; background: white;">
+              <img src="${profilePicture}" alt="seller" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/24/1e1e1e/ffffff?text=${firstItem.user?.nickname?.charAt(0) || 'U'}'">
+            </div>
+          </div>
+        `
       }
 
-      // Add bounce effect
-      const element = marker.getElement()
-      if (element) {
-        element.classList.add('marker-bounce')
-        setTimeout(() => {
-          element.classList.remove('marker-bounce')
-        }, 700)
-      }
+      // Create custom marker icon
+      const markerIcon = L.divIcon({
+        className: 'item-marker',
+        html: markerHtml,
+        iconSize: iconSize,
+        iconAnchor: iconAnchor,
+        popupAnchor: [0, -iconAnchor[1]]
+      })
+
+      const marker = L.marker(
+        [parseFloat(position.latitude), parseFloat(position.longitude)],
+        {
+          icon: markerIcon,
+          title: itemCount === 1 ? firstItem.title : `${itemCount} 個物品`,
+          zIndexOffset: 500
+        }
+      ).addTo(map.value)
+
+      // Add click listener
+      marker.on('click', () => {
+        if (itemCount === 1) {
+          // Single item - emit as before
+          emit('marker-click', firstItem)
+        } else {
+          // Multiple items - emit first item (or could emit array)
+          // You might want to handle this differently in parent component
+          emit('marker-click', firstItem, position.items)
+        }
+
+        // Add bounce effect
+        const element = marker.getElement()
+        if (element) {
+          element.classList.add('marker-bounce')
+          setTimeout(() => {
+            element.classList.remove('marker-bounce')
+          }, 700)
+        }
+      })
+
+      markers.value.push(marker)
     })
-
-    // Add hover effect
-    marker.on('mouseover', () => {
-      const element = marker.getElement()
-      if (element && !element.classList.contains('marker-bounce')) {
-        element.classList.add('marker-bounce')
-        setTimeout(() => {
-          element.classList.remove('marker-bounce')
-        }, 700)
-      }
-    })
-
-    markers.value.push(marker)
   })
 }
 
@@ -557,13 +665,47 @@ onBeforeUnmount(() => {
   background: transparent;
   border: none;
 
-  // Cluster marker (multiple items)
-  .marker-cluster {
+  // Circle marker (multiple items)
+  .marker-circle {
     cursor: pointer;
     transition: transform 0.2s ease;
 
     &:hover {
-      transform: scale(1.1);
+      transform: scale(1.15);
+    }
+
+    svg {
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+  }
+
+  // Pin marker (single item)
+  .marker-pin {
+    position: relative;
+    cursor: pointer;
+    pointer-events: auto;
+
+    svg {
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      transition: filter 0.2s ease;
+    }
+
+    &:hover svg {
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+    }
+
+    i {
+      pointer-events: none;
+    }
+
+    // Ensure child elements don't block hover
+    * {
+      pointer-events: none;
+    }
+
+    // But keep the pin itself interactive
+    & {
+      pointer-events: auto;
     }
   }
 }

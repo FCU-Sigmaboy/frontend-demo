@@ -90,7 +90,7 @@ export const usePointsStore = defineStore('points', () => {
 
   const hasSignedInToday = computed(() => {
     if (!lastSigninDate.value) return false
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
     return lastSigninDate.value === today
   })
 
@@ -193,10 +193,19 @@ export const usePointsStore = defineStore('points', () => {
 
       // Update profile after sign-in
       if (result.success && profile.value) {
-        profile.value.current_balance += result.points_awarded
+        // Use new_balance from RPC if available, otherwise calculate
+        if (result.new_balance !== undefined) {
+          profile.value.current_balance = result.new_balance
+        } else {
+          profile.value.current_balance += result.points_awarded
+        }
+
         profile.value.total_earned += result.points_awarded
         profile.value.daily_streak = result.streak_day
-        profile.value.last_signin_date = new Date().toISOString().split('T')[0]
+        profile.value.last_signin_date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
+
+        // Invalidate cache to force refresh on next fetch
+        lastProfileFetch.value = null
       }
 
       console.log('Daily sign-in successful:', result)

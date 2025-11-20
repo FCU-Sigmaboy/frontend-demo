@@ -97,28 +97,19 @@
                   <i class="bi bi-pencil"></i>
                   編輯個人資料
                 </button>
-                <button class="review-btn" @click="goToReviews">
-                  <i class="bi bi-star"></i>
-                  查看評價
-                </button>
               </div>
             </div>
 
-            <!-- Achievement Badges -->
+            <!-- Combined Achievements & Badges -->
             <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
-              <AchievementBadges
+              <CombinedAchievements
                 :total-carbon="userCarbonSaved"
+                :total-sales="userStats.sales"
+                :total-purchases="userStats.purchases"
                 :show-carbon-total="true"
                 :show-progress="true"
                 :show-threshold="true"
-                @badge-click="openBadgeModal"
-              />
-              <TransactionTrophies
-                :total-sales="userStats.sales"
-                :total-purchases="userStats.purchases"
-                :show-progress="true"
-                :show-threshold="true"
-                @trophy-click="openTrophyModal"
+                @achievement-click="openAchievementModal"
               />
             </div>
           </div>
@@ -324,36 +315,123 @@
             </div>
           </div>
 
-          <!-- Purchase History Tab -->
-          <div v-show="activeTab === 'purchases'" class="content-section">
-            <div v-if="purchaseHistory.length > 0" class="transactions-list">
-              <TransactionCard
-                v-for="transaction in purchaseHistory"
-                :key="transaction.id"
-                :transaction="transaction"
-                @click="goToTransactionDetail(transaction.id)"
-              />
+          <!-- Reviews Tab -->
+          <div v-show="activeTab === 'reviews'" class="content-section">
+            <!-- Loading Skeleton -->
+            <div v-if="reviewStore.isLoading" class="reviews-skeleton">
+              <div class="skeleton-rating-summary">
+                <div class="skeleton-rating-score"></div>
+                <div class="skeleton-rating-bars">
+                  <div v-for="i in 5" :key="`bar-${i}`" class="skeleton-bar"></div>
+                </div>
+              </div>
+              <div class="skeleton-reviews-list">
+                <div v-for="i in 3" :key="`review-${i}`" class="skeleton-review-card">
+                  <div class="skeleton-review-header">
+                    <div class="skeleton-review-avatar"></div>
+                    <div class="skeleton-review-info">
+                      <div class="skeleton-review-name"></div>
+                      <div class="skeleton-review-stars"></div>
+                    </div>
+                  </div>
+                  <div class="skeleton-review-text"></div>
+                  <div class="skeleton-review-text short"></div>
+                </div>
+              </div>
             </div>
-            <div v-else class="empty-state">
-              <i class="bi bi-bag"></i>
-              <p>尚無購買紀錄</p>
-            </div>
-          </div>
 
-          <!-- Sales History Tab -->
-          <div v-show="activeTab === 'sales'" class="content-section">
-            <div v-if="salesHistory.length > 0" class="transactions-list">
-              <TransactionCard
-                v-for="transaction in salesHistory"
-                :key="transaction.id"
-                :transaction="transaction"
-                type="sale"
-                @click="goToTransactionDetail(transaction.id)"
-              />
+            <!-- Reviews Content -->
+            <div v-else-if="reviewStore.reviews.length > 0">
+              <!-- Rating Summary -->
+              <div class="rating-summary-section">
+                <div class="rating-overview">
+                  <div class="rating-score-large">{{ reviewStore.averageRating.toFixed(1) }}</div>
+                  <div class="rating-stars-large">
+                    <i
+                      v-for="n in 5"
+                      :key="n"
+                      :class="['bi', n <= Math.floor(reviewStore.averageRating) ? 'bi-star-fill' : 'bi-star']"
+                    ></i>
+                  </div>
+                  <p class="rating-count">{{ reviewStore.reviewCount }} 則評價</p>
+                </div>
+
+                <div class="rating-breakdown">
+                  <div
+                    v-for="rating in [5, 4, 3, 2, 1]"
+                    :key="rating"
+                    class="rating-bar-item"
+                  >
+                    <span class="rating-label">{{ rating }} 星</span>
+                    <div class="rating-bar">
+                      <div
+                        class="rating-bar-fill"
+                        :style="{ width: `${getRatingPercentage(rating)}%` }"
+                      ></div>
+                    </div>
+                    <span class="rating-percentage">{{ getRatingCount(rating) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Reviews List -->
+              <div class="reviews-list">
+                <div v-for="review in displayedReviews" :key="review.id" class="review-card">
+                  <div class="review-header">
+                    <img
+                      :src="review.reviewer_avatar"
+                      :alt="review.reviewer_nickname"
+                      class="reviewer-avatar"
+                      referrerpolicy="no-referrer"
+                    />
+                    <div class="reviewer-info">
+                      <h4 class="reviewer-name">{{ review.reviewer_nickname }}</h4>
+                      <div class="review-meta">
+                        <div class="review-stars">
+                          <i
+                            v-for="n in 5"
+                            :key="n"
+                            :class="['bi', n <= review.score ? 'bi-star-fill' : 'bi-star']"
+                          ></i>
+                        </div>
+                        <span class="review-date">{{ review.formatted_date }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="review-comment">{{ review.comment }}</p>
+                  <div
+                    v-if="review.item_id"
+                    class="review-transaction clickable"
+                    @click="goToProductDetail(review.item_id)"
+                  >
+                    <img
+                      :src="review.item_image"
+                      :alt="review.item_title"
+                      class="transaction-image"
+                    />
+                    <span class="transaction-name">{{ review.item_title }}</span>
+                    <i class="bi bi-chevron-right"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- View All Reviews Button -->
+              <div class="view-more-section">
+                <button class="view-all-reviews-btn" @click="goToReviews">
+                  <i class="bi bi-list-ul"></i>
+                  <span>查看完整評價頁面</span>
+                </button>
+              </div>
             </div>
+
+            <!-- Empty State -->
             <div v-else class="empty-state">
-              <i class="bi bi-cash-stack"></i>
-              <p>尚無銷售紀錄</p>
+              <i class="bi bi-star"></i>
+              <p>尚無收到評價</p>
+              <button class="view-all-reviews-btn" @click="goToReviews">
+                <i class="bi bi-list-ul"></i>
+                <span>查看完整評價頁面</span>
+              </button>
             </div>
           </div>
         </section>
@@ -372,8 +450,24 @@
           </div>
           <div class="modal-body text-center">
             <div v-if="selectedBadge">
-              <img :src="selectedBadge.image" :alt="selectedBadge.label" class="img-fluid mb-3" style="max-height: 150px;" />
+              <!-- Display image for badges -->
+              <img
+                v-if="selectedBadge.type === 'badge' && selectedBadge.image"
+                :src="selectedBadge.image"
+                :alt="selectedBadge.label"
+                class="img-fluid mb-3"
+                style="max-height: 150px;"
+              />
+              <!-- Display emoji icon for trophies -->
+              <div v-else-if="selectedBadge.type === 'trophy' && selectedBadge.icon" class="trophy-icon-large mb-3">
+                {{ selectedBadge.icon }}
+              </div>
+
               <p class="mb-3">{{ selectedBadge.description }}</p>
+              <p v-if="selectedBadge.points" class="achievement-points-display mb-3">
+                <i class="bi bi-award-fill"></i>
+                +{{ selectedBadge.points }} 點數
+              </p>
 
               <div v-if="selectedBadge.unlocked" class="badge-status unlocked">
                 <i class="bi bi-check-circle-fill"></i>
@@ -381,7 +475,7 @@
               </div>
               <div v-else class="badge-status locked">
                 <div class="progress-info">
-                  <p class="mb-2"><strong>目前進度：{{ selectedBadge.progress }}%</strong></p>
+                  <p class="mb-2"><strong>目前進度：{{ Math.round(selectedBadge.progress) }}%</strong></p>
                   <div class="progress mb-2" style="height: 20px;">
                     <div
                       class="progress-bar bg-success"
@@ -391,11 +485,14 @@
                       aria-valuemin="0"
                       aria-valuemax="100"
                     >
-                      {{ selectedBadge.progress }}%
+                      {{ Math.round(selectedBadge.progress) }}%
                     </div>
                   </div>
-                  <p v-if="selectedBadge.remainingKg > 0" class="text-muted small mb-0">
+                  <p v-if="selectedBadge.remainingKg !== undefined && selectedBadge.remainingKg > 0" class="text-muted small mb-0">
                     還需 <strong class="text-primary">{{ selectedBadge.remainingKg?.toFixed(1) || '0.0' }} kg</strong> 即可解鎖
+                  </p>
+                  <p v-else-if="selectedBadge.threshold" class="text-muted small mb-0">
+                    需達成 <strong class="text-primary">{{ selectedBadge.threshold }}</strong> 即可解鎖
                   </p>
                 </div>
               </div>
@@ -413,14 +510,14 @@ import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
+import { useReviewStore } from '../stores/review';
 import { getMyItems } from '../api/get_myItemsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
 import TransactionCard from '../components/TransactionCard.vue';
-import AchievementBadges from '../components/AchievementBadges.vue';
-import TransactionTrophies from '../components/TransactionTrophies.vue';
+import CombinedAchievements from '../components/CombinedAchievements.vue';
 import { Modal } from 'bootstrap';
 
 // Badge images are now imported inside AchievementBadges component
@@ -428,6 +525,7 @@ import { Modal } from 'bootstrap';
 const router = useRouter();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
+const reviewStore = useReviewStore();
 
 // Computed: 從 auth store 獲取使用者的點數
 const userPoints = computed(() => {
@@ -457,11 +555,13 @@ const inactiveScrollIndex = ref(0);
 const activeCarousel = ref(null);
 const inactiveCarousel = ref(null);
 
+// Reviews - show only latest 5
+const maxReviewsToShow = 5;
+
 const userStats = computed(() => ({
   listings: myListings.value.length,
   favorites: favoritesStore.count,
-  purchases: 5,
-  sales: 3
+  reviews: reviewStore.reviewCount
 }));
 
 // 直接使用 authStore 的 profileData，不需要重複呼叫 API
@@ -499,16 +599,13 @@ const showProfileSkeleton = computed(() => {
 const tabs = computed(() => [
   { id: 'listings', label: '我的刊登', icon: 'bi-box-seam', count: userStats.value.listings },
   { id: 'favorites', label: '收藏', icon: 'bi-heart', count: userStats.value.favorites },
-  { id: 'purchases', label: '購買紀錄', icon: 'bi-bag', count: userStats.value.purchases },
-  { id: 'sales', label: '銷售紀錄', icon: 'bi-cash-stack', count: userStats.value.sales }
+  { id: 'reviews', label: '我的評價', icon: 'bi-star', count: userStats.value.reviews }
 ]);
 
 const favoriteItems = computed(() => {
   console.log('Favorites from store:', favoritesStore.favoriteItems.length);
   return favoritesStore.favoriteItems;
 });
-const purchaseHistory = ref([]);
-const salesHistory = ref([]);
 
 // Split listings into active/inactive
 const activeListings = computed(() => {
@@ -642,7 +739,13 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
         }).catch((error) => {
           console.error('Failed to load favorites:', error);
         })
-      : Promise.resolve()
+      : Promise.resolve(),
+      reviewStore.fetchReviews()
+        .then(() => {
+          console.log('✅ Reviews loaded:', reviewStore.reviewCount);
+        }).catch((error) => {
+          console.error('Failed to load reviews:', error);
+        })
     ]);
   } else if (!isLoggedIn) {
     dataLoaded = false;
@@ -682,7 +785,13 @@ onMounted(async () => {
         }).catch((error) => {
           console.error('Failed to load favorites:', error);
         })
-      : Promise.resolve()
+      : Promise.resolve(),
+      reviewStore.fetchReviews()
+        .then(() => {
+          console.log('✅ Reviews loaded on mount:', reviewStore.reviewCount);
+        }).catch((error) => {
+          console.error('Failed to load reviews on mount:', error);
+        })
     ]);
   }
 
@@ -704,20 +813,8 @@ onBeforeUnmount(() => {
 });
 
 // Methods
-const openBadgeModal = (badge) => {
-  selectedBadge.value = badge;
-  if (badgeModalInstance.value) {
-    badgeModalInstance.value.show();
-  }
-};
-
-const openTrophyModal = (trophy) => {
-  // For now, use the same modal structure as badges
-  selectedBadge.value = {
-    ...trophy,
-    image: null, // Trophies use icons, not images
-    remainingKg: null
-  };
+const openAchievementModal = (achievement) => {
+  selectedBadge.value = achievement;
   if (badgeModalInstance.value) {
     badgeModalInstance.value.show();
   }
@@ -763,6 +860,25 @@ const goToDashboard = () => {
 const goToFavorites = () => {
   router.push({ name: 'Favorites' });
 };
+
+// Review rating helpers
+const getRatingCount = (rating) => {
+  return reviewStore.reviews.filter(r => r.score === rating).length;
+};
+
+const getRatingPercentage = (rating) => {
+  if (reviewStore.reviewCount === 0) return 0;
+  return (getRatingCount(rating) / reviewStore.reviewCount) * 100;
+};
+
+// Review display - show only latest 5
+const displayedReviews = computed(() => {
+  return reviewStore.reviews.slice(0, maxReviewsToShow);
+});
+
+const hasMoreReviews = computed(() => {
+  return reviewStore.reviewCount > maxReviewsToShow;
+});
 
 // Get number of visible cards based on screen width
 const getVisibleCardsCount = () => {
@@ -1019,6 +1135,27 @@ const scrollCarousel = (carouselRef, index) => {
 }
 
 // Badge Modal Styles
+.trophy-icon-large {
+  font-size: 80px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.achievement-points-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: $primary;
+
+  i {
+    font-size: 20px;
+  }
+}
+
 .badge-status {
   margin-top: 16px;
   padding: 16px;
@@ -1286,6 +1423,406 @@ const scrollCarousel = (carouselRef, index) => {
   gap: 16px;
 }
 
+// Rating Summary Section
+.rating-summary-section {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 40px;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
+}
+
+.rating-overview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  .rating-score-large {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: #1e1e1e;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .rating-stars-large {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+
+    i {
+      font-size: 24px;
+      color: #ffc107;
+
+      &.bi-star {
+        color: #e0e0e0;
+      }
+    }
+  }
+
+  .rating-count {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+  }
+}
+
+.rating-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.rating-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .rating-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    width: 50px;
+    flex-shrink: 0;
+  }
+
+  .rating-bar {
+    flex: 1;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+
+    .rating-bar-fill {
+      height: 100%;
+      background: $primary;
+      transition: width 0.3s ease;
+    }
+  }
+
+  .rating-percentage {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+    width: 30px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+}
+
+// Reviews List
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+// View More Section
+.view-more-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.view-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 32px;
+  background: white;
+  border: 2px solid $primary;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: $primary;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 18px;
+    transition: transform 0.3s;
+  }
+
+  &:hover {
+    background: $primary;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+
+    i {
+      transform: translateX(4px);
+    }
+  }
+}
+
+.view-all-reviews-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  background: $primary;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 16px;
+    color: white;
+  }
+
+  &:hover {
+    background: #5fa795;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+  }
+}
+
+.review-card {
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.review-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  .reviewer-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .reviewer-info {
+    flex: 1;
+
+    .reviewer-name {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin: 0 0 6px 0;
+    }
+
+    .review-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .review-stars {
+      display: flex;
+      gap: 2px;
+
+      i {
+        font-size: 14px;
+        color: #ffc107;
+
+        &.bi-star {
+          color: #e0e0e0;
+        }
+      }
+    }
+
+    .review-date {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 13px;
+      color: #999;
+    }
+  }
+}
+
+.review-comment {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1e1e1e;
+  margin: 0 0 16px 0;
+}
+
+.review-transaction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  transition: all 0.3s;
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: #e8e8e8;
+      transform: translateX(4px);
+
+      .transaction-name {
+        color: $primary;
+      }
+
+      i {
+        color: $primary;
+      }
+    }
+  }
+
+  .transaction-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .transaction-name {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e1e1e;
+    flex: 1;
+    transition: color 0.3s;
+  }
+
+  i {
+    font-size: 16px;
+    color: #999;
+    transition: color 0.3s;
+  }
+}
+
+// Reviews Skeleton Styles
+.reviews-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.skeleton-rating-summary {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 40px;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.skeleton-rating-score {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-rating-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.skeleton-bar {
+  width: 100%;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.skeleton-review-card {
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.skeleton-review-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.skeleton-review-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-review-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-review-name {
+  width: 120px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-review-stars {
+  width: 100px;
+  height: 14px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-review-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 8px;
+
+  &.short {
+    width: 70%;
+  }
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -1350,6 +1887,34 @@ const scrollCarousel = (carouselRef, index) => {
 
     i {
       font-size: 20px;
+      color: white;
+      margin: 0;
+    }
+
+    &:hover {
+      background: #5fa795;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+    }
+  }
+
+  .view-all-reviews-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 28px;
+    background: $primary;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    i {
+      font-size: 16px;
       color: white;
       margin: 0;
     }
@@ -1490,6 +2055,18 @@ const scrollCarousel = (carouselRef, index) => {
     gap: 28px;
   }
 
+  .rating-summary-section {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 24px;
+  }
+
+  .skeleton-rating-summary {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 24px;
+  }
+
   .user-avatar-section {
     .user-avatar,
     .default-avatar {
@@ -1579,6 +2156,60 @@ const scrollCarousel = (carouselRef, index) => {
 @media (max-width: 767.98px) {
   .profile-header {
     padding: 24px 16px;
+  }
+
+  .rating-summary-section {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 20px;
+  }
+
+  .skeleton-rating-summary {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 20px;
+  }
+
+  .review-card {
+    padding: 16px;
+  }
+
+  .review-header {
+    .reviewer-avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .reviewer-info {
+      .reviewer-name {
+        font-size: 14px;
+      }
+
+      .review-date {
+        font-size: 12px;
+      }
+    }
+  }
+
+  .review-comment {
+    font-size: 13px;
+  }
+
+  .review-transaction {
+    padding: 10px;
+
+    .transaction-image {
+      width: 45px;
+      height: 45px;
+    }
+
+    .transaction-name {
+      font-size: 13px;
+    }
+
+    i {
+      font-size: 14px;
+    }
   }
 
   .header-content {

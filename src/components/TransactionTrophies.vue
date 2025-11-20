@@ -364,12 +364,22 @@ function saveTrophySelection() {
 
     .check-mark {
       position: absolute;
-      top: -2px;
-      right: -2px;
+      top: -4px;
+      right: -4px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: $primary;
-      font-size: 18px;
       background: white;
       border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+      i {
+        font-size: 18px;
+        line-height: 1;
+      }
     }
   }
 

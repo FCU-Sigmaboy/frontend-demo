@@ -22,17 +22,22 @@
 
     <!-- Main content -->
     <div v-else class="map-content-wrapper">
-      <!-- Sidebar -->
-      <MapSidebar
-        ref="sidebarRef"
-        :results-count="state.items.length"
-        :initial-filters="state.filters"
-        @filter-change="handleFilterChange"
-        @recenter="handleRecenter"
-      />
-
       <!-- Map container -->
       <div class="map-content">
+        <!-- Floating Search Bar -->
+        <div class="floating-search-bar" :class="{ 'sidebar-open': state.showSellerList }">
+          <SearchBar @search="handleSearch" @menu-click="toggleSellerList" />
+        </div>
+
+        <!-- Floating Filter Tabs -->
+        <div class="floating-filter-tabs" :class="{ 'sidebar-open': state.showSellerList }">
+          <FilterTabs
+            :items="state.items"
+            :filters="categoryFilters"
+            @update:filteredItems="handleCategoryFilter"
+          />
+        </div>
+
         <MapContainer
           ref="mapRef"
           :center="state.userLocation"
@@ -46,12 +51,27 @@
         />
       </div>
 
-      <!-- Item info card -->
-      <MapItemInfoCard
-        :item="state.selectedItem"
-        :show="!!state.selectedItem"
-        @close="closeItemCard"
-        @favorite-toggle="handleFavoriteToggle"
+      <!-- Seller List Sidebar -->
+      <SellerListSidebar
+        :show="state.showSellerList"
+        :items="state.items"
+        @close="closeSellerListSidebar"
+        @seller-click="handleSellerClick"
+      />
+
+      <!-- Seller Items Sidebar -->
+      <SellerItemsSidebar
+        :show="state.showSellerItems"
+        :items="state.sellerItems"
+        @close="closeSellerSidebar"
+        @item-click="handleSellerItemClick"
+      />
+
+      <!-- Item Detail Modal -->
+      <ItemDetailModal
+        v-model="state.showItemDetail"
+        :item-id="state.selectedItemId"
+        @contact-seller="handleContactSeller"
       />
 
       <!-- List View Toggle Button -->
@@ -67,34 +87,41 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce } from 'lodash-es'
+import SearchBar from '@/components/SearchBar.vue'
+import FilterTabs from '@/components/FilterTabs.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
-import MapSidebar from '@/components/map/MapSidebar.vue'
-import MapItemInfoCard from '@/components/map/MapItemInfoCard.vue'
+import SellerListSidebar from '@/components/map/SellerListSidebar.vue'
+import SellerItemsSidebar from '@/components/map/SellerItemsSidebar.vue'
+import ItemDetailModal from '@/components/map/ItemDetailModal.vue'
 import { getUserPrimaryLocation } from '@/api/get_userLocationAPI'
 import { searchItems } from '@/api/get_searchItemsAPI'
 import { useAuthStore } from '@/stores/auth'
+import { useCategoriesStore } from '@/stores/categories'
 import { supabase } from '@/lib/supabase'
 
 // Composables
 const router = useRouter()
 const authStore = useAuthStore()
+const categoriesStore = useCategoriesStore()
 
 // Refs
 const mapRef = ref(null)
-const sidebarRef = ref(null)
 
 // State
 const initialLoading = ref(true)
 const state = reactive({
   userLocation: null,
   items: [],
-  selectedItem: null,
+  showSellerList: false,
+  showSellerItems: false,
+  sellerItems: [],
+  showItemDetail: false,
+  selectedItemId: null,
   filters: {
     keyword: '',
-    distance_range_km: 5,
+    distance_range_km: null,
     main_category_id: null,
     sub_category_id: null,
     sort_by: 'created_at',
@@ -102,6 +129,32 @@ const state = reactive({
   },
   loading: false,
   error: null
+})
+
+// Category filters for FilterTabs
+const categoryFilters = computed(() => {
+  const filters = [
+    {
+      id: 0, // Using 0 for "all categories"
+      label: '全部',
+      type: 'filter',
+      filterFn: () => true, // Don't filter on client side
+      sortable: false
+    }
+  ]
+
+  // Add main categories - use category id as filter id
+  categoriesStore.mainCategories.forEach(cat => {
+    filters.push({
+      id: cat.id, // Use category id directly as filter id
+      label: cat.name,
+      type: 'filter',
+      filterFn: () => true, // Don't filter on client side
+      sortable: false
+    })
+  })
+
+  return filters
 })
 
 // Check authentication
@@ -185,30 +238,54 @@ async function fetchItems() {
   }
 }
 
-// Debounced fetch items (for search and filters)
-const debouncedFetchItems = debounce(fetchItems, 500)
-
-// Handle filter change
-function handleFilterChange(filters) {
-  console.log('[MapSearchPage] Filters changed:', filters)
-  state.filters = { ...state.filters, ...filters }
-  debouncedFetchItems()
-}
-
-// Handle recenter
-function handleRecenter() {
-  mapRef.value?.recenterMap()
-}
-
 // Handle marker click
-function handleMarkerClick(item) {
-  console.log('[MapSearchPage] Marker clicked:', item)
-  state.selectedItem = item
+function handleMarkerClick(item, allItems) {
+  console.log('[MapSearchPage] Marker clicked:', item, 'All items:', allItems)
+
+  // Show both seller list and seller items sidebars
+  state.showSellerList = true
+
+  // Always show sidebar with items (single or multiple)
+  if (allItems && allItems.length > 0) {
+    state.sellerItems = allItems
+  } else {
+    state.sellerItems = [item]
+  }
+  state.showSellerItems = true
 }
 
-// Close item card
-function closeItemCard() {
-  state.selectedItem = null
+// Close seller list sidebar
+function closeSellerListSidebar() {
+  state.showSellerList = false
+}
+
+// Handle seller click from seller list
+function handleSellerClick(seller) {
+  console.log('[MapSearchPage] Seller clicked:', seller)
+  // Keep seller list open and show seller items
+  state.sellerItems = seller.items
+  state.showSellerItems = true
+}
+
+// Close seller sidebar
+function closeSellerSidebar() {
+  state.showSellerItems = false
+  state.sellerItems = []
+}
+
+// Handle item click from seller sidebar
+function handleSellerItemClick(item) {
+  console.log('[MapSearchPage] Seller item clicked:', item)
+  // Open item detail modal
+  state.selectedItemId = item.item_id
+  state.showItemDetail = true
+}
+
+// Handle contact seller
+function handleContactSeller(item) {
+  console.log('[MapSearchPage] Contact seller:', item)
+  // TODO: Implement contact seller functionality
+  // Could navigate to messages or open chat modal
 }
 
 // Handle favorite toggle
@@ -238,6 +315,58 @@ function goToLocationSetup() {
   router.push('/settings')
 }
 
+// Handle search from SearchBar
+async function handleSearch(searchParams) {
+  console.log('[MapSearchPage] Search triggered:', searchParams)
+  state.filters.keyword = searchParams.query || ''
+  // If distance is empty string (不限距離), set to null, otherwise parse as integer
+  state.filters.distance_range_km = searchParams.distance ? parseInt(searchParams.distance) : null
+
+  // Fetch items
+  await fetchItems()
+
+  // Show seller list sidebar after search if there are results
+  if (state.items.length > 0) {
+    state.showSellerList = true
+  }
+}
+
+// Handle category filter from FilterTabs
+async function handleCategoryFilter() {
+  console.log('[MapSearchPage] Category filter triggered')
+
+  // Use nextTick to ensure the DOM is updated with the new active filter
+  await nextTick()
+
+  // Find which filter is currently active by checking the DOM
+  const activeTab = document.querySelector('.floating-filter-tabs .filter-tab.active')
+
+  if (activeTab) {
+    // Get the filter label to match against our categoryFilters
+    const activeLabel = activeTab.querySelector('.filter-label')?.textContent?.trim()
+    const activeFilter = categoryFilters.value.find(f => f.label === activeLabel)
+
+    if (activeFilter) {
+      // Filter id is the category id (0 means all categories)
+      state.filters.main_category_id = activeFilter.id === 0 ? null : activeFilter.id
+      console.log('[MapSearchPage] Updated category filter to:', state.filters.main_category_id)
+
+      // Re-fetch items with the new category filter
+      await fetchItems()
+
+      // Show seller list sidebar after filter change if there are results
+      if (state.items.length > 0) {
+        state.showSellerList = true
+      }
+    }
+  }
+}
+
+// Toggle seller list sidebar
+function toggleSellerList() {
+  state.showSellerList = !state.showSellerList
+}
+
 // Toggle to list view
 function toggleToListView() {
   router.push({ name: 'Home' })
@@ -251,6 +380,9 @@ async function initialize() {
     // Check authentication
     const isAuthenticated = await checkAuth()
     if (!isAuthenticated) return
+
+    // Fetch categories
+    await categoriesStore.fetchCategories()
 
     // Fetch user location
     const hasLocation = await fetchUserLocation()
@@ -289,7 +421,7 @@ onMounted(() => {
 .map-search-page {
   position: relative;
   width: 100%;
-  height: calc(100vh - 60px); // Subtract header height
+  height: 100vh;
   min-height: 500px;
   background: #f8f9fa;
 }
@@ -354,14 +486,111 @@ onMounted(() => {
   position: relative;
 }
 
+// Floating Search Bar
+.floating-search-bar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1001; // Higher than filter tabs to show dropdown above
+  width: calc(100% - 40px);
+  max-width: 600px;
+  transition: transform 0.3s ease;
+
+  &.sidebar-open {
+    transform: translateX(350px);
+  }
+
+  :deep(.search-bar-wrapper) {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  :deep(.search-bar) {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15),
+                0 2px 6px rgba(0, 0, 0, 0.10);
+  }
+}
+
+// Floating Filter Tabs
+.floating-filter-tabs {
+  position: absolute;
+  top: 90px;
+  left: 20px;
+  z-index: 1000;
+  width: calc(100% - 40px);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  transition: transform 0.3s ease;
+
+  &.sidebar-open {
+    transform: translateX(350px);
+  }
+
+  // 隱藏滾動條
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  :deep(.filter-tabs-wrapper) {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  :deep(.filter-tabs) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+
+    // 隱藏滾動條
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  :deep(.filter-tab) {
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
 // Responsive
 @media (max-width: 767.98px) {
   .map-search-page {
-    height: calc(100vh - 56px); // Adjusted for mobile header
+    height: 100vh
   }
 
   .map-content {
     height: 100%;
+  }
+
+  .floating-search-bar {
+    top: 12px;
+    left: 12px;
+    width: calc(100% - 24px);
+    max-width: none;
+
+    // On mobile, don't move when sidebar is open (sidebar slides from bottom)
+    &.sidebar-open {
+      transform: none;
+    }
+  }
+
+  .floating-filter-tabs {
+    top: 75px;
+    left: 12px;
+    width: calc(100% - 24px);
+
+    // On mobile, don't move when sidebar is open (sidebar slides from bottom)
+    &.sidebar-open {
+      transform: none;
+    }
   }
 }
 

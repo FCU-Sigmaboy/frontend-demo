@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getMyFavoriteItems } from '../api/get_myFavoriteAPI.js'
-import { addFavoriteItem } from '../api/create_favoriteAPI.js'
-import { removeFavoriteItem } from '../api/delete_favoriteAPI.js'
+import { getMyFavoriteItems, addFavoriteItem, removeFavoriteItem } from '@/api/favorite.js'
 
 export const useFavoritesStore = defineStore('favorites', () => {
   // State
@@ -47,14 +45,16 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   async function toggleFavorite(item) {
     if (isFavorite(item.item_id)) {
-      await removeFavorite(item.item_id)
+      await removeFavorite(item)
     } else {
       await addFavorite(item)
     }
   }
 
   function isFavorite(itemId) {
-    return favoriteItems.value.some(item => item.item_id === itemId)
+    // Convert both to numbers for comparison to handle string vs number mismatch
+    const numericItemId = typeof itemId === 'string' ? parseInt(itemId, 10) : itemId;
+    return favoriteItems.value.some(item => item.item_id === numericItemId);
   }
 
   function clearCache() {

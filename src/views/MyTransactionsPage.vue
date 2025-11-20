@@ -50,25 +50,12 @@
         </div>
 
         <!-- Role Tabs (買入/賣出) -->
-        <div class="tabs-section" v-if="currentTransactions.length > 0">
-          <div class="tabs-container">
-            <button
-              :class="['tab-btn', { active: roleTab === 'receiver' }]"
-              @click="roleTab = 'receiver'"
-            >
-              <i class="bi bi-bag-fill"></i>
-              <span>買入</span>
-              <span class="tab-count">{{ receiverTransactions.length }}</span>
-            </button>
-            <button
-              :class="['tab-btn', { active: roleTab === 'giver' }]"
-              @click="roleTab = 'giver'"
-            >
-              <i class="bi bi-cash-stack"></i>
-              <span>賣出</span>
-              <span class="tab-count">{{ giverTransactions.length }}</span>
-            </button>
-          </div>
+        <div class="role-filter-section" v-if="currentTransactions.length > 0">
+          <FilterTabs
+            :filters="roleFilters"
+            :items="currentTransactions"
+            @update:filteredItems="handleRoleFilterChange"
+          />
         </div>
 
         <!-- Pagination Info -->
@@ -160,14 +147,22 @@
                         確認交易
                       </button>
                     </template>
-                    <button
-                      v-else
-                      class="btn-action btn-waiting"
-                      disabled
-                    >
-                      <i class="bi bi-hourglass-split"></i>
-                      等待對方接受
-                    </button>
+                    <template v-else>
+                      <button
+                        class="btn-action btn-cancel"
+                        @click.stop="handleCancelTransaction(transaction)"
+                      >
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                        撤回
+                      </button>
+                      <button
+                        class="btn-action btn-waiting"
+                        disabled
+                      >
+                        <i class="bi bi-hourglass-split"></i>
+                        等待對方接受
+                      </button>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -438,6 +433,13 @@
       @confirm="handleRejectModalSubmit"
     />
 
+    <!-- Cancel Transaction Modal -->
+    <CancelTransactionModal
+      v-model="showCancelModal"
+      :transaction="selectedTransactionForCancel"
+      @confirm="handleCancelModalSubmit"
+    />
+
     <!-- Create Review Modal -->
     <CreateReviewModal
       v-model="showReviewModal"
@@ -452,13 +454,17 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useTransactionStore } from '@/stores/transaction';
 import { useReviewStore } from '@/stores/review';
+import { useAuthStore } from '@/stores/auth';
+import { usePointsStore } from '@/stores/points';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import FilterTabs from '../components/FilterTabs.vue';
 import ConfirmTransactionModal from '../components/transaction/ConfirmTransactionModal.vue';
 import InputCodeModal from '../components/transaction/InputCodeModal.vue';
 import ViewCodeModal from '../components/transaction/ViewCodeModal.vue';
 import RejectTransactionModal from '../components/transaction/RejectTransactionModal.vue';
+import CancelTransactionModal from '../components/transaction/CancelTransactionModal.vue';
 import CreateReviewModal from '../components/transaction/CreateReviewModal.vue';
 import { buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_before_meetAPI';
 import { finalizeTransactionWithCode } from '@/api/transaction_meetAPI';
@@ -468,13 +474,29 @@ const router = useRouter();
 const route = useRoute();
 const transactionStore = useTransactionStore();
 const reviewStore = useReviewStore();
+const authStore = useAuthStore();
+const pointsStore = usePointsStore();
 
 const { completed } = transactionStore;
+
+// Helper to refresh user points/profile
+const refreshUserPoints = async () => {
+  try {
+    const promises = [
+      authStore.updateCustomProfile(),
+      pointsStore.fetchProfile(true)
+    ];
+    await Promise.all(promises);
+  } catch (error) {
+    console.error('Failed to refresh user points:', error);
+  }
+};
 
 // State
 const userPoints = ref(500);
 const activeTab = ref('confirming');
 const roleTab = ref('receiver'); // 'receiver' (買入), 'giver' (賣出)
+const filteredByRole = ref([]); // FilterTabs 篩選後的結果
 const isLoading = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -487,10 +509,32 @@ const showViewCodeModal = ref(false);
 const selectedCodeTransaction = ref(null);
 const showRejectModal = ref(false);
 const selectedTransactionForReject = ref(null);
+const showCancelModal = ref(false);
+const selectedTransactionForCancel = ref(null);
 const showReviewModal = ref(false);
 const selectedTransactionForReview = ref(null);
 const highlightedTransactionId = ref(null);
 const isNavigatingToTransaction = ref(false);
+
+// FilterTabs 配置
+const roleFilters = computed(() => [
+  {
+    id: 1,
+    label: '買入',
+    type: 'filter',
+    filterKey: 'role',
+    filterValue: 'receiver',
+    sortable: false
+  },
+  {
+    id: 2,
+    label: '賣出',
+    type: 'filter',
+    filterKey: 'role',
+    filterValue: 'giver',
+    sortable: false
+  }
+]);
 
 // Computed
 const confirmingTransactions = computed(() => {
@@ -529,12 +573,11 @@ const giverTransactions = computed(() => {
   return currentTransactions.value.filter(t => t.role === 'giver');
 });
 
-// 顯示的交易列表（結合 activeTab 和 roleTab）
+// 顯示的交易列表（使用 FilterTabs 篩選結果）
 const displayTransactions = computed(() => {
-  if (roleTab.value === 'receiver') {
-    return receiverTransactions.value;
-  } else if (roleTab.value === 'giver') {
-    return giverTransactions.value;
+  // 如果 FilterTabs 有篩選結果，使用它；否則使用 roleTab 的邏輯
+  if (filteredByRole.value.length > 0 || currentTransactions.value.length > 0) {
+    return filteredByRole.value.length > 0 ? filteredByRole.value : receiverTransactions.value;
   }
   return [];
 });
@@ -590,6 +633,18 @@ const visiblePages = computed(() => {
 // (AppHeader expects numeric userPoints prop; keep userPoints as Number)
 
 // Methods
+const handleRoleFilterChange = (filteredItems) => {
+  filteredByRole.value = filteredItems;
+  // 同步更新 roleTab 以保持狀態一致
+  if (filteredItems.length > 0) {
+    const firstRole = filteredItems[0].role;
+    roleTab.value = firstRole;
+  }
+  // 重置分頁
+  currentPage.value = 1;
+  jumpToPageInput.value = 1;
+};
+
 const fetchTransactions = async (forceRefresh = false) => {
   isLoading.value = true;
   try {
@@ -637,6 +692,12 @@ const handleRejectTransaction = (transaction) => {
   showRejectModal.value = true;
 };
 
+const handleCancelTransaction = (transaction) => {
+  // 賣家撤回交易（從 confirming -> cancelled）
+  selectedTransactionForCancel.value = transaction;
+  showCancelModal.value = true;
+};
+
 const handleRejectModalSubmit = async () => {
   if (!selectedTransactionForReject.value) return;
 
@@ -648,12 +709,40 @@ const handleRejectModalSubmit = async () => {
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    await refreshUserPoints();
+    
+    // 重置篩選結果，確保重新渲染
+    filteredByRole.value = [];
   } catch (error) {
     console.error('Failed to reject transaction:', error);
     alert(`拒絕交易失敗：${error.message}`);
   } finally {
     isLoading.value = false;
     selectedTransactionForReject.value = null;
+  }
+};
+
+const handleCancelModalSubmit = async () => {
+  if (!selectedTransactionForCancel.value) return;
+
+  try {
+    isLoading.value = true;
+    await cancelTransaction(selectedTransactionForCancel.value.transaction_id);
+
+    alert('已撤回交易，商品已重新上架。');
+
+    // 重新載入交易列表
+    await fetchTransactions(true);
+    await refreshUserPoints();
+    
+    // 重置篩選結果，確保重新渲染
+    filteredByRole.value = [];
+  } catch (error) {
+    console.error('Failed to cancel transaction:', error);
+    alert(`撤回交易失敗：${error.message}`);
+  } finally {
+    isLoading.value = false;
+    selectedTransactionForCancel.value = null;
   }
 };
 
@@ -668,6 +757,10 @@ const handleConfirmModalSubmit = async (note) => {
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    await refreshUserPoints();
+    
+    // 重置篩選結果，確保重新渲染
+    filteredByRole.value = [];
   } catch (error) {
     console.error('Failed to confirm transaction:', error);
     alert(`確認交易失敗：${error.message}`);
@@ -690,10 +783,20 @@ const handleInputCodeSubmit = async (code) => {
     isLoading.value = true;
     const result = await finalizeTransactionWithCode(selectedTransactionForCode.value.transaction_id, code);
 
-  alert(`交易完成！\n\n您的新點數餘額：${formatPoints(result.new_balance)}`);
+    await refreshUserPoints();
+    const latestBalance =
+      pointsStore.currentBalance ??
+      pointsStore.profile?.current_balance ??
+      result?.new_balance ??
+      0;
+
+    alert(`交易完成！\n\n您的新點數餘額：${formatPoints(latestBalance)}`);
 
     // 重新載入交易列表
     await fetchTransactions(true);
+    
+    // 重置篩選結果，確保重新渲染
+    filteredByRole.value = [];
   } catch (error) {
     console.error('Failed to finalize transaction:', error);
     alert(`完成交易失敗：${error.message}`);
@@ -829,6 +932,10 @@ const navigateToTransaction = async (transactionId) => {
     // 現在設定 roleTab
     roleTab.value = targetRole;
 
+    // 手動設定 filteredByRole，確保 displayTransactions 包含目標交易
+    // 這是關鍵：FilterTabs 組件可能還沒觸發，需要手動設定篩選結果
+    filteredByRole.value = currentTransactions.value.filter(t => t.role === targetRole);
+
     // 再次等待 DOM 更新
     await nextTick();
 
@@ -841,7 +948,7 @@ const navigateToTransaction = async (transactionId) => {
       currentPage.value = targetPage;
       jumpToPageInput.value = targetPage;
 
-      // 再次等待 DOM 更新
+      // 再次等待 DOM 更新完成
       await nextTick();
 
       // 高亮該交易
@@ -852,13 +959,13 @@ const navigateToTransaction = async (transactionId) => {
         const card = document.querySelector(`[data-transaction-id="${id}"]`);
         if (card) {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
+
           // 5 秒後移除高亮
           setTimeout(() => {
             highlightedTransactionId.value = null;
           }, 5000);
         }
-      }, 100);
+      }, 300);
     }
   }
 
@@ -884,6 +991,7 @@ watch(activeTab, () => {
   // 如果正在導航到特定交易，不要重置 roleTab
   if (!isNavigatingToTransaction.value) {
     roleTab.value = 'receiver';
+    filteredByRole.value = []; // 重置 FilterTabs 的結果
     currentPage.value = 1;
     jumpToPageInput.value = 1;
   }
@@ -1001,6 +1109,11 @@ watch(roleTab, () => {
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow-x: auto;
+}
+
+// Role Filter Section
+.role-filter-section {
+  margin-bottom: 24px;
 }
 
 .tabs-container {
@@ -1580,6 +1693,23 @@ watch(roleTab, () => {
         color: white;
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(211, 47, 47, 0.3);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+
+    &.btn-cancel {
+      background: #fff3e0;
+      color: #f57c00;
+      border: 1px solid #f57c00;
+
+      &:hover {
+        background: #f57c00;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(245, 124, 0, 0.3);
       }
 
       &:active {

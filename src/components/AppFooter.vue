@@ -1,9 +1,9 @@
 <template>
   <footer class="app-footer">
     <BContainer>
-      <BRow class="footer-content">
+      <BRow class="footer-content justify-content-center align-items-start">
         <!-- Logo -->
-        <BCol cols="12" lg="3" class="text-center text-lg-start mb-4 mb-lg-0">
+        <BCol cols="12" lg="3" class="text-center text-lg-start mb-4 mb-lg-0 d-flex justify-content-center justify-content-lg-start">
           <div class="footer-logo">
             <img :src="logoImage" alt="Logo" class="logo-img" />
           </div>
@@ -11,20 +11,24 @@
 
         <!-- About Section -->
         <BCol cols="12" md="6" lg="3" class="mb-4 mb-lg-0">
-          <h5 class="footer-heading">關於台中易起來</h5>
-          <ul class="footer-links">
-            <li><router-link :to="{ name: 'About' }">關於我們</router-link></li>
-            <li><router-link :to="{ name: 'Terms' }">服務條款</router-link></li>
-          </ul>
+          <div class="footer-section">
+            <h5 class="footer-heading">關於台中易起來</h5>
+            <ul class="footer-links">
+              <li><router-link :to="{ name: 'About' }">關於我們</router-link></li>
+              <li><router-link :to="{ name: 'Terms' }">服務條款</router-link></li>
+            </ul>
+          </div>
         </BCol>
 
         <!-- Rights Section -->
         <BCol cols="12" md="6" lg="3" class="mb-4 mb-lg-0">
-          <h5 class="footer-heading">權益相關</h5>
-          <ul class="footer-links">
-            <li><router-link :to="{ name: 'FAQ' }">常見 Q&A</router-link></li>
-            <li><router-link :to="{ name: 'HowToTrade' }">如何交易</router-link></li>
-          </ul>
+          <div class="footer-section">
+            <h5 class="footer-heading">權益相關</h5>
+            <ul class="footer-links">
+              <li><router-link :to="{ name: 'FAQ' }">常見 Q&A</router-link></li>
+              <li><router-link :to="{ name: 'HowToTrade' }">如何交易</router-link></li>
+            </ul>
+          </div>
         </BCol>
       </BRow>
 
@@ -64,23 +68,31 @@ import logoImage from '../assets/Logo-white.png';
 .footer-logo {
   .logo-img {
     width: 250px;
-    height: 70px;
+    max-width: 100%;
+    height: auto;
     object-fit: contain;
   }
 }
 
+.footer-section {
+  text-align: center;
+}
+
 .footer-heading {
   font-family: 'Inter', 'Noto Sans TC', sans-serif;
-  font-size: 20px;
+  font-size: 20px !important;
   font-weight: 500;
   color: white;
   margin-bottom: 20px;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .footer-links {
   list-style: none;
   padding: 0;
   margin: 0;
+  text-align: center;
 
   li {
     margin-bottom: 12px;
@@ -145,7 +157,7 @@ import logoImage from '../assets/Logo-white.png';
   }
 
   .footer-heading {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 
   .footer-links a {

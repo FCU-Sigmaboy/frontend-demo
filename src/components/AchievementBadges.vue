@@ -60,9 +60,6 @@
             >
               <div class="badge-icon-wrapper">
                 <img :src="badge.image" :alt="badge.label" class="badge-image" />
-                <div v-if="badge.unlocked" class="check-mark">
-                  <i class="bi bi-check-circle-fill"></i>
-                </div>
                 <div v-if="!badge.unlocked && showProgress" class="progress-badge">
                   {{ badge.progress }}%
                 </div>
@@ -364,12 +361,22 @@ function saveBadgeSelection() {
 
     .check-mark {
       position: absolute;
-      top: -2px;
-      right: -2px;
+      top: -4px;
+      right: -4px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: $primary;
-      font-size: 18px;
       background: white;
       border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+      i {
+        font-size: 18px;
+        line-height: 1;
+      }
     }
   }
 
@@ -429,6 +436,9 @@ function saveBadgeSelection() {
   background: #f9f9f9;
   transition: all 0.3s;
   gap: 4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 0;
 
   .badge-count {
     font-family: 'Noto Sans TC', sans-serif;
@@ -652,6 +662,10 @@ function saveBadgeSelection() {
     }
   }
 
+  .badges-row {
+    align-items: flex-start;
+  }
+
   .badge-item {
     min-width: 60px;
 
@@ -663,6 +677,13 @@ function saveBadgeSelection() {
     .badge-label {
       font-size: 10px;
     }
+  }
+
+  .expand-indicator {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    margin-top: 0;
   }
 
   .modal-content {
@@ -688,6 +709,10 @@ function saveBadgeSelection() {
 }
 
 @media (max-width: 575.98px) {
+  .badges-row {
+    align-items: flex-start;
+  }
+
   .badge-item {
     min-width: 55px;
 
@@ -698,6 +723,21 @@ function saveBadgeSelection() {
 
     .badge-label {
       font-size: 9px;
+    }
+  }
+
+  .expand-indicator {
+    width: 45px;
+    height: 45px;
+    min-width: 45px;
+    margin-top: 0;
+
+    .badge-count {
+      font-size: 10px;
+    }
+
+    i {
+      font-size: 14px;
     }
   }
 

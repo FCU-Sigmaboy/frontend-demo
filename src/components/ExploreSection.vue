@@ -314,7 +314,6 @@ onUnmounted(() => {
   }
 
   .categories-container {
-    gap: 14px;
 
     :deep(.category-card) {
       width: 130px;

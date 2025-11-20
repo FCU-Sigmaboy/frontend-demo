@@ -250,7 +250,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getMyProfileForEdit } from '../api/get_myProfileDetailsAPI';
 import { updateMyProfile } from '../api/update_myProfileDetailsAPI';
-import { uploadProfilePicture } from '../api/upload_imageAPI';
+import { uploadProfilePicture } from '@/api/image';
 import { getCurrentPosition } from '../api/location';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';

@@ -1,12 +1,23 @@
 <template>
   <div class="transaction-card">
-    <!-- Product Name -->
-    <h3 class="product-name">{{ productName }}</h3>
+    <!-- Product Name and Favorite -->
+    <div class="product-header">
+      <h3 class="product-name">{{ productName }}</h3>
+      <button 
+        class="favorite-btn" 
+        :class="{ active: isFavorite }"
+        @click.stop="handleToggleFavorite"
+        :title="isFavorite ? '取消收藏' : '加入收藏'"
+      >
+        <i :class="['bi', isFavorite ? 'bi-heart-fill' : 'bi-heart']"></i>
+      </button>
+    </div>
 
     <!-- Unlisted Status Warning -->
-    <div v-if="!listingStatus" class="unlisted-warning">
+    <div v-if="!listingStatus || isInTransaction" class="unlisted-warning">
       <i class="bi bi-exclamation-circle-fill"></i>
-      <span>此物品已下架</span>
+      <span v-if="isInTransaction">此物品{{ transactionStatusText }}（已下架）</span>
+      <span v-else>此物品已下架</span>
     </div>
 
     <!-- Price and Condition -->
@@ -66,7 +77,23 @@
       <div class="seller-info" @click="goToSellerProfile">
         <img :src="sellerAvatar" :alt="sellerName" class="seller-avatar" />
         <div class="seller-details">
-          <p class="seller-name">{{ sellerName }}</p>
+          <div class="seller-name-row">
+            <p class="seller-name">{{ sellerName }}</p>
+            <button
+              v-if="!isOwner && authStore.user"
+              :class="['follow-btn', { following: isFollowing, loading: isLoadingFollow }]"
+              @click.stop="toggleFollow"
+              :disabled="isLoadingFollow"
+            >
+              <template v-if="isLoadingFollow">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </template>
+              <template v-else>
+                <i :class="['bi', isFollowing ? 'bi-check' : 'bi-plus']"></i>
+                <span>{{ isFollowing ? '已追蹤' : '追蹤' }}</span>
+              </template>
+            </button>
+          </div>
           <div class="seller-rating">
             <i class="bi bi-star-fill"></i>
             <span>{{ formattedRating }}</span>
@@ -93,22 +120,27 @@
       <button
         v-else
         class="btn-primary"
+        :disabled="isInTransaction"
         @click="router.push({ name: 'EditListing', params: { id: props.productId } })"
       >
-        編輯物品
+        {{ isInTransaction ? '物品交易中或已售出無法編輯' : '編輯物品' }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { useAuthStore } from '@/stores/auth';
-import { createOrGetConversation } from '@/api/conversationAPI_v2';
+import { useFavoritesStore } from '@/stores/favorites';
+import { createOrGetConversation } from '@/api/conversation';
+import { getPublicUserProfile } from '@/api/get_userProfileAPI';
+import { followUser, unfollowUser } from '@/api/followAPI';
 
 const authStore = useAuthStore();
+const favoritesStore = useFavoritesStore();
 
 const isOwner = computed(() => {
   return authStore.user && authStore.user.id === props.sellerId;
@@ -177,9 +209,108 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  imageUrl: {
+    type: String,
+    default: ''
+  },
   rating: {
     type: [String, Number],
     default: 0
+  },
+  isInTransaction: {
+    type: Boolean,
+    default: false
+  },
+  transactionStatusText: {
+    type: String,
+    default: null
+  }
+});
+
+// Favorites Logic
+const isFavorite = computed(() => {
+  return favoritesStore.isFavorite(props.productId);
+});
+
+const handleToggleFavorite = async () => {
+  if (!authStore.user) {
+    await authStore.signInWithGoogle();
+    return;
+  }
+  
+  const item = {
+    item_id: props.productId,
+    title: props.productName,
+    price: props.price,
+    image_url: props.imageUrl || props.sellerAvatar, 
+  };
+  
+  await favoritesStore.toggleFavorite(item);
+};
+
+// Follow Logic
+const isFollowing = ref(false);
+const isLoadingFollow = ref(false);
+
+const checkFollowStatus = async () => {
+  if (!authStore.user || !props.sellerId || isOwner.value) return;
+  
+  try {
+    const profile = await getPublicUserProfile(props.sellerId);
+    if (profile) {
+      isFollowing.value = !!profile.followed_at;
+    }
+  } catch (error) {
+    console.error('Failed to check follow status:', error);
+  }
+};
+
+const toggleFollow = async () => {
+  if (!authStore.user) {
+    await authStore.signInWithGoogle();
+    return;
+  }
+  
+  if (isLoadingFollow.value) return;
+  
+  try {
+    isLoadingFollow.value = true;
+    
+    if (isFollowing.value) {
+      await unfollowUser(props.sellerId);
+      isFollowing.value = false;
+    } else {
+      await followUser(props.sellerId);
+      isFollowing.value = true;
+    }
+  } catch (error) {
+    console.error('Follow action failed:', error);
+    alert('操作失敗，請稍後再試');
+  } finally {
+    isLoadingFollow.value = false;
+  }
+};
+
+// Initialize
+onMounted(async () => {
+  if (props.sellerId) {
+    checkFollowStatus();
+  }
+  // Ensure favorites are loaded
+  if (authStore.user) {
+    await favoritesStore.loadFavorites();
+  }
+});
+
+watch(() => props.sellerId, (newId) => {
+  if (newId) {
+    checkFollowStatus();
+  }
+});
+
+watch(() => authStore.user, async (newUser) => {
+  if (newUser) {
+    await favoritesStore.loadFavorites();
   }
 });
 
@@ -265,12 +396,49 @@ const goToSellerProfile = () => {
   gap: 16px;
 }
 
+.product-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .product-name {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 24px;
   font-weight: 600;
   color: #1e1e1e;
   margin: 0;
+  flex: 1;
+}
+
+.favorite-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  
+  i {
+    font-size: 24px;
+    color: #ccc;
+    transition: color 0.3s;
+  }
+  
+  &.active i {
+    color: #ff4757;
+    animation: heart-pulse 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes heart-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
 .unlisted-warning {
@@ -464,6 +632,14 @@ const goToSellerProfile = () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+}
+
+.seller-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .seller-name {
@@ -472,6 +648,67 @@ const goToSellerProfile = () => {
   font-weight: 500;
   color: #1e1e1e;
   margin: 0;
+}
+
+.follow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: $primary;
+  border: 1px solid $primary;
+  border-radius: 15px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+
+  i {
+    font-size: 14px;
+  }
+  
+  .spinner-border {
+    width: 12px;
+    height: 12px;
+    border-width: 1px;
+  }
+
+  &:hover:not(:disabled) {
+    background: #5fa795;
+    border-color: #5fa795;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  &.following {
+    background: white;
+    color: $primary;
+    border-color: $primary;
+
+    &:hover:not(:disabled) {
+      background: #ffebee;
+      color: #dc3545;
+      border-color: #dc3545;
+      
+      i::before {
+        content: "\f62a"; /* bi-x */
+      }
+      
+      span {
+        display: none;
+      }
+      
+      &::after {
+        content: "取消";
+      }
+    }
+  }
 }
 
 .seller-rating {

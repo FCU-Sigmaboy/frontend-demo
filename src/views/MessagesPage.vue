@@ -37,6 +37,7 @@
                 @back="deselectConversation"
                 @toggle-menu="showMoreMenu = !showMoreMenu"
                 @archive="handleArchiveConversation"
+                @view-listings="handleViewListings"
               />
 
               <ChatMessages
@@ -47,13 +48,15 @@
                 @scroll="handleMessagesScroll"
                 @open-item="openItemPage"
                 @retry="retryMessage"
+                @reply="handleReply"
+                @scroll-to-message="scrollToMessage"
               />
 
               <div
                 class="chat-overlay-stack"
                 :class="{
                   'has-scroll-button': showScrollToBottomBtn,
-                  'has-pending-reference': !!pendingItemReference,
+                  'has-pending-reference': !!pendingItemReference || !!replyingToMessage,
                   'has-typing-indicator': showBottomTypingIndicator && !!selectedConversation
                 }"
               >
@@ -87,6 +90,24 @@
                   </div>
                 </transition>
 
+                <!-- Replying To Message (above input) -->
+                <transition name="item-reference-slide">
+                  <div v-if="replyingToMessage" class="pending-item-reference reply-reference">
+                    <div class="reference-info">
+                      <div class="reply-line"></div>
+                      <div class="reference-details">
+                        <span class="reference-label">
+                          <i class="bi bi-reply-fill"></i> 回覆 {{ replyingToMessage.isSent ? '自己' : (selectedConversation?.user?.name || '對方') }}
+                        </span>
+                        <span class="reference-text text-truncate">{{ replyingToMessage.text }}</span>
+                      </div>
+                    </div>
+                    <button class="remove-reference-btn" @click="cancelReply">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                </transition>
+
                 <transition name="typing-indicator-slide">
                   <div
                     v-if="showBottomTypingIndicator && selectedConversation"
@@ -110,20 +131,20 @@
                   <button class="attach-btn" @click="handleAttachment" title="附件">
                     <i class="bi bi-paperclip"></i>
                   </button>
-                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="提出交易">
-                    <i class="bi bi-arrow-left-right"></i>
+                  <button class="transaction-btn" @click="handleOpenTransactionModal" title="發起交易">
+                    <i class="bi bi-arrow-right-circle-fill"></i>
                   </button>
                   <input
                     v-model="messageInput"
                     type="text"
                     placeholder="輸入訊息..."
                     class="message-input"
-                    @keypress.enter="sendMessage"
+                    @keypress.enter="handleSendMessage"
                   />
                   <button
                     class="send-btn"
                     :disabled="!messageInput.trim()"
-                    @click="sendMessage"
+                    @click="handleSendMessage"
                   >
                     <i class="bi bi-send-fill"></i>
                   </button>
@@ -144,6 +165,14 @@
       @confirm="handleTransactionConfirm"
     />
 
+    <!-- User Listings Modal -->
+    <UserListingsModal
+      v-model="showUserListingsModal"
+      :user-id="userListingsUserId"
+      :user-name="userListingsUserName"
+      @dm-item="handleDMFromModal"
+    />
+
   </div>
 </template>
 
@@ -154,7 +183,10 @@ import ChatHeader from '@/components/messages/ChatHeader.vue';
 import ChatMessages from '@/components/messages/ChatMessages.vue';
 import ChatScrollControls from '@/components/messages/ChatScrollControls.vue';
 import TransactionModal from '@/components/messages/TransactionModal.vue';
+import UserListingsModal from '@/components/messages/UserListingsModal.vue';
 import { useMessagePage } from '@/composables/useMessagePage';
+import { useMessageStore } from '@/stores/message';
+import { ref, computed } from 'vue';
 
 const {
   userPoints,
@@ -193,8 +225,189 @@ const {
   isLoadingTransactionItems,
   conversationItems,
   handleOpenTransactionModal,
-  handleTransactionConfirm
+  handleTransactionConfirm,
+  scrollToMessage
 } = useMessagePage();
+
+const messageStore = useMessageStore();
+
+// User Listings Modal state
+const showUserListingsModal = ref(false);
+const userListingsUserId = computed(() => selectedConversation.value?._raw?.other_user?.id || '');
+const userListingsUserName = computed(() => selectedConversation.value?.user?.name || '使用者');
+
+// Handle view listings button click
+const handleViewListings = () => {
+  if (selectedConversation.value) {
+    showUserListingsModal.value = true;
+  }
+};
+
+// Handle DM from modal - attach item and set default prompt
+const handleDMFromModal = (item) => {
+  // Close the modal
+  showUserListingsModal.value = false;
+
+  // Set the pending item reference
+  if (pendingItemReference && item) {
+    pendingItemReference.value = {
+      id: item.item_id,
+      title: item.title,
+      price: item.price,
+      image: item.image_url
+    };
+
+    // Set default message prompt
+    messageInput.value = `你好，我對「${item.title}」有興趣，請問還有嗎？`;
+  }
+};
+
+// Reply State
+const replyingToMessage = ref(null);
+
+const handleReply = (message) => {
+  replyingToMessage.value = message;
+  // Focus input
+  const inputEl = document.querySelector('.message-input');
+  if (inputEl) inputEl.focus();
+};
+
+const cancelReply = () => {
+  replyingToMessage.value = null;
+};
+
+// Intercept sendMessage to include reply context if needed
+// Note: The actual backend implementation for replies might need to be added to useMessagePage composable.
+// For now, we just clear the UI state after sending.
+const originalSendMessage = sendMessage;
+// We can't easily override the imported sendMessage directly if it's a const from composable.
+// Instead, we should watch for messageInput changes or modify how sendMessage is called in the template?
+// Actually, the template calls `sendMessage`. We can wrap it.
+// But `sendMessage` is destructured from `useMessagePage`.
+// Let's just clear the reply state when `messageInput` is cleared (which happens after send usually)
+// OR we can wrap the click handler in the template.
+// Let's wrap it in the template? No, `sendMessage` is bound to `@keypress.enter` and click.
+// Let's create a wrapper function.
+
+const handleSendMessage = async () => {
+  if (!messageInput.value.trim()) return;
+
+  // If replying to a message, send as reply type
+  if (replyingToMessage.value) {
+    const quotedText = replyingToMessage.value.text || '';
+    const replyText = messageInput.value.trim();
+    const replyContent = JSON.stringify({
+      '回覆的訊息內容': quotedText,
+      '你的訊息內容': replyText,
+      'reply_to_message_id': replyingToMessage.value.id
+    });
+
+    // Clear the input and reply state before sending
+    const relatedItemId = pendingItemReference.value ? pendingItemReference.value.id : null;
+    const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null;
+
+    messageInput.value = '';
+    cancelReply();
+
+    // Send as reply type
+    await sendReplyMessage(replyContent, relatedItemId, relatedItemTitle);
+  } else {
+    // Normal message
+    await sendMessage();
+  }
+};
+
+// Helper to send reply messages (bypassing the normal sendMessage flow)
+const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
+  if (!selectedConversation.value) return;
+
+  const tempMessageId = `temp-${Date.now()}`;
+
+  // Parse the reply content to show properly in optimistic UI
+  let parsedReplyText = content;
+  try {
+    const parsed = JSON.parse(content);
+    parsedReplyText = parsed['你的訊息內容'] || content;
+  } catch (e) {
+    // Ignore parse errors
+  }
+
+  const optimisticMessage = {
+    id: tempMessageId,
+    content: content,
+    text: parsedReplyText,
+    created_at: new Date().toISOString(),
+    is_mine: true,
+    is_read: false,
+    message_type: 'reply', // Keep as reply for optimistic UI, backend will store as text
+    related_item_id: relatedItemId,
+    related_item_title: relatedItemTitle,
+    sender: {
+      id: currentUser.value?.id,
+      name: currentUser.value?.user_metadata?.nickname || '我',
+      avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+    },
+    metadata: null,
+    _sending: true,
+    _clientId: tempMessageId
+  };
+
+  messageStore.currentMessages.push(optimisticMessage);
+
+  // Scroll to bottom
+  setTimeout(() => scrollToBottom(false), 100);
+
+  // Clear pending item reference if any
+  if (pendingItemReference.value) {
+    pendingItemReference.value = null;
+    if (selectedConversation.value?.id) {
+      messageStore.clearPendingItemReference(selectedConversation.value.id);
+    }
+  }
+
+  // Send to backend
+  try {
+    const newMessage = await messageStore.sendMessage(content, 'reply', relatedItemId, relatedItemTitle);
+
+    // Update the optimistic message with the real one
+    const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+    if (index !== -1) {
+      const message = messageStore.currentMessages[index];
+      const realMessageId = newMessage.message_id || newMessage.id;
+
+      const realMessageExists = messageStore.currentMessages.some(
+        (m, i) => i !== index && m.id === realMessageId
+      );
+
+      if (realMessageExists) {
+        messageStore.currentMessages.splice(index, 1);
+      } else {
+        message.id = realMessageId;
+        message.created_at = newMessage.created_at;
+        message.metadata = newMessage.metadata;
+        message._sending = false;
+        message._failedMessageType = undefined;
+
+        if (newMessage.sender_id) {
+          message.sender.id = newMessage.sender_id;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to send reply message:', err);
+
+    const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+    if (index !== -1) {
+      const message = messageStore.currentMessages[index];
+      message._sending = false;
+      message._failed = true;
+      message._failedContent = content;
+      message._failedRelatedItemId = relatedItemId;
+      message._failedRelatedItemTitle = relatedItemTitle;
+      message._failedMessageType = 'reply';
+    }
+  }
+};
 </script>
 
 <style scoped lang="scss">
@@ -314,7 +527,7 @@ const {
   p {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
-    color: #999;
+    color: #757575;
     margin: 0;
   }
 }
@@ -584,6 +797,38 @@ const {
   }
 }
 
+.reply-reference {
+  background: #f0f4fa;
+  
+  .reply-line {
+    width: 3px;
+    height: 36px;
+    background-color: $primary;
+    border-radius: 2px;
+    opacity: 0.6;
+  }
+  
+  .reference-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    
+    i {
+      font-size: 12px;
+    }
+  }
+  
+  .reference-text {
+    font-size: 13px;
+    color: #555;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+
 // Input Area
 .input-area {
   display: flex;
@@ -670,7 +915,7 @@ const {
     }
 
     &::placeholder {
-      color: #999;
+      color: #757575;
     }
   }
 }
@@ -692,7 +937,7 @@ const {
   p {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
-    color: #999;
+    color: #757575;
     margin: 0;
   }
 }

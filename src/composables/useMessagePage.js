@@ -4,7 +4,7 @@ import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionStore } from '@/stores/transaction';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems, archiveConversation } from '@/api/conversationAPI_v2';
+import { getConversationItems, archiveConversation } from '@/api/conversation';
 import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
 import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
 
@@ -144,6 +144,67 @@ export function useMessagePage() {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return null;
     return currencyFormatter.format(numeric);
+  }
+
+  function tryParseJsonContent(content) {
+    if (typeof content !== 'string') return null;
+    const trimmed = content.trim();
+    if (!trimmed.startsWith('{') || trimmed.length < 2) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function parseStructuredMessageContent(content) {
+    const parsed = tryParseJsonContent(content);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const normalizedType = parsed.type || null;
+    const transactionId = parsed.transaction_id ?? parsed.transactionId ?? null;
+    const replyText = parsed['你的訊息內容'] ?? parsed.replyText ?? null;
+    const quotedText = parsed['回覆的訊息內容'] ?? parsed.quotedText ?? null;
+    const replyToMessageId = parsed['reply_to_message_id'] ?? parsed.replyToMessageId ?? null;
+
+    const isTransactionLink =
+      normalizedType === 'transaction_link' ||
+      (transactionId !== null && !replyText && !quotedText);
+
+    const isReply =
+      normalizedType === 'reply' ||
+      replyText !== null ||
+      quotedText !== null;
+
+    if (isTransactionLink) {
+      return {
+        type: 'transaction_link',
+        transactionId
+      };
+    }
+
+    if (isReply) {
+      return {
+        type: 'reply',
+        replyText,
+        quotedText,
+        replyToMessageId
+      };
+    }
+
+    return null;
+  }
+
+  function formatConversationPreview(content) {
+    if (!content) return '開始對話...';
+    const structured = parseStructuredMessageContent(content);
+    if (structured?.type === 'transaction_link') {
+      return '查看交易詳情';
+    }
+    if (structured?.type === 'reply') {
+      return structured.replyText || '回覆了一則訊息';
+    }
+    return content;
   }
 
   function clearUnreadDivider({ suppress = false } = {}) {
@@ -319,6 +380,7 @@ export function useMessagePage() {
       .map(convo => {
         const otherUserId = convo.other_user.id;
         const isOnline = messageStore.onlineUsers.has(otherUserId);
+        const previewText = formatConversationPreview(convo.last_message);
 
         return {
           id: convo.id,
@@ -334,7 +396,7 @@ export function useMessagePage() {
             image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
           } : null,
           lastMessage: {
-            text: convo.last_message || '開始對話...',
+            text: previewText,
             time: formatRelativeTime(convo.last_message_time)
           },
           unreadCount: convo.unread_count || 0,
@@ -605,19 +667,44 @@ export function useMessagePage() {
           }
         : null);
 
+      // Parse reply and transaction_link message types
+      let replyContext = null;
+      let transactionLinkData = null;
+      let parsedText = msg.content;
+      let effectiveMessageType = msg.message_type;
+      const structuredContent = parseStructuredMessageContent(msg.content);
+
+      if (structuredContent?.type === 'reply' || msg.message_type === 'reply') {
+        effectiveMessageType = 'reply';
+        replyContext = {
+          quotedText: structuredContent?.quotedText || '',
+          replyText: structuredContent?.replyText || msg.content || '',
+          replyToMessageId: structuredContent?.replyToMessageId || null
+        };
+        parsedText = replyContext.replyText;
+      } else if (structuredContent?.type === 'transaction_link' || msg.message_type === 'transaction_link') {
+        effectiveMessageType = 'transaction_link';
+        transactionLinkData = {
+          transaction_id: structuredContent?.transactionId || null
+        };
+        parsedText = '詳情請點擊下方按鈕';
+      }
+
       return {
         id: msg.id,
-        text: msg.content,
+        text: parsedText,
         time: formatRelativeTime(msg.created_at),
         created_at: msg.created_at,
         isSent: msg.is_mine,
         showDate,
         date: showDate ? formatDateDivider(msg.created_at) : '',
-        message_type: msg.message_type,
+        message_type: effectiveMessageType,
         related_item_id: msg.related_item_id,
         related_item_title: relatedItemTitle,
         relatedItem,
         relatedItemPrice,
+        replyContext,
+        transactionLinkData,
         metadata: msg.metadata,
         sender: msg.sender,
         _clientId: msg._clientId || msg.id,
@@ -693,11 +780,9 @@ export function useMessagePage() {
       messageStore.selectedConversationId = conversation.id;
     }
 
-    // 檢查快取，如果有快取則不顯示載入中狀態
-    const cached = messageStore.getCachedMessages(conversation.id);
-    if (!cached) {
-      messagesLoading.value = true;
-    }
+    // 總是顯示載入中狀態，即使有快取
+    // 這樣可以確保 UI 流程正確，特別是對於空對話
+    messagesLoading.value = true;
 
     currentPage.value = 1;
     hasMoreMessages.value = true;
@@ -886,6 +971,7 @@ export function useMessagePage() {
         message._failedContent = content;
         message._failedRelatedItemId = relatedItemId;
         message._failedRelatedItemTitle = relatedItemTitle;
+        message._failedMessageType = message.message_type || 'text';
       }
     }
   }
@@ -980,6 +1066,46 @@ export function useMessagePage() {
         await transactionApi.updateGiverNote(result.transaction_id, note);
       }
 
+      // 自動發送訊息給買家（先發送，這樣交易連結會成為最後一則訊息）
+      const autoMessage = '我已發起交易，再麻煩您確認這筆交易';
+      
+      try {
+        await messageStore.sendMessage(
+          autoMessage,
+          'text',
+          null,
+          null
+        );
+        console.log('Auto message sent');
+      } catch (msgErr) {
+        console.error('Failed to send auto message:', msgErr);
+        // Continue even if auto message fails
+      }
+
+      // 等待一下確保第一則訊息已保存
+      await waitForTicks(2);
+
+      // Send transaction link message（最後發送，這樣預覽會顯示交易連結）
+      const transactionLinkContent = JSON.stringify({
+        transaction_id: result.transaction_id
+      });
+
+      try {
+        await messageStore.sendMessage(
+          transactionLinkContent,
+          'transaction_link',
+          null,
+          null
+        );
+        console.log('Transaction link message sent');
+        
+        // 等待一下確保交易連結訊息已保存並更新對話列表
+        await waitForTicks(2);
+      } catch (msgErr) {
+        console.error('Failed to send transaction link message:', msgErr);
+        // Don't fail the whole transaction if message fails
+      }
+
       // 立即刷新交易資料，避免等待 realtime 才更新
       transactionStore.fetchAllTransactions(true).catch(err => {
         console.error('Failed to refresh transactions after initiation:', err);
@@ -987,9 +1113,6 @@ export function useMessagePage() {
 
       // 關閉交易視窗
       showTransactionModal.value = false;
-
-      // 顯示成功訊息，包含交易確認碼
-      alert(`交易已發起成功！\n\n商品：${item.title}\n交易確認碼：${result.code}\n\n請妥善保管交易確認碼，見面時買家需要輸入此確認碼完成交易。`);
 
       // TODO: 可以導航到交易詳情頁面
       // router.push({
@@ -1029,12 +1152,13 @@ export function useMessagePage() {
     const content = failedMessage._failedContent || failedMessage.content;
     const relatedItemId = failedMessage._failedRelatedItemId || failedMessage.related_item_id;
     const relatedItemTitle = failedMessage._failedRelatedItemTitle || failedMessage.related_item_title;
+    const retryMessageType = failedMessage._failedMessageType || failedMessage.message_type || 'text';
 
     failedMessage._sending = true;
     failedMessage._failed = false;
 
     try {
-      const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+      const newMessage = await messageStore.sendMessage(content, retryMessageType, relatedItemId, relatedItemTitle);
 
       applyItemMetadataToMessages();
 
@@ -1069,6 +1193,7 @@ export function useMessagePage() {
           delete message._failedContent;
           delete message._failedRelatedItemId;
           delete message._failedRelatedItemTitle;
+          delete message._failedMessageType;
 
           if (newMessage.sender_id) {
             message.sender.id = newMessage.sender_id;
@@ -1149,18 +1274,8 @@ export function useMessagePage() {
       const behavior = options.smooth && !isMobile ? 'smooth' : 'auto';
 
       if (options.preferUnread && firstUnreadMessageId.value) {
-        const selector = `[data-message-id="${String(firstUnreadMessageId.value)}"]`;
-        const target = container.querySelector(selector);
-
-        if (target) {
-          const containerRect = container.getBoundingClientRect();
-          const targetRect = target.getBoundingClientRect();
-          const offset = targetRect.top - containerRect.top + container.scrollTop - 48;
-          const top = Math.max(0, offset);
-
-          container.scrollTo({ top, behavior });
-          return;
-        }
+        scrollToMessage(firstUnreadMessageId.value, { behavior, highlight: false });
+        return;
       }
 
       const scrollTop = container.scrollHeight;
@@ -1189,6 +1304,29 @@ export function useMessagePage() {
         hasReachedBottomAfterUnread.value = true;
       }
     });
+  }
+
+  function scrollToMessage(messageId, options = {}) {
+    const { behavior = 'smooth', highlight = true } = options;
+    const container = messagesArea.value;
+    if (!container || !messageId) return;
+
+    const selector = `[data-message-id="${String(messageId)}"]`;
+    const target = container.querySelector(selector);
+
+    if (target) {
+      target.scrollIntoView({ behavior, block: 'center' });
+      if (highlight) {
+        // Optional: Add a highlight class temporarily
+        target.classList.add('message-highlight');
+        setTimeout(() => {
+          target.classList.remove('message-highlight');
+        }, 2000);
+      }
+    } else {
+      console.warn(`Message ${messageId} not found in DOM`);
+      // Potentially load older messages if not found (complex)
+    }
   }
 
   async function loadMoreMessages() {
@@ -1247,20 +1385,23 @@ export function useMessagePage() {
     const itemTitle = router.currentRoute.value.query.itemTitle;
 
     if (conversationId) {
-      messagesLoading.value = true;
-
       try {
-        if (messageStore.conversations.length === 0) {
-          await messageStore.loadConversations();
-        }
+        // 強制重新載入對話列表，確保能找到對話
+        console.log(`[Initialize] Loading conversations for conversationId: ${conversationId}`);
+        await messageStore.loadConversations(true); // forceRefresh = true
 
         const conversation = displayConversations.value.find(
           c => c.id === parseInt(conversationId, 10)
         );
+
         if (conversation) {
+          console.log(`[Initialize] Found conversation:`, conversation);
+          // selectConversation 會處理 messagesLoading 狀態
           await selectConversation(conversation);
 
           if (itemId && itemTitle) {
+            console.log(`[Initialize] Setting up item reference: ${itemId} - ${itemTitle}`);
+            // 設置待處理的物品引用
             pendingItemReference.value = {
               id: itemId,
               title: itemTitle
@@ -1271,14 +1412,23 @@ export function useMessagePage() {
               nextCache.set(cacheKey, itemTitle);
               itemReferenceCache.value = nextCache;
             }
+            // 設置預設訊息
             messageInput.value = '我想詢問';
+
+            // 確保 store 也有這個引用
+            if (conversation.id) {
+              messageStore.setPendingItemReference(conversation.id, {
+                id: itemId,
+                title: itemTitle
+              });
+            }
           }
         } else {
-          messagesLoading.value = false;
+          console.error(`[Initialize] Conversation ${conversationId} not found in displayConversations`);
+          console.log(`[Initialize] Available conversations:`, displayConversations.value.map(c => c.id));
         }
       } catch (err) {
         console.error('Failed to initialize conversation:', err);
-        messagesLoading.value = false;
       }
     }
   }
@@ -1396,6 +1546,7 @@ export function useMessagePage() {
     handleMessagesScroll,
     registerMessagesArea,
     scrollToBottom,
+    scrollToMessage,
     // Transaction Modal
     showTransactionModal,
     isLoadingTransactionItems,

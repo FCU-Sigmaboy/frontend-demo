@@ -24,6 +24,16 @@
       </div>
     </div>
 
+    <button
+      v-if="conversation"
+      class="view-listings-btn"
+      @click="$emit('view-listings')"
+      title="查看對方的刊登物品"
+    >
+      <i class="bi bi-grid-3x3-gap"></i>
+      <span class="btn-text">物品</span>
+    </button>
+
     <div class="more-menu-container">
       <button
         class="more-btn"
@@ -62,7 +72,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['back', 'toggle-menu', 'archive']);
+const emit = defineEmits(['back', 'toggle-menu', 'archive', 'view-listings']);
 
 const goToUserProfile = () => {
   if (props.conversation?._raw?.other_user?.id) {
@@ -92,11 +102,6 @@ const goToUserProfile = () => {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: opacity 0.3s;
-  
-  &:hover {
-    opacity: 0.7;
-  }
 }
 
 .user-avatar {
@@ -127,6 +132,32 @@ const goToUserProfile = () => {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 12px;
   color: #1db187;
+}
+
+.view-listings-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #1e1e1e;
+  white-space: nowrap;
+}
+
+.view-listings-btn i {
+  font-size: 16px;
+  color: #1db187;
+}
+
+.view-listings-btn:hover {
+  background: #f0faf8;
+  border-color: #1db187;
 }
 
 .more-menu-container {
@@ -254,6 +285,17 @@ const goToUserProfile = () => {
 
   .back-btn-mobile:hover {
     background: #f5f5f5;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .view-listings-btn .btn-text {
+    display: none;
+  }
+
+  .view-listings-btn {
+    padding: 8px;
+    min-width: 36px;
   }
 }
 

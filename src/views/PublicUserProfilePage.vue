@@ -105,12 +105,14 @@
 
             <!-- Achievement Badges -->
             <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
-              <AchievementBadges
+              <CombinedAchievements
                 :total-carbon="userData.carbonSaved"
-                :show-carbon-total="false"
-                :show-progress="false"
+                :total-sales="userData.stats.completedDeals || 0"
+                :total-purchases="0"
+                :show-carbon-total="true"
+                :show-progress="true"
                 :show-threshold="false"
-                @badge-click="openBadgeModal"
+                @achievement-click="openBadgeModal"
               />
             </div>
           </div>
@@ -192,72 +194,100 @@
 
             <!-- Reviews Tab -->
             <div v-show="activeTab === 'reviews'" class="tab-pane">
-              <!-- Rating Summary -->
-              <div class="rating-summary">
-                <div class="rating-overview">
-                  <div class="rating-score-large">{{ averageRating.toFixed(1) }}</div>
-                  <div class="rating-stars-large">
-                    <i
-                      v-for="n in 5"
-                      :key="n"
-                      :class="['bi', n <= Math.floor(averageRating) ? 'bi-star-fill' : 'bi-star']"
-                    ></i>
-                  </div>
-                  <p class="rating-count">{{ reviews.length }} 則評價</p>
-                </div>
-
-                <div class="rating-breakdown">
-                  <div
-                    v-for="rating in [5, 4, 3, 2, 1]"
-                    :key="rating"
-                    class="rating-bar-item"
-                  >
-                    <span class="rating-label">{{ rating }} 星</span>
-                    <div class="rating-bar">
-                      <div
-                        class="rating-bar-fill"
-                        :style="{ width: `${getRatingPercentage(rating)}%` }"
-                      ></div>
-                    </div>
-                    <span class="rating-percentage">{{ getRatingCount(rating) }}</span>
+              <!-- Loading Skeleton -->
+              <div v-if="isLoadingReviews" class="reviews-skeleton">
+                <div class="skeleton-rating-summary">
+                  <div class="skeleton-rating-score"></div>
+                  <div class="skeleton-rating-bars">
+                    <div v-for="i in 5" :key="`bar-${i}`" class="skeleton-bar"></div>
                   </div>
                 </div>
-              </div>
-
-              <!-- Reviews List -->
-              <div v-if="reviews.length > 0" class="reviews-list">
-                <div v-for="review in reviews" :key="review.id" class="review-card">
-                  <div class="review-header">
-                    <img
-                      :src="review.reviewer.avatar"
-                      :alt="review.reviewer.name"
-                      class="reviewer-avatar"
-                    />
-                    <div class="reviewer-info">
-                      <h4 class="reviewer-name">{{ review.reviewer.name }}</h4>
-                      <div class="review-meta">
-                        <div class="review-stars">
-                          <i
-                            v-for="n in 5"
-                            :key="n"
-                            :class="['bi', n <= review.rating ? 'bi-star-fill' : 'bi-star']"
-                          ></i>
-                        </div>
-                        <span class="review-date">{{ review.date }}</span>
+                <div class="skeleton-reviews-list">
+                  <div v-for="i in 3" :key="`review-${i}`" class="skeleton-review-card">
+                    <div class="skeleton-review-header">
+                      <div class="skeleton-review-avatar"></div>
+                      <div class="skeleton-review-info">
+                        <div class="skeleton-review-name"></div>
+                        <div class="skeleton-review-stars"></div>
                       </div>
                     </div>
-                  </div>
-                  <p class="review-comment">{{ review.comment }}</p>
-                  <div v-if="review.transaction" class="review-transaction">
-                    <img
-                      :src="review.transaction.image"
-                      :alt="review.transaction.name"
-                      class="transaction-image"
-                    />
-                    <span class="transaction-name">{{ review.transaction.name }}</span>
+                    <div class="skeleton-review-text"></div>
+                    <div class="skeleton-review-text short"></div>
                   </div>
                 </div>
               </div>
+
+              <!-- Reviews Content -->
+              <div v-else-if="reviews.length > 0">
+                <!-- Rating Summary -->
+                <div class="rating-summary">
+                  <div class="rating-overview">
+                    <div class="rating-score-large">{{ averageRating.toFixed(1) }}</div>
+                    <div class="rating-stars-large">
+                      <i
+                        v-for="n in 5"
+                        :key="n"
+                        :class="['bi', n <= Math.floor(averageRating) ? 'bi-star-fill' : 'bi-star']"
+                      ></i>
+                    </div>
+                    <p class="rating-count">{{ reviews.length }} 則評價</p>
+                  </div>
+
+                  <div class="rating-breakdown">
+                    <div
+                      v-for="rating in [5, 4, 3, 2, 1]"
+                      :key="rating"
+                      class="rating-bar-item"
+                    >
+                      <span class="rating-label">{{ rating }} 星</span>
+                      <div class="rating-bar">
+                        <div
+                          class="rating-bar-fill"
+                          :style="{ width: `${getRatingPercentage(rating)}%` }"
+                        ></div>
+                      </div>
+                      <span class="rating-percentage">{{ getRatingCount(rating) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Reviews List -->
+                <div class="reviews-list">
+                  <div v-for="review in reviews" :key="review.id" class="review-card">
+                    <div class="review-header">
+                      <img
+                        :src="review.reviewer.avatar"
+                        :alt="review.reviewer.name"
+                        class="reviewer-avatar"
+                      />
+                      <div class="reviewer-info">
+                        <h4 class="reviewer-name">{{ review.reviewer.name }}</h4>
+                        <div class="review-meta">
+                          <div class="review-stars">
+                            <i
+                              v-for="n in 5"
+                              :key="n"
+                              :class="['bi', n <= review.rating ? 'bi-star-fill' : 'bi-star']"
+                            ></i>
+                          </div>
+                          <span class="review-date">{{ review.date }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="review-comment">{{ review.comment }}</p>
+                    <div v-if="review.transaction" class="review-transaction">
+                      <img
+                        :src="review.transaction.image"
+                        :alt="review.transaction.name"
+                        class="transaction-image"
+                      />
+                      <span class="transaction-name">{{ review.transaction.name }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Empty State -->
               <div v-else class="empty-state">
                 <i class="bi bi-chat-quote"></i>
                 <p>此使用者尚無評價</p>
@@ -287,11 +317,12 @@ import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
-import AchievementBadges from '../components/AchievementBadges.vue';
+import CombinedAchievements from '../components/CombinedAchievements.vue';
 import FollowersFollowingModal from '../components/FollowersFollowingModal.vue';
 import { searchItems } from '../api/get_searchItemsAPI';
 import { getPublicUserProfile } from '../api/get_userProfileAPI';
 import { followUser, unfollowUser } from '../api/followAPI';
+import { getOthersReviews } from '../api/get_others_reviews';
 
 const route = useRoute();
 const router = useRouter();
@@ -301,6 +332,7 @@ const userPoints = ref(500);
 const activeTab = ref('listings');
 const isLoadingListings = ref(false);
 const isLoadingProfile = ref(false);
+const isLoadingReviews = ref(false);
 const isLoadingFollow = ref(false);
 const isFollowBtnHovered = ref(false);
 const showFollowersModal = ref(false);
@@ -337,48 +369,8 @@ const tabs = computed(() => [
 // User listings (from API)
 const userListings = ref([]);
 
-// Mock reviews
-const reviews = ref([
-  {
-    id: 1,
-    reviewer: {
-      name: '評價者名稱',
-      avatar: 'https://placehold.co/48/4a8b7d/ffffff?text=R1'
-    },
-    rating: 5,
-    comment: '非常好的賣家！商品狀況如同描述，交易過程順利愉快。',
-    date: '1個月前',
-    transaction: {
-      name: 'iPhone 13 Pro',
-      image: 'https://placehold.co/60x60/6fb8a5/ffffff?text=Phone'
-    }
-  },
-  {
-    id: 2,
-    reviewer: {
-      name: '評價者名稱',
-      avatar: 'https://placehold.co/48/3a7a6e/ffffff?text=R2'
-    },
-    rating: 4,
-    comment: '交易順利，賣家很親切。',
-    date: '2個月前',
-    transaction: {
-      name: '復古沙發',
-      image: 'https://placehold.co/60x60/5a9d8c/ffffff?text=Sofa'
-    }
-  },
-  {
-    id: 3,
-    reviewer: {
-      name: '評價者名稱',
-      avatar: 'https://placehold.co/48/6fb8a5/ffffff?text=R3'
-    },
-    rating: 5,
-    comment: '很棒的交易經驗，推薦！',
-    date: '3個月前',
-    transaction: null
-  }
-]);
+// User reviews (from API)
+const reviews = ref([]);
 
 // Computed
 const averageRating = computed(() => {
@@ -387,13 +379,38 @@ const averageRating = computed(() => {
     return userData.value.avgRating;
   }
   if (reviews.value.length === 0) return 0;
-  const sum = reviews.value.reduce((acc, review) => acc + review.rating, 0);
+  const sum = reviews.value.reduce((acc, review) => acc + review.score, 0);
   return sum / reviews.value.length;
 });
 
+// Helper: Format relative time
+const formatRelativeTime = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMs = now - date;
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInDays === 0) {
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    if (diffInHours === 0) {
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+      return diffInMinutes <= 1 ? '剛剛' : `${diffInMinutes}分鐘前`;
+    }
+    return `${diffInHours}小時前`;
+  } else if (diffInDays < 30) {
+    return `${diffInDays}天前`;
+  } else if (diffInDays < 365) {
+    const diffInMonths = Math.floor(diffInDays / 30);
+    return `${diffInMonths}個月前`;
+  } else {
+    const diffInYears = Math.floor(diffInDays / 365);
+    return `${diffInYears}年前`;
+  }
+};
+
 // Methods
 const getRatingCount = (rating) => {
-  return reviews.value.filter(r => r.rating === rating).length;
+  return reviews.value.filter(r => r.score === rating).length;
 };
 
 const getRatingPercentage = (rating) => {
@@ -531,14 +548,66 @@ const fetchUserListings = async (userId) => {
   }
 };
 
+// Fetch user's reviews
+const fetchUserReviews = async (userId) => {
+  if (!userId) {
+    console.warn('No user ID provided');
+    return;
+  }
+
+  try {
+    isLoadingReviews.value = true;
+    console.log('Fetching reviews for user:', userId);
+
+    const data = await getOthersReviews({
+      userId: userId,
+      page: 1,
+      pageSize: 100,
+      sortBy: 'created_at',
+      sortDirection: 'desc'
+    });
+
+    if (data) {
+      // Transform API data to match template structure
+      reviews.value = data.map(review => ({
+        id: review.review_id,
+        review_id: review.review_id,
+        reviewer: {
+          id: review.reviewer_id,
+          name: review.reviewer_nickname || '使用者',
+          avatar: review.reviewer_avatar || 'https://placehold.co/48/6fb8a5/ffffff?text=U'
+        },
+        rating: review.score,
+        score: review.score,
+        comment: review.comment || '此評價未留言',
+        date: formatRelativeTime(review.created_at),
+        created_at: review.created_at,
+        transaction: review.item_id ? {
+          id: review.item_id,
+          name: review.item_title || '商品',
+          image: review.item_image || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
+        } : null
+      }));
+
+      console.log('✅ User reviews loaded:', reviews.value.length, 'reviews');
+    }
+  } catch (error) {
+    console.error('Failed to fetch user reviews:', error);
+    reviews.value = [];
+  } finally {
+    isLoadingReviews.value = false;
+  }
+};
+
 // Fetch data when component mounts
 onMounted(async () => {
   const userId = route.params.id;
   if (userId) {
-    // Fetch profile and listings in parallel
+    // Fetch profile, listings, and reviews in parallel
     await Promise.all([
       fetchUserProfile(userId),
-      fetchUserListings(userId)
+      fetchUserListings(userId),
+      fetchUserReviews(userId)
     ]);
   }
 });
@@ -1253,6 +1322,115 @@ onMounted(async () => {
   }
 }
 
+// Reviews Skeleton Styles
+.reviews-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.skeleton-rating-summary {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 40px;
+  padding: 30px;
+  background: #f9f9f9;
+  border-radius: 12px;
+}
+
+.skeleton-rating-score {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-rating-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.skeleton-bar {
+  width: 100%;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.skeleton-review-card {
+  padding: 24px;
+  background: #f9f9f9;
+  border-radius: 12px;
+}
+
+.skeleton-review-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.skeleton-review-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-review-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-review-name {
+  width: 120px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-review-stars {
+  width: 100px;
+  height: 14px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-review-text {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 8px;
+
+  &.short {
+    width: 70%;
+  }
+}
+
 // Responsive
 @media (max-width: 1199.98px) {
   .profile-header-row {
@@ -1306,6 +1484,11 @@ onMounted(async () => {
   }
 
   .rating-summary {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .skeleton-rating-summary {
     grid-template-columns: 1fr;
     gap: 30px;
   }

@@ -58,32 +58,43 @@ export const TRANSACTION_TYPES = {
 };
 
 /**
- * Get user points profile
+ * Get user points profile (calls Supabase RPC: get_user_points_profile)
  * @returns {Promise<object>} - User points profile
  */
 export async function getUserPointsProfile() {
+  // 1. Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
-  // Example data for testing
-  const exampleProfile = {
-    user_id: user.id,
-    current_balance: 500,
-    total_earned: 1200,
-    total_spent: 700,
-    daily_streak: 7,
-    last_signin_date: '2025-11-06',
-    current_level_tier: 2,
-    trust_level_tier: 1,
-    total_sales_points: 450,
-    created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-11-06T00:00:00Z'
-  };
+  console.log('getUserPointsProfile called - calling RPC: get_user_points_profile');
 
-  console.log('getUserPointsProfile called');
-  console.log('Returning example profile:', exampleProfile);
+  // 2. Call the RPC function (no parameters needed)
+  const { data, error } = await supabase.rpc('get_user_points_profile');
 
-  return exampleProfile;
+  // 3. Error handling
+  if (error) {
+    console.error('Supabase get_user_points_profile RPC error:', error);
+    throw new Error(error.message || '獲取使用者資料失敗');
+  }
+
+  console.log('get_user_points_profile RPC response:', data);
+
+  // 4. Return the RPC result
+  // Expected format:
+  // {
+  //   user_id: UUID,
+  //   current_balance: number,
+  //   total_earned: number,
+  //   total_spent: number,
+  //   daily_streak: number,          // from consecutive_login_days
+  //   last_signin_date: date,         // from last_login_date
+  //   current_level_tier: number,
+  //   trust_level_tier: number,
+  //   total_sales_points: number,
+  //   created_at: timestamp,
+  //   updated_at: timestamp
+  // }
+  return data;
 }
 
 /**
@@ -201,26 +212,38 @@ export async function getPointsTransactions(params = {}) {
 }
 
 /**
- * Daily sign-in
- * @returns {Promise<object>} - { success, points_awarded, streak_day, next_reward }
+ * Daily sign-in (calls Supabase RPC: daily_check_in)
+ * @returns {Promise<object>} - { success, message, points_awarded, streak_day, next_reward, new_balance }
  */
 export async function dailySignIn() {
+  // 1. Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
-  // Example response
-  const exampleResult = {
-    success: true,
-    points_awarded: 20,
-    streak_day: 8,
-    next_reward: 5,
-    message: '簽到成功！'
-  };
+  console.log('dailySignIn called - calling RPC: daily_check_in');
 
-  console.log('dailySignIn called');
-  console.log('Returning example result:', exampleResult);
+  // 2. Call the RPC function (no parameters needed)
+  const { data, error } = await supabase.rpc('daily_check_in');
 
-  return exampleResult;
+  // 3. Error handling (catches RAISE EXCEPTION from RPC)
+  if (error) {
+    console.error('Supabase daily_check_in RPC error:', error);
+    throw new Error(error.message || '每日簽到失敗');
+  }
+
+  console.log('daily_check_in RPC response:', data);
+
+  // 4. Return the RPC result
+  // Expected format:
+  // {
+  //   success: true/false,
+  //   message: "簽到成功！",
+  //   points_awarded: 5,
+  //   streak_day: 8,
+  //   next_reward: 6,
+  //   new_balance: 1005
+  // }
+  return data;
 }
 
 /**
