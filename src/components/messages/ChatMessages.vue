@@ -66,7 +66,12 @@
               <div class="message-bubble-wrapper">
                 <div class="message-content">
                   <!-- Reply Quote (for reply type messages) -->
-                  <div v-if="message.message_type === 'reply' && message.replyContext" class="reply-quote">
+                  <div
+                    v-if="message.message_type === 'reply' && message.replyContext"
+                    class="reply-quote"
+                    :class="{ 'clickable': !!message.replyContext.replyToMessageId }"
+                    @click.stop="handleReplyClick(message.replyContext.replyToMessageId)"
+                  >
                     <div class="reply-quote-bar"></div>
                     <div class="reply-quote-content">
                       <span class="reply-quote-text">{{ message.replyContext.quotedText }}</span>
@@ -206,7 +211,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['scroll', 'open-item', 'retry', 'reply']);
+const emit = defineEmits(['scroll', 'open-item', 'retry', 'reply', 'scroll-to-message']);
 
 const localMessagesArea = ref(null);
 
@@ -248,6 +253,12 @@ const handleViewTransaction = (transactionId) => {
     name: 'TransactionRecords',
     query: { transactionId }
   });
+};
+
+const handleReplyClick = (messageId) => {
+  if (messageId) {
+    emit('scroll-to-message', messageId);
+  }
 };
 
 // Context Menu Methods
@@ -625,16 +636,25 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     gap: 8px;
     margin-bottom: 8px;
-    padding: 8px 10px;
-    background-color: rgba(0, 0, 0, 0.04);
-    border-radius: 6px;
+    padding: 8px 12px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    transition: background-color 0.2s;
+
+    &.clickable {
+      cursor: pointer;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+      }
+    }
 
     .reply-quote-bar {
       width: 3px;
       min-height: 30px;
-      background-color: currentColor;
+      background-color: #999;
       border-radius: 2px;
-      opacity: 0.4;
+      opacity: 0.6;
       flex-shrink: 0;
     }
 
@@ -646,7 +666,7 @@ onBeforeUnmount(() => {
         font-family: 'Noto Sans TC', sans-serif;
         font-size: 13px;
         line-height: 1.4;
-        opacity: 0.7;
+        color: #666;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -656,35 +676,53 @@ onBeforeUnmount(() => {
     }
   }
 
+  // Sent message styles for reply quote
+  .message-sent .reply-quote {
+    background-color: rgba(255, 255, 255, 0.2);
+
+    &.clickable:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .reply-quote-bar {
+      background-color: rgba(255, 255, 255, 0.8);
+      opacity: 1;
+    }
+
+    .reply-quote-content .reply-quote-text {
+      color: rgba(255, 255, 255, 0.95);
+    }
+  }
+
   .transaction-link-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 
     .transaction-link-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: rgba(255, 255, 255, 0.2);
-      border: 1.5px solid rgba(255, 255, 255, 0.4);
-      border-radius: 8px;
+      gap: 8px;
+      padding: 12px 16px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
       font-family: 'Noto Sans TC', sans-serif;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      color: inherit;
+      color: $primary;
       cursor: pointer;
       transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 
       i {
-        font-size: 14px;
+        font-size: 16px;
       }
 
       &:hover {
-        background: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.6);
         transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
       }
 
       &:active {
@@ -693,15 +731,25 @@ onBeforeUnmount(() => {
     }
   }
 
-  // Override for received messages (white background)
-  .message-received .transaction-link-wrapper .transaction-link-btn {
-    background: rgba(111, 184, 165, 0.08);
-    border-color: $primary;
-    color: $primary;
+  // Override for sent messages (green background)
+  .message-sent .transaction-link-wrapper .transaction-link-btn {
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    color: $primary; // Keep primary color for text to stand out against white button
 
     &:hover {
-      background: rgba(111, 184, 165, 0.15);
-      border-color: darken($primary, 10%);
+      background: white;
+    }
+  }
+
+  // Override for received messages (white background)
+  .message-received .transaction-link-wrapper .transaction-link-btn {
+    background: $primary;
+    color: white;
+    border: none;
+
+    &:hover {
+      background: darken($primary, 5%);
     }
   }
 
