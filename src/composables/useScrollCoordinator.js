@@ -72,7 +72,7 @@ export function useScrollCoordinator({
           allowUnreadDivider();
 
           try {
-            const { markAsRead } = await import('@/api/conversationAPI_v2');
+            const { markAsRead } = await import('@/api/conversation');
             await markAsRead(selectedConversation.value.id);
             console.log('[MessagesPage] 滾動到底部，已標記為已讀');
 

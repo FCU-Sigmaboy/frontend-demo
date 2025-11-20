@@ -209,7 +209,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getItemDetails } from '@/api/get_ItemDetailAPI'
-import { startChat } from '@/api/conversationsAPI.js'
+import { createOrGetConversation } from '@/api/conversation.js'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -376,10 +376,22 @@ async function handleContact() {
     return
   }
 
+  // Check if item detail is loaded
+  if (!itemDetail.value || !itemDetail.value.user?.id) {
+    alert('商品資訊載入中，請稍候再試')
+    return
+  }
+
+  // Don't allow messaging yourself
+  if (itemDetail.value.user.id === authStore.user.id) {
+    alert('無法向自己發送訊息')
+    return
+  }
+
   try {
     console.log('[ItemDetailModal] Starting chat for item:', props.itemId)
-    // Start or find conversation
-    const result = await startChat(props.itemId)
+    // Start or find conversation using V2 API
+    const result = await createOrGetConversation(itemDetail.value.user.id, props.itemId)
     console.log('[ItemDetailModal] Chat started, conversation ID:', result.conversation_id)
 
     // Close modal

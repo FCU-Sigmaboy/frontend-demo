@@ -135,7 +135,7 @@ import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { useAuthStore } from '@/stores/auth';
 import { useFavoritesStore } from '@/stores/favorites';
-import { createOrGetConversation } from '@/api/conversationAPI_v2';
+import { createOrGetConversation } from '@/api/conversation';
 import { getPublicUserProfile } from '@/api/get_userProfileAPI';
 import { followUser, unfollowUser } from '@/api/followAPI';
 

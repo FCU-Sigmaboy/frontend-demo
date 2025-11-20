@@ -234,7 +234,7 @@ import { useAuthStore } from '../stores/auth';
 import { useTransactionStore } from '../stores/transaction';
 import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
 import { searchItems } from '@/api/get_searchItemsAPI.js';
-import { startChat } from '@/api/conversationsAPI.js';
+import { createOrGetConversation } from '@/api/conversation.js';
 
 const authStore = useAuthStore();
 const transactionStore = useTransactionStore();
@@ -353,8 +353,8 @@ const handleMessage = async () => {
 
   try {
     console.log('Starting chat for item:', product.value.id);
-    // Start or find conversation
-    const result = await startChat(product.value.id);
+    // Start or find conversation using V2 API
+    const result = await createOrGetConversation(product.value.user.id, product.value.id);
     console.log('Chat started, conversation ID:', result.conversation_id);
 
     // Navigate to messages page
@@ -386,8 +386,21 @@ const handleContactSeller = async (productId) => {
 
   try {
     console.log('Starting chat for item:', productId);
-    // Start or find conversation
-    const result = await startChat(productId);
+
+    // Find the product in relatedProducts to get seller ID
+    const targetProduct = relatedProducts.value.find(p => (p.item_id || p.id) === productId);
+    if (!targetProduct || !targetProduct.user?.id) {
+      throw new Error('無法找到商品資訊');
+    }
+
+    // Don't allow messaging yourself
+    if (targetProduct.user.id === authStore.user.id) {
+      alert('無法向自己發送訊息');
+      return;
+    }
+
+    // Start or find conversation using V2 API
+    const result = await createOrGetConversation(targetProduct.user.id, productId);
     console.log('Chat started, conversation ID:', result.conversation_id);
 
     // Navigate to messages page

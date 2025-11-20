@@ -4,7 +4,7 @@ import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionStore } from '@/stores/transaction';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems, archiveConversation } from '@/api/conversationAPI_v2';
+import { getConversationItems, archiveConversation } from '@/api/conversation';
 import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
 import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
 
@@ -777,11 +777,9 @@ export function useMessagePage() {
       messageStore.selectedConversationId = conversation.id;
     }
 
-    // 檢查快取，如果有快取則不顯示載入中狀態
-    const cached = messageStore.getCachedMessages(conversation.id);
-    if (!cached) {
-      messagesLoading.value = true;
-    }
+    // 總是顯示載入中狀態，即使有快取
+    // 這樣可以確保 UI 流程正確，特別是對於空對話
+    messagesLoading.value = true;
 
     currentPage.value = 1;
     hasMoreMessages.value = true;
@@ -1369,20 +1367,23 @@ export function useMessagePage() {
     const itemTitle = router.currentRoute.value.query.itemTitle;
 
     if (conversationId) {
-      messagesLoading.value = true;
-
       try {
-        if (messageStore.conversations.length === 0) {
-          await messageStore.loadConversations();
-        }
+        // 強制重新載入對話列表，確保能找到對話
+        console.log(`[Initialize] Loading conversations for conversationId: ${conversationId}`);
+        await messageStore.loadConversations(true); // forceRefresh = true
 
         const conversation = displayConversations.value.find(
           c => c.id === parseInt(conversationId, 10)
         );
+
         if (conversation) {
+          console.log(`[Initialize] Found conversation:`, conversation);
+          // selectConversation 會處理 messagesLoading 狀態
           await selectConversation(conversation);
 
           if (itemId && itemTitle) {
+            console.log(`[Initialize] Setting up item reference: ${itemId} - ${itemTitle}`);
+            // 設置待處理的物品引用
             pendingItemReference.value = {
               id: itemId,
               title: itemTitle
@@ -1393,14 +1394,23 @@ export function useMessagePage() {
               nextCache.set(cacheKey, itemTitle);
               itemReferenceCache.value = nextCache;
             }
+            // 設置預設訊息
             messageInput.value = '我想詢問';
+
+            // 確保 store 也有這個引用
+            if (conversation.id) {
+              messageStore.setPendingItemReference(conversation.id, {
+                id: itemId,
+                title: itemTitle
+              });
+            }
           }
         } else {
-          messagesLoading.value = false;
+          console.error(`[Initialize] Conversation ${conversationId} not found in displayConversations`);
+          console.log(`[Initialize] Available conversations:`, displayConversations.value.map(c => c.id));
         }
       } catch (err) {
         console.error('Failed to initialize conversation:', err);
-        messagesLoading.value = false;
       }
     }
   }

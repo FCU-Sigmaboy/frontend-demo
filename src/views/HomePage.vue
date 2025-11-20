@@ -92,7 +92,7 @@ import ProductCard from '../components/ProductCard.vue';
 import { supabase } from '@/lib/supabase';
 import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
-import { startChat } from '@/api/conversationsAPI.js';
+import { createOrGetConversation } from '@/api/conversation.js';
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
@@ -171,8 +171,21 @@ const handleContactSeller = async (productId) => {
 
   try {
     console.log('Starting chat for item:', productId);
-    // Start or find conversation
-    const result = await startChat(productId);
+
+    // Find the product in products list to get seller ID
+    const targetProduct = products.value.find(p => (p.item_id || p.id) === productId);
+    if (!targetProduct || !targetProduct.user?.id) {
+      throw new Error('無法找到商品資訊');
+    }
+
+    // Don't allow messaging yourself
+    if (targetProduct.user.id === authStore.user.id) {
+      alert('無法向自己發送訊息');
+      return;
+    }
+
+    // Start or find conversation using V2 API
+    const result = await createOrGetConversation(targetProduct.user.id, productId);
     console.log('Chat started, conversation ID:', result.conversation_id);
 
     // Navigate to messages page

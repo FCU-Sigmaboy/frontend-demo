@@ -9,7 +9,7 @@ import {
   subscribeToAllMessages,
   subscribeToMessageUpdates,
   createConversationTypingChannel
-} from '@/api/conversationAPI_v2'
+} from '@/api/conversation'
 
 export const useMessageStore = defineStore('message', () => {
   // ===== 狀態 =====
@@ -588,8 +588,12 @@ export const useMessageStore = defineStore('message', () => {
         selectedConversationId.value = conversationId
 
         // 標記為已讀
-        await markAsRead(conversationId)
-        updateConversationUnreadCount(conversationId, 0)
+        try {
+          await markAsRead(conversationId)
+          updateConversationUnreadCount(conversationId, 0)
+        } catch (err) {
+          console.warn('Failed to mark as read (using cache):', err)
+        }
 
         return
       }
@@ -600,24 +604,25 @@ export const useMessageStore = defineStore('message', () => {
     try {
       const data = await getMessages(conversationId, 1, 50)
 
-      if (data) {
-        const normalizedMessages = normalizeMessagesPayload(data)
-        currentMessages.value = normalizedMessages
+      // 處理空資料的情況（新對話或沒有訊息）
+      const normalizedMessages = data ? normalizeMessagesPayload(data) : []
+      currentMessages.value = normalizedMessages
 
-        // 儲存到快取
-        const hasMore = data.length >= 50
-        setCachedMessages(conversationId, normalizedMessages, 1, hasMore)
+      // 儲存到快取（即使是空陣列也要快取）
+      const hasMore = data && data.length >= 50
+      setCachedMessages(conversationId, normalizedMessages, 1, hasMore)
 
-        selectedConversationId.value = conversationId
+      selectedConversationId.value = conversationId
 
-        // 標記為已讀
+      // 標記為已讀
+      try {
         await markAsRead(conversationId)
-
-        // 更新本地對話的未讀數
         updateConversationUnreadCount(conversationId, 0)
-
-        console.log(`✅ Loaded ${currentMessages.value.length} messages for conversation ${conversationId}`)
+      } catch (err) {
+        console.warn('Failed to mark as read:', err)
       }
+
+      console.log(`✅ Loaded ${currentMessages.value.length} messages for conversation ${conversationId}`)
     } catch (err) {
       console.error('Failed to load messages:', err)
       throw err
