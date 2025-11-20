@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import imageCompression from 'browser-image-compression';
 
 // ===================================================================
-// ### 圖片壓縮與上傳 API (Image Compression & Upload APIs)
+// ### 圖片壓縮、上傳與 AI 分析整合 API
 // ===================================================================
 
 /**
@@ -51,24 +51,13 @@ function generateSafeFilename(originalName) {
  * @param {string} itemId - 物品 ID (可用臨時 ID)
  * @param {boolean} shouldCompress - 是否需要壓縮（預設 true）
  * @returns {Promise<string>} - 回傳圖片的公開 URL
- *
- * @example
- * // 自動壓縮（建議）
- * const url = await uploadItemImage(file, userId, itemId);
- *
- * @example
- * // 檔案已經壓縮過，跳過壓縮
- * const url = await uploadItemImage(compressedFile, userId, itemId, false);
  */
 export async function uploadItemImage(file, userId, itemId, shouldCompress = true) {
-    // 如果需要壓縮，則先壓縮
     const fileToUpload = shouldCompress ? await compressImage(file) : file;
 
-    // 產生安全的檔名（避免中文或特殊字元）
     const safeFilename = generateSafeFilename(fileToUpload.name);
     const filePath = `${userId}/${itemId}/${safeFilename}`;
 
-    // 上傳檔案到 items bucket
     const { data, error } = await supabase.storage
         .from('items')
         .upload(filePath, fileToUpload, {
@@ -81,7 +70,6 @@ export async function uploadItemImage(file, userId, itemId, shouldCompress = tru
         throw new Error(error.message);
     }
 
-    // 獲取公開 URL
     const { data: { publicUrl } } = supabase.storage
         .from('items')
         .getPublicUrl(data.path, { download: false });
@@ -115,35 +103,23 @@ export async function uploadItemImages(files, userId, itemId, shouldCompress = t
  * @param {string} userId - 使用者 ID
  * @param {boolean} shouldCompress - 是否需要壓縮（預設 true，但 GIF 會自動跳過壓縮）
  * @returns {Promise<string>} - 回傳圖片的公開 URL
- *
- * @example
- * // 上傳大頭貼（靜態圖片會自動壓縮，GIF 不壓縮）
- * const avatarUrl = await uploadProfilePicture(file, userId);
- *
- * // 然後更新 profile
- * await updateMyProfile({ profile_picture_url: avatarUrl }, null, null);
  */
 export async function uploadProfilePicture(file, userId, shouldCompress = true) {
-    // 檢查是否為 GIF 動畫格式（不壓縮以保留動畫）
     const isAnimated = file.type === 'image/gif';
-
-    // 如果需要壓縮且不是 GIF，則先壓縮
     const fileToUpload = (shouldCompress && !isAnimated) ? await compressImage(file) : file;
 
     if (isAnimated) {
         console.log('🎬 Detected GIF animation, skipping compression');
     }
 
-    // 產生安全的檔名（避免中文或特殊字元）
     const safeFilename = generateSafeFilename(fileToUpload.name);
     const filePath = `${userId}/${safeFilename}`;
 
-    // 上傳檔案到 avatars bucket
     const { data, error } = await supabase.storage
         .from('avatars')
         .upload(filePath, fileToUpload, {
             cacheControl: 'public, max-age=31536000, immutable',
-            upsert: true // 允許覆蓋舊頭貼
+            upsert: true
         });
 
     if (error) {
@@ -151,7 +127,6 @@ export async function uploadProfilePicture(file, userId, shouldCompress = true) 
         throw new Error(error.message);
     }
 
-    // 獲取公開 URL
     const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(data.path, { download: false });
@@ -159,3 +134,49 @@ export async function uploadProfilePicture(file, userId, shouldCompress = true) 
     console.log(`✅ 大頭貼上傳成功: ${publicUrl}`);
     return publicUrl;
 }
+
+/**
+ * 【功能】使用 AI 分析物品圖片
+ * @param {string} imageUrl - 圖片的 URL（已上傳到 Supabase Storage）
+ * @returns {Promise<object>} - AI 分析結果
+ */
+export async function analyzeItemImage(imageUrl) {
+  try {
+    console.log('[analyzeItemImage] Calling AI to analyze image:', imageUrl);
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error('使用者未登入');
+    }
+
+    const { data, error } = await supabase.functions.invoke('analyze-item-image', {
+      body: {
+        image_url: imageUrl
+      }
+    });
+
+    if (error) {
+      console.error('[analyzeItemImage] AI 分析失敗:', error);
+      throw new Error(error.message || 'AI 分析失敗');
+    }
+
+    if (!data || !data.success) {
+      throw new Error(data?.error || 'AI 分析失敗：未知錯誤');
+    }
+
+    console.log('[analyzeItemImage] AI 分析成功:', data.data);
+    return data.data;
+
+  } catch (error) {
+    console.error('[analyzeItemImage] AI 分析過程發生錯誤:', error);
+    throw error;
+  }
+}
+
+export default {
+  compressImage,
+  uploadItemImage,
+  uploadItemImages,
+  uploadProfilePicture,
+  analyzeItemImage
+};

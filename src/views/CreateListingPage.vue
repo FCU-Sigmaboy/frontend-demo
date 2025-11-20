@@ -390,8 +390,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
 import { getItemById } from '../api/get_itemByIdAPI';
 import { updateMyItem } from '../api/update_myItemAPI';
-import { compressImage, uploadItemImage } from '../api/upload_imageAPI';
-import { analyzeItemImage } from '../api/analyze_itemImageAPI';
+import { compressImage, uploadItemImage, analyzeItemImage } from '@/api/image';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -891,7 +890,7 @@ const handleSubmit = async () => {
       // 檢查哪些圖片需要上傳 (有對應的 File 物件)
       const finalImageUrls = [];
       const { data: { user } } = await supabase.auth.getUser();
-      const { uploadItemImage } = await import('../api/upload_imageAPI');
+      const { uploadItemImage } = await import('@/api/image');
       
       for (let i = 0; i < formData.value.images.length; i++) {
         const imagePreview = formData.value.images[i];
