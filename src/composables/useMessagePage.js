@@ -165,6 +165,7 @@ export function useMessagePage() {
     const transactionId = parsed.transaction_id ?? parsed.transactionId ?? null;
     const replyText = parsed['你的訊息內容'] ?? parsed.replyText ?? null;
     const quotedText = parsed['回覆的訊息內容'] ?? parsed.quotedText ?? null;
+    const replyToMessageId = parsed['reply_to_message_id'] ?? parsed.replyToMessageId ?? null;
 
     const isTransactionLink =
       normalizedType === 'transaction_link' ||
@@ -186,7 +187,8 @@ export function useMessagePage() {
       return {
         type: 'reply',
         replyText,
-        quotedText
+        quotedText,
+        replyToMessageId
       };
     }
 
@@ -676,7 +678,8 @@ export function useMessagePage() {
         effectiveMessageType = 'reply';
         replyContext = {
           quotedText: structuredContent?.quotedText || '',
-          replyText: structuredContent?.replyText || msg.content || ''
+          replyText: structuredContent?.replyText || msg.content || '',
+          replyToMessageId: structuredContent?.replyToMessageId || null
         };
         parsedText = replyContext.replyText;
       } else if (structuredContent?.type === 'transaction_link' || msg.message_type === 'transaction_link') {
@@ -684,7 +687,7 @@ export function useMessagePage() {
         transactionLinkData = {
           transaction_id: structuredContent?.transactionId || null
         };
-        parsedText = '交易詳情請點擊下方連結';
+        parsedText = '詳情請點擊下方按鈕';
       }
 
       return {
@@ -1269,18 +1272,8 @@ export function useMessagePage() {
       const behavior = options.smooth && !isMobile ? 'smooth' : 'auto';
 
       if (options.preferUnread && firstUnreadMessageId.value) {
-        const selector = `[data-message-id="${String(firstUnreadMessageId.value)}"]`;
-        const target = container.querySelector(selector);
-
-        if (target) {
-          const containerRect = container.getBoundingClientRect();
-          const targetRect = target.getBoundingClientRect();
-          const offset = targetRect.top - containerRect.top + container.scrollTop - 48;
-          const top = Math.max(0, offset);
-
-          container.scrollTo({ top, behavior });
-          return;
-        }
+        scrollToMessage(firstUnreadMessageId.value, { behavior, highlight: false });
+        return;
       }
 
       const scrollTop = container.scrollHeight;
@@ -1309,6 +1302,29 @@ export function useMessagePage() {
         hasReachedBottomAfterUnread.value = true;
       }
     });
+  }
+
+  function scrollToMessage(messageId, options = {}) {
+    const { behavior = 'smooth', highlight = true } = options;
+    const container = messagesArea.value;
+    if (!container || !messageId) return;
+
+    const selector = `[data-message-id="${String(messageId)}"]`;
+    const target = container.querySelector(selector);
+
+    if (target) {
+      target.scrollIntoView({ behavior, block: 'center' });
+      if (highlight) {
+        // Optional: Add a highlight class temporarily
+        target.classList.add('message-highlight');
+        setTimeout(() => {
+          target.classList.remove('message-highlight');
+        }, 2000);
+      }
+    } else {
+      console.warn(`Message ${messageId} not found in DOM`);
+      // Potentially load older messages if not found (complex)
+    }
   }
 
   async function loadMoreMessages() {
@@ -1528,6 +1544,7 @@ export function useMessagePage() {
     handleMessagesScroll,
     registerMessagesArea,
     scrollToBottom,
+    scrollToMessage,
     // Transaction Modal
     showTransactionModal,
     isLoadingTransactionItems,

@@ -49,6 +49,7 @@
                 @open-item="openItemPage"
                 @retry="retryMessage"
                 @reply="handleReply"
+                @scroll-to-message="scrollToMessage"
               />
 
               <div
@@ -223,7 +224,8 @@ const {
   isLoadingTransactionItems,
   conversationItems,
   handleOpenTransactionModal,
-  handleTransactionConfirm
+  handleTransactionConfirm,
+  scrollToMessage
 } = useMessagePage();
 
 // User Listings Modal state
@@ -294,7 +296,8 @@ const handleSendMessage = async () => {
     const replyContent = JSON.stringify({
       type: 'reply',
       '回覆的訊息內容': quotedText,
-      '你的訊息內容': replyText
+      '你的訊息內容': replyText,
+      'reply_to_message_id': replyingToMessage.value.id
     });
 
     // Clear the input and reply state before sending
