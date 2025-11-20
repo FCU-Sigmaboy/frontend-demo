@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getMyFavoriteItems } from '../api/get_myFavoriteAPI.js'
-import { addFavoriteItem } from '../api/create_favoriteAPI.js'
-import { removeFavoriteItem } from '../api/delete_favoriteAPI.js'
+import { getMyFavoriteItems, addFavoriteItem, removeFavoriteItem } from '@/api/favorite.js'
 
 export const useFavoritesStore = defineStore('favorites', () => {
   // State
