@@ -592,6 +592,12 @@ onMounted(() => {
       transform: none;
     }
   }
+
+  .view-toggle-btn {
+    left: auto;
+    right: 16px;
+    transform: none;
+  }
 }
 
 @media (max-width: 575.98px) {
@@ -618,7 +624,7 @@ onMounted(() => {
   // Map/List Toggle Button - Mobile: same size as FAB
   .view-toggle-btn {
     bottom: 90px !important; // Above the floating action button
-    right: 24px !important;
+    right: 16px !important;
     left: auto !important;
     transform: none !important;
     padding: 0 !important;

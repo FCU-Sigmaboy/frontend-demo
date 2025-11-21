@@ -500,6 +500,14 @@ onUnmounted(() => {
   }
 }
 
+@media (max-width: 767.98px) {
+  .view-toggle-btn {
+    left: auto;
+    right: 16px;
+    transform: none;
+  }
+}
+
 @media (max-width: 575.98px) {
   .search-section {
     padding: 12px 0;
@@ -552,7 +560,7 @@ onUnmounted(() => {
   // Map/List Toggle Button - Mobile: same size as FAB, positioned above it
   .view-toggle-btn {
     bottom: 90px; // Above the floating action button
-    right: 24px;
+    right: 16px;
     left: auto;
     transform: none;
     padding: 0;

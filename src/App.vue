@@ -6,6 +6,7 @@ import { useTransactionStore } from './stores/transaction'
 import { subscribeToUserPresence } from './api/conversation'
 import { BToastOrchestrator } from 'bootstrap-vue-next'
 import { useTransactionToast } from './composables/useTransactionToast'
+import ChatWidget from './components/ChatWidget.vue'
 
 const authStore = useAuthStore()
 const messageStore = useMessageStore()
@@ -140,6 +141,7 @@ onBeforeUnmount(() => {
   <div id="app">
     <router-view />
     <BToastOrchestrator teleport-to="body" />
+    <ChatWidget />
   </div>
 </template>
 
