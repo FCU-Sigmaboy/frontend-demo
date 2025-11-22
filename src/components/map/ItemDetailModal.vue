@@ -38,6 +38,17 @@
                     @click="openImagePreview"
                   />
 
+                  <button
+                    v-if="!isOwner"
+                    class="favorite-btn"
+                    :class="{ active: isFavorite }"
+                    :disabled="isProcessingFavorite"
+                    @click.stop="toggleFavorite"
+                    aria-label="收藏此物品"
+                  >
+                    <i :class="isFavorite ? 'bi bi-heart-fill' : 'bi bi-heart'"></i>
+                  </button>
+
                   <!-- Navigation Arrows -->
                   <button
                     v-if="itemDetail.image_urls.length > 1"
@@ -81,8 +92,34 @@
 
               <!-- Item Info -->
               <div class="item-info">
-                <h2 class="item-title">{{ itemDetail.title }}</h2>
-                <p class="item-price">{{ formatPrice(itemDetail.price) }}</p>
+                <h2 class="item-title clickable" @click="goToItemDetail" title="查看完整商品頁面">
+                  {{ itemDetail.title }}
+                  <i class="bi bi-box-arrow-up-right"></i>
+                </h2>
+                <p class="item-price">
+                  <i class="bi bi-leaf"></i>
+                  <span>{{ formatPrice(itemDetail.price) }}</span>
+                </p>
+
+                <div v-if="sellerId" class="seller-summary">
+                  <div class="seller-profile" @click="goToSellerProfile">
+                    <img :src="sellerAvatar" :alt="sellerName" />
+                    <div class="seller-text">
+                      <p class="seller-name">{{ sellerName }}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    v-if="!isOwner && sellerId"
+                    class="follow-icon-btn"
+                    :class="{ active: isFollowing }"
+                    :disabled="isProcessingFollow"
+                    @click.stop="toggleFollow"
+                    :title="isFollowing ? '取消追蹤' : '追蹤'"
+                  >
+                    <i :class="isFollowing ? 'bi bi-person-check-fill' : 'bi bi-person-plus-fill'"></i>
+                  </button>
+                </div>
 
                 <!-- Meta Info -->
                 <div class="meta-info">
@@ -104,7 +141,13 @@
                 <!-- Description -->
                 <div v-if="itemDetail.description" class="description-section">
                   <h4>商品描述</h4>
-                  <p class="description">{{ itemDetail.description }}</p>
+                  <p class="description" :class="{ expanded: isDescriptionExpanded }">
+                    {{ itemDetail.description }}
+                  </p>
+                  <button v-if="showDescriptionToggle" class="toggle-description-btn" @click="toggleDescription">
+                    {{ isDescriptionExpanded ? '收起' : '查看更多' }}
+                    <i :class="isDescriptionExpanded ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"></i>
+                  </button>
                 </div>
 
                 <!-- Tags -->
@@ -118,26 +161,6 @@
                 </div>
 
                 <!-- Seller Info -->
-                <div v-if="itemDetail.seller" class="seller-section">
-                  <h4>賣家資訊</h4>
-                  <div class="seller-card">
-                    <div class="seller-avatar">
-                      <img
-                        v-if="itemDetail.seller.profile_picture_url"
-                        :src="itemDetail.seller.profile_picture_url"
-                        :alt="itemDetail.seller.nickname"
-                      />
-                      <i v-else class="bi bi-person-circle"></i>
-                    </div>
-                    <div class="seller-details">
-                      <p class="seller-name">{{ itemDetail.seller.nickname }}</p>
-                      <p v-if="itemDetail.seller.trust_level" class="seller-trust">
-                        信任等級: {{ itemDetail.seller.trust_level }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <!-- Location -->
                 <div v-if="itemDetail.location" class="location-section">
                   <h4>物品位置</h4>
@@ -206,11 +229,14 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { getItemDetails } from '@/api/get_ItemDetailAPI'
 import { createOrGetConversation } from '@/api/conversation.js'
 import { useAuthStore } from '@/stores/auth'
+import { useFavoritesStore } from '@/stores/favorites'
+import { followUser, unfollowUser, checkIsFollowing } from '@/api/followAPI'
+import { formatPoints } from '@/utils/formatPoints'
 
 const props = defineProps({
   modelValue: {
@@ -228,6 +254,7 @@ const emit = defineEmits(['update:modelValue', 'contact-seller'])
 // Composables
 const router = useRouter()
 const authStore = useAuthStore()
+const favoritesStore = useFavoritesStore()
 
 const loading = ref(false)
 const error = ref(false)
@@ -236,12 +263,27 @@ const itemDetail = ref(null)
 const currentImageIndex = ref(0)
 const showImagePreview = ref(false)
 const previewImageIndex = ref(0)
+const isFavorite = ref(false)
+const isProcessingFavorite = ref(false)
+const isFollowing = ref(false)
+const isProcessingFollow = ref(false)
+const isDescriptionExpanded = ref(false)
+const showDescriptionToggle = ref(false)
 
-const currencyFormatter = new Intl.NumberFormat('zh-TW', {
-  style: 'currency',
-  currency: 'TWD',
-  maximumFractionDigits: 0
-})
+const sellerId = computed(() => itemDetail.value?.seller?.id || itemDetail.value?.user?.id || null)
+const isOwner = computed(() => authStore.user && sellerId.value && authStore.user.id === sellerId.value)
+const sellerName = computed(() => itemDetail.value?.seller?.nickname || itemDetail.value?.user?.nickname || '賣家')
+const sellerAvatar = computed(() => itemDetail.value?.seller?.profile_picture_url || itemDetail.value?.user?.profile_picture_url || 'https://placehold.co/48/6fb8a5/ffffff?text=U')
+
+function checkDescriptionLength() {
+  const desc = itemDetail.value?.description || ''
+  // Simple estimation: show toggle if text length > 100 chars or has > 3 newlines
+  showDescriptionToggle.value = desc.length > 100 || (desc.match(/\n/g) || []).length > 2
+  // If description is short, expand it by default to avoid hidden text
+  if (!showDescriptionToggle.value) {
+    isDescriptionExpanded.value = true
+  }
+}
 
 // Load item details
 async function loadItemDetails() {
@@ -258,6 +300,18 @@ async function loadItemDetails() {
 
     if (response.success && response.data) {
       itemDetail.value = response.data
+      // Ensure favorites are loaded to correctly check state
+      if (authStore.user && favoritesStore.count === 0) {
+        await favoritesStore.loadFavorites()
+      }
+      syncEngagementStates()
+      
+      // Double check follow status if user is logged in
+      if (authStore.user && sellerId.value && !isOwner.value) {
+        isFollowing.value = await checkIsFollowing(sellerId.value)
+      }
+      
+      checkDescriptionLength()
     } else {
       error.value = true
       errorMessage.value = response.message || '無法載入物品詳情'
@@ -269,6 +323,13 @@ async function loadItemDetails() {
   } finally {
     loading.value = false
   }
+}
+
+function syncEngagementStates() {
+  if (!itemDetail.value) return
+  // Check both the item detail's own property AND the store state
+  isFavorite.value = !!itemDetail.value.favorited_at || favoritesStore.isFavorite(itemDetail.value.item_id || itemDetail.value.id)
+  isFollowing.value = !!(itemDetail.value.seller?.followed_at || itemDetail.value.user?.followed_at)
 }
 
 // Image navigation
@@ -312,8 +373,8 @@ function nextPreviewImage() {
 
 // Format price
 function formatPrice(price) {
-  if (price === null || price === undefined) return '價格未提供'
-  return currencyFormatter.format(price)
+  if (price === null || price === undefined) return '點數未提供'
+  return formatPoints(price)
 }
 
 // Format distance
@@ -367,6 +428,74 @@ function closeModal() {
   emit('update:modelValue', false)
 }
 
+function getFavoritePayload() {
+  if (!itemDetail.value) return null
+  return {
+    ...itemDetail.value,
+    item_id: itemDetail.value.item_id ?? itemDetail.value.id ?? props.itemId
+  }
+}
+
+async function toggleFavorite() {
+  if (isProcessingFavorite.value) return
+  if (!authStore.user) {
+    await authStore.signInWithGoogle()
+    return
+  }
+  const payload = getFavoritePayload()
+  if (!payload?.item_id) return
+  isProcessingFavorite.value = true
+  try {
+    await favoritesStore.toggleFavorite(payload)
+    // Re-sync local state from store after toggling
+    isFavorite.value = favoritesStore.isFavorite(payload.item_id)
+  } catch (error) {
+    console.error('[ItemDetailModal] Failed to toggle favorite:', error)
+    alert('收藏失敗，請稍後再試')
+  } finally {
+    isProcessingFavorite.value = false
+  }
+}
+
+async function toggleFollow() {
+  if (isProcessingFollow.value || !sellerId.value || isOwner.value) return
+  if (!authStore.user) {
+    await authStore.signInWithGoogle()
+    return
+  }
+  isProcessingFollow.value = true
+  try {
+    if (isFollowing.value) {
+      await unfollowUser(sellerId.value)
+      isFollowing.value = false
+    } else {
+      await followUser(sellerId.value)
+      isFollowing.value = true
+    }
+  } catch (error) {
+    console.error('[ItemDetailModal] Failed to toggle follow:', error)
+    alert('更新追蹤狀態失敗，請稍後再試')
+  } finally {
+    isProcessingFollow.value = false
+  }
+}
+
+function toggleDescription() {
+  isDescriptionExpanded.value = !isDescriptionExpanded.value
+}
+
+const goToItemDetail = () => {
+  if (props.itemId) {
+    router.push({ name: 'ItemDetail', params: { id: props.itemId } })
+  }
+}
+
+const goToSellerProfile = () => {
+  if (sellerId.value) {
+    router.push({ name: 'PublicUserProfile', params: { id: sellerId.value } })
+  }
+}
+
 // Handle contact seller
 async function handleContact() {
   // Check if user is logged in
@@ -377,13 +506,13 @@ async function handleContact() {
   }
 
   // Check if item detail is loaded
-  if (!itemDetail.value || !itemDetail.value.user?.id) {
+  if (!itemDetail.value || !sellerId.value) {
     alert('商品資訊載入中，請稍候再試')
     return
   }
 
   // Don't allow messaging yourself
-  if (itemDetail.value.user.id === authStore.user.id) {
+  if (sellerId.value === authStore.user.id) {
     alert('無法向自己發送訊息')
     return
   }
@@ -391,7 +520,7 @@ async function handleContact() {
   try {
     console.log('[ItemDetailModal] Starting chat for item:', props.itemId)
     // Start or find conversation using V2 API
-    const result = await createOrGetConversation(itemDetail.value.user.id, props.itemId)
+    const result = await createOrGetConversation(sellerId.value, props.itemId)
     console.log('[ItemDetailModal] Chat started, conversation ID:', result.conversation_id)
 
     // Close modal
@@ -440,7 +569,7 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
 .modal-container {
   background: white;
   border-radius: 16px;
-  max-width: 600px;
+  max-width: 400px; // Narrower card as requested
   width: 100%;
   max-height: 90vh;
   display: flex;
@@ -557,6 +686,7 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
   flex: 1;
   overflow-y: auto;
   padding: 0;
+  max-height: calc(90vh - 140px);
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -583,15 +713,49 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
   .image-container {
     position: relative;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    height: 300px; // Fixed height to control size
     background: #f5f5f5;
     overflow: hidden;
 
     .main-image {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: cover; // Fills the space, removing white bars
+      background-color: #f9f9f9;
       cursor: pointer;
+    }
+
+    .favorite-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.85);
+      color: #ff6f91;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &.active {
+        color: #ff4b6e;
+        background: rgba(255, 255, 255, 0.95);
+      }
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     }
 
     .nav-arrow {
@@ -707,25 +871,120 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
   }
 }
 
-.item-info {
-  padding: 24px;
+  .item-info {
+    padding: 20px;
 
-  .item-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 12px 0;
-  }
+    .item-title {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin: 0 0 12px 0;
+
+      &.clickable {
+        cursor: pointer;
+        transition: color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        i {
+          font-size: 16px;
+          color: #999;
+          transition: color 0.2s;
+        }
+
+        &:hover {
+          color: $primary;
+
+          i {
+            color: $primary;
+          }
+        }
+      }
+    }
 
   .item-price {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: $primary;
     margin: 0 0 20px 0;
+
+    i {
+      font-size: 20px;
+    }
   }
 }
+
+  .seller-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+
+    .seller-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+
+      img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #f1f1f1;
+      }
+
+      .seller-text {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+
+        .seller-name {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1e1e1e;
+          margin: 0;
+        }
+      }
+    }
+
+    .follow-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid $primary;
+      background: white;
+      color: $primary;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &.active {
+        background: $primary;
+        color: white;
+      }
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
 
 .meta-info {
   display: flex;
@@ -789,15 +1048,46 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
     margin: 0 0 12px 0;
   }
 
-  .description {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #666;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    margin: 0;
+    .description {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      margin: 0 0 8px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: all 0.3s ease;
+
+      &.expanded {
+        -webkit-line-clamp: unset;
+        overflow: visible;
+      }
+    }
+
+    .toggle-description-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      color: $primary;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+
+      i {
+        font-size: 12px;
+      }
+    }
   }
-}
 
 .tags {
   display: flex;
@@ -844,24 +1134,20 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
     }
   }
 
-  .seller-details {
-    flex: 1;
+    .seller-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
 
-    .seller-name {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 16px;
-      font-weight: 600;
-      color: #1e1e1e;
-      margin: 0 0 4px 0;
+      .seller-name {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e1e1e;
+        margin: 0;
+      }
     }
-
-    .seller-trust {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 13px;
-      color: #999;
-      margin: 0;
-    }
-  }
 }
 
 .location-address {
@@ -1065,14 +1351,18 @@ watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
 
   .modal-container {
     max-width: 100%;
-    max-height: 95vh;
+    max-height: 85vh; // Slightly smaller on mobile
     border-radius: 16px 16px 0 0;
   }
 
   .modal-body {
     // Ensure proper scrolling on mobile
-    max-height: calc(95vh - 140px); // Subtract header and footer height
+    max-height: calc(85vh - 130px); // Adjusted for header/footer
     overflow-y: auto;
+  }
+
+  .image-container {
+     height: 280px; // Slightly smaller image on mobile
   }
 
   .item-info {

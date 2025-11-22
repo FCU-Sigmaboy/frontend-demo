@@ -152,6 +152,37 @@ export async function unfollowUser(followingUserId) {
 }
 
 /**
+ * 【功能】檢查是否追蹤特定使用者
+ * @param {string} targetUserId - 目標使用者 ID
+ * @returns {Promise<boolean>} - 是否追蹤
+ */
+export async function checkIsFollowing(targetUserId) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data, error } = await supabase
+      .from('following')
+      .select('created_at')
+      .match({
+        follower_id: user.id,
+        following_id: targetUserId
+      })
+      .maybeSingle();
+
+    if (error) {
+      console.error('Check follow status failed:', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error('Check follow status error:', error);
+    return false;
+  }
+}
+
+/**
  * 【功能】獲取指定使用者的追蹤者列表 (公開，使用 Supabase SDK V2)
  * @param {string} userId - 要查詢的使用者 ID
  * @param {Object} params - 查詢參數

@@ -674,7 +674,7 @@ export function useMessagePage() {
       let effectiveMessageType = msg.message_type;
       const structuredContent = parseStructuredMessageContent(msg.content);
 
-      if (structuredContent?.type === 'reply' || msg.message_type === 'reply') {
+      if (msg.message_type === 'reply') {
         effectiveMessageType = 'reply';
         replyContext = {
           quotedText: structuredContent?.quotedText || '',
@@ -682,7 +682,7 @@ export function useMessagePage() {
           replyToMessageId: structuredContent?.replyToMessageId || null
         };
         parsedText = replyContext.replyText;
-      } else if (structuredContent?.type === 'transaction_link' || msg.message_type === 'transaction_link') {
+      } else if (msg.message_type === 'transaction_link') {
         effectiveMessageType = 'transaction_link';
         transactionLinkData = {
           transaction_id: structuredContent?.transactionId || null
