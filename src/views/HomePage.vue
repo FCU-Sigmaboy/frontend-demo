@@ -52,6 +52,20 @@
               @contact-seller="handleContactSeller"
             />
           </TransitionGroup>
+
+          <!-- Loading More Indicator -->
+          <div v-if="isLoadingMore" class="loading-more">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">載入中...</span>
+            </div>
+            <p>載入更多商品中...</p>
+          </div>
+
+          <!-- No More Products Message -->
+          <div v-if="!hasMoreProducts && products.length > 0 && !loading" class="no-more-products">
+            <i class="bi bi-check-circle"></i>
+            <p>已顯示所有商品</p>
+          </div>
         </div>
       </section>
 
@@ -137,6 +151,12 @@ const products = ref([]);
 const displayedProducts = ref([]);
 const loading = ref(false);
 
+// Pagination state
+const currentPage = ref(1);
+const pageSize = ref(20);
+const hasMoreProducts = ref(true);
+const isLoadingMore = ref(false);
+
 // Methods
 const handleSearch = (searchData) => {
   console.log('Search:', searchData);
@@ -202,6 +222,18 @@ const goToProductDetail = (productId) => {
 
 const handleScroll = () => {
   showScrollTop.value = window.scrollY > 500;
+  
+  // Check if user scrolled near bottom for infinite scroll
+  const scrollPosition = window.scrollY + window.innerHeight;
+  const documentHeight = document.documentElement.scrollHeight;
+  const threshold = 300; // Load more when 300px from bottom
+  
+  if (scrollPosition >= documentHeight - threshold && 
+      !isLoadingMore.value && 
+      hasMoreProducts.value && 
+      !loading.value) {
+    loadMoreProducts();
+  }
 };
 
 const scrollToTop = () => {
@@ -210,6 +242,37 @@ const scrollToTop = () => {
 
 const toggleToMapView = () => {
   router.push({ name: 'MapSearch' });
+};
+
+// Load more products (infinite scroll)
+const loadMoreProducts = async () => {
+  if (isLoadingMore.value || !hasMoreProducts.value) return;
+  
+  isLoadingMore.value = true;
+  currentPage.value += 1;
+  
+  try {
+    const data = await searchItems({
+      page: currentPage.value,
+      size: pageSize.value
+    });
+    
+    if (data && data.length > 0) {
+      products.value = [...products.value, ...data];
+      displayedProducts.value = [...products.value];
+      
+      // Check if there are more products to load
+      if (data.length < pageSize.value) {
+        hasMoreProducts.value = false;
+      }
+    } else {
+      hasMoreProducts.value = false;
+    }
+  } catch (error) {
+    console.error('Failed to load more products:', error);
+  } finally {
+    isLoadingMore.value = false;
+  }
 };
 
 // Lifecycle
@@ -225,12 +288,21 @@ onMounted(async () => {
     });
   }
 
-  // Load products
+  // Load products (first page)
   loading.value = true;
   try {
-    const data = await searchItems();
-    products.value = data;
-    displayedProducts.value = data;
+    const data = await searchItems({
+      page: 1,
+      size: pageSize.value
+    });
+    products.value = data || [];
+    displayedProducts.value = data || [];
+    
+    // Check if there are more products
+    if (!data || data.length < pageSize.value) {
+      hasMoreProducts.value = false;
+    }
+    
     console.log('Products loaded:', data);
   } catch (error) {
     console.error('Failed to load products:', error);
@@ -450,6 +522,52 @@ onUnmounted(() => {
   &:active {
     transform: translateX(-50%) translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// Loading More Indicator
+.loading-more {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+
+  .spinner-border {
+    width: 40px;
+    height: 40px;
+  }
+
+  p {
+    margin: 0;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
+  }
+}
+
+// No More Products Message
+.no-more-products {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+
+  i {
+    font-size: 48px;
+    color: #6fb8a5;
+  }
+
+  p {
+    margin: 0;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #666;
   }
 }
 
