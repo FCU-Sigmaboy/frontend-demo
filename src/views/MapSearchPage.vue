@@ -24,18 +24,38 @@
     <div v-else class="map-content-wrapper">
       <!-- Map container -->
       <div class="map-content">
-        <!-- Floating Search Bar -->
-        <div class="floating-search-bar" :class="{ 'sidebar-open': state.showSellerList }">
-          <SearchBar @search="handleSearch" @menu-click="toggleSellerList" />
-        </div>
+        <!-- Floating Search and Filter Container -->
+        <div class="floating-search-container" :class="{ 'sidebar-open': state.showSellerList }">
+          <div class="search-filter-wrapper">
+            <!-- Search Bar -->
+            <div class="search-bar-section">
+              <SearchBar @search="handleSearch" @menu-click="toggleSellerList" />
+            </div>
 
-        <!-- Floating Filter Tabs -->
-        <div class="floating-filter-tabs" :class="{ 'sidebar-open': state.showSellerList }">
-          <FilterTabs
-            :items="state.items"
-            :filters="categoryFilters"
-            @update:filteredItems="handleCategoryFilter"
-          />
+            <!-- Filter Tabs -->
+            <div class="filter-tabs-section">
+              <FilterTabs
+                :items="state.items"
+                :filters="categoryFilters"
+                @update:filteredItems="handleCategoryFilter"
+              />
+            </div>
+          </div>
+
+          <!-- Search Results Section -->
+          <div class="search-results-section">
+            <!-- Search Results List -->
+            <SearchResultsList
+              ref="searchResultsListRef"
+              :show="state.showSearchResults"
+              :items="state.items"
+              :sub-category-filters="subCategoryFilters"
+              @close="closeSearchResults"
+              @item-click="handleSellerItemClick"
+              @toggle-view="toggleSearchResults"
+              @sub-category-filter="handleSubCategoryFilter"
+            />
+          </div>
         </div>
 
         <MapContainer
@@ -92,6 +112,7 @@ import { useRouter } from 'vue-router'
 import SearchBar from '@/components/SearchBar.vue'
 import FilterTabs from '@/components/FilterTabs.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
+import SearchResultsList from '@/components/map/SearchResultsList.vue'
 import SellerListSidebar from '@/components/map/SellerListSidebar.vue'
 import SellerItemsSidebar from '@/components/map/SellerItemsSidebar.vue'
 import ItemDetailModal from '@/components/map/ItemDetailModal.vue'
@@ -108,12 +129,14 @@ const categoriesStore = useCategoriesStore()
 
 // Refs
 const mapRef = ref(null)
+const searchResultsListRef = ref(null)
 
 // State
 const initialLoading = ref(true)
 const state = reactive({
   userLocation: null,
   items: [],
+  showSearchResults: false,
   showSellerList: false,
   showSellerItems: false,
   sellerItems: [],
@@ -150,6 +173,39 @@ const categoryFilters = computed(() => {
       label: cat.name,
       type: 'filter',
       filterFn: () => true, // Don't filter on client side
+      sortable: false
+    })
+  })
+
+  return filters
+})
+
+// Sub-category filters for FilterTabs
+const subCategoryFilters = computed(() => {
+  // Only show sub-categories if a main category is selected
+  if (!state.filters.main_category_id) {
+    return []
+  }
+
+  const filters = [
+    {
+      id: 0, // Using 0 for "all sub-categories"
+      label: '全部',
+      type: 'filter',
+      filterFn: () => true,
+      sortable: false
+    }
+  ]
+
+  // Get sub-categories for the selected main category
+  const subCategories = categoriesStore.getSubCategoriesByMainId(state.filters.main_category_id)
+
+  subCategories.forEach(subCat => {
+    filters.push({
+      id: subCat.id,
+      label: subCat.name,
+      type: 'filter',
+      filterFn: () => true,
       sortable: false
     })
   })
@@ -242,16 +298,26 @@ async function fetchItems() {
 function handleMarkerClick(item, allItems) {
   console.log('[MapSearchPage] Marker clicked:', item, 'All items:', allItems)
 
-  // Show both seller list and seller items sidebars
-  state.showSellerList = true
+  // Get the user ID from the clicked item
+  const userId = item.user?.user_id || item.user?.id
 
-  // Always show sidebar with items (single or multiple)
-  if (allItems && allItems.length > 0) {
-    state.sellerItems = allItems
-  } else {
-    state.sellerItems = [item]
+  if (!userId) {
+    console.warn('[MapSearchPage] No user ID found for clicked item')
+    return
   }
-  state.showSellerItems = true
+
+  // Show search results if not already visible
+  if (!state.showSearchResults) {
+    state.showSearchResults = true
+  }
+
+  // Wait for next tick to ensure search results are rendered
+  nextTick(() => {
+    // Scroll to the seller in the search results list
+    if (searchResultsListRef.value && searchResultsListRef.value.scrollToSeller) {
+      searchResultsListRef.value.scrollToSeller(userId)
+    }
+  })
 }
 
 // Close seller list sidebar
@@ -317,7 +383,6 @@ function goToLocationSetup() {
 
 // Handle search from SearchBar
 async function handleSearch(searchParams) {
-  console.log('[MapSearchPage] Search triggered:', searchParams)
   state.filters.keyword = searchParams.query || ''
   // If distance is empty string (不限距離), set to null, otherwise parse as integer
   state.filters.distance_range_km = searchParams.distance ? parseInt(searchParams.distance) : null
@@ -325,10 +390,8 @@ async function handleSearch(searchParams) {
   // Fetch items
   await fetchItems()
 
-  // Show seller list sidebar after search if there are results
-  if (state.items.length > 0) {
-    state.showSellerList = true
-  }
+  // Always show search results after search (even if empty, to show "no results" message)
+  state.showSearchResults = true
 }
 
 // Handle category filter from FilterTabs
@@ -339,7 +402,7 @@ async function handleCategoryFilter() {
   await nextTick()
 
   // Find which filter is currently active by checking the DOM
-  const activeTab = document.querySelector('.floating-filter-tabs .filter-tab.active')
+  const activeTab = document.querySelector('.filter-tabs-section:not(.sub-category-tabs) .filter-tab.active')
 
   if (activeTab) {
     // Get the filter label to match against our categoryFilters
@@ -349,17 +412,56 @@ async function handleCategoryFilter() {
     if (activeFilter) {
       // Filter id is the category id (0 means all categories)
       state.filters.main_category_id = activeFilter.id === 0 ? null : activeFilter.id
+      // Reset sub-category filter when main category changes
+      state.filters.sub_category_id = null
       console.log('[MapSearchPage] Updated category filter to:', state.filters.main_category_id)
 
       // Re-fetch items with the new category filter
       await fetchItems()
 
-      // Show seller list sidebar after filter change if there are results
-      if (state.items.length > 0) {
-        state.showSellerList = true
-      }
+      // Always show search results (even if empty, to show "no results" message)
+      state.showSearchResults = true
     }
   }
+}
+
+// Handle sub-category filter from FilterTabs
+async function handleSubCategoryFilter() {
+  console.log('[MapSearchPage] Sub-category filter triggered')
+
+  // Use nextTick to ensure the DOM is updated with the new active filter
+  await nextTick()
+
+  // Find which filter is currently active in the sub-category tabs
+  const activeTab = document.querySelector('.sub-category-filters .filter-tab.active')
+
+  if (activeTab) {
+    // Get the filter label to match against our subCategoryFilters
+    const activeLabel = activeTab.querySelector('.filter-label')?.textContent?.trim()
+    const activeFilter = subCategoryFilters.value.find(f => f.label === activeLabel)
+
+    if (activeFilter) {
+      // Filter id is the sub-category id (0 means all sub-categories)
+      state.filters.sub_category_id = activeFilter.id === 0 ? null : activeFilter.id
+      console.log('[MapSearchPage] Updated sub-category filter to:', state.filters.sub_category_id)
+
+      // Re-fetch items with the new sub-category filter
+      await fetchItems()
+
+      // Always show search results (even if empty, to show "no results" message)
+      state.showSearchResults = true
+    }
+  }
+}
+
+// Close search results
+function closeSearchResults() {
+  state.showSearchResults = false
+}
+
+// Toggle search results
+function toggleSearchResults() {
+  state.showSearchResults = !state.showSearchResults
 }
 
 // Toggle seller list sidebar
@@ -486,64 +588,55 @@ onMounted(() => {
   position: relative;
 }
 
-// Floating Search Bar
-.floating-search-bar {
+// Floating Search and Filter Container
+.floating-search-container {
   position: absolute;
   top: 20px;
   left: 20px;
-  z-index: 1001; // Higher than filter tabs to show dropdown above
-  width: calc(100% - 40px);
-  max-width: 600px;
+  right: 20px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   transition: transform 0.3s ease;
+  pointer-events: none; // Allow map interaction through the container
 
   &.sidebar-open {
     transform: translateX(350px);
   }
 
-  :deep(.search-bar-wrapper) {
-    padding: 0;
-    max-width: 100%;
+  .search-filter-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    pointer-events: none; // Allow map interaction through wrapper
+
+    > * {
+      pointer-events: auto; // But enable interaction with child elements
+    }
   }
 
-  :deep(.search-bar) {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15),
-                0 2px 6px rgba(0, 0, 0, 0.10);
-  }
-}
+  .search-bar-section {
+    flex: 0 0 auto;
+    max-width: 600px;
+    width: 100%;
 
-// Floating Filter Tabs
-.floating-filter-tabs {
-  position: absolute;
-  top: 90px;
-  left: 20px;
-  z-index: 1000;
-  width: calc(100% - 40px);
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  transition: transform 0.3s ease;
+    :deep(.search-bar-wrapper) {
+      padding: 0;
+      max-width: 100%;
+    }
 
-  &.sidebar-open {
-    transform: translateX(350px);
+    :deep(.search-bar) {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15),
+                  0 2px 6px rgba(0, 0, 0, 0.10);
+    }
   }
 
-  // 隱藏滾動條
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  :deep(.filter-tabs-wrapper) {
-    padding: 0;
-    max-width: 100%;
-  }
-
-  :deep(.filter-tabs) {
-    flex-wrap: nowrap;
+  .filter-tabs-section {
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
-    padding-bottom: 4px;
+    overflow-y: hidden;
 
     // 隱藏滾動條
     scrollbar-width: none;
@@ -552,11 +645,41 @@ onMounted(() => {
     &::-webkit-scrollbar {
       display: none;
     }
+
+    :deep(.filter-tabs-wrapper) {
+      padding: 0;
+      max-width: 100%;
+    }
+
+    :deep(.filter-tabs) {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 4px;
+
+      // 隱藏滾動條
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
+
+    :deep(.filter-tab) {
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
   }
 
-  :deep(.filter-tab) {
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  .search-results-section {
+    max-width: 600px;
+    width: 100%;
+    pointer-events: none; // Allow map interaction through empty space
+
+    // But enable interaction with the actual results list
+    > * {
+      pointer-events: auto;
+    }
   }
 }
 
@@ -570,26 +693,31 @@ onMounted(() => {
     height: 100%;
   }
 
-  .floating-search-bar {
+  .floating-search-container {
     top: 12px;
     left: 12px;
-    width: calc(100% - 24px);
-    max-width: none;
+    right: 12px;
 
     // On mobile, don't move when sidebar is open (sidebar slides from bottom)
     &.sidebar-open {
       transform: none;
     }
-  }
 
-  .floating-filter-tabs {
-    top: 75px;
-    left: 12px;
-    width: calc(100% - 24px);
+    .search-filter-wrapper {
+      flex-direction: column;
+      gap: 8px;
+    }
 
-    // On mobile, don't move when sidebar is open (sidebar slides from bottom)
-    &.sidebar-open {
-      transform: none;
+    .search-bar-section {
+      max-width: none;
+    }
+
+    .filter-tabs-section {
+      width: 100%;
+    }
+
+    .search-results-section {
+      max-width: none;
     }
   }
 }
