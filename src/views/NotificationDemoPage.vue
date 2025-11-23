@@ -128,7 +128,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
 import { useNotificationStore } from '@/stores/notification';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';

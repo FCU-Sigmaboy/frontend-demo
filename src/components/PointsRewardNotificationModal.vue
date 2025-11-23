@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { usePointsStore } from '@/stores/points';
 import { formatPoints } from '@/utils/formatPoints';
 
