@@ -22,6 +22,7 @@ import MapSearchPage from '../views/MapSearchPage.vue';
 import UserDashboardPage from '../views/UserDashboardPage.vue';
 
 import { useAuthStore } from '@/stores/auth';
+import { trackPageView } from '@/composables/useAnalytics';
 
 const routes = [
   {
@@ -191,6 +192,14 @@ router.beforeEach(async (to, from, next) => {
   } else {
     next();
   }
+})
+
+// 追蹤頁面瀏覽（在路由導航完成後）
+router.afterEach((to) => {
+  // 使用 nextTick 確保 DOM 已更新
+  setTimeout(() => {
+    trackPageView(to.path, to.name || document.title)
+  }, 100)
 })
 
 export default router;

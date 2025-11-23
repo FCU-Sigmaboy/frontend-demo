@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '../lib/supabase'
 import { getMyProfileForEdit } from '@/api/get_myProfileDetailsAPI.js'
 import { getCurrentPosition, saveLocation } from '@/api/location.js'
+import { setUserId, setUserProperties, trackLogin, trackSignUp } from '@/composables/useAnalytics'
 
 export const useAuthStore = defineStore('auth', () => {
   // 狀態
@@ -138,6 +139,16 @@ export const useAuthStore = defineStore('auth', () => {
         carbon_saved: data.profile_details?.carbon_saved_kg,
         locations_count: data.locations?.length || 0
       })
+      
+      // Set user properties for Analytics
+      if (user.value) {
+        setUserProperties({
+          user_type: data.profile_details?.balance > 0 ? 'active_user' : 'new_user',
+          total_points: data.profile_details?.balance || 0,
+          carbon_saved_kg: data.profile_details?.carbon_saved_kg || 0,
+          has_location: (data.locations?.length || 0) > 0
+        })
+      }
 
       // 檢查是否有 locations，如果沒有則自動獲取並儲存當前位置
       if (!data.locations || data.locations.length === 0) {
@@ -199,9 +210,15 @@ export const useAuthStore = defineStore('auth', () => {
     // Load profile when user logs in
     if (newSession?.user) {
       loadCustomProfile()
+      
+      // Track user login for Analytics
+      setUserId(newSession.user.id)
+      trackLogin('google')
     } else {
       // Clear profile when logged out
       profileData.value = null
+      // Clear user ID from Analytics
+      setUserId(null)
     }
   }
 

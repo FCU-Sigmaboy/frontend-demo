@@ -9,10 +9,14 @@ import { createBootstrap } from 'bootstrap-vue-next'
 import 'bootstrap-vue-next/dist/bootstrap-vue-next.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 
+// Google Analytics 4 Plugin
+import analyticsPlugin from './plugins/analytics'
+
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
 app.use(createBootstrap())
+app.use(analyticsPlugin) // 初始化 GA4
 app.mount('#app')
