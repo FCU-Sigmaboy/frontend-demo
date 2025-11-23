@@ -93,7 +93,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -108,6 +108,13 @@ import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
 import { createOrGetConversation } from '@/api/conversation.js';
 import { useAuthStore } from '@/stores/auth';
+import { 
+  trackViewItemList, 
+  trackSearch, 
+  trackSelectCategory,
+  trackAddToWishlist,
+  trackContactSeller
+} from '@/composables/useAnalytics';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -160,6 +167,12 @@ const isLoadingMore = ref(false);
 // Methods
 const handleSearch = (searchData) => {
   console.log('Search:', searchData);
+  
+  // Track search event
+  if (searchData.query) {
+    trackSearch(searchData.query);
+  }
+  
   // Navigate to item list page with search query
   router.push({
     name: 'ItemList',
@@ -169,6 +182,10 @@ const handleSearch = (searchData) => {
 
 const handleCategoryClick = (category) => {
   console.log('Category clicked:', category);
+  
+  // Track category selection
+  trackSelectCategory(category.name || category.label, category.id);
+  
   // Navigate to item list page with category filter
   router.push({
     name: 'ItemList',
@@ -178,6 +195,12 @@ const handleCategoryClick = (category) => {
 
 const handleFavoriteToggle = (data) => {
   console.log('Favorite toggled:', data);
+  
+  // Track add to wishlist
+  if (data.isFavorited) {
+    trackAddToWishlist(data.product);
+  }
+  
   // Implement favorite logic
 };
 
@@ -197,6 +220,9 @@ const handleContactSeller = async (productId) => {
     if (!targetProduct || !targetProduct.user?.id) {
       throw new Error('無法找到商品資訊');
     }
+    
+    // Track contact seller event
+    trackContactSeller(targetProduct, targetProduct.user.id);
 
     // Don't allow messaging yourself
     if (targetProduct.user.id === authStore.user.id) {
@@ -304,6 +330,11 @@ onMounted(async () => {
     }
     
     console.log('Products loaded:', data);
+    
+    // Track product list view
+    if (data && data.length > 0) {
+      trackViewItemList(data, '首頁推薦');
+    }
   } catch (error) {
     console.error('Failed to load products:', error);
   } finally {
@@ -312,6 +343,17 @@ onMounted(async () => {
 
   // Add scroll listener
   window.addEventListener('scroll', handleScroll);
+});
+
+// Watch for displayedProducts changes to track when filters are applied
+watch(displayedProducts, (newProducts, oldProducts) => {
+  // Only track if products actually changed and it's not the initial load
+  if (oldProducts && oldProducts.length > 0 && 
+      newProducts && newProducts.length > 0 &&
+      newProducts !== oldProducts) {
+    console.log('Product list filtered/sorted');
+    // Could track filter usage here if needed
+  }
 });
 
 onUnmounted(() => {

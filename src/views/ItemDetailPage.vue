@@ -235,6 +235,12 @@ import { useTransactionStore } from '../stores/transaction';
 import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
 import { searchItems } from '@/api/get_searchItemsAPI.js';
 import { createOrGetConversation } from '@/api/conversation.js';
+import { 
+  trackViewItem, 
+  trackContactSeller, 
+  trackAddToWishlist,
+  trackRemoveFromWishlist
+} from '@/composables/useAnalytics';
 
 const authStore = useAuthStore();
 const transactionStore = useTransactionStore();
@@ -353,6 +359,10 @@ const handleMessage = async () => {
 
   try {
     console.log('Starting chat for item:', product.value.id);
+    
+    // Track contact seller event
+    trackContactSeller(product.value, product.value.user.id);
+    
     // Start or find conversation using V2 API
     const result = await createOrGetConversation(product.value.user.id, product.value.id);
     console.log('Chat started, conversation ID:', result.conversation_id);
@@ -374,6 +384,13 @@ const goToProduct = (productId) => {
 
 const handleFavoriteToggle = (data) => {
   console.log('Favorite toggled:', data);
+  
+  // Track wishlist changes
+  if (data.isFavorited) {
+    trackAddToWishlist(data.product);
+  } else {
+    trackRemoveFromWishlist(data.product);
+  }
 };
 
 const handleContactSeller = async (productId) => {
@@ -529,6 +546,9 @@ const loadProductDetails = async () => {
       if (authStore.user) {
         await transactionStore.fetchAllTransactions();
       }
+      
+      // Track product view
+      trackViewItem(response.data);
     } else {
       // Handle item not found or unavailable
       error.value = response?.message || '找不到此物品，可能已下架或不存在';

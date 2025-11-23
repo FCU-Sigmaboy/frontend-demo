@@ -395,6 +395,7 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import ImageCropper from '../components/ImageCropper.vue';
+import { trackBeginListing, trackCompleteListing } from '@/composables/useAnalytics';
 
 const route = useRoute();
 const router = useRouter();
@@ -565,6 +566,9 @@ onMounted(async () => {
 
   if (isEdit.value) {
     await loadItemData();
+  } else {
+    // Track begin listing for new items only
+    trackBeginListing();
   }
 });
 
@@ -945,6 +949,15 @@ const handleSubmit = async () => {
       const result = await createItemWithImages(itemData, formData.value.imageFiles, true);
 
       console.log('✅ Listing created successfully:', result);
+      
+      // Track complete listing event
+      trackCompleteListing({
+        item_id: result.id || result.item_id,
+        title: formData.value.title,
+        category_name: subCategories.value.find(c => c.id === formData.value.category)?.name,
+        price: formData.value.price,
+        condition: formData.value.condition
+      });
     }
 
     // Navigate to manage listings page
