@@ -9,7 +9,7 @@
 
 **一個以環保永續為核心理念的現代化二手物品交易平台**
 
-[線上展示](https://fcu-sigmaboy.github.io/frontend-demo/) | [專案報告](#) | [API 文檔](#)
+[線上展示](https://fcu-sigmaboy.github.io/frontend-demo/) | [專案文檔](./points-gamification-system/) | [功能特色](#-核心功能)
 
 </div>
 
@@ -666,16 +666,14 @@ chore: 建構工具或輔助工具變動
 
 ## 👥 團隊成員
 
-本專案為畢業專題作品，由以下成員共同開發：
+本專案為畢業專題作品，展現完整的軟體開發生命週期與技術整合能力。
 
-- **專案負責人**：[您的名字]
-  - 系統架構設計
-  - 前端開發
-  - UI/UX 設計
-  
-- **技術指導**：[指導教授]
-  - 專案指導
-  - 技術諮詢
+### 開發範疇
+- 系統架構設計與規劃
+- 前端開發與實作
+- UI/UX 設計與優化
+- 後端服務整合
+- 部署與維運
 
 ---
 
@@ -723,8 +721,7 @@ chore: 建構工具或輔助工具變動
 如有任何問題或建議，歡迎透過以下方式聯繫：
 
 - **GitHub Issues**：[提交 Issue](https://github.com/FCU-Sigmaboy/frontend-demo/issues)
-- **Email**：your.email@example.com
-- **個人網站**：https://your-portfolio.com
+- **GitHub Repository**：[專案首頁](https://github.com/FCU-Sigmaboy/frontend-demo)
 
 ---
 
