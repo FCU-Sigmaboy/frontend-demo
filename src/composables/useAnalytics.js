@@ -3,6 +3,10 @@
  * 提供電商平台所需的各種事件追蹤方法
  */
 
+// 常數定義
+const BRAND_NAME = '台中易起來'
+const MAX_TRACKED_ITEMS = 20 // GA4 建議每次事件最多追蹤 20 個商品
+
 /**
  * 檢查 GA4 是否已初始化
  */
@@ -86,7 +90,7 @@ export const trackPageView = (pagePath, pageTitle) => {
 export const trackViewItemList = (items, listName = '商品列表') => {
   if (!items || items.length === 0) return
   
-  const formattedItems = items.slice(0, 20).map((item, index) => ({
+  const formattedItems = items.slice(0, MAX_TRACKED_ITEMS).map((item, index) => ({
     item_id: item.item_id?.toString() || '',
     item_name: item.title || item.name || '',
     item_category: item.category_name || item.category || '',
@@ -94,7 +98,7 @@ export const trackViewItemList = (items, listName = '商品列表') => {
     item_list_id: listName.toLowerCase().replace(/\s+/g, '_'),
     index: index,
     price: item.price || 0,
-    item_brand: '台中易起來',
+    item_brand: BRAND_NAME,
     quantity: 1
   }))
   
@@ -117,7 +121,7 @@ export const trackViewItem = (item) => {
     item_name: item.title || item.name || '',
     item_category: item.category_name || item.category || '',
     price: item.price || 0,
-    item_brand: '台中易起來',
+    item_brand: BRAND_NAME,
     quantity: 1,
     item_variant: item.condition || '', // 商品狀態（全新/二手）
     location_id: item.location || ''
@@ -154,7 +158,7 @@ export const trackAddToWishlist = (item) => {
     item_name: item.title || item.name || '',
     item_category: item.category_name || item.category || '',
     price: item.price || 0,
-    item_brand: '台中易起來',
+    item_brand: BRAND_NAME,
     quantity: 1
   }
   
@@ -200,7 +204,7 @@ export const trackCompleteListing = (item) => {
     item_name: item.title || item.name || '',
     item_category: item.category_name || item.category || '',
     price: item.price || 0,
-    item_brand: '台中易起來',
+    item_brand: BRAND_NAME,
     quantity: 1
   }
   

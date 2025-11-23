@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { nextTick } from 'vue';
 import HomePage from '../views/HomePage.vue';
 import ItemListPage from '../views/ItemListPage.vue';
 import ItemDetailPage from '../views/ItemDetailPage.vue';
@@ -197,9 +198,9 @@ router.beforeEach(async (to, from, next) => {
 // 追蹤頁面瀏覽（在路由導航完成後）
 router.afterEach((to) => {
   // 使用 nextTick 確保 DOM 已更新
-  setTimeout(() => {
+  nextTick(() => {
     trackPageView(to.path, to.name || document.title)
-  }, 100)
+  })
 })
 
 export default router;
