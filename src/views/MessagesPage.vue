@@ -128,11 +128,8 @@
               <!-- Input Area -->
               <div class="input-area-wrapper">
                 <div class="input-area">
-                  <button class="attach-btn" @click="handleAttachment" title="附件">
-                    <i class="bi bi-paperclip"></i>
-                  </button>
                   <button class="transaction-btn" @click="handleOpenTransactionModal" title="發起交易">
-                    <i class="bi bi-arrow-right-circle-fill"></i>
+                    <i class="fa-solid fa-hand-holding-heart"></i>
                   </button>
                   <input
                     v-model="messageInput"
@@ -1041,7 +1038,6 @@ const sendReplyMessage = async (content, relatedItemId, relatedItemTitle) => {
     padding: 10px 12px; // Smaller input for mobile
   }
 
-  .attach-btn,
   .transaction-btn,
   .send-btn {
     width: 36px;
