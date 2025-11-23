@@ -54,7 +54,8 @@ export const TRANSACTION_TYPES = {
   DAILY_SIGNIN: { label: '每日簽到', icon: '📅', color: '#3498db' },
   LEVEL_BONUS: { label: '升級獎勵', icon: '⭐', color: '#f39c12' },
   BADGE_REWARD: { label: '成就獎勵', icon: '🏆', color: '#e67e22' },
-  ADMIN_ADJUSTMENT: { label: '管理員調整', icon: '⚙️', color: '#95a5a6' }
+  ADMIN_ADJUSTMENT: { label: '管理員調整', icon: '⚙️', color: '#95a5a6' },
+  ADMIN_REWARD: { label: '活動贈點', icon: '🎉', color: '#e91e63' }
 };
 
 /**
