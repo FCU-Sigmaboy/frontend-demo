@@ -24,23 +24,28 @@
         <section class="content-section">
           <h2 class="section-title">我們的願景</h2>
           <p class="section-description">
-            打造台中市民最友善的二手物品交易平台，透過點數激勵機制，鼓勵市民將閒置物品重新利用，減少浪費，促進永續發展。讓每個人都能輕鬆參與循環經濟，為環境保護盡一份心力。
+            「台中易起來」（以下簡稱「本平台」）致力於打造友善環境的惜物生活圈。我們提倡以「再利用」取代「丟棄」，減少對自然生態的衝擊，守護唯一的家園。透過點數獎勵機制，讓參與循環經濟變得輕鬆簡單，將閒置資源轉化為生生不息的綠色能量。
           </p>
 
           <BRow class="image-grid">
             <BCol v-for="(item, index) in visionItems" :key="index" cols="12" md="4" class="mb-4">
-              <div class="vision-image-wrapper" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload(`vision-${index}`)">
-                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="`願景圖片 ${index + 1}`" class="vision-image" />
-                <div v-else class="image-placeholder">
-                  <i :class="item.icon"></i>
+              <div class="vision-item">
+                <div class="vision-image-wrapper" :class="{ 'is-admin': isAdmin }" @click="isAdmin && triggerFileUpload(`vision-${index}`)">
+                  <img v-if="item.imageUrl" :src="item.imageUrl" :alt="`願景圖片 ${index + 1}`" class="vision-image" />
+                  <div v-else class="image-placeholder">
+                    <i :class="item.icon"></i>
+                  </div>
+                  <div v-if="isAdmin" class="upload-overlay">
+                    <div v-if="isUploading" class="upload-status">
+                      <div class="spinner-border text-light" role="status"></div>
+                    </div>
+                    <div v-else class="upload-prompt">
+                      <i class="bi bi-camera-fill"></i>
+                    </div>
+                  </div>
                 </div>
-                <div v-if="isAdmin" class="upload-overlay">
-                  <div v-if="isUploading" class="upload-status">
-                    <div class="spinner-border text-light" role="status"></div>
-                  </div>
-                  <div v-else class="upload-prompt">
-                    <i class="bi bi-camera-fill"></i>
-                  </div>
+                <div class="vision-caption">
+                  <p>{{ item.caption }}</p>
                 </div>
               </div>
             </BCol>
@@ -51,7 +56,7 @@
         <section class="content-section">
           <h2 class="section-title">我們的使命</h2>
           <p class="section-description">
-            台中易起來致力於建立一個安全、便利、環保的二手物品交易生態系統。透過創新的點數制度，讓每一次交易都成為對環境友善的行動。我們相信，透過鄰里間的物品交換與再利用，不僅能減少資源浪費，更能凝聚社區情感，創造更美好的生活環境。我們的平台不涉及真實貨幣交易，所有點數都是透過回收、交易等環保行為獲得，讓永續發展成為每個人的日常習慣。
+            本平台致力於建立一個安全、便利、環保的二手物品交易生態系統。透過創新的點數制度，讓每一次交易都成為對環境友善的行動。我們相信，透過鄰里間的物品交換與再利用，不僅能減少資源浪費，更能凝聚社區情感，創造更美好的生活環境。我們的平台不涉及真實貨幣交易，所有點數都是透過回收、交易等環保行為獲得，讓永續發展成為每個人的日常習慣。
           </p>
         </section>
 
@@ -63,8 +68,8 @@
                 <div class="value-icon">
                   <i class="bi bi-shield-check"></i>
                 </div>
-                <h3>安全可靠</h3>
-                <p>嚴格的使用者審核機制，確保每筆交易都安全無虞</p>
+                <h3>安全可靠的 PIN 碼機制</h3>
+                <p>買家透過私訊與賣家取得聯繫後，賣家即可發起交易，經買家確認無誤，現場面交時，必須輸入賣方提供的 PIN 碼，完成全部流程。系統將立即撥付點數至賣家帳戶，保障每筆交易安全無虞。</p>
               </div>
             </BCol>
             <BCol cols="12" md="4" class="mb-4">
@@ -73,7 +78,7 @@
                   <i class="bi bi-leaf"></i>
                 </div>
                 <h3>環保永續</h3>
-                <p>透過物品再利用，減少資源浪費，為地球盡一份心力</p>
+                <p>我們深信世上沒有廢棄物，只有放錯位置的資源。透過交換賦予閒置物品第二生命，不僅能延長產品週期，也能減少碳排放，讓每一次的點數獲取都成為愛護地球的具體實踐。</p>
               </div>
             </BCol>
             <BCol cols="12" md="4" class="mb-4">
@@ -82,7 +87,7 @@
                   <i class="bi bi-hand-thumbs-up"></i>
                 </div>
                 <h3>友善社區</h3>
-                <p>促進鄰里互動，建立溫暖的社區交流網絡</p>
+                <p>我們致力於打破都市冷漠，透過不涉及金錢的純粹分享，重拾鄰里間的信任與溫度。每一次的面交不僅是物品的傳遞，更是連結在地情感、建立互助生活圈的溫暖契機。</p>
               </div>
             </BCol>
           </BRow>
@@ -104,17 +109,17 @@ import { useAuthStore } from '../stores/auth';
 import { uploadImage } from '../api/uploadImage';
 import { supabase } from '../lib/supabase';
 import marketImage from '../assets/market.jpg';
-import airplaneImage from '../assets/airplane.jpg';
-import handImage from '../assets/hand.jpg';
-import hopeImage from '../assets/hope.jpg';
+import earthImage from '../assets/earth.jpg';
+import fishImage from '../assets/fish.jpg';
+import forestImage from '../assets/forest.jpg';
 
 const authStore = useAuthStore();
 const fileInput = ref(null);
 const coverImageUrl = ref(marketImage);
 const visionItems = ref([
-  { imageUrl: hopeImage, icon: 'bi bi-recycle' },
-  { imageUrl: handImage, icon: 'bi bi-people' },
-  { imageUrl: airplaneImage, icon: 'bi bi-heart' },
+  { imageUrl: earthImage, icon: 'bi bi-recycle', caption: '守護家園 —— 承擔責任，減輕地球負擔' },
+  { imageUrl: fishImage, icon: 'bi bi-people', caption: '拒絕浪費 —— 減少污染，讓生態喘息' },
+  { imageUrl: forestImage, icon: 'bi bi-heart', caption: '點亮新生 —— 循環利用，看見永續希望' },
 ]);
 const isUploading = ref(false);
 const currentUploadTarget = ref(null);
@@ -330,6 +335,22 @@ onMounted(() => {
 
 .image-grid {
   margin-top: 30px;
+}
+
+.vision-item {
+  text-align: center;
+}
+
+.vision-caption {
+  margin-top: 16px;
+
+  p {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    color: #333;
+    margin: 0;
+  }
 }
 
 .value-cards {
