@@ -225,12 +225,6 @@ const sellerSteps = ref([
     description: '在約定地點與買家見面，並在他們確認物品狀況後，提供您的交易 PIN 碼讓他們輸入。',
     image: sell5,
   },
-  {
-    number: 6,
-    title: '完成交易與評價',
-    description: '買家輸入 PIN 碼後，交易即告完成，點數將自動轉入您的帳戶。別忘了給予對方一個好評！',
-    icon: 'bi bi-check2-circle',
-  },
 ]);
 </script>
 
