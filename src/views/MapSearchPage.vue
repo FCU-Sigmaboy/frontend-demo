@@ -29,7 +29,7 @@
           <div class="search-filter-wrapper">
             <!-- Search Bar -->
             <div class="search-bar-section">
-              <SearchBar @search="handleSearch" @menu-click="toggleSellerList" />
+              <SearchBar @search="handleSearch" />
             </div>
 
             <!-- Filter Tabs -->
@@ -144,7 +144,7 @@ const state = reactive({
   selectedItemId: null,
   filters: {
     keyword: '',
-    distance_range_km: null,
+    distance_range_km: 5,
     main_category_id: null,
     sub_category_id: null,
     sort_by: 'created_at',

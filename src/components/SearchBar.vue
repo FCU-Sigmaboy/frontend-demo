@@ -1,14 +1,6 @@
 <template>
   <div class="search-bar-wrapper">
     <div class="search-bar">
-      <!-- Menu Icon (Hamburger) -->
-      <button class="menu-btn" @click="handleMenuClick">
-        <i class="bi bi-list"></i>
-      </button>
-
-      <!-- Divider -->
-      <div class="search-divider"></div>
-
       <!-- Search Icon and Input -->
       <div class="search-input-section">
         <i class="bi bi-search search-icon"></i>
@@ -75,11 +67,11 @@ import { ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { BDropdown, BDropdownItem } from 'bootstrap-vue-next';
 
-const emit = defineEmits(['search', 'menu-click']);
+const emit = defineEmits(['search']);
 const route = useRoute();
 
 const searchQuery = ref('');
-const distance = ref('');
+const distance = ref('5');
 // const location = ref('taichung');
 
 // const selectedLocation = computed(() => {
@@ -89,7 +81,7 @@ const distance = ref('');
 
 const selectedDistanceLabel = computed(() => {
   const selected = distance_options.find(opt => opt.value === distance.value);
-  return selected ? selected.label : '不限距離';
+  return selected ? selected.label : '5 km 以內';
 });
 
 // const location_options = [
@@ -124,17 +116,13 @@ const handleSearch = () => {
   });
 };
 
-const handleMenuClick = () => {
-  emit('menu-click');
-};
-
 // Watch for URL changes and update search bar values
 watch(() => route.query.search, (newSearch) => {
   searchQuery.value = newSearch || '';
 }, { immediate: true });
 
 watch(() => route.query.distance, (newDistance) => {
-  distance.value = newDistance || '';
+  distance.value = newDistance || '5';
 }, { immediate: true });
 </script>
 
@@ -158,39 +146,6 @@ watch(() => route.query.distance, (newDistance) => {
   height: 56px;
   position: relative;
   gap: 2px;
-
-  .menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 100%;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
-
-    i {
-      font-size: 24px;
-      color: #666;
-      transition: color 0.2s;
-    }
-
-    &:hover {
-      background: #f5f5f5;
-
-      i {
-        color: $primary;
-      }
-    }
-
-    &:active {
-      background: #e0e0e0;
-    }
-  }
 
   .search-input-section {
     flex: 1;
@@ -406,14 +361,6 @@ watch(() => route.query.distance, (newDistance) => {
   .search-bar {
     height: 52px;
 
-    .menu-btn {
-      width: 52px;
-
-      i {
-        font-size: 22px;
-      }
-    }
-
     .search-input-section {
       padding: 0 16px;
 
@@ -469,14 +416,6 @@ watch(() => route.query.distance, (newDistance) => {
   .search-bar {
     height: 48px;
 
-    .menu-btn {
-      width: 48px;
-
-      i {
-        font-size: 20px;
-      }
-    }
-
     .search-input-section {
       padding: 0 12px;
       gap: 8px;
@@ -524,14 +463,6 @@ watch(() => route.query.distance, (newDistance) => {
   .search-bar {
     height: 44px;
     gap: 0;
-
-    .menu-btn {
-      width: 44px;
-
-      i {
-        font-size: 20px;
-      }
-    }
 
     .search-input-section {
       padding: 0 10px;

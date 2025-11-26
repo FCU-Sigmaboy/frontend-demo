@@ -1,14 +1,26 @@
 <template>
-  <div v-if="show || sellers.length > 0" class="search-results-list" :class="{ 'has-results': sellers.length > 0, 'collapsed': !show }">
-    <div class="results-header">
-      <div class="results-count">
-        <span class="count-label">結果</span>
-        <span class="count-number">{{ sellers.length }}</span>
+  <!-- Backdrop for mobile (only show when results are visible) -->
+  <Transition name="backdrop-fade">
+    <div v-if="show && sellers.length > 0" class="search-results-backdrop" @click="$emit('toggle-view')"></div>
+  </Transition>
+
+  <!-- Results List -->
+  <Transition name="slide-up">
+    <div v-if="show || sellers.length > 0" class="search-results-list" :class="{ 'has-results': sellers.length > 0, 'collapsed': !show }">
+      <!-- Drag handle for mobile -->
+      <div class="drag-handle" @click="$emit('toggle-view')">
+        <div class="handle-bar"></div>
       </div>
-      <button class="collapse-btn" @click="$emit('toggle-view')">
-        <i :class="show ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
-      </button>
-    </div>
+
+      <div class="results-header">
+        <div class="results-count">
+          <span class="count-label">結果</span>
+          <span class="count-number">{{ sellers.length }}</span>
+        </div>
+        <button class="collapse-btn" @click="$emit('toggle-view')">
+          <i :class="show ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
+        </button>
+      </div>
 
     <!-- Sub-category Filter Tabs -->
     <div v-if="subCategoryFilters && subCategoryFilters.length > 0" v-show="show" class="sub-category-filters">
@@ -78,7 +90,8 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -275,6 +288,29 @@ defineExpose({
 
   &.collapsed {
     max-height: auto;
+  }
+}
+
+// Drag handle (hidden on desktop, visible on mobile)
+.drag-handle {
+  display: none;
+  padding: 12px 0;
+  cursor: pointer;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+
+  &:active {
+    opacity: 0.7;
+  }
+
+  .handle-bar {
+    width: 40px;
+    height: 4px;
+    background: #999;
+    border-radius: 2px;
+    margin: 0 auto;
   }
 }
 
@@ -644,9 +680,80 @@ defineExpose({
   }
 }
 
+// Mobile backdrop
+.search-results-backdrop {
+  display: none;
+}
+
+// Transition animations
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(0);
+}
+
+.backdrop-fade-enter-active,
+.backdrop-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.backdrop-fade-enter-from,
+.backdrop-fade-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 767.98px) {
+  // Backdrop overlay for mobile
+  .search-results-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1999;
+    pointer-events: auto;
+  }
+
   .search-results-list {
-    max-height: 50vh;
+    // Mobile: fixed position from bottom
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    border-radius: 16px 16px 0 0;
+    z-index: 2000;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+
+    &.collapsed {
+      transform: translateY(100%);
+    }
+  }
+
+  // Show drag handle on mobile
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 16px 16px 0 0;
+  }
+
+  // Slide up transition for mobile
+  .slide-up-enter-from,
+  .slide-up-leave-to {
+    transform: translateY(100%);
+  }
+
+  .slide-up-enter-to,
+  .slide-up-leave-from {
+    transform: translateY(0);
   }
 
   .seller-header {
