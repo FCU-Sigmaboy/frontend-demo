@@ -10,9 +10,7 @@
             :loading="loading"
             :conversations="displayConversations"
             :selected-id="selectedConversation?.id ?? null"
-            :filters="filters"
             v-model:search-query="searchQuery"
-            v-model:active-filter="activeFilter"
             :mobile-hidden="!!selectedConversation"
             @select="selectConversation"
           />
@@ -32,11 +30,8 @@
               <ChatHeader
                 v-if="selectedConversation || messagesLoading"
                 :conversation="selectedConversation"
-                :show-more-menu="showMoreMenu"
                 :messages-loading="messagesLoading"
                 @back="deselectConversation"
-                @toggle-menu="showMoreMenu = !showMoreMenu"
-                @archive="handleArchiveConversation"
                 @view-listings="handleViewListings"
               />
 
@@ -81,7 +76,7 @@
                       <div class="reference-details">
                         <span class="reference-label">提及物品</span>
                         <span class="reference-title">{{ pendingItemReference.title }}</span>
-                        <span v-if="pendingItemPrice" class="reference-meta">{{ pendingItemPrice }}</span>
+                        <span v-if="pendingItemPrice" class="reference-meta">{{ pendingItemPrice }}點</span>
                       </div>
                     </div>
                     <button class="remove-reference-btn" @click="removePendingItemReference">
@@ -188,10 +183,8 @@ import { ref, computed } from 'vue';
 const {
   userPoints,
   searchQuery,
-  activeFilter,
   messageInput,
   messagesArea,
-  showMoreMenu,
   messagesLoading,
   pendingItemReference,
   pendingItemPrice,
@@ -201,15 +194,12 @@ const {
   showBottomTypingIndicator,
   typingIndicatorBaseText,
   loading,
-  filters,
   displayConversations,
   selectedConversation,
   currentUser,
   groupedMessages,
   selectConversation,
   deselectConversation,
-  handleArchiveConversation,
-  handleAttachment,
   sendMessage,
   retryMessage,
   openItemPage,
