@@ -92,9 +92,6 @@ const props = defineProps({
   }
 });
 
-// 移除 emit，改為直接處理
-// const emit = defineEmits(['contact-seller']);
-
 // Handle both data structures (with nested user or flat seller data)
 const sellerName = computed(() => {
   return props.product.user?.nickname || props.product.sellerName || '使用者';
