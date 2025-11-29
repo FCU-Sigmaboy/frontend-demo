@@ -392,6 +392,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { BNavbar, BContainer, BNav, BNavItem, BButton, BTooltip } from 'bootstrap-vue-next';
+import _ from 'lodash-es';
 import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
@@ -415,6 +416,15 @@ const props = defineProps({
     default: 0
   }
 });
+
+window.addEventListener('scroll', _.debounce(() => {
+  const header = document.querySelector('.header-navbar');
+  if (window.scrollY > 50) {
+    header.classList.add('scrolled');
+  } else {
+    header.classList.remove('scrolled');
+  }
+}, 50));
 
 // Computed: 從 auth store 獲取使用者的點數
 const userBalance = computed(() => {
@@ -582,21 +592,28 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 <style scoped lang="scss">
 @import '@/styles/variables';
 
+
 .app-header {
   position: sticky;
   top: 0;
   z-index: 9000; // High enough to be above search components
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s;
 }
 
 .header-navbar {
-  background-color: #f2efeb;
   height: 50px;
+  background-color: white;
   padding: 0;
-
+  
   :deep(.navbar) {
     padding: 0;
   }
+}
+
+.scrolled {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f2efeb;
+  transition: box-shadow 0.1s, background-color 0.1s;
 }
 
 .header-content {
