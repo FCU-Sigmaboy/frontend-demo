@@ -64,8 +64,8 @@
                 {{ seller.averageRating }}
                 <span class="review-count">({{ seller.totalReviews }})</span>
               </span>
-              <span class="seller-price-range">{{ seller.priceRange }}</span>
               <span class="seller-item-count">{{ seller.itemCount }} 項物品</span>
+              <span class="seller-price-range">{{ seller.priceRange }}</span>
             </div>
           </div>
           <i :class="isSellerExpanded(seller.user_id) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"></i>
@@ -84,7 +84,7 @@
             </div>
             <div class="item-info">
               <h4 class="item-title">{{ item.title }}</h4>
-              <div class="item-price">${{ item.price }}點</div>
+              <div class="item-price">{{ item.price }}點</div>
             </div>
           </div>
         </div>
@@ -170,8 +170,8 @@ const sellers = computed(() => {
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0
     const priceRange = prices.length > 0
-      ? `$${minPrice}-${maxPrice}點`
-      : '$0-2000點'
+      ? `${minPrice}-${maxPrice}點`
+      : '無資訊'
 
     // Get average rating from user data (backend provides this)
     const averageRating = seller.items[0]?.user?.avg_rating || 0
@@ -335,8 +335,8 @@ defineExpose({
   }
 
   :deep(.filter-tabs) {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow-x: wrap;
     gap: 8px;
 
     // 隱藏滾動條

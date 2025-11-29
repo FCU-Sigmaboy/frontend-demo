@@ -12,10 +12,11 @@
     <div v-else-if="!state.userLocation" class="no-location-prompt">
       <div class="alert alert-warning">
         <i class="bi bi-geo-alt me-2"></i>
-        <h5>尚未設定主要地點</h5>
-        <p>請先設定您的主要地點以使用地圖搜尋功能</p>
-        <button class="btn btn-primary" @click="goToLocationSetup">
-          前往設定地點
+        <h5>無法取得位置資訊</h5>
+        <p v-if="state.error">{{ state.error }}</p>
+        <p v-else>請允許瀏覽器存取您的位置以使用地圖搜尋功能</p>
+        <button class="btn btn-primary" @click="initialize">
+          重新嘗試
         </button>
       </div>
     </div>
@@ -25,7 +26,7 @@
       <!-- Map container -->
       <div class="map-content">
         <!-- Floating Search and Filter Container -->
-        <div class="floating-search-container" :class="{ 'sidebar-open': state.showSellerList }">
+        <div class="floating-search-container">
           <div class="search-filter-wrapper">
             <!-- Search Bar -->
             <div class="search-bar-section">
@@ -71,28 +72,57 @@
         />
       </div>
 
-      <!-- Seller List Sidebar -->
-      <SellerListSidebar
-        :show="state.showSellerList"
-        :items="state.items"
-        @close="closeSellerListSidebar"
-        @seller-click="handleSellerClick"
-      />
-
-      <!-- Seller Items Sidebar -->
-      <SellerItemsSidebar
-        :show="state.showSellerItems"
-        :items="state.sellerItems"
-        @close="closeSellerSidebar"
-        @item-click="handleSellerItemClick"
-      />
-
       <!-- Item Detail Modal -->
       <ItemDetailModal
         v-model="state.showItemDetail"
         :item-id="state.selectedItemId"
+        :user-location="state.userLocation"
         @contact-seller="handleContactSeller"
       />
+
+      <!-- Location Switcher -->
+      <div class="location-switcher">
+        <button class="location-btn" @click="toggleLocationMenu">
+          <i class="bi bi-geo-alt-fill"></i>
+          <span class="location-text">
+            {{ state.currentLocationType === 'current' ? '目前位置' :
+               state.currentLocationType === 'home' ? '家' : '公司' }}
+          </span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+
+        <!-- Location Menu -->
+        <div v-if="state.showLocationMenu" class="location-menu">
+          <button
+            class="location-option"
+            :class="{ active: state.currentLocationType === 'current' }"
+            @click="switchLocation('current')"
+          >
+            <i class="bi bi-geo-alt-fill"></i>
+            <span>目前位置</span>
+          </button>
+          <button
+            class="location-option"
+            :class="{ active: state.currentLocationType === 'home', disabled: !state.savedLocations.home }"
+            :disabled="!state.savedLocations.home"
+            @click="switchLocation('home')"
+          >
+            <i class="bi bi-house-fill"></i>
+            <span>家</span>
+            <span v-if="!state.savedLocations.home" class="not-set">(未設定)</span>
+          </button>
+          <button
+            class="location-option"
+            :class="{ active: state.currentLocationType === 'work', disabled: !state.savedLocations.work }"
+            :disabled="!state.savedLocations.work"
+            @click="switchLocation('work')"
+          >
+            <i class="bi bi-briefcase-fill"></i>
+            <span>公司</span>
+            <span v-if="!state.savedLocations.work" class="not-set">(未設定)</span>
+          </button>
+        </div>
+      </div>
 
       <!-- List View Toggle Button -->
       <button
@@ -107,17 +137,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import SearchBar from '@/components/SearchBar.vue'
 import FilterTabs from '@/components/FilterTabs.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
 import SearchResultsList from '@/components/map/SearchResultsList.vue'
-import SellerListSidebar from '@/components/map/SellerListSidebar.vue'
-import SellerItemsSidebar from '@/components/map/SellerItemsSidebar.vue'
 import ItemDetailModal from '@/components/map/ItemDetailModal.vue'
-import { getUserPrimaryLocation } from '@/api/get_userLocationAPI'
 import { searchItems } from '@/api/get_searchItemsAPI'
+import { getMyLocations } from '@/api/get_userLocationAPI'
 import { useAuthStore } from '@/stores/auth'
 import { useCategoriesStore } from '@/stores/categories'
 import { supabase } from '@/lib/supabase'
@@ -137,9 +165,6 @@ const state = reactive({
   userLocation: null,
   items: [],
   showSearchResults: false,
-  showSellerList: false,
-  showSellerItems: false,
-  sellerItems: [],
   showItemDetail: false,
   selectedItemId: null,
   filters: {
@@ -151,7 +176,14 @@ const state = reactive({
     sort_direction: 'desc'
   },
   loading: false,
-  error: null
+  error: null,
+  // Location switching
+  currentLocationType: 'current', // 'current', 'home', 'work'
+  savedLocations: {
+    home: null,
+    work: null
+  },
+  showLocationMenu: false
 })
 
 // Category filters for FilterTabs
@@ -232,32 +264,227 @@ async function checkAuth() {
   }
 }
 
-// Fetch user location
-async function fetchUserLocation() {
+// Parse PostGIS WKB format to lat/lng
+function parseWKBPoint(wkbHex) {
   try {
-    const location = await getUserPrimaryLocation()
+    // PostGIS EWKB format (Extended Well-Known Binary):
+    // For SRID 4326 (WGS84), the format is:
+    // 01 (byte order) + 01000020 (geometry type with SRID) + E6100000 (SRID 4326) + coordinates
 
-    if (!location) {
-      console.warn('[MapSearchPage] No primary location found')
-      state.userLocation = null
+    console.log('[MapSearchPage] DEBUG - WKB hex length:', wkbHex.length, 'hex:', wkbHex.substring(0, 40))
+
+    // EWKB with SRID: byte order (2) + type (8) + SRID (8) + X (16) + Y (16) = 50 chars
+    // Coordinates start at character position 18 (after 9 bytes: 1 byte order + 4 type + 4 SRID)
+    const coordsStartChar = 18 // Character position, not byte position!
+
+    const lonHex = wkbHex.substring(coordsStartChar, coordsStartChar + 16) // 16 chars = 8 bytes
+    const latHex = wkbHex.substring(coordsStartChar + 16, coordsStartChar + 32) // Next 16 chars
+
+    console.log('[MapSearchPage] DEBUG - Extracted hex:', { lonHex, latHex })
+
+    if (!lonHex || !latHex || lonHex.length !== 16 || latHex.length !== 16) {
+      console.error('[MapSearchPage] Invalid hex string lengths:', { lonHex: lonHex?.length, latHex: latHex?.length })
+      return { latitude: null, longitude: null }
+    }
+
+    // Convert hex to bytes
+    const lonMatch = lonHex.match(/.{2}/g)
+    const latMatch = latHex.match(/.{2}/g)
+
+    if (!lonMatch || !latMatch) {
+      console.error('[MapSearchPage] Failed to match hex patterns')
+      return { latitude: null, longitude: null }
+    }
+
+    const lonBytes = new Uint8Array(lonMatch.map(byte => parseInt(byte, 16)))
+    const latBytes = new Uint8Array(latMatch.map(byte => parseInt(byte, 16)))
+
+    // Read as little-endian float64
+    const longitude = new DataView(lonBytes.buffer).getFloat64(0, true)
+    const latitude = new DataView(latBytes.buffer).getFloat64(0, true)
+
+    console.log('[MapSearchPage] DEBUG - Parsed coords:', { latitude, longitude })
+
+    return { latitude, longitude }
+  } catch (error) {
+    console.error('[MapSearchPage] Failed to parse WKB:', error)
+    return { latitude: null, longitude: null }
+  }
+}
+
+// Fetch saved locations (home and work)
+async function fetchSavedLocations() {
+  try {
+    const locations = await getMyLocations()
+    console.log('[MapSearchPage] DEBUG - Raw locations from API:', JSON.stringify(locations, null, 2))
+
+    if (locations && locations.length > 0) {
+      locations.forEach(location => {
+        // Parse PostGIS WKB coordinates
+        let latitude = null
+        let longitude = null
+
+        if (location.coordinates) {
+          const coords = parseWKBPoint(location.coordinates)
+          latitude = coords.latitude
+          longitude = coords.longitude
+
+          console.log('[MapSearchPage] DEBUG - Parsed coordinates:', {
+            type: location.type,
+            raw: location.coordinates.substring(0, 20) + '...',
+            latitude,
+            longitude
+          })
+        }
+
+        // Only save locations with valid coordinates
+        if (latitude !== null && longitude !== null) {
+          const locationData = {
+            ...location,
+            latitude,
+            longitude
+          }
+
+          if (location.type === '家') {
+            state.savedLocations.home = locationData
+            console.log('[MapSearchPage] DEBUG - Saved home location')
+          } else if (location.type === '公司') {
+            state.savedLocations.work = locationData
+            console.log('[MapSearchPage] DEBUG - Saved work location')
+          }
+        } else {
+          console.warn('[MapSearchPage] Skipping location with invalid coordinates:', location)
+        }
+      })
+
+      console.log('[MapSearchPage] Saved locations loaded:', state.savedLocations)
+    } else {
+      console.log('[MapSearchPage] DEBUG - No locations returned from API')
+    }
+  } catch (error) {
+    console.error('[MapSearchPage] Failed to fetch saved locations:', error)
+  }
+}
+
+// Fetch current location using browser geolocation API
+async function fetchCurrentLocation() {
+  try {
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      console.error('[MapSearchPage] Geolocation is not supported by this browser')
+      state.error = '您的瀏覽器不支援地理定位功能'
       return false
     }
 
-    state.userLocation = {
-      latitude: location.latitude,
-      longitude: location.longitude,
-      type: location.type,
-      is_primary: location.is_primary,
-      formatted_address: location.formatted_address
-    }
+    // Get current position
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          state.userLocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            type: 'current',
+            is_primary: false,
+            formatted_address: '目前位置'
+          }
 
-    console.log('[MapSearchPage] User location loaded:', state.userLocation)
-    return true
+          console.log('[MapSearchPage] Current location loaded:', state.userLocation)
+          resolve(true)
+        },
+        (error) => {
+          console.error('[MapSearchPage] Failed to get current location:', error)
+
+          // Handle different error types
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              state.error = '您拒絕了位置存取權限，請在瀏覽器設定中允許位置存取'
+              break
+            case error.POSITION_UNAVAILABLE:
+              state.error = '無法取得您的位置資訊'
+              break
+            case error.TIMEOUT:
+              state.error = '取得位置資訊逾時，請稍後再試'
+              break
+            default:
+              state.error = '無法載入使用者位置'
+          }
+
+          state.userLocation = null
+          resolve(false)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      )
+    })
 
   } catch (error) {
-    console.error('[MapSearchPage] Failed to fetch user location:', error)
+    console.error('[MapSearchPage] Failed to fetch current location:', error)
     state.error = '無法載入使用者位置'
     return false
+  }
+}
+
+// Switch to a different location type
+async function switchLocation(locationType) {
+  state.currentLocationType = locationType
+  state.showLocationMenu = false
+  state.error = null // Clear any previous errors
+
+  switch (locationType) {
+    case 'current':
+      await fetchCurrentLocation()
+      break
+    case 'home':
+      if (state.savedLocations.home) {
+        // Validate coordinates before switching
+        if (state.savedLocations.home.latitude !== null && state.savedLocations.home.longitude !== null) {
+          state.userLocation = state.savedLocations.home
+          console.log('[MapSearchPage] Switched to home location')
+        } else {
+          state.error = '家的位置資料不完整，請重新設定'
+          return
+        }
+      } else {
+        state.error = '尚未設定家的位置'
+        return
+      }
+      break
+    case 'work':
+      if (state.savedLocations.work) {
+        // Validate coordinates before switching
+        if (state.savedLocations.work.latitude !== null && state.savedLocations.work.longitude !== null) {
+          state.userLocation = state.savedLocations.work
+          console.log('[MapSearchPage] Switched to work location')
+        } else {
+          state.error = '公司的位置資料不完整，請重新設定'
+          return
+        }
+      } else {
+        state.error = '尚未設定公司的位置'
+        return
+      }
+      break
+  }
+
+  // Re-fetch items with new location
+  if (state.userLocation) {
+    await fetchItems()
+  }
+}
+
+// Toggle location menu
+function toggleLocationMenu() {
+  state.showLocationMenu = !state.showLocationMenu
+}
+
+// Close location menu when clicking outside
+function handleClickOutside(event) {
+  const locationSwitcher = document.querySelector('.location-switcher')
+  if (locationSwitcher && !locationSwitcher.contains(event.target)) {
+    state.showLocationMenu = false
   }
 }
 
@@ -270,8 +497,11 @@ async function fetchItems() {
 
   try {
     console.log('[MapSearchPage] Fetching items with filters:', state.filters)
+    console.log('[MapSearchPage] Using location:', state.userLocation)
 
     const data = await searchItems({
+      user_latitude: state.userLocation.latitude,
+      user_longitude: state.userLocation.longitude,
       distance_range_km: state.filters.distance_range_km,
       main_category_id: state.filters.main_category_id,
       sub_category_id: state.filters.sub_category_id,
@@ -320,28 +550,9 @@ function handleMarkerClick(item, allItems) {
   })
 }
 
-// Close seller list sidebar
-function closeSellerListSidebar() {
-  state.showSellerList = false
-}
-
-// Handle seller click from seller list
-function handleSellerClick(seller) {
-  console.log('[MapSearchPage] Seller clicked:', seller)
-  // Keep seller list open and show seller items
-  state.sellerItems = seller.items
-  state.showSellerItems = true
-}
-
-// Close seller sidebar
-function closeSellerSidebar() {
-  state.showSellerItems = false
-  state.sellerItems = []
-}
-
-// Handle item click from seller sidebar
+// Handle item click from search results
 function handleSellerItemClick(item) {
-  console.log('[MapSearchPage] Seller item clicked:', item)
+  console.log('[MapSearchPage] Item clicked:', item)
   // Open item detail modal
   state.selectedItemId = item.item_id
   state.showItemDetail = true
@@ -373,12 +584,6 @@ function handleMapReady(map) {
 function handleMapBoundsChanged(bounds) {
   console.log('[MapSearchPage] Map bounds changed:', bounds)
   // Future: Could implement viewport-based loading
-}
-
-// Go to location setup
-function goToLocationSetup() {
-  // TODO: Navigate to location setup page
-  router.push('/settings')
 }
 
 // Handle search from SearchBar
@@ -464,11 +669,6 @@ function toggleSearchResults() {
   state.showSearchResults = !state.showSearchResults
 }
 
-// Toggle seller list sidebar
-function toggleSellerList() {
-  state.showSellerList = !state.showSellerList
-}
-
 // Toggle to list view
 function toggleToListView() {
   router.push({ name: 'Home' })
@@ -486,8 +686,11 @@ async function initialize() {
     // Fetch categories
     await categoriesStore.fetchCategories()
 
-    // Fetch user location
-    const hasLocation = await fetchUserLocation()
+    // Fetch saved locations (home and work)
+    await fetchSavedLocations()
+
+    // Fetch current location
+    const hasLocation = await fetchCurrentLocation()
     if (!hasLocation) {
       initialLoading.value = false
       return
@@ -514,6 +717,11 @@ watch(() => state.userLocation, (newLocation) => {
 // Lifecycle
 onMounted(() => {
   initialize()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -598,12 +806,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: transform 0.3s ease;
   pointer-events: none; // Allow map interaction through the container
-
-  &.sidebar-open {
-    transform: translateX(350px);
-  }
 
   .search-filter-wrapper {
     display: flex;
@@ -698,11 +901,6 @@ onMounted(() => {
     left: 12px;
     right: 12px;
 
-    // On mobile, don't move when sidebar is open (sidebar slides from bottom)
-    &.sidebar-open {
-      transform: none;
-    }
-
     .search-filter-wrapper {
       flex-direction: column;
       gap: 8px;
@@ -773,6 +971,142 @@ onMounted(() => {
   }
 }
 
+// Location Switcher
+.location-switcher {
+  position: fixed;
+  top: 60px;
+  right: 30px;
+  z-index: 1002;
+
+  .location-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    i {
+      font-size: 16px;
+      color: $primary;
+
+      &.bi-chevron-down {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+
+    .location-text {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e1e1e;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .location-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 200px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+
+    .location-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: white;
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+
+      i {
+        font-size: 16px;
+        color: #666;
+        width: 20px;
+      }
+
+      span {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e1e1e;
+
+        &.not-set {
+          font-size: 12px;
+          color: #999;
+          margin-left: auto;
+        }
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover:not(:disabled) {
+        background: #f8f9fa;
+      }
+
+      &.active {
+        background: rgba($primary, 0.05);
+
+        i {
+          color: $primary;
+        }
+
+        span {
+          color: $primary;
+          font-weight: 600;
+        }
+      }
+
+      &.disabled,
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+
+        &:hover {
+          background: white;
+        }
+      }
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 // Map/List View Toggle Button
 .view-toggle-btn {
   position: fixed;
@@ -815,6 +1149,31 @@ onMounted(() => {
   &:active {
     transform: translateX(-50%) translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// Responsive: Location Switcher
+@media (max-width: 767.98px) {
+  .location-switcher {
+    top: 110px;
+    right: 12px;
+
+    .location-btn {
+      padding: 8px 14px;
+      border-radius: 20px;
+
+      i {
+        font-size: 14px;
+      }
+
+      .location-text {
+        font-size: 13px;
+      }
+    }
+
+    .location-menu {
+      min-width: 180px;
+    }
   }
 }
 </style>

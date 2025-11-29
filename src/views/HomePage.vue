@@ -78,6 +78,50 @@
         <i class="bi bi-arrow-up"></i>
       </button>
 
+      <!-- Location Switcher -->
+      <div class="location-switcher">
+        <button class="location-btn" @click="toggleLocationMenu">
+          <i class="bi bi-geo-alt-fill"></i>
+          <span class="location-text">
+            {{ currentLocationType === 'current' ? '目前位置' :
+               currentLocationType === 'home' ? '家' : '公司' }}
+          </span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+
+        <!-- Location Menu -->
+        <div v-if="showLocationMenu" class="location-menu">
+          <button
+            class="location-option"
+            :class="{ active: currentLocationType === 'current' }"
+            @click="switchLocation('current')"
+          >
+            <i class="bi bi-geo-alt-fill"></i>
+            <span>目前位置</span>
+          </button>
+          <button
+            class="location-option"
+            :class="{ active: currentLocationType === 'home', disabled: !savedLocations.home }"
+            :disabled="!savedLocations.home"
+            @click="switchLocation('home')"
+          >
+            <i class="bi bi-house-fill"></i>
+            <span>家</span>
+            <span v-if="!savedLocations.home" class="not-set">(未設定)</span>
+          </button>
+          <button
+            class="location-option"
+            :class="{ active: currentLocationType === 'work', disabled: !savedLocations.work }"
+            :disabled="!savedLocations.work"
+            @click="switchLocation('work')"
+          >
+            <i class="bi bi-briefcase-fill"></i>
+            <span>公司</span>
+            <span v-if="!savedLocations.work" class="not-set">(未設定)</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Map View Toggle Button -->
       <button
         class="view-toggle-btn"
@@ -108,6 +152,7 @@ import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
 import { createOrGetConversation } from '@/api/conversation.js';
 import { useAuthStore } from '@/stores/auth';
+import { getMyLocations } from '@/api/get_userLocationAPI';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -117,6 +162,15 @@ const userPoints = ref(500);
 const showScrollTop = ref(false);
 
 const authenticatedUser = ref(null);
+
+// Location switching
+const currentLocationType = ref('current'); // 'current', 'home', 'work'
+const savedLocations = ref({
+  home: null,
+  work: null
+});
+const showLocationMenu = ref(false);
+const userLocation = ref(null);
 
 // Filters
 const filters = ref([
@@ -244,6 +298,181 @@ const toggleToMapView = () => {
   router.push({ name: 'MapSearch' });
 };
 
+// Parse PostGIS WKB format to lat/lng
+function parseWKBPoint(wkbHex) {
+  try {
+    const coordsStartChar = 18;
+    const lonHex = wkbHex.substring(coordsStartChar, coordsStartChar + 16);
+    const latHex = wkbHex.substring(coordsStartChar + 16, coordsStartChar + 32);
+
+    if (!lonHex || !latHex || lonHex.length !== 16 || latHex.length !== 16) {
+      return { latitude: null, longitude: null };
+    }
+
+    const lonMatch = lonHex.match(/.{2}/g);
+    const latMatch = latHex.match(/.{2}/g);
+
+    if (!lonMatch || !latMatch) {
+      return { latitude: null, longitude: null };
+    }
+
+    const lonBytes = new Uint8Array(lonMatch.map(byte => parseInt(byte, 16)));
+    const latBytes = new Uint8Array(latMatch.map(byte => parseInt(byte, 16)));
+
+    const longitude = new DataView(lonBytes.buffer).getFloat64(0, true);
+    const latitude = new DataView(latBytes.buffer).getFloat64(0, true);
+
+    return { latitude, longitude };
+  } catch (error) {
+    console.error('[HomePage] Failed to parse WKB:', error);
+    return { latitude: null, longitude: null };
+  }
+}
+
+// Fetch saved locations (home and work)
+async function fetchSavedLocations() {
+  try {
+    const locations = await getMyLocations();
+
+    if (locations && locations.length > 0) {
+      locations.forEach(location => {
+        let latitude = null;
+        let longitude = null;
+
+        if (location.coordinates) {
+          const coords = parseWKBPoint(location.coordinates);
+          latitude = coords.latitude;
+          longitude = coords.longitude;
+        }
+
+        if (latitude !== null && longitude !== null) {
+          const locationData = {
+            ...location,
+            latitude,
+            longitude
+          };
+
+          if (location.type === '家') {
+            savedLocations.value.home = locationData;
+          } else if (location.type === '公司') {
+            savedLocations.value.work = locationData;
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[HomePage] Failed to fetch saved locations:', error);
+  }
+}
+
+// Fetch current location
+async function fetchCurrentLocation() {
+  try {
+    if (!navigator.geolocation) {
+      console.error('[HomePage] Geolocation is not supported');
+      return false;
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          userLocation.value = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            type: 'current'
+          };
+          resolve(true);
+        },
+        (error) => {
+          console.error('[HomePage] Failed to get current location:', error);
+          userLocation.value = null;
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
+  } catch (error) {
+    console.error('[HomePage] Failed to fetch current location:', error);
+    return false;
+  }
+}
+
+// Switch location
+async function switchLocation(locationType) {
+  currentLocationType.value = locationType;
+  showLocationMenu.value = false;
+
+  switch (locationType) {
+    case 'current':
+      await fetchCurrentLocation();
+      break;
+    case 'home':
+      if (savedLocations.value.home) {
+        userLocation.value = savedLocations.value.home;
+      }
+      break;
+    case 'work':
+      if (savedLocations.value.work) {
+        userLocation.value = savedLocations.value.work;
+      }
+      break;
+  }
+
+  // Reload products with new location
+  if (userLocation.value) {
+    await loadProductsWithLocation();
+  }
+}
+
+// Toggle location menu
+function toggleLocationMenu() {
+  showLocationMenu.value = !showLocationMenu.value;
+}
+
+// Close location menu when clicking outside
+function handleClickOutside(event) {
+  const locationSwitcher = document.querySelector('.location-switcher');
+  if (locationSwitcher && !locationSwitcher.contains(event.target)) {
+    showLocationMenu.value = false;
+  }
+}
+
+// Load products with location
+async function loadProductsWithLocation() {
+  loading.value = true;
+  currentPage.value = 1;
+  
+  try {
+    const params = {
+      page: 1,
+      size: pageSize.value
+    };
+    
+    if (userLocation.value) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
+    products.value = data || [];
+    displayedProducts.value = data || [];
+    
+    if (!data || data.length < pageSize.value) {
+      hasMoreProducts.value = false;
+    } else {
+      hasMoreProducts.value = true;
+    }
+  } catch (error) {
+    console.error('Failed to load products:', error);
+  } finally {
+    loading.value = false;
+  }
+}
+
 // Load more products (infinite scroll)
 const loadMoreProducts = async () => {
   if (isLoadingMore.value || !hasMoreProducts.value) return;
@@ -288,13 +517,26 @@ onMounted(async () => {
     });
   }
 
+  // Fetch saved locations
+  await fetchSavedLocations();
+  
+  // Fetch current location
+  await fetchCurrentLocation();
+
   // Load products (first page)
   loading.value = true;
   try {
-    const data = await searchItems({
+    const params = {
       page: 1,
       size: pageSize.value
-    });
+    };
+    
+    if (userLocation.value) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
     products.value = data || [];
     displayedProducts.value = data || [];
     
@@ -312,10 +554,13 @@ onMounted(async () => {
 
   // Add scroll listener
   window.addEventListener('scroll', handleScroll);
+  // Add click outside listener
+  document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -441,6 +686,140 @@ onUnmounted(() => {
 
 .product-list-leave-active {
   position: absolute;
+}
+
+// Location Switcher
+.location-switcher {
+  position: fixed;
+  bottom: 90px; // Above scroll-to-top button
+  right: 30px;
+  z-index: 1002;
+
+  .location-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    i {
+      font-size: 22px;
+      color: #6fb8a5;
+
+      &.bi-chevron-down {
+        display: none;
+      }
+    }
+
+    .location-text {
+      display: none;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 1);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    &:active {
+      transform: translateY(-1px);
+    }
+  }
+
+  .location-menu {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    min-width: 200px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: slideUp 0.2s ease-out;
+
+    .location-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: white;
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+
+      i {
+        font-size: 16px;
+        color: #666;
+        width: 20px;
+      }
+
+      span {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e1e1e;
+
+        &.not-set {
+          font-size: 12px;
+          color: #999;
+          margin-left: auto;
+        }
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover:not(:disabled) {
+        background: #f8f9fa;
+      }
+
+      &.active {
+        background: rgba(111, 184, 165, 0.05);
+
+        i {
+          color: #6fb8a5;
+        }
+
+        span {
+          color: #6fb8a5;
+          font-weight: 600;
+        }
+      }
+
+      &.disabled,
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+
+        &:hover {
+          background: white;
+        }
+      }
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 // Scroll to Top Button
@@ -619,6 +998,25 @@ onUnmounted(() => {
 }
 
 @media (max-width: 575.98px) {
+  .location-switcher {
+    bottom: 156px; // Above view-toggle-btn (90px) + scroll-to-top (48px) + gap (18px)
+    right: 24px;
+
+    .location-btn {
+      width: 56px;
+      height: 56px;
+
+      i {
+        font-size: 22px;
+      }
+    }
+
+    .location-menu {
+      min-width: 180px;
+      right: 0;
+    }
+  }
+
   .search-section {
     padding: 12px 0;
     margin-top: 0;

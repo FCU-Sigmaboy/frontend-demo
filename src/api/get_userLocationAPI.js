@@ -57,80 +57,79 @@ export async function getUserPrimaryLocation() {
   }
 }
 
-/**
- * Get all user locations
- * 獲取使用者的所有地點
- *
- * @returns {Promise<Array>} Array of location objects
- *
- * @example
- * const locations = await getUserLocations()
- * console.log(locations) // [{ id: 1, type: "家", ... }, { id: 2, type: "公司", ... }]
- */
-export async function getUserLocations() {
-  try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+// ===================================================================
+// ### 我的地點 API (Location APIs)
+// ===================================================================
 
+/**
+ * 【功能】獲取 "當前登入者" 儲存的所有 location
+ * (用於刊登物品時的 "選擇地點" 下拉選單或列表)
+ * @returns {Promise<Array<{id: number, coordinates: Object, type: string, is_primary: boolean}> | null>}
+ *          回傳 location 陣列，未登入回傳 null
+ *          - id: 地點 ID
+ *          - coordinates: PostGIS 地理座標 (GeoJSON Point)
+ *          - type: 地點類型 ('家', '公司', '其他')
+ *          - is_primary: 是否為主要地點
+ */
+export async function getMyLocations() {
+    // 1. "前置作業": 獲取當前登入的使用者
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      console.error('[getUserLocations] User not authenticated:', authError)
-      return []
+        console.warn('getMyLocations: User not logged in.');
+        return null; // 未登入則不執行查詢
     }
 
+    // 2. 前端 JSON 約定欄位 (v2.0 簡化版)
+    const selectQuery = `
+    id,
+    coordinates,
+    type,
+    is_primary
+  `;
+
+    // 3. 建立查詢
     const { data, error } = await supabase
-      .from('locations')
-      .select('id, coordinates, type, is_primary, formatted_address, created_at, updated_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+        .from('locations')
+        .select(selectQuery)
+        .eq('user_id', user.id) // <-- 關鍵篩選，只抓自己的
+        .order('is_primary', { ascending: false }) // 主要地點排最前面
+        .order('id', { ascending: true }); // 再用 ID 排序
 
+    // 4. 錯誤處理
     if (error) {
-      console.error('[getUserLocations] Query failed:', error)
-      return []
+        console.error('Supabase 獲取 "我的地點" 失敗:', error);
+        throw new Error(error.message);
     }
 
-    // Parse PostGIS POINT format to latitude/longitude
-    return data.map(location => {
-      let latitude = null
-      let longitude = null
-
-      // Parse POINT(longitude latitude) format
-      if (location.coordinates) {
-        const match = location.coordinates.match(/POINT\(([^ ]+) ([^ ]+)\)/)
-        if (match) {
-          longitude = parseFloat(match[1])
-          latitude = parseFloat(match[2])
-        }
-      }
-
-      return {
-        id: location.id,
-        latitude,
-        longitude,
-        type: location.type,
-        is_primary: location.is_primary,
-        formatted_address: location.formatted_address,
-        created_at: location.created_at,
-        updated_at: location.updated_at
-      }
-    })
-
-  } catch (error) {
-    console.error('[getUserLocations] Unexpected error:', error)
-    return []
-  }
+    // 5. data 就是您要的 JSON 陣列
+    return data;
 }
 
-/**
- * Check if user has any locations
- * 檢查使用者是否已設定地點
- *
- * @returns {Promise<boolean>} True if user has at least one location
+/* data 範例 (v2.0 簡化版 - 前端 JSON 約定)
+[
+  {
+    "id": 12,
+    "coordinates": { "type": "Point", "coordinates": [120.645, 24.179] },
+    "type": "家",
+    "is_primary": true
+  },
+  {
+    "id": 15,
+    "coordinates": { "type": "Point", "coordinates": [120.670, 24.140] },
+    "type": "公司",
+    "is_primary": false
+  },
+  {
+    "id": 42,
+    "coordinates": { "type": "Point", "coordinates": [120.301, 22.639] },
+    "type": "其他",
+    "is_primary": false
+  }
+  // ... 其他屬於該使用者的地點
+]
+
+說明：
+- 主要地點 (is_primary: true) 會排在最前面
+- 用於前端下拉選單或地點選擇器
+- 若需完整地址資訊，請從 coordinates 反查或使用其他 API
  */
-export async function hasUserLocation() {
-  try {
-    const locations = await getUserLocations()
-    return locations.length > 0
-  } catch (error) {
-    console.error('[hasUserLocation] Error:', error)
-    return false
-  }
-}
