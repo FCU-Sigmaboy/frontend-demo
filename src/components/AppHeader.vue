@@ -97,6 +97,20 @@
               </BButton>
               <BTooltip target="messages-btn" placement="bottom">聊天訊息</BTooltip>
 
+              <!-- Notification Icon (Desktop) -->
+              <BButton
+                id="notifications-btn"
+                variant="link"
+                class="icon-button notification-button d-none d-lg-flex"
+                @click="handleNotificationClick"
+              >
+                <i class="bi bi-bell"></i>
+                <span v-if="unreadNotificationCount > 0" class="notification-badge">
+                  {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
+                </span>
+              </BButton>
+              <BTooltip target="notifications-btn" placement="bottom">活動通知</BTooltip>
+
               <!-- User Profile (Desktop) -->
               <div
                 id="user-profile-info"
@@ -398,12 +412,14 @@ import { useAuthStore } from '../stores/auth';
 import { useCategoriesStore } from '@/stores/categories.js';
 import { useMessageStore } from '@/stores/message';
 import { useTransactionStore } from '@/stores/transaction';
+import { useNotificationStore } from '@/stores/notification';
 
 // Router & Auth Store
 const router = useRouter();
 const authStore = useAuthStore();
 const messageStore = useMessageStore();
 const transactionStore = useTransactionStore();
+const notificationStore = useNotificationStore();
 
 // Logo Images
 import logoImage from '../assets/Logo.png';
@@ -450,6 +466,19 @@ const inTransactionCount = computed(() => (transactionStore.pending.giver?.lengt
 const unreadMessageCount = computed(() => {
   return messageStore.totalUnreadCount;
 });
+
+// Unread notification count
+const unreadNotificationCount = computed(() => {
+  return notificationStore.unreadCount;
+});
+
+// Handle notification click
+const handleNotificationClick = () => {
+  if (notificationStore.hasUnreadNotifications) {
+    notificationStore.showNotification(notificationStore.latestNotification);
+  }
+  // Could also navigate to a notifications page
+};
 
 // State
 const showUnifiedMenu = ref(false);
@@ -752,6 +781,28 @@ const navigateToCategory = (categoryId, subCategoryId) => {
       align-items: center;
       justify-content: center;
       box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+      animation: badge-pulse 2s ease-in-out infinite;
+    }
+  }
+
+  &.notification-button {
+    .notification-badge {
+      position: absolute;
+      top: -4px;
+      right: -8px;
+      background: #e91e63;
+      color: white;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 10px;
+      min-width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(233, 30, 99, 0.3);
       animation: badge-pulse 2s ease-in-out infinite;
     }
   }

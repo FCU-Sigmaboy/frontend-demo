@@ -20,6 +20,10 @@ import PublicUserProfilePage from '../views/PublicUserProfilePage.vue';
 import MyTransactionsPage from '../views/MyTransactionsPage.vue';
 import MapSearchPage from '../views/MapSearchPage.vue';
 import UserDashboardPage from '../views/UserDashboardPage.vue';
+// Admin pages
+import AdminDashboardPage from '../views/AdminDashboardPage.vue';
+// Demo pages
+import NotificationDemoPage from '../views/NotificationDemoPage.vue';
 
 import { useAuthStore } from '@/stores/auth';
 
@@ -142,6 +146,20 @@ const routes = [
     name: 'Dashboard',
     meta: { requiresAuth: true },
     component: UserDashboardPage
+  },
+  // Admin routes
+  {
+    path: '/admin',
+    name: 'AdminDashboard',
+    meta: { requiresAuth: true, requiresAdmin: true },
+    component: AdminDashboardPage
+  },
+  // Demo routes
+  {
+    path: '/demo/notifications',
+    name: 'NotificationDemo',
+    meta: { requiresAuth: true },
+    component: NotificationDemoPage
   }
 ];
 

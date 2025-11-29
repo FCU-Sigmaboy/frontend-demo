@@ -3,13 +3,16 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useMessageStore } from './stores/message'
 import { useTransactionStore } from './stores/transaction'
+import { useNotificationStore } from './stores/notification'
 import { subscribeToUserPresence } from './api/conversation'
 import { BToastOrchestrator } from 'bootstrap-vue-next'
 import { useTransactionToast } from './composables/useTransactionToast'
+import PointsRewardNotificationModal from './components/PointsRewardNotificationModal.vue'
 
 const authStore = useAuthStore()
 const messageStore = useMessageStore()
 const transactionStore = useTransactionStore()
+const notificationStore = useNotificationStore()
 const presenceChannel = ref(null)
 const realtimeUserId = ref(null)
 
@@ -101,9 +104,12 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
     messageStore.startGlobalMessageListener()
     await startPresenceTracking()
     await startTransactionTracking(authStore.user?.id)
+    // Check for new notifications
+    await notificationStore.checkNewNotifications()
   } else {
     // 使用者登出，重置訊息 store
     messageStore.reset()
+    notificationStore.reset()
     stopPresenceTracking()
     stopTransactionTracking()
   }
@@ -140,6 +146,14 @@ onBeforeUnmount(() => {
   <div id="app">
     <router-view />
     <BToastOrchestrator teleport-to="body" />
+    
+    <!-- Points Reward Notification Modal -->
+    <PointsRewardNotificationModal
+      v-if="notificationStore.currentNotification"
+      :notification="notificationStore.currentNotification"
+      :show="notificationStore.showNotificationModal"
+      @close="notificationStore.hideNotificationModal"
+    />
   </div>
 </template>
 
