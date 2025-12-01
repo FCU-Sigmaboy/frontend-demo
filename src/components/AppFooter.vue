@@ -11,7 +11,7 @@
 
         <!-- About Section -->
         <BCol cols="12" md="6" lg="3" class="mb-4 mb-lg-0">
-          <div class="footer-section">
+          <div class="footer-section about-links">
             <h5 class="footer-heading">關於台中易起來</h5>
             <ul class="footer-links">
               <li><router-link :to="{ name: 'About' }">關於我們</router-link></li>
@@ -22,11 +22,11 @@
 
         <!-- Rights Section -->
         <BCol cols="12" md="6" lg="3" class="mb-4 mb-lg-0">
-          <div class="footer-section">
+          <div class="footer-section rights-links">
             <h5 class="footer-heading">權益相關</h5>
             <ul class="footer-links">
               <li><router-link :to="{ name: 'FAQ' }">常見 Q&A</router-link></li>
-              <li><router-link :to="{ name: 'HowToTrade' }">如何交易</router-link></li>
+              <li><router-link :to="{ name: 'HowToTrade' }">交易教學</router-link></li>
             </ul>
           </div>
         </BCol>
@@ -126,6 +126,15 @@ import logoImage from '../assets/Logo-white.png';
   color: #f9f9f9;
   margin: 0;
   line-height: 20px;
+}
+
+@media (min-width: 768px) {
+  .about-links .footer-heading,
+  .about-links .footer-links,
+  .rights-links .footer-heading,
+  .rights-links .footer-links {
+    text-align: left;
+  }
 }
 
 @media (max-width: 991.98px) {
