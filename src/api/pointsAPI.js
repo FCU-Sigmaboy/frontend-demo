@@ -27,23 +27,23 @@ export const TRUST_TIERS = [
 // Badge Definitions
 export const BADGE_DEFINITIONS = {
   // Streak Badges
-  'streak_7': { name: '連續簽到達人', icon: '🔥', description: '連續簽到7天', rarity: 'common' },
-  'streak_30': { name: '月度堅持者', icon: '🌟', description: '連續簽到30天', rarity: 'rare' },
-  'streak_100': { name: '傳奇簽到王', icon: '👑', description: '連續簽到100天', rarity: 'legendary' },
+  streak_7: { name: '連續簽到達人', icon: '🔥', description: '連續簽到7天', rarity: 'common' },
+  streak_30: { name: '月度堅持者', icon: '🌟', description: '連續簽到30天', rarity: 'rare' },
+  streak_100: { name: '傳奇簽到王', icon: '👑', description: '連續簽到100天', rarity: 'legendary' },
 
   // Transaction Badges
-  'first_sale': { name: '首次出售', icon: '🎉', description: '完成第一筆交易', rarity: 'common' },
-  'seller_10': { name: '活躍賣家', icon: '💼', description: '完成10筆銷售', rarity: 'uncommon' },
-  'seller_50': { name: '專業賣家', icon: '🏆', description: '完成50筆銷售', rarity: 'rare' },
-  'buyer_10': { name: '購物達人', icon: '🛍️', description: '完成10筆購買', rarity: 'uncommon' },
+  first_sale: { name: '首次出售', icon: '🎉', description: '完成第一筆交易', rarity: 'common' },
+  seller_10: { name: '活躍賣家', icon: '💼', description: '完成10筆銷售', rarity: 'uncommon' },
+  seller_50: { name: '專業賣家', icon: '🏆', description: '完成50筆銷售', rarity: 'rare' },
+  buyer_10: { name: '購物達人', icon: '🛍️', description: '完成10筆購買', rarity: 'uncommon' },
 
   // Points Badges
-  'points_1000': { name: '千點富翁', icon: '💰', description: '累積賺取1000點', rarity: 'uncommon' },
-  'points_5000': { name: '萬點大亨', icon: '💎', description: '累積賺取5000點', rarity: 'rare' },
+  points_1000: { name: '千點富翁', icon: '💰', description: '累積賺取1000點', rarity: 'uncommon' },
+  points_5000: { name: '萬點大亨', icon: '💎', description: '累積賺取5000點', rarity: 'rare' },
 
   // Special Badges
-  'early_adopter': { name: '早期用戶', icon: '🌱', description: '平台早期註冊用戶', rarity: 'epic' },
-  'perfect_rating': { name: '完美評價', icon: '⭐', description: '獲得10個5星評價', rarity: 'rare' }
+  early_adopter: { name: '早期用戶', icon: '🌱', description: '平台早期註冊用戶', rarity: 'epic' },
+  perfect_rating: { name: '完美評價', icon: '⭐', description: '獲得10個5星評價', rarity: 'rare' }
 };
 
 // Transaction Types
@@ -62,38 +62,19 @@ export const TRANSACTION_TYPES = {
  * @returns {Promise<object>} - User points profile
  */
 export async function getUserPointsProfile() {
-  // 1. Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
   console.log('getUserPointsProfile called - calling RPC: get_user_points_profile');
 
-  // 2. Call the RPC function (no parameters needed)
   const { data, error } = await supabase.rpc('get_user_points_profile');
 
-  // 3. Error handling
   if (error) {
     console.error('Supabase get_user_points_profile RPC error:', error);
     throw new Error(error.message || '獲取使用者資料失敗');
   }
 
   console.log('get_user_points_profile RPC response:', data);
-
-  // 4. Return the RPC result
-  // Expected format:
-  // {
-  //   user_id: UUID,
-  //   current_balance: number,
-  //   total_earned: number,
-  //   total_spent: number,
-  //   daily_streak: number,          // from consecutive_login_days
-  //   last_signin_date: date,         // from last_login_date
-  //   current_level_tier: number,
-  //   trust_level_tier: number,
-  //   total_sales_points: number,
-  //   created_at: timestamp,
-  //   updated_at: timestamp
-  // }
   return data;
 }
 
@@ -114,7 +95,6 @@ export async function getPointsTransactions(params = {}) {
     size = 20
   } = params;
 
-  // Example transactions data
   const allTransactions = [
     {
       id: 'trans_1',
@@ -190,13 +170,11 @@ export async function getPointsTransactions(params = {}) {
     }
   ];
 
-  // Filter by type if specified
   let filtered = allTransactions;
   if (type) {
     filtered = filtered.filter(t => t.type === type);
   }
 
-  // Simulate pagination
   const start = (page - 1) * size;
   const end = start + size;
   const paginated = filtered.slice(start, end);
@@ -212,89 +190,73 @@ export async function getPointsTransactions(params = {}) {
 }
 
 /**
- * Daily sign-in (calls Supabase RPC: daily_check_in)
- * @returns {Promise<object>} - { success, message, points_awarded, streak_day, next_reward, new_balance }
+ * Daily sign-in (RPC V4: daily_check_in)
+ * - 自動計算連續簽到與點數
+ * - 結果中包含徽章授予資訊
+ * @returns {Promise<object>} - 簽到結果 (含徽章資訊)
  */
 export async function dailySignIn() {
-  // 1. Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
   console.log('dailySignIn called - calling RPC: daily_check_in');
 
-  // 2. Call the RPC function (no parameters needed)
   const { data, error } = await supabase.rpc('daily_check_in');
 
-  // 3. Error handling (catches RAISE EXCEPTION from RPC)
   if (error) {
     console.error('Supabase daily_check_in RPC error:', error);
     throw new Error(error.message || '每日簽到失敗');
   }
 
   console.log('daily_check_in RPC response:', data);
-
-  // 4. Return the RPC result
-  // Expected format:
-  // {
-  //   success: true/false,
-  //   message: "簽到成功！",
-  //   points_awarded: 5,
-  //   streak_day: 8,
-  //   next_reward: 6,
-  //   new_balance: 1005
-  // }
   return data;
 }
 
 /**
- * Get user badges
- * @returns {Promise<Array>} - User badges
+ * 獲取使用者的徽章列表（包含進度）
+ * @param {string|null} userId - 指定使用者 ID，預設為當前使用者
+ * @returns {Promise<object>} - { user_id, earned_badges, in_progress_badges }
  */
-export async function getUserBadges() {
+export async function getUserBadgesWithProgress(userId = null) {
+  const { data, error } = await supabase.rpc('get_user_badges_with_progress', {
+    p_user_id: userId
+  });
+
+  if (error) {
+    console.error('獲取徽章失敗:', error);
+    throw new Error(error.message || '獲取徽章資料失敗');
+  }
+
+  return data;
+}
+
+/**
+ * 與舊版介面相容：僅回傳已獲得徽章列表
+ * @param {string|null} userId
+ * @returns {Promise<Array>} - earned_badges 陣列
+ */
+export async function getUserBadges(userId = null) {
+  const data = await getUserBadgesWithProgress(userId);
+  return data?.earned_badges || [];
+}
+
+/**
+ * 手動觸發徽章檢查與授予
+ * - 呼叫 manually_check_badges RPC
+ * @returns {Promise<object>} - { newly_earned_count, total_points_awarded, badges }
+ */
+export async function manuallyCheckBadges() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
-  // Example badges
-  const exampleBadges = [
-    {
-      id: 'badge_1',
-      user_id: user.id,
-      badge_id: 'streak_7',
-      name: '連續簽到達人',
-      icon: '🔥',
-      description: '連續簽到7天',
-      rarity: 'common',
-      earned_at: '2025-11-04T09:05:00Z',
-      points_rewarded: 20
-    },
-    {
-      id: 'badge_2',
-      user_id: user.id,
-      badge_id: 'first_sale',
-      name: '首次出售',
-      icon: '🎉',
-      description: '完成第一筆交易',
-      rarity: 'common',
-      earned_at: '2025-11-02T14:00:00Z',
-      points_rewarded: 10
-    },
-    {
-      id: 'badge_3',
-      user_id: user.id,
-      badge_id: 'early_adopter',
-      name: '早期用戶',
-      icon: '🌱',
-      description: '平台早期註冊用戶',
-      rarity: 'epic',
-      earned_at: '2025-01-01T00:00:00Z',
-      points_rewarded: 100
-    }
-  ];
+  const { data, error } = await supabase.rpc('manually_check_badges');
 
-  console.log('getUserBadges called');
-  console.log('Returning example badges:', exampleBadges);
+  if (error) {
+    console.error('檢查徽章失敗:', error);
+    throw new Error(error.message || '手動檢查徽章失敗');
+  }
 
-  return exampleBadges;
+  return data;
 }
 
 /**
@@ -306,11 +268,9 @@ export async function checkListingPermission(itemPrice) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('使用者未登入');
 
-  // Get user profile
   const profile = await getUserPointsProfile();
   const currentTrustTier = TRUST_TIERS[profile.trust_level_tier - 1];
 
-  // Check if allowed
   if (itemPrice <= currentTrustTier.maxListingValue) {
     return {
       allowed: true,
@@ -318,7 +278,6 @@ export async function checkListingPermission(itemPrice) {
     };
   }
 
-  // Find required trust level
   const requiredTier = TRUST_TIERS.find(tier => itemPrice <= tier.maxListingValue);
   const salesNeeded = Math.max(0, requiredTier.requiredSales - profile.total_sales_points);
 
@@ -366,5 +325,5 @@ export function calculateStreakReward(day) {
   if (day === 14) return 30;
   if (day === 30) return 50;
   if (day === 100) return 200;
-  return 5; // Default
+  return 5;
 }
