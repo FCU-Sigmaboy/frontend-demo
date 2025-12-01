@@ -691,7 +691,7 @@ onUnmounted(() => {
 // Location Switcher
 .location-switcher {
   position: fixed;
-  bottom: 90px; // Above scroll-to-top button
+  bottom: 224px; // Above customer-service (在客服上方)
   right: 30px;
   z-index: 1002;
 
@@ -827,8 +827,8 @@ onUnmounted(() => {
   position: fixed;
   bottom: 30px;
   right: 30px;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -999,7 +999,7 @@ onUnmounted(() => {
 
 @media (max-width: 575.98px) {
   .location-switcher {
-    bottom: 156px; // Above view-toggle-btn (90px) + scroll-to-top (48px) + gap (18px)
+    bottom: 232px; // Above customer-service (客服按鈕上方)
     right: 24px;
 
     .location-btn {
