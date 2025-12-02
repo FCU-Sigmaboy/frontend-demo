@@ -206,7 +206,8 @@ const categoryFilters = computed(() => {
       label: cat.name,
       type: 'filter',
       filterFn: () => true, // Don't filter on client side
-      sortable: false
+      sortable: false,
+      color: cat.color || null // 使用類別的顏色
     })
   })
 
@@ -239,7 +240,8 @@ const subCategoryFilters = computed(() => {
       label: subCat.name,
       type: 'filter',
       filterFn: () => true,
-      sortable: false
+      sortable: false,
+      color: subCat.color || null // 使用子類別的顏色
     })
   })
 
@@ -904,7 +906,7 @@ onUnmounted(() => {
     flex: 1;
     min-width: 0;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
 
     // 隱藏滾動條
     scrollbar-width: none;

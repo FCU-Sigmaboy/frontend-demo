@@ -6,6 +6,7 @@
         :key="filter.id"
         class="filter-tab"
         :class="{ active: activeFilter === filter.id }"
+        :style="getFilterStyle(filter)"
         @click="handleClick(filter.id)"
       >
         <span class="filter-label">{{ getFilterLabel(filter) }}</span>
@@ -42,7 +43,8 @@ const props = defineProps({
     //   defaultOrder?: 'asc' | 'desc',  // 預設排序方向
     //   ascText?: string,               // 升序時顯示的文字
     //   descText?: string,              // 降序時顯示的文字
-    //   sortable?: boolean              // 是否可切換排序方向，預設 true
+    //   sortable?: boolean,             // 是否可切換排序方向，預設 true
+    //   color?: string                  // 自訂顏色（支援 hex, rgb, rgba 等）
     // }
   }
 });
@@ -210,6 +212,30 @@ const getSortDirectionText = (filter) => {
   }
 };
 
+const getFilterStyle = (filter) => {
+  // 如果有自訂顏色,根據是否為 active 狀態返回對應樣式
+  if (filter.color) {
+    if (activeFilter.value === filter.id) {
+      // Active 狀態：使用自訂顏色作為背景色
+      return {
+        backgroundColor: filter.color,
+        color: 'white',
+        borderColor: filter.color
+      };
+    } else {
+      // 非 active 狀態：使用自訂顏色作為邊框和文字顏色
+      return {
+        backgroundColor: 'white',
+        color: filter.color,
+        borderColor: filter.color,
+        border: `1px solid ${filter.color}`
+      };
+    }
+  }
+  // 沒有自訂顏色則返回空物件，使用預設樣式
+  return {};
+};
+
 // 監聽 sortedItems 的變化，自動 emit 給父組件
 watch(
   sortedItems,
@@ -233,6 +259,7 @@ defineExpose({
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 20px;
+  overflow-y: visible;
 }
 
 .filter-tabs {
