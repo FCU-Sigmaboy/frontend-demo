@@ -931,7 +931,7 @@ onUnmounted(() => {
     :deep(.filter-tabs) {
       flex-wrap: nowrap;
       overflow-x: auto;
-      padding-bottom: 4px;
+      padding-top: 4px;
 
       // 隱藏滾動條
       scrollbar-width: none;
