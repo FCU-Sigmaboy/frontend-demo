@@ -365,7 +365,7 @@ const handleSearch = (data) => {
   router.push({ query });
 
   console.log('Search:', data);
-  
+
   // Scroll to top after search
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -1016,7 +1016,7 @@ watch(() => route.query.search, (newSearch) => {
 // Location Switcher (Inline style for filter section)
 .location-switcher {
   position: relative;
-  z-index: 100;
+  z-index: 99;
 
   .location-btn {
     display: flex;
