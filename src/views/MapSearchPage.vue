@@ -544,10 +544,12 @@ function handleMarkerClick(item, allItems) {
 
   // Wait for next tick to ensure search results are rendered
   nextTick(() => {
-    // Scroll to the seller in the search results list
-    if (searchResultsListRef.value && searchResultsListRef.value.scrollToSeller) {
-      searchResultsListRef.value.scrollToSeller(userId)
-    }
+    setTimeout(() => {
+      // Scroll to the seller in the search results list
+      if (searchResultsListRef.value && searchResultsListRef.value.scrollToSeller) {
+        searchResultsListRef.value.scrollToSeller(userId)
+      }
+    }, 150)
   })
 }
 
@@ -745,12 +747,24 @@ function initializeFiltersFromUrl() {
   console.log('[MapSearchPage] Initialized filters from URL:', state.filters)
 }
 
-// Watch for user location changes (in case user updates it)
-watch(() => state.userLocation, (newLocation) => {
-  if (newLocation) {
+// Watch for user location changes (only when coordinates actually change)
+watch(() => state.userLocation, (newLocation, oldLocation) => {
+  // Only fetch if location actually changed (coordinates differ)
+  if (newLocation && oldLocation) {
+    const coordsChanged = 
+      newLocation.latitude !== oldLocation.latitude ||
+      newLocation.longitude !== oldLocation.longitude
+    
+    if (coordsChanged) {
+      console.log('[MapSearchPage] Location coordinates changed, refetching items')
+      fetchItems()
+    }
+  } else if (newLocation && !oldLocation) {
+    // Initial location set
+    console.log('[MapSearchPage] Initial location set')
     fetchItems()
   }
-}, { deep: true })
+}, { deep: false }) // Use shallow watch to only track reference changes
 
 // Lifecycle
 onMounted(() => {
@@ -832,6 +846,18 @@ onUnmounted(() => {
   flex: 1;
   height: 100%;
   position: relative;
+  overflow: hidden; // Prevent content from affecting map position
+  
+  // Ensure map container stays in place
+  :deep(.map-container-wrapper) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+  }
 }
 
 // Floating Search and Filter Container

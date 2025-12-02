@@ -31,7 +31,7 @@
       />
     </div>
 
-    <div v-show="show" class="results-content">
+    <div ref="resultsContentRef" v-show="show" class="results-content">
       <div v-if="sellers.length === 0" class="no-results">
         <i class="bi bi-search"></i>
         <p>沒有找到相關結果</p>
@@ -114,6 +114,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'item-click', 'toggle-view', 'sub-category-filter'])
+
+// Refs
+const resultsContentRef = ref(null)
 
 // Track which sellers are expanded (all expanded by default)
 const expandedSellers = ref(new Set())
@@ -250,13 +253,23 @@ function scrollToSeller(userId) {
     expandedSellers.value = new Set(expandedSellers.value)
   }
 
-  // Wait for DOM update, then scroll
+  // Wait for DOM update, then scroll within the container only
   nextTick(() => {
     const sellerElement = document.querySelector(`.seller-group[data-seller-id="${userId}"]`)
-    if (sellerElement) {
-      sellerElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
+    const container = resultsContentRef.value
+    
+    if (sellerElement && container) {
+      // Calculate scroll position relative to container, not viewport
+      const containerRect = container.getBoundingClientRect()
+      const sellerRect = sellerElement.getBoundingClientRect()
+      
+      // Calculate offset from top of container
+      const scrollOffset = sellerRect.top - containerRect.top + container.scrollTop
+      
+      // Scroll smoothly within container only
+      container.scrollTo({
+        top: scrollOffset - 20, // 20px padding from top
+        behavior: 'smooth'
       })
 
       // Add highlight effect
@@ -284,12 +297,14 @@ defineExpose({
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.10);
-  overflow: auto;
+  overflow: hidden; // Changed from auto to hidden to prevent scroll jumps
   max-height: 80vh;
   display: flex;
   flex-direction: column;
   pointer-events: auto; // Allow interaction with this element
   transition: max-height 0.3s ease;
+  will-change: max-height; // Optimize for height changes
+  contain: layout; // CSS containment to prevent layout thrashing
 
   &.collapsed {
     max-height: auto;
