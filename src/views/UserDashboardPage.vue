@@ -36,21 +36,14 @@
             </div>
           </div>
 
-          <!-- Middle Row: Level & Trust -->
+          <!-- Middle Row: Level Progress -->
           <div class="row g-4 mb-4">
-            <div class="col-lg-6">
+            <div class="col-12">
               <LevelProgressCard
                 :current-tier="pointsStore.currentLevelTier"
                 :next-tier="pointsStore.nextLevelTier"
                 :progress-percentage="pointsStore.levelProgress"
                 :points-to-next="pointsStore.pointsToNextLevel"
-              />
-            </div>
-            <div class="col-lg-6">
-              <TrustLevelCard
-                :current-tier="pointsStore.currentTrustTier"
-                :next-tier="pointsStore.nextTrustTier"
-                :sales-to-next="pointsStore.salesPointsToNextTrust"
               />
             </div>
           </div>
@@ -84,97 +77,88 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { usePointsStore } from '@/stores/points';
-import AppHeader from '@/components/AppHeader.vue';
-import AppFooter from '@/components/AppFooter.vue';
-import Breadcrumb from '@/components/Breadcrumb.vue';
-import PointsBalanceCard from '@/components/dashboard/PointsBalanceCard.vue';
-import DailyStreakCard from '@/components/dashboard/DailyStreakCard.vue';
-import LevelProgressCard from '@/components/dashboard/LevelProgressCard.vue';
-import TrustLevelCard from '@/components/dashboard/TrustLevelCard.vue';
-import BadgesCard from '@/components/dashboard/BadgesCard.vue';
-import TransactionHistoryCard from '@/components/dashboard/TransactionHistoryCard.vue';
+import { ref, onMounted } from 'vue'
+import { usePointsStore } from '@/stores/points'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
+import Breadcrumb from '@/components/Breadcrumb.vue'
+import PointsBalanceCard from '@/components/dashboard/PointsBalanceCard.vue'
+import DailyStreakCard from '@/components/dashboard/DailyStreakCard.vue'
+import LevelProgressCard from '@/components/dashboard/LevelProgressCard.vue'
+import BadgesCard from '@/components/dashboard/BadgesCard.vue'
+import TransactionHistoryCard from '@/components/dashboard/TransactionHistoryCard.vue'
 
-const router = useRouter();
-const pointsStore = usePointsStore();
+const pointsStore = usePointsStore()
 
-// State
-const isLoading = ref(true);
+const isLoading = ref(true)
 
-// Lifecycle
 onMounted(async () => {
-  await loadDashboardData();
-});
+  await loadDashboardData()
+})
 
-// Methods
 async function loadDashboardData() {
   try {
-    isLoading.value = true;
-
-    // Load all dashboard data in parallel
+    isLoading.value = true
     await Promise.all([
       pointsStore.fetchProfile(),
       pointsStore.fetchTransactions({ page: 1, size: 20 }),
       pointsStore.fetchBadges()
-    ]);
-
-    console.log('Dashboard data loaded successfully');
+    ])
   } catch (error) {
-    console.error('Error loading dashboard data:', error);
+    console.error('Error loading dashboard data:', error)
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
 }
 
 async function handleSignIn() {
   try {
-    const result = await pointsStore.performDailySignIn();
+    const result = await pointsStore.performDailySignIn()
 
     if (result.success) {
-      // Build success message
-      let message = `${result.message}\n\n`;
-      message += `🎁 獲得點數: ${result.points_awarded} P\n`;
-      message += `🔥 連續簽到: ${result.streak_day} 天\n`;
+      let message = `${result.message}\n\n`
+      message += `🎁 獲得點數: ${result.points_awarded} P\n`
+      message += `🔥 連續簽到: ${result.streak_day} 天\n`
 
       if (result.new_balance !== undefined) {
-        message += `💰 當前餘額: ${result.new_balance} P\n`;
+        message += `💰 當前餘額: ${result.new_balance} P\n`
+      }
+
+      if (result.badges?.newly_earned_count > 0) {
+        message += `\n🏆 獲得 ${result.badges.newly_earned_count} 個新徽章！\n`
+        result.badges.badges?.forEach(badge => {
+          message += `${badge.icon} ${badge.name}\n`
+        })
       }
 
       if (result.next_reward > 0) {
-        message += `\n📅 再簽到 ${result.next_reward} 天可獲得下個獎勵！`;
-      } else {
-        message += `\n🎉 已達成所有簽到里程碑！`;
+        message += `\n📅 再簽到 ${result.next_reward} 天可獲得下個獎勵！`
       }
 
-      alert(message);
-
-      // Refresh dashboard to show updated data
-      await loadDashboardData();
+      alert(message)
+      await loadDashboardData()
     } else {
-      // Handle already signed in case
-      alert(result.message || '您今天已經簽到過了');
+      alert(result.message || '您今天已經簽到過了')
     }
   } catch (error) {
-    console.error('Sign-in error:', error);
-    alert(`簽到失敗: ${error.message || '請稍後再試'}`);
+    console.error('Sign-in error:', error)
+    alert(`簽到失敗: ${error.message || '請稍後再試'}`)
   }
 }
 
 async function handleTransactionFilter(filters) {
   try {
-    await pointsStore.fetchTransactions(filters, true);
+    await pointsStore.fetchTransactions(filters, true)
   } catch (error) {
-    console.error('Filter error:', error);
+    console.error('Filter error:', error)
   }
 }
 
 async function handleLoadMore(page) {
   try {
-    await pointsStore.fetchTransactions({ page, size: 20 });
+    await pointsStore.fetchTransactions({ page, size: 20 })
   } catch (error) {
-    console.error('Load more error:', error);
+    console.error('Load more error:', error)
   }
 }
 </script>
@@ -200,8 +184,6 @@ async function handleLoadMore(page) {
   padding: 30px 20px;
 }
 
-// Ensure consistent card heights and alignment
-// Bootstrap's row already handles flex, we just need to ensure cards fill height
 .row.g-4 {
   > [class*='col-'] {
     display: flex;
@@ -215,7 +197,6 @@ async function handleLoadMore(page) {
   }
 }
 
-// Loading State
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -232,31 +213,14 @@ async function handleLoadMore(page) {
   margin: 0;
 }
 
-// Responsive Design
 @media (max-width: 991.98px) {
   .dashboard-container {
     padding: 25px 15px;
-  }
-
-  .row {
-    margin-bottom: 20px !important;
   }
 }
 
 @media (max-width: 575.98px) {
   .dashboard-container {
-    padding: 20px 10px;
-  }
-
-  .row {
-    margin-bottom: 15px !important;
-  }
-}
-
-// Lock minimum width at 360px for phone
-@media (max-width: 360px) {
-  .dashboard-container {
-    min-width: 360px;
     padding: 20px 10px;
   }
 }

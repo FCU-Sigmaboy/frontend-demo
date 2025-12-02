@@ -23,7 +23,7 @@
       <div v-else class="badges-grid">
         <div
           v-for="badge in badges"
-          :key="badge.id"
+          :key="badge.badge_id || badge.id"
           class="badge-item"
           :class="`rarity-${badge.rarity}`"
           @click="selectBadge(badge)"
@@ -36,7 +36,7 @@
           <p class="badge-description">{{ badge.description }}</p>
           <div class="badge-footer">
             <span class="badge-rarity">{{ getRarityLabel(badge.rarity) }}</span>
-            <span class="badge-points">+{{ badge.points_rewarded }}P</span>
+            <span class="badge-points">+{{ badge.points_reward || badge.points_rewarded }}P</span>
           </div>
         </div>
       </div>
