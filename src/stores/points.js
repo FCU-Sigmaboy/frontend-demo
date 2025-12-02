@@ -25,6 +25,9 @@ export const usePointsStore = defineStore('points', () => {
   const lastProfileFetch = ref(null);
   const lastTransactionsFetch = ref(null);
   const lastBadgesFetch = ref(null);
+  const transactionsHasMore = ref(true);
+  const transactionsFilter = ref(null);
+  const transactionsPage = ref(1);
 
   // Cache duration in milliseconds (5 minutes)
   const CACHE_DURATION = 5 * 60 * 1000;
@@ -152,27 +155,61 @@ export const usePointsStore = defineStore('points', () => {
    * @param {boolean} forceRefresh - Force refresh even if cache is valid
    */
   async function fetchTransactions(params = {}, forceRefresh = false) {
+    const size = params.size || 20;
+    const requestedType = params.type !== undefined ? params.type : transactionsFilter.value;
+    const requestedPage = params.page || (params.append ? transactionsPage.value + 1 : 1);
+    const isFilterChanged = requestedType !== transactionsFilter.value;
+    const shouldReset = forceRefresh || isFilterChanged || requestedPage === 1;
+
     if (!forceRefresh && isCacheValid(lastTransactionsFetch.value) &&
-      transactions.value.length > 0 && !params.type && !params.startDate) {
-      console.log('Using cached transactions data');
-      return transactions.value;
+      !requestedType && requestedPage === 1 && transactions.value.length > 0) {
+      return {
+        transactions: transactions.value,
+        total: transactions.value.length,
+        page: 1,
+        hasMore: transactionsHasMore.value
+      };
     }
 
     if (isLoadingTransactions.value) {
       console.log('Transactions fetch already in progress, skipping...');
-      return transactions.value;
+      return {
+        transactions: transactions.value,
+        total: transactions.value.length,
+        page: transactionsPage.value,
+        hasMore: transactionsHasMore.value
+      };
     }
 
     try {
       isLoadingTransactions.value = true;
-      const result = await getPointsTransactions(params);
+      if (shouldReset) {
+        transactionsPage.value = 1;
+        if (requestedPage === 1) {
+          transactions.value = [];
+        }
+      }
 
-      if (!params.type && !params.startDate) {
+      const result = await getPointsTransactions({
+        type: requestedType,
+        page: requestedPage,
+        size
+      });
+
+      if (requestedPage === 1) {
         transactions.value = result.transactions;
+      } else {
+        transactions.value = [...transactions.value, ...result.transactions];
+      }
+
+      transactionsFilter.value = requestedType || null;
+      transactionsPage.value = requestedPage;
+      transactionsHasMore.value = Boolean(result.hasMore);
+      if (requestedPage === 1) {
         lastTransactionsFetch.value = Date.now();
       }
 
-      console.log('Transactions fetched:', result.total, 'total');
+      console.log('Transactions fetched:', transactions.value.length, 'loaded');
       return result;
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -429,6 +466,9 @@ export const usePointsStore = defineStore('points', () => {
     hasSignedInToday,
     earnedBadgesCount,
     inProgressBadgesCount,
+    transactionsHasMore,
+    transactionsFilter,
+    transactionsPage,
 
     // Actions
     fetchProfile,

@@ -81,10 +81,6 @@
               <i class="bi bi-send-fill"></i>
             </button>
           </div>
-          <button class="btn-clear-history" @click="clearHistory" title="清除對話記錄">
-            <i class="bi bi-trash"></i>
-            清除記錄
-          </button>
         </div>
       </div>
     </Transition>
@@ -224,14 +220,6 @@ async function sendMessage() {
   }
 }
 
-// 清除對話記錄
-function clearHistory() {
-  if (confirm('確定要清除所有對話記錄嗎?')) {
-    messages.value = []
-    localStorage.removeItem(STORAGE_KEY)
-  }
-}
-
 // 格式化訊息內容 (支援超連結)
 function formatMessageContent(content) {
   if (!content) return ''
@@ -291,13 +279,14 @@ watch(() => messages.value.length, () => {
 <style scoped>
 .customer-service-wrapper {
   position: fixed;
-  bottom: 156px; /* scroll-to-top (30px + 56px) + location-switcher 下面的位置 + gap (12px) */
-  right: 30px;
+  bottom: 96px; /* sits right above scroll-to-top button */
+  right: 30px; /* align with scroll button */
   z-index: 9999;
+  pointer-events: none; /* allow scroll button interaction unless over chat */
 
   @media (max-width: 575.98px) {
-    bottom: 164px; /* view-toggle-btn (90px) + gap (12px) + location-switcher position */
-    right: 24px;
+    bottom: 88px; /* align above mobile scroll button */
+    right: 30px;
   }
 }
 
@@ -306,22 +295,23 @@ watch(() => messages.value.length, () => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6FB8A5 0%, #5fa795 100%);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #5fa795;
+  border: none;
   color: white;
   font-size: 22px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(111, 184, 165, 0.25);
+  box-shadow: none;
+  margin: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  pointer-events: auto;
 }
 
 .chat-bubble:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(111, 184, 165, 0.4);
+  box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
 }
 
 .chat-bubble.bubble-hidden {
@@ -331,7 +321,7 @@ watch(() => messages.value.length, () => {
 }
 
 .chat-bubble:active {
-  transform: translateY(-1px);
+  transform: scale(0.95);
 }
 
 .badge-count {
@@ -353,23 +343,30 @@ watch(() => messages.value.length, () => {
 /* 聊天視窗 */
 .chat-window {
   position: fixed;
-  bottom: 226px; /* customer-service-wrapper (156px) + bubble height (56px) + gap (14px) */
-  right: 30px;
-  width: 380px;
-  height: 550px;
+  bottom: 96px; /* align bottom with chat button position */
+  right: 30px; /* align with scroll button and chat button */
+  width: 400px;
+  height: calc(100vh - 160px); /* taller height, leave space for top and button */
+  max-height: 800px;
+  min-height: 600px;
   background: white;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  pointer-events: auto;
 
   @media (max-width: 575.98px) {
-    bottom: 234px; /* customer-service-wrapper (164px) + bubble height (56px) + gap (14px) */
-    width: calc(100vw - 48px);
+    bottom: 88px; /* align with mobile button */
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100vw - 32px);
     max-width: 380px;
-    height: 500px;
-    right: 24px;
+    height: calc(100vh - 180px);
+    max-height: 600px;
+    min-height: 480px;
   }
 }
 
@@ -570,27 +567,24 @@ watch(() => messages.value.length, () => {
 
 /* 輸入區域 */
 .chat-footer {
-  padding: 12px;
-  background: white;
-  border-top: 1px solid #e9ecef;
+  padding: 12px 16px 18px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
 }
 
 .input-wrapper {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 10px;
 }
 
-.input-wrapper .form-control {
+.form-control {
   flex: 1;
-  border-radius: 20px;
-  border: 1px solid #dee2e6;
-  padding: 8px 16px;
-}
-
-.input-wrapper .form-control:focus {
-  border-color: #6FB8A5;
-  box-shadow: 0 0 0 0.2rem rgba(111, 184, 165, 0.25);
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  padding: 12px 16px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
 }
 
 .btn-send {
@@ -615,28 +609,6 @@ watch(() => messages.value.length, () => {
 .btn-send:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-clear-history {
-  width: 100%;
-  padding: 6px;
-  background: none;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  color: #6c757d;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.btn-clear-history:hover {
-  background: #e9f5f2;
-  border-color: #6FB8A5;
-  color: #6FB8A5;
 }
 
 /* 動畫 */

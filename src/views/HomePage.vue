@@ -911,16 +911,15 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(10px);
+  background: white;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 9998;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
   i {
     font-size: 20px;
@@ -928,15 +927,11 @@ onUnmounted(() => {
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-    border-color: rgba(0, 0, 0, 0.12);
+    transform: translateY(-5px);
   }
 
   &:active {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: scale(0.95);
   }
 }
 
@@ -1041,13 +1036,8 @@ onUnmounted(() => {
   }
 
   .scroll-top-btn {
-    width: 44px;
-    height: 44px;
-    bottom: 25px;
-    right: 25px;
-
     i {
-      font-size: 28px;
+      font-size: 18px;
     }
   }
 }
@@ -1128,23 +1118,13 @@ onUnmounted(() => {
 
   // Scroll to Top Button - Mobile: center bottom
   .scroll-top-btn {
-    width: 48px;
-    height: 48px;
     bottom: 24px;
     left: 50%;
     right: auto;
     transform: translateX(-50%);
 
-    i {
-      font-size: 18px;
-    }
-
-    &:hover {
-      transform: translateX(-50%) translateY(-3px);
-    }
-
     &:active {
-      transform: translateX(-50%) translateY(-1px);
+      transform: translateX(-50%) scale(0.95);
     }
   }
 }

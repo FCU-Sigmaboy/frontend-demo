@@ -817,33 +817,32 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 5px;
-  min-width: 80px; // Ensure consistent spacing
+  min-width: 80px;
   position: relative;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
   transition: all 0.3s;
 
   &:hover {
-    background-color: rgba(111, 184, 165, 0.1);
+    background: rgba(111, 184, 165, 0.15);
   }
 
   .points-icon {
-    background: #f2efeb;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-weight: 600;
     font-size: 14px;
     color: $primary;
   }
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px; // Increased from 16px
-    font-weight: 700; // Bolder to make it more prominent
+    font-size: 20px;
+    font-weight: 700;
     color: $primary;
-    min-width: 30px; // Ensure consistent width
+    min-width: 30px;
   }
 
   .notification-dot {
@@ -854,7 +853,6 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     height: 8px;
     background-color: #ff6b6b;
     border-radius: 50%;
-    border: 2px solid #f2efeb;
   }
 }
 
@@ -991,15 +989,12 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background-color: #e8f5f1;
-  border-radius: 12px;
-  padding: 4px 10px;
+  background: rgba(111, 184, 165, 0.15);
+  border-radius: 6px;
+  padding: 4px 12px;
   position: relative;
   transition: all 0.3s;
-
-  &:hover {
-    background-color: #d0ebe4;
-  }
+  border: none;
 
   i {
     font-size: 16px;
@@ -1021,7 +1016,6 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     height: 8px;
     background-color: #ff6b6b;
     border-radius: 50%;
-    border: 2px solid #f2efeb;
   }
 }
 
