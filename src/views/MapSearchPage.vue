@@ -847,6 +847,7 @@ onUnmounted(() => {
   pointer-events: none; // Allow map interaction through the container
 
   .search-filter-wrapper {
+    z-index: 1002;
     display: flex;
     gap: 12px;
     align-items: flex-start;

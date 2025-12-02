@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import FilterTabs from '@/components/FilterTabs.vue'
 
 const props = defineProps({
@@ -117,6 +117,7 @@ const emit = defineEmits(['close', 'item-click', 'toggle-view', 'sub-category-fi
 
 // Track which sellers are expanded (all expanded by default)
 const expandedSellers = ref(new Set())
+const initializedSellers = ref(new Set())
 
 // Group items by seller and calculate seller statistics
 const sellers = computed(() => {
@@ -197,15 +198,19 @@ const sellers = computed(() => {
     return a.distance_km - b.distance_km
   })
 
-  // Initialize all sellers as expanded
-  sorted.forEach(seller => {
-    if (!expandedSellers.value.has(seller.user_id)) {
-      expandedSellers.value.add(seller.user_id)
-    }
-  })
-
   return sorted
 })
+
+// Watch sellers and initialize new ones as expanded
+watch(sellers, (newSellers) => {
+  newSellers.forEach(seller => {
+    // Only auto-expand sellers we haven't seen before
+    if (!initializedSellers.value.has(seller.user_id)) {
+      expandedSellers.value.add(seller.user_id)
+      initializedSellers.value.add(seller.user_id)
+    }
+  })
+}, { immediate: true })
 
 // Format distance helper
 function formatDistance(km) {
@@ -279,8 +284,8 @@ defineExpose({
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.10);
-  overflow: hidden;
-  max-height: 60vh;
+  overflow: auto;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
   pointer-events: auto; // Allow interaction with this element
@@ -459,12 +464,15 @@ defineExpose({
 .seller-header {
   display: flex;
   align-items: center;
+  position: sticky;
+  top: 0;
   gap: 12px;
   padding: 16px 20px;
   cursor: pointer;
   transition: background 0.3s;
   background: #f9f9f9;
   border-bottom: 1px solid #e0e0e0;
+  z-index: 1;
 
   &:hover {
     background: #f0f0f0;
