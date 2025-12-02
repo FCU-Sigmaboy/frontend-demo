@@ -18,7 +18,53 @@
 
       <!-- Filter Tabs Section -->
       <section class="filter-section">
-        <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
+        <div class="filter-section-container">
+          <!-- Location Switcher -->
+          <div class="location-switcher">
+            <button class="location-btn" @click="toggleLocationMenu">
+              <i class="bi bi-geo-alt-fill"></i>
+              <span class="location-text">
+                {{ currentLocationType === 'current' ? '目前位置' :
+                   currentLocationType === 'home' ? '家' : '公司' }}
+              </span>
+              <i class="bi bi-chevron-down"></i>
+            </button>
+
+            <!-- Location Menu -->
+            <div v-if="showLocationMenu" class="location-menu">
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'current' }"
+                @click="switchLocation('current')"
+              >
+                <i class="bi bi-geo-alt-fill"></i>
+                <span>目前位置</span>
+              </button>
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'home', disabled: !savedLocations.home }"
+                :disabled="!savedLocations.home"
+                @click="switchLocation('home')"
+              >
+                <i class="bi bi-house-fill"></i>
+                <span>家</span>
+                <span v-if="!savedLocations.home" class="not-set">(未設定)</span>
+              </button>
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'work', disabled: !savedLocations.work }"
+                :disabled="!savedLocations.work"
+                @click="switchLocation('work')"
+              >
+                <i class="bi bi-briefcase-fill"></i>
+                <span>公司</span>
+                <span v-if="!savedLocations.work" class="not-set">(未設定)</span>
+              </button>
+            </div>
+          </div>
+
+          <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
+        </div>
       </section>
 
       <!-- Product Grid Section -->
@@ -77,50 +123,6 @@
       >
         <i class="bi bi-arrow-up"></i>
       </button>
-
-      <!-- Location Switcher -->
-      <div class="location-switcher">
-        <button class="location-btn" @click="toggleLocationMenu">
-          <i class="bi bi-geo-alt-fill"></i>
-          <span class="location-text">
-            {{ currentLocationType === 'current' ? '目前位置' :
-               currentLocationType === 'home' ? '家' : '公司' }}
-          </span>
-          <i class="bi bi-chevron-down"></i>
-        </button>
-
-        <!-- Location Menu -->
-        <div v-if="showLocationMenu" class="location-menu">
-          <button
-            class="location-option"
-            :class="{ active: currentLocationType === 'current' }"
-            @click="switchLocation('current')"
-          >
-            <i class="bi bi-geo-alt-fill"></i>
-            <span>目前位置</span>
-          </button>
-          <button
-            class="location-option"
-            :class="{ active: currentLocationType === 'home', disabled: !savedLocations.home }"
-            :disabled="!savedLocations.home"
-            @click="switchLocation('home')"
-          >
-            <i class="bi bi-house-fill"></i>
-            <span>家</span>
-            <span v-if="!savedLocations.home" class="not-set">(未設定)</span>
-          </button>
-          <button
-            class="location-option"
-            :class="{ active: currentLocationType === 'work', disabled: !savedLocations.work }"
-            :disabled="!savedLocations.work"
-            @click="switchLocation('work')"
-          >
-            <i class="bi bi-briefcase-fill"></i>
-            <span>公司</span>
-            <span v-if="!savedLocations.work" class="not-set">(未設定)</span>
-          </button>
-        </div>
-      </div>
 
       <!-- Map View Toggle Button -->
       <button
@@ -595,6 +597,15 @@ onUnmounted(() => {
   padding: 30px 0 20px;
 }
 
+.filter-section-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
 // Products Section
 .products-section {
   padding: 20px 0 40px;
@@ -688,45 +699,50 @@ onUnmounted(() => {
   position: absolute;
 }
 
-// Location Switcher
+// Location Switcher (Inline style for filter section)
 .location-switcher {
-  position: fixed;
-  bottom: 224px; // Above customer-service (在客服上方)
-  right: 30px;
-  z-index: 1002;
+  position: relative;
+  z-index: 100;
 
   .location-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
-    padding: 0;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 50%;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    gap: 8px;
+    height: 32px;
+    padding: 0 16px;
+    background: white;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
 
     i {
-      font-size: 22px;
+      font-size: 16px;
       color: #6fb8a5;
 
       &.bi-chevron-down {
-        display: none;
+        display: inline-block;
+        font-size: 12px;
+        color: #666;
+        margin-left: 2px;
+        transition: transform 0.2s;
       }
     }
 
     .location-text {
-      display: none;
+      display: inline-block;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 1);
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+      box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3);
     }
 
     &:active {
@@ -736,14 +752,14 @@ onUnmounted(() => {
 
   .location-menu {
     position: absolute;
-    bottom: calc(100% + 12px);
-    right: 0;
-    min-width: 200px;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 180px;
     background: white;
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     overflow: hidden;
-    animation: slideUp 0.2s ease-out;
+    animation: slideDown 0.2s ease-out;
 
     .location-option {
       width: 100%;
@@ -786,7 +802,7 @@ onUnmounted(() => {
       }
 
       &.active {
-        background: rgba(111, 184, 165, 0.05);
+        background: rgba(111, 184, 165, 0.1);
 
         i {
           color: #6fb8a5;
@@ -810,10 +826,10 @@ onUnmounted(() => {
     }
   }
 
-  @keyframes slideUp {
+  @keyframes slideDown {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(-10px);
     }
     to {
       opacity: 1;
@@ -972,6 +988,11 @@ onUnmounted(() => {
     padding: 25px 0 18px;
   }
 
+  .filter-section-container {
+    padding: 0 15px;
+    gap: 12px;
+  }
+
   .products-section {
     padding: 18px 0 35px;
   }
@@ -998,22 +1019,24 @@ onUnmounted(() => {
 }
 
 @media (max-width: 575.98px) {
+  .filter-section-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 10px;
+  }
+
   .location-switcher {
-    bottom: 232px; // Above customer-service (客服按鈕上方)
-    right: 24px;
-
     .location-btn {
-      width: 56px;
-      height: 56px;
-
-      i {
-        font-size: 22px;
-      }
+      width: 100%;
+      justify-content: flex-start;
+      height: 36px;
+      padding: 0 14px;
     }
 
     .location-menu {
-      min-width: 180px;
-      right: 0;
+      width: 100%;
+      min-width: unset;
     }
   }
 
