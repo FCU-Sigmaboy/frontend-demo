@@ -30,7 +30,12 @@
           <div class="search-filter-wrapper">
             <!-- Search Bar -->
             <div class="search-bar-section">
-              <SearchBar @search="handleSearch" />
+              <SearchBar
+                @search="handleSearch"
+                @distance-change="handleSearch"
+                :initial-query="state.filters.keyword"
+                :initial-distance="state.filters.distance_range_km ?? ''"
+              />
             </div>
 
             <!-- Filter Tabs -->
@@ -591,7 +596,9 @@ function handleMapBoundsChanged(bounds) {
 async function handleSearch(searchParams) {
   state.filters.keyword = searchParams.query || ''
   // If distance is empty string (不限距離), set to null, otherwise parse as integer
-  state.filters.distance_range_km = searchParams.distance ? parseInt(searchParams.distance) : null
+  state.filters.distance_range_km = searchParams.distance !== '' && searchParams.distance !== null
+    ? parseInt(searchParams.distance)
+    : null
 
   // Fetch items
   await fetchItems()

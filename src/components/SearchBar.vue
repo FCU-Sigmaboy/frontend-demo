@@ -63,16 +63,26 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { BDropdown, BDropdownItem } from 'bootstrap-vue-next';
 
 const emit = defineEmits(['search']);
 const route = useRoute();
 
+const props = defineProps({
+  initialQuery: {
+    type: String,
+    default: ''
+  },
+  initialDistance: {
+    type: [String, Number, null],
+    default: '5'
+  }
+});
+
 const searchQuery = ref('');
 const distance = ref('5');
-// const location = ref('taichung');
 
 // const selectedLocation = computed(() => {
 //   const selected = location_options.find(opt => opt.value === location.value);
@@ -107,14 +117,23 @@ const distance_options = [
 
 const selectDistance = (value) => {
   distance.value = value;
+  emit('distance-change', {
+    query: searchQuery.value,
+    distance: distance.value
+  });
+  triggerSearch();
 };
 
 const handleSearch = () => {
+  triggerSearch();
+};
+
+function triggerSearch() {
   emit('search', {
     query: searchQuery.value,
     distance: distance.value
   });
-};
+}
 
 // Watch for URL changes and update search bar values
 watch(() => route.query.search, (newSearch) => {
@@ -124,6 +143,13 @@ watch(() => route.query.search, (newSearch) => {
 watch(() => route.query.distance, (newDistance) => {
   distance.value = newDistance || '5';
 }, { immediate: true });
+
+onMounted(() => {
+  searchQuery.value = props.initialQuery || route.query.search || '';
+  distance.value = props.initialDistance !== undefined && props.initialDistance !== null
+    ? String(props.initialDistance)
+    : (route.query.distance || '5');
+});
 </script>
 
 <style scoped lang="scss">
