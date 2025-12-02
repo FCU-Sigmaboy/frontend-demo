@@ -51,6 +51,9 @@
             <div class="col-12">
               <TransactionHistoryCard
                 :transactions="pointsStore.transactions"
+                :has-more="pointsStore.transactionsHasMore"
+                :is-loading="pointsStore.isLoadingTransactions"
+                :active-filter="pointsStore.transactionsFilter"
                 @filter="handleTransactionFilter"
                 @load-more="handleLoadMore"
               />
@@ -135,7 +138,7 @@ async function handleSignIn() {
 
 async function handleTransactionFilter(filters) {
   try {
-    await pointsStore.fetchTransactions(filters, true)
+    await pointsStore.fetchTransactions({ ...filters, page: 1, size: 20 }, true)
   } catch (error) {
     console.error('Filter error:', error)
   }
@@ -143,7 +146,7 @@ async function handleTransactionFilter(filters) {
 
 async function handleLoadMore(page) {
   try {
-    await pointsStore.fetchTransactions({ page, size: 20 })
+    await pointsStore.fetchTransactions({ page, size: 20, type: pointsStore.transactionsFilter })
   } catch (error) {
     console.error('Load more error:', error)
   }
