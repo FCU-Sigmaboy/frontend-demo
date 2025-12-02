@@ -289,6 +289,15 @@ const handleScroll = () => {
       !loading.value) {
     loadMoreProducts();
   }
+  
+  const searchSection = document.querySelector('.search-section-container');
+  if (searchSection) {
+    if (window.scrollY > 300) {
+      searchSection.classList.add('scrolled');
+    } else {
+      searchSection.classList.remove('scrolled');
+    }
+  }
 };
 
 const scrollToTop = () => {
@@ -582,8 +591,9 @@ onUnmounted(() => {
 .search-section {
   padding: 10px 0;
   margin-top: 10px;
-  position: relative;
-  z-index: 1;
+  position: sticky;
+  top: 60px;
+  z-index: 100;
 }
 
 .search-section-container {
@@ -593,6 +603,22 @@ onUnmounted(() => {
   gap: 10px;
   margin: 0 auto;
   padding: 0 20px;
+  transition: all 0.3s ease-in-out;
+}
+
+.search-section-container.scrolled {
+  background: transparent;
+  max-width: 800px;
+
+  .map-toggle-btn {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .search-bar-wrapper {
+    background-color: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(10px);
+  } 
 }
 
 // Map Toggle Button (Square style next to SearchBar)
@@ -741,7 +767,7 @@ onUnmounted(() => {
 // Location Switcher (Inline style for filter section)
 .location-switcher {
   position: relative;
-  z-index: 100;
+  z-index: 99;
 
   .location-btn {
     display: flex;

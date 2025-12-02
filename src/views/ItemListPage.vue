@@ -365,6 +365,20 @@ const handleSearch = (data) => {
   router.push({ query });
 
   console.log('Search:', data);
+  
+  // Scroll to top after search
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const handleScroll = () => {
+  const searchSection = document.querySelector('.search-section-container');
+  if (searchSection) {
+    if (window.scrollY > 300) {
+      searchSection.classList.add('scrolled');
+    } else {
+      searchSection.classList.remove('scrolled');
+    }
+  }
 };
 
 const handleCategoryChange = (tabId) => {
@@ -665,10 +679,13 @@ onMounted(async () => {
   await fetchSavedLocations();
   await fetchCurrentLocation();
   document.addEventListener('click', handleClickOutside);
+  // Add scroll listener
+  window.addEventListener('scroll', handleScroll);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('scroll', handleScroll);
 });
 
 // 監聽 URL query 參數變化來觸發搜索
@@ -725,8 +742,10 @@ watch(() => route.query.search, (newSearch) => {
 
 // Search Section
 .search-section {
-  padding: 10px 0 20px;
-  background-color: #f9f9f9;
+  padding: 10px 0;
+  position: sticky;
+  top: 60px;
+  z-index: 100;
 }
 
 .search-section-container {
@@ -736,6 +755,22 @@ watch(() => route.query.search, (newSearch) => {
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 20px;
+  transition: all 0.3s ease-in-out;
+}
+
+.search-section-container.scrolled {
+  background: transparent;
+  max-width: 800px;
+
+  .map-toggle-btn {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .search-bar-wrapper {
+    background-color: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(10px);
+  } 
 }
 
 // Map Toggle Button (Square style next to SearchBar)

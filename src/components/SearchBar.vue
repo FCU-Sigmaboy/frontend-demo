@@ -138,7 +138,7 @@ watch(() => route.query.distance, (newDistance) => {
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);
   border: 1px solid #d5d5d5;
   border-radius: 8px;
