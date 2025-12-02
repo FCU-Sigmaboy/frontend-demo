@@ -106,18 +106,11 @@
             />
           </TransitionGroup>
 
-          <!-- Loading More Indicator -->
-          <div v-if="isLoadingMore" class="loading-more">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">載入中...</span>
-            </div>
-            <p>載入更多商品中...</p>
-          </div>
-
-          <!-- No More Products Message -->
-          <div v-if="!hasMoreProducts && products.length > 0 && !loading" class="no-more-products">
-            <i class="bi bi-check-circle"></i>
-            <p>已顯示所有商品</p>
+          <!-- Load More Button -->
+          <div v-if="!loading && hasMore && displayedProducts && displayedProducts.length > 0" class="load-more-section">
+            <button class="load-more-btn" @click="loadMore">
+              載入更多
+            </button>
           </div>
         </div>
       </section>
@@ -209,8 +202,7 @@ const loading = ref(false);
 // Pagination state
 const currentPage = ref(1);
 const pageSize = ref(20);
-const hasMoreProducts = ref(true);
-const isLoadingMore = ref(false);
+const hasMore = ref(true);
 
 // Methods
 const handleSearch = (searchData) => {
@@ -277,18 +269,6 @@ const goToProductDetail = (productId) => {
 
 const handleScroll = () => {
   showScrollTop.value = window.scrollY > 500;
-  
-  // Check if user scrolled near bottom for infinite scroll
-  const scrollPosition = window.scrollY + window.innerHeight;
-  const documentHeight = document.documentElement.scrollHeight;
-  const threshold = 300; // Load more when 300px from bottom
-  
-  if (scrollPosition >= documentHeight - threshold && 
-      !isLoadingMore.value && 
-      hasMoreProducts.value && 
-      !loading.value) {
-    loadMoreProducts();
-  }
   
   const searchSection = document.querySelector('.search-section-container');
   if (searchSection) {
@@ -472,9 +452,9 @@ async function loadProductsWithLocation() {
     displayedProducts.value = data || [];
     
     if (!data || data.length < pageSize.value) {
-      hasMoreProducts.value = false;
+      hasMore.value = false;
     } else {
-      hasMoreProducts.value = true;
+      hasMore.value = true;
     }
   } catch (error) {
     console.error('Failed to load products:', error);
@@ -483,34 +463,48 @@ async function loadProductsWithLocation() {
   }
 }
 
-// Load more products (infinite scroll)
-const loadMoreProducts = async () => {
-  if (isLoadingMore.value || !hasMoreProducts.value) return;
+// Load more products
+const loadMore = async () => {
+  if (loading.value || !hasMore.value) return;
   
-  isLoadingMore.value = true;
+  // Save current scroll position
+  const scrollPosition = window.scrollY;
+  
+  loading.value = true;
   currentPage.value += 1;
   
   try {
-    const data = await searchItems({
+    const params = {
       page: currentPage.value,
       size: pageSize.value
-    });
+    };
+    
+    if (userLocation.value) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
     
     if (data && data.length > 0) {
       products.value = [...products.value, ...data];
       displayedProducts.value = [...products.value];
       
+      // Restore scroll position after DOM update
+      await new Promise(resolve => setTimeout(resolve, 0));
+      window.scrollTo(0, scrollPosition);
+      
       // Check if there are more products to load
       if (data.length < pageSize.value) {
-        hasMoreProducts.value = false;
+        hasMore.value = false;
       }
     } else {
-      hasMoreProducts.value = false;
+      hasMore.value = false;
     }
   } catch (error) {
     console.error('Failed to load more products:', error);
   } finally {
-    isLoadingMore.value = false;
+    loading.value = false;
   }
 };
 
@@ -552,7 +546,7 @@ onMounted(async () => {
     
     // Check if there are more products
     if (!data || data.length < pageSize.value) {
-      hasMoreProducts.value = false;
+      hasMore.value = false;
     }
     
     console.log('Products loaded:', data);
@@ -935,49 +929,35 @@ onUnmounted(() => {
   }
 }
 
-// Loading More Indicator
-.loading-more {
+// Load More Section
+.load-more-section {
   grid-column: 1 / -1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  gap: 12px;
 
-  .spinner-border {
-    width: 40px;
-    height: 40px;
-  }
-
-  p {
-    margin: 0;
+  .load-more-btn {
+    padding: 12px 32px;
+    background: white;
+    border: 2px solid #6fb8a5;
+    border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #666;
-  }
-}
-
-// No More Products Message
-.no-more-products {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  gap: 12px;
-
-  i {
-    font-size: 48px;
+    font-size: 16px;
+    font-weight: 500;
     color: #6fb8a5;
-  }
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  p {
-    margin: 0;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #666;
+    &:hover {
+      background: #6fb8a5;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+    }
+
+    &:active {
+      transform: translateY(-1px);
+    }
   }
 }
 
