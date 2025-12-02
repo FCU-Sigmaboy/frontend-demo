@@ -355,7 +355,7 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 1600px) {
   .search-bar-wrapper {
-    padding: 0 20px;
+    padding: 0;
   }
 
   .search-bar {
@@ -410,7 +410,7 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 991.98px) {
   .search-bar-wrapper {
-    padding: 0 15px;
+    padding: 0;
   }
 
   .search-bar {
@@ -456,7 +456,7 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 575.98px) {
   .search-bar-wrapper {
-    padding: 0 16px;
+    padding: 0;
     max-width: 100%;
   }
 

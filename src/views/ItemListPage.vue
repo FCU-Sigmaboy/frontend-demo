@@ -8,7 +8,14 @@
 
       <!-- Search Bar Section -->
       <section class="search-section">
-        <SearchBar @search="handleSearch" />
+        <div class="search-section-container">
+          <!-- Map View Toggle Button -->
+          <button class="map-toggle-btn" @click="toggleToMapView">
+            <i class="bi bi-map"></i>
+          </button>
+
+          <SearchBar @search="handleSearch" />
+        </div>
       </section>
 
       <!-- Category and Filter Section -->
@@ -405,6 +412,26 @@ const handleContactSeller = (productId) => {
   console.log('Contact seller for product:', productId);
 };
 
+const toggleToMapView = () => {
+  // Build query params from current route
+  const query = {};
+  
+  if (route.query.search) {
+    query.search = route.query.search;
+  }
+  if (route.query.distance) {
+    query.distance = route.query.distance;
+  }
+  if (route.query.category) {
+    query.category = route.query.category;
+  }
+  if (route.query.subCategory) {
+    query.subCategory = route.query.subCategory;
+  }
+  
+  router.push({ name: 'MapSearch', query });
+};
+
 const loadMore = () => {
   console.log('Load more products');
   // Implement pagination logic
@@ -700,6 +727,46 @@ watch(() => route.query.search, (newSearch) => {
 .search-section {
   padding: 10px 0 20px;
   background-color: #f9f9f9;
+}
+
+.search-section-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+// Map Toggle Button (Square style next to SearchBar)
+.map-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: white;
+  border: 1px solid #d5d5d5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+
+  i {
+    font-size: 22px;
+    color: #6fb8a5;
+  }
+
+  &:hover {
+    background: #f8f9fa;
+    border-color: #6fb8a5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: translateY(-1px);
+  }
 }
 
 .breadcrumb-container {
@@ -1067,6 +1134,20 @@ watch(() => route.query.search, (newSearch) => {
     padding: 8px 0 18px;
   }
 
+  .search-section-container {
+    padding: 0 15px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 52px;
+    height: 52px;
+
+    i {
+      font-size: 20px;
+    }
+  }
+
   .breadcrumb-container {
     padding: 0 15px;
   }
@@ -1134,6 +1215,32 @@ watch(() => route.query.search, (newSearch) => {
 }
 
 @media (max-width: 575.98px) {
+  .search-section-container {
+    flex-direction: column;
+    padding: 0 10px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    gap: 8px;
+    order: 1; // Place after SearchBar
+
+    &::after {
+      content: '顯示地圖';
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
+    }
+
+    i {
+      font-size: 18px;
+    }
+  }
+
   .filter-section-container {
     flex-direction: column;
     align-items: stretch;

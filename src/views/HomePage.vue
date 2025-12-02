@@ -5,7 +5,14 @@
     <main class="main-content">
       <!-- Search Bar Section -->
       <section class="search-section">
-        <SearchBar @search="handleSearch" />
+        <div class="search-section-container">
+          <!-- Map View Toggle Button -->
+          <button class="map-toggle-btn" @click="toggleToMapView">
+            <i class="bi bi-map"></i>
+          </button>
+
+          <SearchBar @search="handleSearch" />
+        </div>
       </section>
 
       <!-- Hero Banner Section -->
@@ -124,14 +131,6 @@
         <i class="bi bi-arrow-up"></i>
       </button>
 
-      <!-- Map View Toggle Button -->
-      <button
-        class="view-toggle-btn"
-        @click="toggleToMapView"
-      >
-        <i class="bi bi-map"></i>
-        <span class="toggle-text">顯示地圖</span>
-      </button>
     </main>
 
     <AppFooter />
@@ -581,10 +580,50 @@ onUnmounted(() => {
 
 // Search Section
 .search-section {
-  padding: 20px 0;
+  padding: 10px 0;
   margin-top: 10px;
   position: relative;
   z-index: 1;
+}
+
+.search-section-container {
+  display: flex;
+  align-items: center;
+  max-width: 1600px;
+  gap: 10px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+// Map Toggle Button (Square style next to SearchBar)
+.map-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: white;
+  border: 1px solid #d5d5d5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+
+  i {
+    font-size: 22px;
+    color: #6fb8a5;
+  }
+
+  &:hover {
+    background: #f8f9fa;
+    border-color: #6fb8a5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: translateY(-1px);
+  }
 }
 
 // Hero Section
@@ -875,51 +914,6 @@ onUnmounted(() => {
   }
 }
 
-// Map/List View Toggle Button
-.view-toggle-btn {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 28px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  z-index: 998;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  i {
-    font-size: 18px;
-    color: #1e1e1e;
-  }
-
-  .toggle-text {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    color: #1e1e1e;
-    letter-spacing: 0.3px;
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateX(-50%) translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-    border-color: rgba(0, 0, 0, 0.12);
-  }
-
-  &:active {
-    transform: translateX(-50%) translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  }
-}
-
 // Loading More Indicator
 .loading-more {
   grid-column: 1 / -1;
@@ -980,6 +974,20 @@ onUnmounted(() => {
     margin-top: 5px;
   }
 
+  .search-section-container {
+    padding: 0 15px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 52px;
+    height: 52px;
+
+    i {
+      font-size: 20px;
+    }
+  }
+
   .hero-section {
     padding: 15px 0;
   }
@@ -1019,6 +1027,32 @@ onUnmounted(() => {
 }
 
 @media (max-width: 575.98px) {
+  .search-section-container {
+    flex-direction: column;
+    padding: 0 10px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    gap: 8px;
+    order: 1; // Place after SearchBar
+
+    &::after {
+      content: '顯示地圖';
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
+    }
+
+    i {
+      font-size: 18px;
+    }
+  }
+
   .filter-section-container {
     flex-direction: column;
     align-items: stretch;
@@ -1085,35 +1119,6 @@ onUnmounted(() => {
 
     &:active {
       transform: translateX(-50%) translateY(-1px);
-    }
-  }
-
-  // Map/List Toggle Button - Mobile: same size as FAB, positioned above it
-  .view-toggle-btn {
-    bottom: 90px; // Above the floating action button
-    right: 24px;
-    left: auto;
-    transform: none;
-    padding: 0;
-    border-radius: 50%;
-    width: 56px; // Match FAB size
-    height: 56px; // Match FAB size
-    justify-content: center;
-
-    .toggle-text {
-      display: none; // Hide text on mobile
-    }
-
-    i {
-      font-size: 22px;
-    }
-
-    &:hover {
-      transform: translateY(-3px);
-    }
-
-    &:active {
-      transform: translateY(-1px);
     }
   }
 }

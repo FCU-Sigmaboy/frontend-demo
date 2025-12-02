@@ -124,13 +124,13 @@
         </div>
       </div>
 
-      <!-- List View Toggle Button -->
+      <!-- Back Button -->
       <button
         class="view-toggle-btn"
         @click="toggleToListView"
       >
-        <i class="bi bi-list-ul"></i>
-        <span class="toggle-text">顯示列表</span>
+        <i class="bi bi-arrow-left"></i>
+        <span class="toggle-text">返回</span>
       </button>
     </div>
   </div>
@@ -138,7 +138,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import SearchBar from '@/components/SearchBar.vue'
 import FilterTabs from '@/components/FilterTabs.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
@@ -152,6 +152,7 @@ import { supabase } from '@/lib/supabase'
 
 // Composables
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const categoriesStore = useCategoriesStore()
 
@@ -669,9 +670,15 @@ function toggleSearchResults() {
   state.showSearchResults = !state.showSearchResults
 }
 
-// Toggle to list view
+// Toggle to list view (go back to previous page)
 function toggleToListView() {
-  router.push({ name: 'Home' })
+  // Check if there's history to go back to
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    // Fallback to home if no history
+    router.push({ name: 'Home' })
+  }
 }
 
 // Initialize page
@@ -696,8 +703,16 @@ async function initialize() {
       return
     }
 
+    // Initialize filters from URL query params
+    initializeFiltersFromUrl()
+
     // Fetch initial items
     await fetchItems()
+
+    // Show search results if there are filters applied
+    if (state.filters.keyword || state.filters.main_category_id || state.filters.sub_category_id) {
+      state.showSearchResults = true
+    }
 
   } catch (error) {
     console.error('[MapSearchPage] Initialization failed:', error)
@@ -705,6 +720,29 @@ async function initialize() {
   } finally {
     initialLoading.value = false
   }
+}
+
+// Initialize filters from URL query parameters
+function initializeFiltersFromUrl() {
+  const { search, distance, category, subCategory } = route.query
+  
+  if (search) {
+    state.filters.keyword = search
+  }
+  
+  if (distance) {
+    state.filters.distance_range_km = parseInt(distance)
+  }
+  
+  if (category) {
+    state.filters.main_category_id = parseInt(category)
+  }
+  
+  if (subCategory) {
+    state.filters.sub_category_id = parseInt(subCategory)
+  }
+  
+  console.log('[MapSearchPage] Initialized filters from URL:', state.filters)
 }
 
 // Watch for user location changes (in case user updates it)
