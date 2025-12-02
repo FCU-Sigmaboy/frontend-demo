@@ -609,11 +609,11 @@ const favoriteItems = computed(() => {
 
 // Split listings into active/inactive
 const activeListings = computed(() => {
-  return myListings.value.filter(item => item.listing_status === true);
+  return myListings.value.filter(item => item.listing_status === true).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 });
 
 const inactiveListings = computed(() => {
-  return myListings.value.filter(item => item.listing_status === false);
+  return myListings.value.filter(item => item.listing_status === false).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 });
 
 // Display limited versions for desktop
@@ -680,7 +680,7 @@ const fetchMyListings = async () => {
       page: 1,
       size: 20,
       sort_by: 'created_at',
-      sort_direction: 'desc'
+      sort_direction: 'asc'
     });
 
     console.log('📦 Raw API response:', items);
