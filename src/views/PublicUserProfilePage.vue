@@ -106,12 +106,10 @@
             <!-- Achievement Badges -->
             <div class="col-xl-6 col-lg-6 mt-md-4 mt-xl-0">
               <CombinedAchievements
+                :user-id="userData.id"
                 :total-carbon="userData.carbonSaved"
-                :total-sales="userData.stats.completedDeals || 0"
-                :total-purchases="0"
                 :show-carbon-total="true"
-                :show-progress="true"
-                :show-threshold="false"
+                :is-own-profile="false"
                 @achievement-click="openBadgeModal"
               />
             </div>

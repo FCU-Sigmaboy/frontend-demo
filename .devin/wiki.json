@@ -1,0 +1,301 @@
+{
+  "repo_notes": [
+    {
+      "content": "請使用台灣中文（繁體中文）撰寫所有文檔內容。技術術語、元件名稱、函數名稱、路由路徑、狀態名稱等技術標識符保持英文不變。Vue 3 組件、Pinia store、API 方法等代碼相關內容保持英文。代碼示例和配置保持原樣不翻譯。文檔風格應專業清晰，適合前端開發人員和協作者閱讀。"
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce the frontend-demo application, a Vue.js-based peer-to-peer item exchange platform with real-time messaging, geospatial search, and transaction management",
+      "page_notes": [
+        {
+          "content": "使用台灣中文介紹 frontend-demo 應用的核心功能和目標：Vue.js 型對等交易平台、即時訊息功能、地理位置搜尋和交易管理。簡要說明應用的主要使用者群體和價值主張。"
+        }
+      ]
+    },
+    {
+      "title": "Architecture",
+      "purpose": "Document the high-level architecture of the application, including frontend framework, state management, backend integration, and real-time capabilities",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明應用整體架構，包括前端框架選擇、狀態管理設計、後端整合方式和即時通訊機制。可繪製架構圖表展示各層之間的關係。"
+        }
+      ]
+    },
+    {
+      "title": "Frontend Stack & Build System",
+      "purpose": "Detail the Vue 3 + Vite frontend stack, dependency management, UI libraries (Bootstrap, Leaflet), and build configuration",
+      "parent": "Architecture",
+      "page_notes": [
+        {
+          "content": "使用台灣中文詳細說明開發堆疊：Vue 3、Vite、Bootstrap、Leaflet 等主要相依套件的選擇理由、版本管理、構建配置。說明為何選擇這些技術組合及其優勢。"
+        }
+      ]
+    },
+    {
+      "title": "State Management with Pinia",
+      "purpose": "Explain the Pinia store architecture, including authStore, messageStore, transactionStore, favoritesStore, and categoriesStore",
+      "parent": "Architecture",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明 Pinia 狀態管理架構，包括各個 store 模組（authStore、messageStore、transactionStore、favoritesStore、categoriesStore）的職責、資料結構和共享邏輯。說明為何選擇 Pinia 而非其他方案。"
+        }
+      ]
+    },
+    {
+      "title": "Backend Integration & API Layer",
+      "purpose": "Document the Supabase backend integration, API module organization, authentication flow, and database schema patterns",
+      "parent": "Architecture",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄與 Supabase 後端的整合方式、API 模組組織結構、身份驗證流程、資料庫結構模式，以及前後端的數據交互方式。"
+        }
+      ]
+    },
+    {
+      "title": "Real-time Communication Architecture",
+      "purpose": "Explain Supabase Realtime subscriptions for messages, presence tracking, typing indicators, and transaction updates",
+      "parent": "Architecture",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明 Supabase Realtime 訂閱機制的實作：訊息即時傳送、使用者在線狀態追蹤、輸入中指示器、交易狀態更新。說明即時功能如何提升使用者體驗。"
+        }
+      ]
+    },
+    {
+      "title": "Core User Journeys",
+      "purpose": "Document the primary user flows through the application, from discovery to transaction completion",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄應用的主要使用者流程，從物品探索、了解詳情、發起交易、協商溝通、完成交易的完整旅程。說明每個階段的重要步驟和使用者互動。"
+        }
+      ]
+    },
+    {
+      "title": "Item Discovery & Search",
+      "purpose": "Detail the discovery mechanisms: home page browsing, keyword search, category filtering, distance-based filtering, and map-based search",
+      "parent": "Core User Journeys",
+      "page_notes": [
+        {
+          "content": "使用台灣中文詳細說明物品探索機制：首頁瀏覽、關鍵字搜尋、分類篩選、距離篩選、地圖搜尋等多種發現方式。說明每種方式的使用場景和使用者優勢。"
+        }
+      ]
+    },
+    {
+      "title": "Item Details & Transaction Initiation",
+      "purpose": "Explain the item detail page, product information display, seller interaction, favorite/follow actions, and transaction initiation",
+      "parent": "Core User Journeys",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明物品詳情頁面的功能：商品資訊展示、賣家互動方式、收藏和追蹤功能、交易發起流程。說明使用者如何評估商品並決定是否進行交易。"
+        }
+      ]
+    },
+    {
+      "title": "Messaging & Negotiation",
+      "purpose": "Document the real-time messaging system, conversation management, item references, typing indicators, and read receipts",
+      "parent": "Core User Journeys",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄即時訊息系統的運作：對話管理、物品引用、輸入指示器、已讀回執。說明訊息功能如何支援買賣雙方的協商和溝通。"
+        }
+      ]
+    },
+    {
+      "title": "User Profile & Dashboard",
+      "purpose": "Explain the user profile page, displaying listings, favorites, reviews, achievements, and navigation to management features",
+      "parent": "Core User Journeys",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明使用者個人檔案頁面：刊登物品列表、收藏的項目、收到的評論、成就徽章和管理功能的導航。說明個人檔案如何建立使用者信譽。"
+        }
+      ]
+    },
+    {
+      "title": "Item Lifecycle Management",
+      "purpose": "Document how items are created, edited, listed, and progress through transaction states",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄物品生命週期的管理：從建立刊登、編輯資訊、上架銷售，到交易進行各個狀態的轉換流程。說明每個狀態的意義和允許的操作。"
+        }
+      ]
+    },
+    {
+      "title": "Creating & Editing Listings",
+      "purpose": "Detail the listing creation flow, AI-powered image analysis, image upload/compression, location selection, and form validation",
+      "parent": "Item Lifecycle Management",
+      "page_notes": [
+        {
+          "content": "使用台灣中文詳細說明刊登建立流程：AI 圖片分析機制（自動分類和碳足跡估算）、圖片上傳和壓縮、位置選擇、表單驗證。說明每個環節如何簡化使用者操作。"
+        }
+      ]
+    },
+    {
+      "title": "Managing Listings",
+      "purpose": "Explain the listings management interface, status toggling (active/inactive), editing, deletion, and transaction status display",
+      "parent": "Item Lifecycle Management",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明刊登管理介面：狀態切換（上架/下架）、編輯功能、刪除物品、交易狀態顯示。說明賣家如何有效管理自己的刊登物品。"
+        }
+      ]
+    },
+    {
+      "title": "Transaction Lifecycle",
+      "purpose": "Document the transaction state machine: initiation, buyer confirmation, in-progress exchange, code verification, and completion",
+      "parent": "Item Lifecycle Management",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄交易狀態機制：交易發起、買家確認、交易進行中、代碼驗證、交易完成。說明每個狀態轉換的條件和使用者需要採取的行動。"
+        }
+      ]
+    },
+    {
+      "title": "Navigation & Global UI",
+      "purpose": "Document the global navigation system, responsive header/footer, search bar, category navigation, and notification badges",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄全局導航系統：響應式標題欄和頁腳、搜尋列、分類導航、通知徽章。說明導航如何幫助使用者有效移動和發現功能。"
+        }
+      ]
+    },
+    {
+      "title": "AppHeader Component",
+      "purpose": "Detail the global header component: navigation links, search integration, category menus, user menu, notification badges, and responsive behavior",
+      "parent": "Navigation & Global UI",
+      "page_notes": [
+        {
+          "content": "使用台灣中文詳細說明 AppHeader 組件：導航連結、搜尋整合、分類選單、使用者選單、通知徽章、響應式行為。說明組件在不同螢幕尺寸下的表現。"
+        }
+      ]
+    },
+    {
+      "title": "Routing & Navigation Guards",
+      "purpose": "Explain the Vue Router configuration, route definitions, authentication guards, and protected routes",
+      "parent": "Navigation & Global UI",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明 Vue Router 配置：路由定義、身份驗證守衛、受保護的路由。說明路由系統如何確保應用的安全性和使用者體驗。"
+        }
+      ]
+    },
+    {
+      "title": "Supporting Features",
+      "purpose": "Document additional features that enhance the core platform functionality",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄增強平台核心功能的額外功能模組，包括收藏系統、遊戲化機制、地理位置功能和使用者檔案管理。"
+        }
+      ]
+    },
+    {
+      "title": "Favorites System",
+      "purpose": "Explain the favorites functionality: adding/removing favorites, favorites page, favorite state management, and UI integration",
+      "parent": "Supporting Features",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明收藏功能：新增和移除收藏、收藏頁面展示、收藏狀態管理、UI 整合。說明收藏系統如何幫助使用者追蹤感興趣的物品。"
+        }
+      ]
+    },
+    {
+      "title": "Points & Gamification",
+      "purpose": "Document the points system, daily streak tracking, achievements, and gamification composables",
+      "parent": "Supporting Features",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄點數系統和遊戲化機制：點數計算、每日連續簽到追蹤、成就徽章、遊戲化組合式邏輯。說明遊戲化如何激勵使用者參與和社群互動。"
+        }
+      ]
+    },
+    {
+      "title": "Geolocation & Map Search",
+      "purpose": "Detail the geospatial features: location management (current/home/work), map-based item browsing, Nominatim integration, and distance filtering",
+      "parent": "Supporting Features",
+      "page_notes": [
+        {
+          "content": "使用台灣中文詳細說明地理位置功能：位置管理（目前位置/家庭/工作地點）、地圖型物品瀏覽、Nominatim 地址轉換整合、距離篩選。說明地理功能如何提升本地交易體驗。"
+        }
+      ]
+    },
+    {
+      "title": "User Profile Management",
+      "purpose": "Explain profile editing, avatar management with cropping, location settings, and nickname updates",
+      "parent": "Supporting Features",
+      "page_notes": [
+        {
+          "content": "使用台灣中文說明使用者檔案管理：個人檔案編輯、頭像管理與裁切功能、位置設定、暱稱更新。說明使用者如何自訂和維護個人資訊。"
+        }
+      ]
+    },
+    {
+      "title": "Component Library",
+      "purpose": "Reference guide for reusable components used throughout the application",
+      "page_notes": [
+        {
+          "content": "使用台灣中文提供可重用組件的參考指南。記錄每個組件的功能、props、事件和使用範例，幫助開發人員快速了解並正確使用這些組件。"
+        }
+      ]
+    },
+    {
+      "title": "Product Display Components",
+      "purpose": "Document ProductCard, TransactionCard, and related item display components",
+      "parent": "Component Library",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄商品展示組件：ProductCard、TransactionCard 等相關元件。說明每個組件的視覺設計、互動行為、接收的資料結構和觸發的事件。"
+        }
+      ]
+    },
+    {
+      "title": "Search & Filter Components",
+      "purpose": "Document SearchBar, FilterTabs, CategoryTabs, and filtering mechanisms",
+      "parent": "Component Library",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄搜尋和篩選組件：SearchBar、FilterTabs、CategoryTabs 等。說明各組件的搜尋邏輯、篩選機制、使用者互動方式和與其他組件的整合。"
+        }
+      ]
+    },
+    {
+      "title": "Messaging Components",
+      "purpose": "Document ChatMessages, ConversationsSidebar, ChatHeader, and messaging UI components",
+      "parent": "Component Library",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄訊息相關組件：ChatMessages、ConversationsSidebar、ChatHeader 等 UI 組件。說明訊息展示、對話列表、聊天標題、即時更新的實作方式。"
+        }
+      ]
+    },
+    {
+      "title": "API Reference",
+      "purpose": "Technical reference for the API module organization and key API functions",
+      "page_notes": [
+        {
+          "content": "使用台灣中文提供 API 模組的技術參考文檔。記錄 API 模組組織結構、主要功能、錯誤處理機制。說明前端如何透過 API 層與 Supabase 後端溝通。"
+        }
+      ]
+    },
+    {
+      "title": "Item APIs",
+      "purpose": "Document item CRUD operations, search API, image upload/compression, and AI image analysis",
+      "parent": "API Reference",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄物品 API：CRUD 操作、搜尋 API、圖片上傳和壓縮、AI 圖片分析 API。說明每個 API 的參數、回傳資料、錯誤處理和使用範例。"
+        }
+      ]
+    },
+    {
+      "title": "Messaging APIs",
+      "purpose": "Document conversation APIs, message sending, real-time subscriptions, and typing status",
+      "parent": "API Reference",
+      "page_notes": [
+        {
+          "content": "使用台灣中文記錄訊息 API：對話 API、訊息傳送、即時訂閱、輸入狀態。說明每個 API 的功能、使用方式、即時推送機制和錯誤處理。"
+        }
+      ]
+    }
+  ]
+}

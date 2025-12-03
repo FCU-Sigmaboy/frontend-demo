@@ -3,7 +3,9 @@
     <div class="achievements-header">
       <h3 class="achievements-title">
         成就與徽章
-        <span v-if="showCarbonTotal" class="carbon-total">總碳足跡節省: {{ totalCarbon.toFixed(1) }} kg</span>
+        <span v-if="showCarbonTotal && totalCarbon > 0" class="carbon-total">
+          總碳足跡節省: {{ totalCarbon.toFixed(1) }} kg
+        </span>
       </h3>
       <button class="view-all-btn" @click="showModal = true">
         <i class="bi bi-grid-3x3-gap"></i>
@@ -11,50 +13,38 @@
       </button>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
+        <span class="visually-hidden">載入中...</span>
+      </div>
+    </div>
+
     <!-- Horizontal Achievement Row -->
-    <div class="achievements-row-container">
-      <div class="achievements-row" :class="{ 'expanded': isExpanded }">
+    <div v-else class="achievements-row-container">
+      <div class="achievements-row">
         <div
-          v-for="(achievement, index) in displayedAchievements"
-          :key="achievement.id"
-          :class="['achievement-item', {
-            'unlocked': achievement.unlocked,
-            'current': index === currentAchievementIndex
-          }]"
-          @click="onAchievementClick(achievement, index)"
+          v-for="badge in displayedBadges"
+          :key="badge.badge_id"
+          :class="['achievement-item', { 'unlocked': badge.unlocked }]"
+          @click="onBadgeClick(badge)"
         >
           <div class="achievement-icon-wrapper">
-            <!-- Badge type (with image) -->
-            <img
-              v-if="achievement.type === 'badge'"
-              :src="achievement.image"
-              :alt="achievement.label"
-              class="achievement-image"
-            />
-            <!-- Trophy type (with emoji icon) -->
-            <span v-else class="achievement-icon">{{ achievement.icon }}</span>
-
-            <!-- Lock icon for locked achievements -->
-            <div v-if="!achievement.unlocked" class="lock-overlay">
+            <span class="achievement-icon">{{ badge.icon }}</span>
+            <div v-if="!badge.unlocked" class="lock-overlay">
               <i class="bi bi-lock-fill"></i>
             </div>
-
-            <!-- Progress badge -->
-            <div v-if="!achievement.unlocked && showProgress" class="progress-badge">
-              {{ achievement.progress }}%
-            </div>
-
           </div>
-          <span class="achievement-label">{{ achievement.label }}</span>
+          <span class="achievement-label">{{ badge.name }}</span>
         </div>
 
         <!-- Expand Indicator -->
         <div
-          v-if="!isExpanded && allAchievements.length > 1"
+          v-if="allBadges.length > displayLimit"
           class="expand-indicator"
-          @click="expandRow"
+          @click="showModal = true"
         >
-          <span class="achievement-count">+{{ allAchievements.length - 1 }}</span>
+          <span class="achievement-count">+{{ allBadges.length - displayLimit }}</span>
           <i class="bi bi-chevron-right"></i>
         </div>
       </div>
@@ -76,64 +66,51 @@
               :class="['category-tab', { active: activeCategory === 'all' }]"
               @click="activeCategory = 'all'"
             >
-              全部 ({{ allAchievements.length }})
+              全部 ({{ allBadges.length }})
             </button>
             <button
-              :class="['category-tab', { active: activeCategory === 'eco' }]"
-              @click="activeCategory = 'eco'"
+              :class="['category-tab', { active: activeCategory === 'streak' }]"
+              @click="activeCategory = 'streak'"
             >
-              環保徽章 ({{ ecoBadges.length }})
+              簽到 ({{ badgesByCategory.streak.length }})
             </button>
             <button
               :class="['category-tab', { active: activeCategory === 'transaction' }]"
               @click="activeCategory = 'transaction'"
             >
-              交易成就 ({{ transactionTrophies.length }})
+              交易 ({{ badgesByCategory.transaction.length }})
+            </button>
+            <button
+              :class="['category-tab', { active: activeCategory === 'points' }]"
+              @click="activeCategory = 'points'"
+            >
+              點數 ({{ badgesByCategory.points.length }})
             </button>
           </div>
 
           <div class="achievements-grid">
             <div
-              v-for="achievement in filteredAchievements"
-              :key="achievement.id"
+              v-for="badge in filteredBadges"
+              :key="badge.badge_id"
               :class="['achievement-grid-item', {
-                'unlocked': achievement.unlocked,
-                'selected': selectedAchievements.includes(achievement.id)
+                'unlocked': badge.unlocked,
+                [`rarity-${badge.rarity?.toLowerCase()}`]: true
               }]"
-              @click="toggleAchievementSelection(achievement.id)"
             >
               <div class="achievement-icon-wrapper">
-                <!-- Badge type -->
-                <img
-                  v-if="achievement.type === 'badge'"
-                  :src="achievement.image"
-                  :alt="achievement.label"
-                  class="achievement-image"
-                />
-                <!-- Trophy type -->
-                <span v-else class="achievement-icon">{{ achievement.icon }}</span>
-
-                <!-- Lock icon for locked -->
-                <div v-if="!achievement.unlocked" class="lock-overlay">
+                <span class="achievement-icon">{{ badge.icon }}</span>
+                <div v-if="!badge.unlocked" class="lock-overlay">
                   <i class="bi bi-lock-fill"></i>
                 </div>
-
-                <!-- Progress badge -->
-                <div v-if="!achievement.unlocked && showProgress" class="progress-badge">
-                  {{ achievement.progress }}%
-                </div>
               </div>
-              <span class="achievement-label">{{ achievement.label }}</span>
-              <span v-if="!achievement.unlocked && showThreshold" class="achievement-requirement">
-                {{ achievement.threshold }}
-              </span>
-              <span v-if="achievement.points" class="achievement-points">+{{ achievement.points }}P</span>
+              <span class="achievement-label">{{ badge.name }}</span>
+              <span class="achievement-description">{{ badge.description }}</span>
+              <span v-if="badge.points_reward" class="achievement-points">+{{ badge.points_reward }}P</span>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-secondary" @click="showModal = false">取消</button>
-          <button class="btn-primary" @click="saveAchievementSelection">儲存</button>
+          <button class="btn-primary" @click="showModal = false">關閉</button>
         </div>
       </div>
     </div>
@@ -141,24 +118,15 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue';
-
-// Import badge images
-import badge1 from '../assets/badges/1badge.png';
-import badge2 from '../assets/badges/2badge.png';
-import badge3 from '../assets/badges/3badge.png';
-import badge4 from '../assets/badges/4badge.png';
+import { computed, ref, onMounted, watch } from 'vue'
+import { getUserBadgesWithProgress } from '@/api/badgesAPI'
 
 const props = defineProps({
+  userId: {
+    type: String,
+    default: null
+  },
   totalCarbon: {
-    type: Number,
-    default: 0
-  },
-  totalSales: {
-    type: Number,
-    default: 0
-  },
-  totalPurchases: {
     type: Number,
     default: 0
   },
@@ -166,242 +134,94 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  showProgress: {
+  isOwnProfile: {
     type: Boolean,
-    default: false
-  },
-  showThreshold: {
-    type: Boolean,
-    default: false
+    default: true
   }
-});
+})
 
-const emit = defineEmits(['achievement-click']);
+const emit = defineEmits(['achievement-click'])
 
-// State
-const isExpanded = ref(false);
-const showModal = ref(false);
-const selectedAchievements = ref([]);
-const currentAchievementIndex = ref(0);
-const activeCategory = ref('all');
+const isLoading = ref(false)
+const showModal = ref(false)
+const activeCategory = ref('all')
+const earnedBadges = ref([])
+const inProgressBadges = ref([])
+const displayLimit = 5
 
-// Eco badges based on carbon savings
-const ecoBadges = computed(() => {
-  const carbon = props.totalCarbon;
-
-  return [
-    {
-      id: 'eco_1',
-      type: 'badge',
-      category: 'eco',
-      label: '環保新手',
-      image: badge1,
-      description: '減少 10 公斤碳排放，開啟環保旅程',
-      threshold: '10 kg',
-      unlocked: carbon >= 10,
-      progress: Math.min((carbon / 10) * 100, 100),
-      remainingKg: Math.max(10 - carbon, 0)
-    },
-    {
-      id: 'eco_2',
-      type: 'badge',
-      category: 'eco',
-      label: '環保達人',
-      image: badge2,
-      description: '減少 50 公斤碳排放，感謝您的貢獻',
-      threshold: '50 kg',
-      unlocked: carbon >= 50,
-      progress: Math.min((carbon / 50) * 100, 100),
-      remainingKg: Math.max(50 - carbon, 0)
-    },
-    {
-      id: 'eco_3',
-      type: 'badge',
-      category: 'eco',
-      label: '環保高手',
-      image: badge3,
-      description: '減少 100 公斤碳排放，您是環保實踐家',
-      threshold: '100 kg',
-      unlocked: carbon >= 100,
-      progress: Math.min((carbon / 100) * 100, 100),
-      remainingKg: Math.max(100 - carbon, 0)
-    },
-    {
-      id: 'eco_4',
-      type: 'badge',
-      category: 'eco',
-      label: '環保大師',
-      image: badge4,
-      description: '減少 200 公斤碳排放，環保精神值得敬佩',
-      threshold: '200 kg',
-      unlocked: carbon >= 200,
-      progress: Math.min((carbon / 200) * 100, 100),
-      remainingKg: Math.max(200 - carbon, 0)
-    }
-  ];
-});
-
-// Transaction trophies based on sales and purchases
-const transactionTrophies = computed(() => {
-  const sales = props.totalSales;
-  const purchases = props.totalPurchases;
-  const total = sales + purchases;
-
-  return [
-    {
-      id: 'first_sale',
-      type: 'trophy',
-      category: 'transaction',
-      label: '首次出售',
-      icon: '🎉',
-      description: '完成第一筆交易',
-      threshold: '1筆',
-      points: 10,
-      unlocked: sales >= 1,
-      progress: Math.min((sales / 1) * 100, 100)
-    },
-    {
-      id: 'seller_5',
-      type: 'trophy',
-      category: 'transaction',
-      label: '新手賣家',
-      icon: '📦',
-      description: '完成5筆銷售',
-      threshold: '5筆',
-      points: 20,
-      unlocked: sales >= 5,
-      progress: Math.min((sales / 5) * 100, 100)
-    },
-    {
-      id: 'seller_10',
-      type: 'trophy',
-      category: 'transaction',
-      label: '活躍賣家',
-      icon: '💼',
-      description: '完成10筆銷售',
-      threshold: '10筆',
-      points: 30,
-      unlocked: sales >= 10,
-      progress: Math.min((sales / 10) * 100, 100)
-    },
-    {
-      id: 'seller_50',
-      type: 'trophy',
-      category: 'transaction',
-      label: '專業賣家',
-      icon: '🏆',
-      description: '完成50筆銷售',
-      threshold: '50筆',
-      points: 100,
-      unlocked: sales >= 50,
-      progress: Math.min((sales / 50) * 100, 100)
-    },
-    {
-      id: 'buyer_10',
-      type: 'trophy',
-      category: 'transaction',
-      label: '購物達人',
-      icon: '🛍️',
-      description: '完成10筆購買',
-      threshold: '10筆',
-      points: 30,
-      unlocked: purchases >= 10,
-      progress: Math.min((purchases / 10) * 100, 100)
-    },
-    {
-      id: 'transaction_100',
-      type: 'trophy',
-      category: 'transaction',
-      label: '百筆交易',
-      icon: '⚡',
-      description: '累積完成100筆交易',
-      threshold: '100筆',
-      points: 150,
-      unlocked: total >= 100,
-      progress: Math.min((total / 100) * 100, 100)
-    }
-  ];
-});
-
-// All achievements combined
-const allAchievements = computed(() => {
-  return [...ecoBadges.value, ...transactionTrophies.value];
-});
-
-// Filtered achievements based on active category
-const filteredAchievements = computed(() => {
-  if (activeCategory.value === 'eco') {
-    return ecoBadges.value;
-  } else if (activeCategory.value === 'transaction') {
-    return transactionTrophies.value;
-  }
-  return allAchievements.value;
-});
-
-// Displayed achievements (selected ones or all if expanded)
-const displayedAchievements = computed(() => {
-  if (isExpanded.value) {
-    return allAchievements.value;
-  }
-  // Show only selected achievements, or first achievement if none selected
-  if (selectedAchievements.value.length > 0) {
-    return allAchievements.value.filter(a => selectedAchievements.value.includes(a.id));
-  }
-  return [allAchievements.value[0]];
-});
-
-// Load saved achievement selections from localStorage
+// Fetch badges on mount
 onMounted(() => {
-  const saved = localStorage.getItem('selectedCombinedAchievements');
-  if (saved) {
-    selectedAchievements.value = JSON.parse(saved);
-  } else {
-    // Default: select first unlocked achievement or first achievement
-    const firstUnlocked = allAchievements.value.findIndex(a => a.unlocked);
-    if (firstUnlocked >= 0) {
-      selectedAchievements.value = [allAchievements.value[firstUnlocked].id];
-      currentAchievementIndex.value = firstUnlocked;
+  fetchBadges()
+})
+
+// Re-fetch when userId changes
+watch(() => props.userId, () => {
+  fetchBadges()
+})
+
+async function fetchBadges() {
+  try {
+    isLoading.value = true
+    const data = await getUserBadgesWithProgress(props.userId)
+    
+    earnedBadges.value = (data?.earned_badges || []).map(b => ({
+      ...b,
+      unlocked: true
+    }))
+    
+    inProgressBadges.value = (data?.in_progress_badges || []).map(b => ({
+      ...b,
+      unlocked: false
+    }))
+  } catch (error) {
+    console.error('Failed to fetch badges:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// All badges combined (earned first, then in-progress)
+const allBadges = computed(() => {
+  return [...earnedBadges.value, ...inProgressBadges.value]
+})
+
+// Badges by category
+const badgesByCategory = computed(() => {
+  const categories = { streak: [], transaction: [], points: [], carbon: [], seasonal: [], other: [] }
+  
+  allBadges.value.forEach(badge => {
+    const cat = badge.category || 'other'
+    if (categories[cat]) {
+      categories[cat].push(badge)
     } else {
-      selectedAchievements.value = [allAchievements.value[0].id];
+      categories.other.push(badge)
     }
+  })
+  
+  return categories
+})
+
+// Filtered badges based on active category
+const filteredBadges = computed(() => {
+  if (activeCategory.value === 'all') {
+    return allBadges.value
   }
-});
+  return badgesByCategory.value[activeCategory.value] || []
+})
 
-function expandRow() {
-  isExpanded.value = true;
-}
-
-function onAchievementClick(achievement, index) {
-  if (!isExpanded.value) {
-    // If collapsed, expand on click
-    expandRow();
+// Displayed badges (only unlocked for public view, or first N badges)
+const displayedBadges = computed(() => {
+  if (props.isOwnProfile) {
+    // Own profile: show first N badges (earned first)
+    return allBadges.value.slice(0, displayLimit)
   } else {
-    // If expanded, emit click event
-    emit('achievement-click', achievement);
+    // Other user's profile: only show earned/unlocked badges
+    return earnedBadges.value.slice(0, displayLimit)
   }
-  currentAchievementIndex.value = index;
-}
+})
 
-function toggleAchievementSelection(achievementId) {
-  const index = selectedAchievements.value.indexOf(achievementId);
-  if (index > -1) {
-    selectedAchievements.value.splice(index, 1);
-  } else {
-    selectedAchievements.value.push(achievementId);
-  }
-}
-
-function saveAchievementSelection() {
-  localStorage.setItem('selectedCombinedAchievements', JSON.stringify(selectedAchievements.value));
-  isExpanded.value = false;
-  showModal.value = false;
-  // Update current achievement index to first selected
-  if (selectedAchievements.value.length > 0) {
-    const firstSelected = allAchievements.value.findIndex(a => selectedAchievements.value.includes(a.id));
-    if (firstSelected >= 0) {
-      currentAchievementIndex.value = firstSelected;
-    }
-  }
+function onBadgeClick(badge) {
+  emit('achievement-click', badge)
 }
 </script>
 
@@ -463,10 +283,14 @@ function saveAchievementSelection() {
   }
 }
 
-// Horizontal Achievement Row
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
 .achievements-row-container {
   overflow-x: auto;
-  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 
@@ -485,7 +309,6 @@ function saveAchievementSelection() {
   align-items: flex-start;
   gap: 12px;
   padding: 8px 0;
-  transition: all 0.3s ease;
   min-width: fit-content;
 }
 
@@ -512,22 +335,12 @@ function saveAchievementSelection() {
     overflow: hidden;
     transition: all 0.3s;
 
-    .achievement-image {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      transition: filter 0.3s, opacity 0.3s;
-      filter: grayscale(100%) brightness(0.8);
-      opacity: 0.5;
-      padding: 8px;
-    }
-
     .achievement-icon {
       font-size: 32px;
       line-height: 1;
-      transition: filter 0.3s, opacity 0.3s;
       filter: grayscale(100%);
       opacity: 0.5;
+      transition: all 0.3s;
     }
 
     .lock-overlay {
@@ -548,42 +361,6 @@ function saveAchievementSelection() {
         color: white;
       }
     }
-
-    .progress-badge {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(111, 184, 165, 0.9);
-      color: white;
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 9px;
-      font-weight: 700;
-      text-align: center;
-      padding: 2px 0;
-      z-index: 2;
-    }
-
-    .check-mark {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: $primary;
-      background: white;
-      border-radius: 50%;
-      z-index: 2;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-      i {
-        font-size: 18px;
-        line-height: 1;
-      }
-    }
   }
 
   .achievement-label {
@@ -593,7 +370,6 @@ function saveAchievementSelection() {
     font-weight: 500;
     text-align: center;
     line-height: 1.3;
-    transition: all 0.3s;
     word-break: break-word;
     min-height: 28px;
     display: flex;
@@ -606,9 +382,8 @@ function saveAchievementSelection() {
       border-color: $primary;
       background-color: #e6f4f0;
 
-      .achievement-image,
       .achievement-icon {
-        filter: grayscale(0%) brightness(1);
+        filter: grayscale(0%);
         opacity: 1;
       }
 
@@ -619,13 +394,6 @@ function saveAchievementSelection() {
 
     .achievement-label {
       color: #1e1e1e;
-    }
-  }
-
-  &.current {
-    .achievement-icon-wrapper {
-      transform: scale(1.1);
-      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
     }
   }
 
@@ -650,8 +418,6 @@ function saveAchievementSelection() {
   transition: all 0.3s;
   gap: 4px;
   flex-shrink: 0;
-  align-self: flex-start;
-  margin-top: 0;
 
   .achievement-count {
     font-family: 'Noto Sans TC', sans-serif;
@@ -668,10 +434,8 @@ function saveAchievementSelection() {
   &:hover {
     border-color: $primary;
     background: #f0f7f5;
-    color: $primary;
 
-    .achievement-count,
-    i {
+    .achievement-count, i {
       color: $primary;
     }
   }
@@ -824,20 +588,11 @@ function saveAchievementSelection() {
     overflow: hidden;
     background-color: #f0f7f5;
 
-    .achievement-image {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      transition: filter 0.3s, opacity 0.3s;
-      filter: grayscale(100%) brightness(0.8);
-      opacity: 0.5;
-    }
-
     .achievement-icon {
       font-size: 48px;
-      transition: filter 0.3s, opacity 0.3s;
       filter: grayscale(100%);
       opacity: 0.5;
+      transition: all 0.3s;
     }
 
     .lock-overlay {
@@ -858,42 +613,6 @@ function saveAchievementSelection() {
         color: white;
       }
     }
-
-    .check-mark {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: $primary;
-      background: white;
-      border-radius: 50%;
-      z-index: 2;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-      i {
-        font-size: 20px;
-        line-height: 1;
-      }
-    }
-
-    .progress-badge {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(111, 184, 165, 0.9);
-      color: white;
-      font-family: 'Noto Sans TC', sans-serif;
-      font-size: 9px;
-      font-weight: 700;
-      text-align: center;
-      padding: 2px 0;
-      z-index: 2;
-    }
   }
 
   .achievement-label {
@@ -905,7 +624,7 @@ function saveAchievementSelection() {
     margin-bottom: 4px;
   }
 
-  .achievement-requirement {
+  .achievement-description {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 11px;
     color: #999;
@@ -926,9 +645,8 @@ function saveAchievementSelection() {
     background: #f0f7f5;
 
     .achievement-icon-wrapper {
-      .achievement-image,
       .achievement-icon {
-        filter: grayscale(0%) brightness(1);
+        filter: grayscale(0%);
         opacity: 1;
       }
 
@@ -938,11 +656,12 @@ function saveAchievementSelection() {
     }
   }
 
-  &.selected {
-    border-color: $primary;
-    background: #e6f4f0;
-    box-shadow: 0 0 0 3px rgba(111, 184, 165, 0.2);
-  }
+  // Rarity colors
+  &.rarity-common.unlocked { border-color: #95a5a6; }
+  &.rarity-uncommon.unlocked { border-color: #27ae60; }
+  &.rarity-rare.unlocked { border-color: #3498db; }
+  &.rarity-epic.unlocked { border-color: #9b59b6; }
+  &.rarity-legendary.unlocked { border-color: #f39c12; }
 
   &:hover {
     transform: translateY(-2px);
@@ -958,37 +677,25 @@ function saveAchievementSelection() {
   padding: 20px;
   border-top: 1px solid #e0e0e0;
 
-  button {
+  .btn-primary {
     padding: 10px 20px;
     border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s;
     border: none;
+    background: $primary;
+    color: white;
+    transition: all 0.3s;
 
-    &.btn-secondary {
-      background: #f0f0f0;
-      color: #555;
-
-      &:hover {
-        background: #e0e0e0;
-      }
-    }
-
-    &.btn-primary {
-      background: $primary;
-      color: white;
-
-      &:hover {
-        background: darken($primary, 10%);
-      }
+    &:hover {
+      background: darken($primary, 10%);
     }
   }
 }
 
-// Responsive Design
+// Responsive
 @media (max-width: 767.98px) {
   .achievements-header {
     .achievements-title {
@@ -1005,10 +712,6 @@ function saveAchievementSelection() {
       font-size: 12px;
       padding: 5px 10px;
     }
-  }
-
-  .achievements-row {
-    align-items: flex-start;
   }
 
   .achievement-item {
@@ -1036,7 +739,6 @@ function saveAchievementSelection() {
     width: 50px;
     height: 50px;
     min-width: 50px;
-    margin-top: 0;
   }
 
   .modal-content {
@@ -1070,10 +772,6 @@ function saveAchievementSelection() {
 }
 
 @media (max-width: 575.98px) {
-  .achievements-row {
-    align-items: flex-start;
-  }
-
   .achievement-item {
     min-width: 55px;
 
@@ -1099,7 +797,6 @@ function saveAchievementSelection() {
     width: 45px;
     height: 45px;
     min-width: 45px;
-    margin-top: 0;
 
     .achievement-count {
       font-size: 10px;

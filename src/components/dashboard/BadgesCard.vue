@@ -7,13 +7,26 @@
           成就徽章
         </h3>
         <div class="badge-count">
-          <span class="count-value">{{ earnedCount }}</span>
+          <span class="count-value">{{ filteredBadges.length }}</span>
           <span class="count-label">個徽章</span>
         </div>
       </div>
 
+      <!-- Category Tabs -->
+      <div class="category-tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.value"
+          class="tab-button"
+          :class="{ active: activeTab === tab.value }"
+          @click="activeTab = tab.value"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+
       <!-- Empty State -->
-      <div v-if="badges.length === 0" class="empty-state">
+      <div v-if="filteredBadges.length === 0" class="empty-state">
         <i class="bi bi-award"></i>
         <p>尚未獲得任何徽章</p>
         <small>完成交易、連續簽到來獲得徽章！</small>
@@ -22,8 +35,8 @@
       <!-- Badges Grid -->
       <div v-else class="badges-grid">
         <div
-          v-for="badge in badges"
-          :key="badge.id"
+          v-for="badge in filteredBadges"
+          :key="badge.badge_id || badge.id"
           class="badge-item"
           :class="`rarity-${badge.rarity}`"
           @click="selectBadge(badge)"
@@ -36,7 +49,7 @@
           <p class="badge-description">{{ badge.description }}</p>
           <div class="badge-footer">
             <span class="badge-rarity">{{ getRarityLabel(badge.rarity) }}</span>
-            <span class="badge-points">+{{ badge.points_rewarded }}P</span>
+            <span class="badge-points">+{{ badge.points_reward || badge.points_rewarded }}P</span>
           </div>
         </div>
       </div>
@@ -73,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
   badges: {
@@ -86,10 +99,37 @@ const props = defineProps({
   }
 });
 
-// State
+const activeTab = ref('all');
 const selectedBadge = ref(null);
 
-// Methods
+const tabs = [
+  { label: '全部', value: 'all' },
+  { label: '連續簽到', value: 'streak' },
+  { label: '交易成就', value: 'transaction' },
+  { label: '點數累積', value: 'points' },
+  { label: '環保足跡', value: 'carbon' }
+];
+
+const filteredBadges = computed(() => {
+  if (activeTab.value === 'all') return props.badges;
+  
+  const categoryMap = {
+    streak: ['daily_streak', 'streak'],
+    transaction: ['transaction', 'trade'],
+    points: ['points', 'accumulation'],
+    carbon: ['carbon', 'eco', 'environmental']
+  };
+  
+  const keywords = categoryMap[activeTab.value] || [];
+  return props.badges.filter(badge => 
+    keywords.some(keyword => 
+      badge.category?.toLowerCase().includes(keyword) ||
+      badge.name?.toLowerCase().includes(keyword) ||
+      badge.description?.toLowerCase().includes(keyword)
+    )
+  );
+});
+
 function getRarityLabel(rarity) {
   const labels = {
     common: '普通',
@@ -138,7 +178,7 @@ function formatDate(dateString) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .card-title {
@@ -176,7 +216,49 @@ function formatDate(dateString) {
   color: #555;
 }
 
-// Empty State
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 2px;
+  }
+}
+
+.tab-button {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  background: white;
+  color: #555;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: #e67e22;
+    color: #e67e22;
+  }
+
+  &.active {
+    background: #e67e22;
+    border-color: #e67e22;
+    color: white;
+    font-weight: 600;
+  }
+}
+
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -201,18 +283,17 @@ function formatDate(dateString) {
   }
 }
 
-// Badges Grid
 .badges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
 }
 
 .badge-item {
   background: white;
   border: 2px solid #e0e0e0;
   border-radius: 12px;
-  padding: 20px;
+  padding: 15px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
@@ -224,14 +305,11 @@ function formatDate(dateString) {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   }
 
-  // Rarity specific styles
   &.rarity-common {
     border-color: #95a5a6;
-
     .rarity-glow {
       background: radial-gradient(circle, rgba(149, 165, 166, 0.2) 0%, transparent 70%);
     }
-
     .badge-rarity {
       color: #95a5a6;
     }
@@ -239,11 +317,9 @@ function formatDate(dateString) {
 
   &.rarity-uncommon {
     border-color: #27ae60;
-
     .rarity-glow {
       background: radial-gradient(circle, rgba(39, 174, 96, 0.2) 0%, transparent 70%);
     }
-
     .badge-rarity {
       color: #27ae60;
     }
@@ -251,11 +327,9 @@ function formatDate(dateString) {
 
   &.rarity-rare {
     border-color: #3498db;
-
     .rarity-glow {
       background: radial-gradient(circle, rgba(52, 152, 219, 0.2) 0%, transparent 70%);
     }
-
     .badge-rarity {
       color: #3498db;
     }
@@ -263,11 +337,9 @@ function formatDate(dateString) {
 
   &.rarity-epic {
     border-color: #9b59b6;
-
     .rarity-glow {
       background: radial-gradient(circle, rgba(155, 89, 182, 0.2) 0%, transparent 70%);
     }
-
     .badge-rarity {
       color: #9b59b6;
     }
@@ -275,11 +347,9 @@ function formatDate(dateString) {
 
   &.rarity-legendary {
     border-color: #f39c12;
-
     .rarity-glow {
       background: radial-gradient(circle, rgba(243, 156, 18, 0.2) 0%, transparent 70%);
     }
-
     .badge-rarity {
       color: #f39c12;
     }
@@ -288,11 +358,11 @@ function formatDate(dateString) {
 
 .badge-icon-wrapper {
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .badge-icon {
-  font-size: 50px;
+  font-size: 40px;
   line-height: 1;
   position: relative;
   z-index: 1;
@@ -303,24 +373,24 @@ function formatDate(dateString) {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
 }
 
 .badge-name {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e1e1e;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .badge-description {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   color: #777;
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
   line-height: 1.4;
 }
 
@@ -328,25 +398,24 @@ function formatDate(dateString) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid #f0f0f0;
 }
 
 .badge-rarity {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .badge-points {
   font-family: 'Noto Sans TC', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: $primary;
 }
 
-// Modal
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -474,15 +543,9 @@ function formatDate(dateString) {
   color: #1e1e1e;
 }
 
-// Responsive Design
 @media (max-width: 991.98px) {
   .badges-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 15px;
-  }
-
-  .badge-icon {
-    font-size: 45px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
 
@@ -492,20 +555,20 @@ function formatDate(dateString) {
   }
 
   .badges-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
   }
 
   .badge-item {
-    padding: 15px;
+    padding: 12px;
   }
 
   .badge-icon {
-    font-size: 40px;
+    font-size: 35px;
   }
 
   .badge-name {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .modal-content {
@@ -514,6 +577,11 @@ function formatDate(dateString) {
 
   .modal-badge-icon {
     font-size: 60px;
+  }
+
+  .tab-button {
+    font-size: 12px;
+    padding: 6px 12px;
   }
 }
 </style>

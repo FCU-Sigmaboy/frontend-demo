@@ -1,17 +1,25 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useMessageStore } from './stores/message'
 import { useTransactionStore } from './stores/transaction'
 import { subscribeToUserPresence } from './api/conversation'
 import { BToastOrchestrator } from 'bootstrap-vue-next'
 import { useTransactionToast } from './composables/useTransactionToast'
+import CustomerServiceChat from './components/CustomerServiceChat.vue'
 
+const route = useRoute()
 const authStore = useAuthStore()
 const messageStore = useMessageStore()
 const transactionStore = useTransactionStore()
 const presenceChannel = ref(null)
 const realtimeUserId = ref(null)
+
+// 計算是否顯示客服按鈕
+const showCustomerService = computed(() => {
+  return route.name !== 'MapSearch'
+})
 
 const {
   showTransactionReceivedToast,
@@ -140,6 +148,7 @@ onBeforeUnmount(() => {
   <div id="app">
     <router-view />
     <BToastOrchestrator teleport-to="body" />
+    <CustomerServiceChat v-if="showCustomerService" />
   </div>
 </template>
 

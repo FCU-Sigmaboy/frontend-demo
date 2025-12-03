@@ -14,18 +14,6 @@
       />
     </div>
 
-    <div class="filter-tabs">
-      <button
-        v-for="filter in filters"
-        :key="filter.id"
-        :class="['filter-tab', { active: activeFilter === filter.id }]"
-        @click="selectFilter(filter.id)"
-      >
-        {{ filter.label }}
-        <span v-if="filter.count" class="filter-count">{{ filter.count }}</span>
-      </button>
-    </div>
-
     <div class="conversations-list">
       <TransitionGroup name="conversation-list" tag="div">
         <div
@@ -89,14 +77,6 @@ const props = defineProps({
     type: [Number, String],
     default: null
   },
-  filters: {
-    type: Array,
-    default: () => []
-  },
-  activeFilter: {
-    type: String,
-    default: 'all'
-  },
   searchQuery: {
     type: String,
     default: ''
@@ -107,17 +87,12 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['select', 'update:searchQuery', 'update:activeFilter']);
+const emit = defineEmits(['select', 'update:searchQuery']);
 
 const searchModel = computed({
   get: () => props.searchQuery,
   set: value => emit('update:searchQuery', value)
 });
-
-function selectFilter(filterId) {
-  if (filterId === props.activeFilter) return;
-  emit('update:activeFilter', filterId);
-}
 
 function handleSelect(conversation) {
   emit('select', conversation);
@@ -178,64 +153,6 @@ function handleSelect(conversation) {
 
     &::placeholder {
       color: #999;
-    }
-  }
-}
-
-.filter-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e0e0e0;
-  overflow-x: auto;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.filter-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid #d0d0d0;
-  border-radius: 20px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #666;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  .filter-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    background: #e0e0e0;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-  }
-
-  &:hover {
-    border-color: $primary;
-    color: $primary;
-  }
-
-  &.active {
-    background: $primary;
-    border-color: $primary;
-    color: white;
-
-    .filter-count {
-      background: rgba(255, 255, 255, 0.3);
-      color: white;
     }
   }
 }

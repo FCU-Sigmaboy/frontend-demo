@@ -8,7 +8,14 @@
 
       <!-- Search Bar Section -->
       <section class="search-section">
-        <SearchBar @search="handleSearch" />
+        <div class="search-section-container">
+          <!-- Map View Toggle Button -->
+          <button class="map-toggle-btn" @click="toggleToMapView">
+            <i class="bi bi-map"></i>
+          </button>
+
+          <SearchBar @search="handleSearch" />
+        </div>
       </section>
 
       <!-- Category and Filter Section -->
@@ -29,7 +36,53 @@
 
       <!-- Filter Tabs Section -->
       <section class="filter-section">
-        <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
+        <div class="filter-section-container">
+          <!-- Location Switcher -->
+          <div class="location-switcher">
+            <button class="location-btn" @click="toggleLocationMenu">
+              <i class="bi bi-geo-alt-fill"></i>
+              <span class="location-text">
+                {{ currentLocationType === 'current' ? '目前位置' :
+                   currentLocationType === 'home' ? '家' : '公司' }}
+              </span>
+              <i class="bi bi-chevron-down"></i>
+            </button>
+
+            <!-- Location Menu -->
+            <div v-if="showLocationMenu" class="location-menu">
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'current' }"
+                @click="switchLocation('current')"
+              >
+                <i class="bi bi-geo-alt-fill"></i>
+                <span>目前位置</span>
+              </button>
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'home', disabled: !savedLocations.home }"
+                :disabled="!savedLocations.home"
+                @click="switchLocation('home')"
+              >
+                <i class="bi bi-house-fill"></i>
+                <span>家</span>
+                <span v-if="!savedLocations.home" class="not-set">(未設定)</span>
+              </button>
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'work', disabled: !savedLocations.work }"
+                :disabled="!savedLocations.work"
+                @click="switchLocation('work')"
+              >
+                <i class="bi bi-briefcase-fill"></i>
+                <span>公司</span>
+                <span v-if="!savedLocations.work" class="not-set">(未設定)</span>
+              </button>
+            </div>
+          </div>
+
+          <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
+        </div>
       </section>
 
       <!-- Product Grid Section -->
@@ -84,7 +137,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -97,6 +150,7 @@ import FilterTabs from '../components/FilterTabs.vue';
 import { useCategoriesStore } from '@/stores/categories.js';
 import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
+import { getMyLocations } from '@/api/get_userLocationAPI';
 
 const route = useRoute();
 const router = useRouter();
@@ -118,6 +172,15 @@ const selectedSubCategory = ref(0); // 當前選中的子分類
 const searchQuery = ref('');
 const hasMore = ref(true);
 const loading = ref(false);
+
+// Location switching
+const currentLocationType = ref('current'); // 'current', 'home', 'work'
+const savedLocations = ref({
+  home: null,
+  work: null
+});
+const showLocationMenu = ref(false);
+const userLocation = ref(null);
 
 // Filters - 使用配置驅動的方式
 const filters = [
@@ -302,6 +365,20 @@ const handleSearch = (data) => {
   router.push({ query });
 
   console.log('Search:', data);
+
+  // Scroll to top after search
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const handleScroll = () => {
+  const searchSection = document.querySelector('.search-section-container');
+  if (searchSection) {
+    if (window.scrollY > 300) {
+      searchSection.classList.add('scrolled');
+    } else {
+      searchSection.classList.remove('scrolled');
+    }
+  }
 };
 
 const handleCategoryChange = (tabId) => {
@@ -349,17 +426,211 @@ const handleContactSeller = (productId) => {
   console.log('Contact seller for product:', productId);
 };
 
+const toggleToMapView = () => {
+  // Build query params from current route
+  const query = {};
+  
+  if (route.query.search) {
+    query.search = route.query.search;
+  }
+  if (route.query.distance) {
+    query.distance = route.query.distance;
+  }
+  if (route.query.category) {
+    query.category = route.query.category;
+  }
+  if (route.query.subCategory) {
+    query.subCategory = route.query.subCategory;
+  }
+  
+  router.push({ name: 'MapSearch', query });
+};
+
 const loadMore = () => {
   console.log('Load more products');
   // Implement pagination logic
   hasMore.value = false;
 };
 
+// Parse PostGIS WKB format to lat/lng
+function parseWKBPoint(wkbHex) {
+  try {
+    const coordsStartChar = 18;
+    const lonHex = wkbHex.substring(coordsStartChar, coordsStartChar + 16);
+    const latHex = wkbHex.substring(coordsStartChar + 16, coordsStartChar + 32);
+
+    if (!lonHex || !latHex || lonHex.length !== 16 || latHex.length !== 16) {
+      return { latitude: null, longitude: null };
+    }
+
+    const lonMatch = lonHex.match(/.{2}/g);
+    const latMatch = latHex.match(/.{2}/g);
+
+    if (!lonMatch || !latMatch) {
+      return { latitude: null, longitude: null };
+    }
+
+    const lonBytes = new Uint8Array(lonMatch.map(byte => parseInt(byte, 16)));
+    const latBytes = new Uint8Array(latMatch.map(byte => parseInt(byte, 16)));
+
+    const longitude = new DataView(lonBytes.buffer).getFloat64(0, true);
+    const latitude = new DataView(latBytes.buffer).getFloat64(0, true);
+
+    return { latitude, longitude };
+  } catch (error) {
+    console.error('[ItemListPage] Failed to parse WKB:', error);
+    return { latitude: null, longitude: null };
+  }
+}
+
+// Fetch saved locations (home and work)
+async function fetchSavedLocations() {
+  try {
+    const locations = await getMyLocations();
+
+    if (locations && locations.length > 0) {
+      locations.forEach(location => {
+        let latitude = null;
+        let longitude = null;
+
+        if (location.coordinates) {
+          const coords = parseWKBPoint(location.coordinates);
+          latitude = coords.latitude;
+          longitude = coords.longitude;
+        }
+
+        if (latitude !== null && longitude !== null) {
+          const locationData = {
+            ...location,
+            latitude,
+            longitude
+          };
+
+          if (location.type === '家') {
+            savedLocations.value.home = locationData;
+          } else if (location.type === '公司') {
+            savedLocations.value.work = locationData;
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[ItemListPage] Failed to fetch saved locations:', error);
+  }
+}
+
+// Fetch current location
+async function fetchCurrentLocation() {
+  try {
+    if (!navigator.geolocation) {
+      console.error('[ItemListPage] Geolocation is not supported');
+      return false;
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          userLocation.value = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            type: 'current'
+          };
+          resolve(true);
+        },
+        (error) => {
+          console.error('[ItemListPage] Failed to get current location:', error);
+          userLocation.value = null;
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
+  } catch (error) {
+    console.error('[ItemListPage] Failed to fetch current location:', error);
+    return false;
+  }
+}
+
+// Switch location
+async function switchLocation(locationType) {
+  currentLocationType.value = locationType;
+  showLocationMenu.value = false;
+
+  switch (locationType) {
+    case 'current':
+      await fetchCurrentLocation();
+      break;
+    case 'home':
+      if (savedLocations.value.home) {
+        userLocation.value = savedLocations.value.home;
+      }
+      break;
+    case 'work':
+      if (savedLocations.value.work) {
+        userLocation.value = savedLocations.value.work;
+      }
+      break;
+  }
+
+  // Reload products with new location
+  if (userLocation.value) {
+    await loadProductsWithLocation();
+  }
+}
+
+// Toggle location menu
+function toggleLocationMenu() {
+  showLocationMenu.value = !showLocationMenu.value;
+}
+
+// Close location menu when clicking outside
+function handleClickOutside(event) {
+  const locationSwitcher = document.querySelector('.location-switcher');
+  if (locationSwitcher && !locationSwitcher.contains(event.target)) {
+    showLocationMenu.value = false;
+  }
+}
+
+// Load products with location
+async function loadProductsWithLocation() {
+  const categoryId = route.query.category;
+  const subCategoryId = route.query.subCategory;
+  const distance = route.query.distance;
+  const search = route.query.search;
+  
+  const mainCategoryId = subCategoryId ? null : categoryId;
+  
+  const params = {
+    main_category_id: mainCategoryId,
+    sub_category_id: subCategoryId,
+    keyword: search || null,
+    distance_range_km: distance ? Number(distance) : null
+  };
+  
+  if (userLocation.value) {
+    params.user_latitude = userLocation.value.latitude;
+    params.user_longitude = userLocation.value.longitude;
+  }
+  
+  await loadProducts(params);
+}
+
 // Load products function
 const loadProducts = async (filters) => {
   loading.value = true;
   try {
-    const data = await searchItems(filters);
+    // Add user location if available
+    const params = { ...filters };
+    if (userLocation.value && !params.user_latitude && !params.user_longitude) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
     products.value = data || [];
     displayedProducts.value = data || [];
     console.log('Products loaded:', data);
@@ -402,6 +673,20 @@ watch(() => [route.query.category, route.query.subCategory, categories.value.len
     }
   }
 );
+
+// Initialize location on mount
+onMounted(async () => {
+  await fetchSavedLocations();
+  await fetchCurrentLocation();
+  document.addEventListener('click', handleClickOutside);
+  // Add scroll listener
+  window.addEventListener('scroll', handleScroll);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('scroll', handleScroll);
+});
 
 // 監聽 URL query 參數變化來觸發搜索
 watch(() => [route.query.category, route.query.subCategory, route.query.distance, route.query.search],
@@ -457,8 +742,66 @@ watch(() => route.query.search, (newSearch) => {
 
 // Search Section
 .search-section {
-  padding: 10px 0 20px;
-  background-color: #f9f9f9;
+  padding: 10px 0;
+  position: sticky;
+  top: 60px;
+  z-index: 100;
+}
+
+.search-section-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px;
+  transition: all 0.3s ease-in-out;
+}
+
+.search-section-container.scrolled {
+  background: transparent;
+  max-width: 800px;
+
+  .map-toggle-btn {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .search-bar-wrapper {
+    background-color: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(10px);
+  } 
+}
+
+// Map Toggle Button (Square style next to SearchBar)
+.map-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: white;
+  border: 1px solid #d5d5d5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+
+  i {
+    font-size: 22px;
+    color: #6fb8a5;
+  }
+
+  &:hover {
+    background: #f8f9fa;
+    border-color: #6fb8a5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: translateY(-1px);
+  }
 }
 
 .breadcrumb-container {
@@ -525,6 +868,15 @@ watch(() => route.query.search, (newSearch) => {
 .filter-section {
   padding: 20px 0;
   background-color: #f9f9f9;
+}
+
+.filter-section-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 // Products Section
@@ -661,6 +1013,145 @@ watch(() => route.query.search, (newSearch) => {
   }
 }
 
+// Location Switcher (Inline style for filter section)
+.location-switcher {
+  position: relative;
+  z-index: 99;
+
+  .location-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 16px;
+    background: white;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+
+    i {
+      font-size: 16px;
+      color: #6fb8a5;
+
+      &.bi-chevron-down {
+        display: inline-block;
+        font-size: 12px;
+        color: #666;
+        margin-left: 2px;
+        transition: transform 0.2s;
+      }
+    }
+
+    .location-text {
+      display: inline-block;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    &:active {
+      transform: translateY(-1px);
+    }
+  }
+
+  .location-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 180px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+
+    .location-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: white;
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+
+      i {
+        font-size: 16px;
+        color: #666;
+        width: 20px;
+      }
+
+      span {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e1e1e;
+
+        &.not-set {
+          font-size: 12px;
+          color: #999;
+          margin-left: auto;
+        }
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover:not(:disabled) {
+        background: #f8f9fa;
+      }
+
+      &.active {
+        background: rgba(111, 184, 165, 0.1);
+
+        i {
+          color: #6fb8a5;
+        }
+
+        span {
+          color: #6fb8a5;
+          font-weight: 600;
+        }
+      }
+
+      &.disabled,
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+
+        &:hover {
+          background: white;
+        }
+      }
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 // Responsive Design
 @media (max-width: 1399.98px) {
   .products-grid {
@@ -676,6 +1167,20 @@ watch(() => route.query.search, (newSearch) => {
 
   .search-section {
     padding: 8px 0 18px;
+  }
+
+  .search-section-container {
+    padding: 0 15px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 52px;
+    height: 52px;
+
+    i {
+      font-size: 20px;
+    }
   }
 
   .breadcrumb-container {
@@ -705,6 +1210,11 @@ watch(() => route.query.search, (newSearch) => {
 
   .filter-section {
     padding: 18px 0;
+  }
+
+  .filter-section-container {
+    padding: 0 15px;
+    gap: 12px;
   }
 
   .products-section {
@@ -740,6 +1250,53 @@ watch(() => route.query.search, (newSearch) => {
 }
 
 @media (max-width: 575.98px) {
+  .search-section-container {
+    flex-direction: column;
+    padding: 0 10px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    gap: 8px;
+    order: 1; // Place after SearchBar
+
+    &::after {
+      content: '顯示地圖';
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
+    }
+
+    i {
+      font-size: 18px;
+    }
+  }
+
+  .filter-section-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 10px;
+  }
+
+  .location-switcher {
+    .location-btn {
+      width: 100%;
+      justify-content: flex-start;
+      height: 36px;
+      padding: 0 14px;
+    }
+
+    .location-menu {
+      width: 100%;
+      min-width: unset;
+    }
+  }
+
   .breadcrumb-section {
     padding: 10px 0 6px;
   }
