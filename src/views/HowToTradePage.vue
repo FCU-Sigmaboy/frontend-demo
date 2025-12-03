@@ -6,161 +6,57 @@
       <BContainer>
         <!-- Breadcrumb -->
         <nav class="breadcrumb-nav">
-          <router-link to="/">首頁</router-link> &gt; 如何交易
+          <router-link to="/">首頁</router-link> &gt; 交易教學
         </nav>
 
         <!-- Page Title -->
         <div class="page-header">
           <h1 class="page-title">如何交易</h1>
-          <p class="page-subtitle">簡單六步驟，輕鬆完成環保交易</p>
+          <p class="page-subtitle">簡單幾步驟，輕鬆完成環保交易</p>
         </div>
 
-        <!-- Steps Grid -->
-        <div class="steps-grid">
-          <!-- Row 1: Steps 1-3 -->
-          <BRow class="step-row">
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="step-card">
-                <div class="step-number">1</div>
-                <div class="step-image">
-                  <i class="bi bi-search"></i>
-                </div>
-                <h3 class="step-title">搜尋物品</h3>
-                <p class="step-description">
-                  使用搜尋功能或瀏覽分類，找到您感興趣的二手物品。可以依據距離、點數、類別等條件篩選。
-                </p>
-              </div>
-            </BCol>
-
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="step-card">
-                <div class="step-number">2</div>
-                <div class="step-image">
-                  <i class="bi bi-info-circle"></i>
-                </div>
-                <h3 class="step-title">查看物品詳情</h3>
-                <p class="step-description">
-                  仔細閱讀物品描述、查看照片、確認所需點數，並參考提供者的評價與信譽分數。
-                </p>
-              </div>
-            </BCol>
-
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="step-card">
-                <div class="step-number">3</div>
-                <div class="step-image">
-                  <i class="bi bi-chat-dots"></i>
-                </div>
-                <h3 class="step-title">聯繫提供者</h3>
-                <p class="step-description">
-                  透過平台私訊功能與提供者溝通，詢問物品狀況、約定交易時間與地點。
-                </p>
-              </div>
-            </BCol>
-          </BRow>
-
-          <!-- Arrow Down -->
-          <div class="arrow-down">
-            <i class="bi bi-arrow-down"></i>
-          </div>
-
-          <!-- Row 2: Steps 4-6 -->
-          <BRow class="step-row">
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="step-card">
-                <div class="step-number">4</div>
-                <div class="step-image">
-                  <i class="bi bi-hand-index-thumb"></i>
-                </div>
-                <h3 class="step-title">確認交易</h3>
-                <p class="step-description">
-                  確認點數足夠後，點擊「確認交易」按鈕。系統會暫時凍結您的點數，待交易完成後轉給提供者。
-                </p>
-              </div>
-            </BCol>
-
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="step-card">
-                <div class="step-number">5</div>
-                <div class="step-image">
-                  <i class="bi bi-people"></i>
-                </div>
-                <h3 class="step-title">面交取物</h3>
-                <p class="step-description">
-                  前往約定地點（建議選擇公共場所），當面檢查物品狀況，確認無誤後完成交換。
-                </p>
-              </div>
-            </BCol>
-
-            <BCol cols="12" md="4" class="mb-4">
-              <div class="step-card">
-                <div class="step-number">6</div>
-                <div class="step-image">
-                  <i class="bi bi-star"></i>
-                </div>
-                <h3 class="step-title">評價與完成</h3>
-                <p class="step-description">
-                  在平台上確認交易完成，並給予對方評價。良好的評價有助於建立社群信任。
-                </p>
-              </div>
-            </BCol>
-          </BRow>
+        <!-- Guide Tabs -->
+        <div class="guide-tabs">
+          <button
+            :class="['tab-btn', { active: activeTab === 'buyer' }]"
+            @click="activeTab = 'buyer'"
+          >
+            買家指南
+          </button>
+          <button
+            :class="['tab-btn', { active: activeTab === 'seller' }]"
+            @click="activeTab = 'seller'"
+          >
+            賣家指南
+          </button>
         </div>
 
-        <!-- Tips Section -->
-        <section class="tips-section">
-          <h2 class="tips-title">
-            <i class="bi bi-lightbulb"></i>
-            交易小提醒
-          </h2>
-          <BRow>
-            <BCol cols="12" md="6" lg="3" class="mb-4">
-              <div class="tip-card">
-                <div class="tip-icon">
-                  <i class="bi bi-shield-check"></i>
-                </div>
-                <h4>選擇安全地點</h4>
-                <p>建議在捷運站、便利商店等公共場所交易，確保雙方安全。</p>
-              </div>
-            </BCol>
+        <!-- Buyer's Guide -->
+        <div v-if="activeTab === 'buyer'" class="steps-container">
+          <section v-for="step in buyerSteps" :key="step.number" class="step-section">
+            <div class="step-content">
+              <h2 class="step-number">STEP {{ step.number }}</h2>
+              <h3 class="step-title">{{ step.title }}</h3>
+              <p class="step-description">{{ step.description }}</p>
+            </div>
+            <div class="step-image-wrapper">
+              <img :src="step.image" :alt="step.title" class="step-image" />
+            </div>
+          </section>
+        </div>
 
-            <BCol cols="12" md="6" lg="3" class="mb-4">
-              <div class="tip-card">
-                <div class="tip-icon">
-                  <i class="bi bi-eye"></i>
-                </div>
-                <h4>仔細檢查物品</h4>
-                <p>交易前務必檢查物品狀況，確認與描述相符後再完成交易。</p>
-              </div>
-            </BCol>
-
-            <BCol cols="12" md="6" lg="3" class="mb-4">
-              <div class="tip-card">
-                <div class="tip-icon">
-                  <i class="bi bi-clock"></i>
-                </div>
-                <h4>準時赴約</h4>
-                <p>尊重彼此的時間，若有變動請提前告知對方。</p>
-              </div>
-            </BCol>
-
-            <BCol cols="12" md="6" lg="3" class="mb-4">
-              <div class="tip-card">
-                <div class="tip-icon">
-                  <i class="bi bi-exclamation-triangle"></i>
-                </div>
-                <h4>遇到問題立即檢舉</h4>
-                <p>若發現詐欺或不當行為，請立即透過平台檢舉功能回報。</p>
-              </div>
-            </BCol>
-          </BRow>
-        </section>
-
-        <!-- CTA Section -->
-        <div class="cta-section">
-          <h2>準備好開始交易了嗎？</h2>
-          <p>立即加入台中易起來，讓閒置物品找到新主人！</p>
-          <router-link to="/items" class="btn-cta">開始瀏覽物品</router-link>
+        <!-- Seller's Guide -->
+        <div v-else class="steps-container">
+          <section v-for="step in sellerSteps" :key="step.number" class="step-section">
+            <div class="step-content">
+              <h2 class="step-number">STEP {{ step.number }}</h2>
+              <h3 class="step-title">{{ step.title }}</h3>
+              <p class="step-description">{{ step.description }}</p>
+            </div>
+            <div class="step-image-wrapper">
+              <img :src="step.image" :alt="step.title" class="step-image" />
+            </div>
+          </section>
         </div>
       </BContainer>
     </div>
@@ -170,9 +66,144 @@
 </template>
 
 <script setup>
-import { BContainer, BRow, BCol } from 'bootstrap-vue-next';
+import { ref } from 'vue';
+import { BContainer } from 'bootstrap-vue-next';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
+
+// Import buyer images
+import buy1 from '../assets/images/buy1.jpg';
+import buy2 from '../assets/images/buy2.jpg';
+import buy3 from '../assets/images/buy3.jpg';
+import buy4 from '../assets/images/buy4.jpg';
+import buy5 from '../assets/images/buy5.jpg';
+import buy6 from '../assets/images/buy6.jpg';
+import buy7 from '../assets/images/buy7.jpg';
+
+// Import seller images
+import sell1 from '../assets/images/sell1.jpg';
+import sell2 from '../assets/images/sell2.jpg';
+import sell3 from '../assets/images/sell3.jpg';
+import sell4 from '../assets/images/sell4.jpg';
+import sell5 from '../assets/images/sell5.jpg';
+import sell7 from '../assets/images/sell 7ps.png';
+
+// Import posting guide images
+import post1 from '../assets/images/post1.jpg';
+import post2 from '../assets/images/post2.jpg';
+import post3 from '../assets/images/post3.jpg';
+import post4 from '../assets/images/post4.jpg';
+import post5 from '../assets/images/post5.jpg';
+
+const activeTab = ref('buyer');
+
+const buyerSteps = ref([
+  {
+    number: 1,
+    title: '與賣家聯繫',
+    description: '找到所需商品後，點擊「私訊此商品」按鈕。',
+    image: buy1,
+  },
+  {
+    number: 2,
+    title: '表達交易意願',
+    description: '系統預設傳訊息「我想詢問」，或您可以手動輸入更改想詢問的內容',
+    image: buy2,
+  },
+  {
+    number: 3,
+    title: '檢視交易',
+    description: '待賣家發起交易，跳出「詳情請點擊下方按鈕」系統訊息，可點擊「查看交易詳情」按鈕。或是點擊上方交易清單按鈕（即收據圖示），可以查看所有交易紀錄',
+    image: buy3,
+  },
+  {
+    number: 4,
+    title: '確認交易',
+    description: '點擊「確認交易」按鈕。 ',
+    image: buy4,
+  },
+  {
+    number: 5,
+    title: '再一次確認交易',
+    description: '在您的對話視窗中，點擊「確認交易」按鈕。此時系統將會預扣您的點數，確保交易順利進行。',
+    image: buy5,
+  },
+  {
+    number: 6,
+    title: '面交取物',
+    description: '前往約定地點，當面檢查物品狀況，確認無誤後，輸入賣方提供的 PIN 碼完成交換。',
+    image: buy6,
+  },
+  {
+    number: 7,
+    title: '交易完成',
+    description: '跳出交易成功通知，即表示完成交易。',
+    image: buy7,
+  },
+]);
+
+const sellerSteps = ref([
+  {
+    number: 1,
+    title: '開始刊登',
+    description: '前往主頁面，點擊「刊登」按鈕。',
+    image: post1,
+  },
+  {
+    number: 2,
+    title: '上傳圖片',
+    description: '點擊此處，可上傳商品圖。',
+    image: post2,
+  },
+  {
+    number: 3,
+    title: 'AI 幫您寫文案',
+    description: '按下「使用 AI 辨識物品資訊」按鈕，AI 將會讀取圖片中的物品，辨識其顏色、材質與特徵。接著，系統會根據這些資訊，自動為您生成一個吸引人的標題、一段詳盡的描述，並推薦最適合的商品分類，讓您省下大量時間，輕鬆完成刊登。',
+    image: post3,
+  },
+  {
+    number: 4,
+    title: '確認與修改資訊',
+    description: 'AI 辨識完成後，您可以在欄位中手動修改或補充資訊，並設定您期望交換的點數。',
+    image: post4,
+  },
+  {
+    number: 5,
+    title: '完成刊登',
+    description: '確認所有資訊無誤後，點擊「確認」按鈕，即可成功刊登您的物品。',
+    image: post5,
+  },
+  {
+    number: 6,
+    title: '收到買家訊息',
+    description: '刊登後，當有買家對您的物品感興趣時，您會收到私訊。',
+    image: sell1,
+  },
+  {
+    number: 7,
+    title: '發起交易',
+    description: '點擊發起交易按鈕（即傳遞愛圖示），出現此視窗，點選買家詢問商品，再按「確認交易」按鈕，即正式發起交易。',
+    image: sell7,
+  },
+  {
+    number: 8,
+    title: '檢視交易',
+    description: '聊天室跳出「詳情請點擊下方按鈕」系統訊息，接著按「查看交易詳情」，或是點擊上方交易清單按鈕（即收據圖示），可以查看所有交易紀錄',
+    image: sell3,
+  },
+  {
+    number: 9,
+    title: '面交提供 PIN 碼',
+    description: '交易頁面中，點擊「點擊查看」按鈕，跳出此視窗，上面顯示的 PIN 碼，需在面交時給買家。',
+    image: sell4,
+  },
+  {
+    number: 10,
+    title: '交易完成',
+    description: '當買家完成 PIN 碼驗證後，交易流程即視為結束，系統將把該筆訂單歸類至已完成交易，即為完成交易。',
+    image: sell5,
+  },
+]);
 </script>
 
 <style scoped lang="scss">
@@ -208,7 +239,7 @@ import AppFooter from '../components/AppFooter.vue';
 
 .page-header {
   text-align: center;
-  margin-bottom: 60px;
+  margin-bottom: 40px;
 }
 
 .page-title {
@@ -225,448 +256,107 @@ import AppFooter from '../components/AppFooter.vue';
   color: #666;
 }
 
-.steps-grid {
-  margin-bottom: 80px;
-}
+.guide-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 60px;
 
-.step-row {
-  margin-bottom: 20px;
-}
+  .tab-btn {
+    padding: 12px 32px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    border: 2px solid transparent;
+    border-radius: 30px;
+    background-color: #e0e0e0;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
 
-.step-card {
-  background-color: white;
-  border-radius: 12px;
-  padding: 40px 30px;
-  text-align: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  height: 100%;
-  transition: transform 0.3s, box-shadow 0.3s;
-  position: relative;
+    &.active {
+      background-color: $primary;
+      color: white;
+      border-color: $primary;
+    }
 
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 24px rgba(111, 184, 165, 0.2);
-  }
-
-  .step-number {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 40px;
-    height: 40px;
-    background-color: $primary;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Inter', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  .step-image {
-    width: 120px;
-    height: 120px;
-    background-color: #e9f5f2;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 24px;
-    border: 2px solid $primary;
-
-    i {
-      font-size: 50px;
-      color: $primary;
+    &:hover:not(.active) {
+      background-color: #d0d0d0;
     }
   }
-
-  .step-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 22px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin-bottom: 16px;
-  }
-
-  .step-description {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 15px;
-    line-height: 1.7;
-    color: #666;
-    margin: 0;
-  }
 }
 
-.arrow-down {
+.steps-container {
+  max-width: 800px;
+  margin: 0 auto 80px;
+}
+
+.step-section {
+  margin-bottom: 80px;
   text-align: center;
-  margin: 30px 0;
-
-  i {
-    font-size: 40px;
-    color: $primary;
-    animation: bounce 2s infinite;
-  }
 }
 
-@keyframes bounce {
-  0%,
-  20%,
-  50%,
-  80%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  60% {
-    transform: translateY(-5px);
-  }
-}
-
-.tips-section {
+.step-image-wrapper {
   background-color: white;
   border-radius: 16px;
-  padding: 50px 40px;
-  margin-bottom: 60px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+  overflow: hidden;
+  margin-top: 24px;
+  width: 100%;
 }
 
-.tips-title {
+.step-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  aspect-ratio: 1680 / 920;
+}
+
+.step-content {
+  padding: 20px 0;
+}
+
+.step-number {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: $primary;
+  margin-bottom: 12px;
+}
+
+.step-title {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 28px;
   font-weight: 600;
   color: #1e1e1e;
-  margin-bottom: 40px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-
-  i {
-    font-size: 32px;
-    color: #ffc107;
-  }
+  margin-bottom: 16px;
 }
 
-.tip-card {
-  text-align: center;
-  padding: 20px;
-
-  .tip-icon {
-    width: 70px;
-    height: 70px;
-    background-color: #e9f5f2;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-
-    i {
-      font-size: 32px;
-      color: $primary;
-    }
-  }
-
-  h4 {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin-bottom: 12px;
-  }
-
-  p {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
-    color: #666;
-    margin: 0;
-  }
+.step-description {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #666;
+  margin: 0;
 }
 
-.cta-section {
-  background: linear-gradient(135deg, $primary 0%, #5fa795 100%);
-  border-radius: 16px;
-  padding: 60px 40px;
-  text-align: center;
-  color: white;
-  box-shadow: 0 8px 24px rgba(111, 184, 165, 0.3);
-
-  h2 {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
-
-  p {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    margin-bottom: 32px;
-    opacity: 0.95;
-  }
-
-  .btn-cta {
-    display: inline-block;
-    background-color: white;
-    color: $primary;
-    border-radius: 30px;
-    padding: 14px 48px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.3s;
-
-    &:hover {
-      background-color: #f0f0f0;
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+@media (max-width: 767.98px) {
+  .guide-tabs {
+    gap: 10px;
+    .tab-btn {
+      padding: 10px 20px;
+      font-size: 16px;
     }
   }
-}
-
-@media (max-width: 991.98px) {
-  .content-wrapper {
-    padding: 30px 0 50px;
+  .step-section {
+    margin-bottom: 40px;
   }
-
-  .breadcrumb-nav {
-    font-size: 15px;
-    margin-bottom: 25px;
-  }
-
-  .page-header {
-    margin-bottom: 50px;
-  }
-
-  .page-title {
-    font-size: 32px;
-  }
-
-  .page-subtitle {
-    font-size: 17px;
-  }
-
-  .steps-grid {
-    margin-bottom: 70px;
-  }
-
-  .step-card {
-    padding: 35px 25px;
-
-    .step-number {
-      width: 36px;
-      height: 36px;
-      font-size: 18px;
-    }
-
-    .step-image {
-      width: 110px;
-      height: 110px;
-
-      i {
-        font-size: 45px;
-      }
-    }
-
-    .step-title {
-      font-size: 20px;
-    }
-
-    .step-description {
-      font-size: 14px;
-    }
-  }
-
-  .arrow-down {
-    margin: 25px 0;
-
-    i {
-      font-size: 36px;
-    }
-  }
-
-  .tips-section {
-    padding: 45px 35px;
-    margin-bottom: 50px;
-  }
-
-  .tips-title {
-    font-size: 26px;
-    margin-bottom: 35px;
-
-    i {
-      font-size: 30px;
-    }
-  }
-
-  .tip-card {
-    .tip-icon {
-      width: 65px;
-      height: 65px;
-
-      i {
-        font-size: 30px;
-      }
-    }
-
-    h4 {
-      font-size: 17px;
-    }
-
-    p {
-      font-size: 13px;
-    }
-  }
-
-  .cta-section {
-    padding: 50px 35px;
-
-    h2 {
-      font-size: 28px;
-    }
-
-    p {
-      font-size: 17px;
-    }
-
-    .btn-cta {
-      font-size: 17px;
-      padding: 13px 44px;
-    }
-  }
-}
-
-@media (max-width: 575.98px) {
-  .content-wrapper {
-    padding: 20px 0 40px;
-  }
-
-  .breadcrumb-nav {
-    font-size: 14px;
+  .step-image-wrapper {
     margin-bottom: 20px;
   }
-
-  .page-header {
-    margin-bottom: 40px;
-  }
-
-  .page-title {
-    font-size: 26px;
-  }
-
-  .page-subtitle {
-    font-size: 15px;
-  }
-
-  .steps-grid {
-    margin-bottom: 60px;
-  }
-
-  .step-row {
-    margin-bottom: 15px;
-  }
-
-  .step-card {
-    padding: 30px 20px;
-
-    .step-number {
-      width: 32px;
-      height: 32px;
-      font-size: 16px;
-      top: 15px;
-      left: 15px;
-    }
-
-    .step-image {
-      width: 100px;
-      height: 100px;
-      border-radius: 10px;
-
-      i {
-        font-size: 40px;
-      }
-    }
-
-    .step-title {
-      font-size: 18px;
-      margin-bottom: 14px;
-    }
-
-    .step-description {
-      font-size: 13px;
-    }
-  }
-
-  .arrow-down {
-    margin: 20px 0;
-
-    i {
-      font-size: 32px;
-    }
-  }
-
-  .tips-section {
-    padding: 40px 25px;
-    margin-bottom: 40px;
-    border-radius: 12px;
-  }
-
-  .tips-title {
-    font-size: 22px;
-    margin-bottom: 30px;
-
-    i {
-      font-size: 26px;
-    }
-  }
-
-  .tip-card {
-    padding: 15px;
-
-    .tip-icon {
-      width: 60px;
-      height: 60px;
-
-      i {
-        font-size: 28px;
-      }
-    }
-
-    h4 {
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-
-    p {
-      font-size: 13px;
-    }
-  }
-
-  .cta-section {
-    padding: 45px 25px;
-    border-radius: 12px;
-
-    h2 {
-      font-size: 24px;
-      margin-bottom: 12px;
-    }
-
-    p {
-      font-size: 15px;
-      margin-bottom: 28px;
-    }
-
-    .btn-cta {
-      font-size: 16px;
-      padding: 12px 40px;
-    }
+  .step-content {
+    text-align: center;
   }
 }
 </style>
