@@ -54,6 +54,7 @@ import { BContainer, BAccordion, BAccordionItem } from 'bootstrap-vue-next';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
+
 const faqData = ref([
   {
     question: '什麼是台中易起來平台？',
