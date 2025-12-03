@@ -536,6 +536,15 @@ const stats = computed(() => {
   return { all, active, inactive, sold };
 });
 
+// Status priority for default sorting (lower number = higher priority)
+const statusPriority = {
+  'in_transaction': 1,
+  'waiting': 2,
+  'active': 3,
+  'inactive': 4,
+  'sold': 5
+};
+
 // Computed filtered listings (with filtering and sorting applied)
 const allFilteredListings = computed(() => {
   let filtered = listings.value;
@@ -583,6 +592,13 @@ const allFilteredListings = computed(() => {
         return sortOrder.value === 'asc' ? 1 : -1;
       }
       return 0;
+    });
+  } else if (activeFilter.value === 'all') {
+    // Default sorting for "全部商品": sort by status priority 交易中>上架中>已下架>已售出
+    filtered = [...filtered].sort((a, b) => {
+      const aPriority = statusPriority[a.status] || 99;
+      const bPriority = statusPriority[b.status] || 99;
+      return aPriority - bPriority;
     });
   }
 

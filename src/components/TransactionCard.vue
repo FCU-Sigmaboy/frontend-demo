@@ -239,7 +239,7 @@ const handleToggleFavorite = async () => {
   }
   
   const item = {
-    item_id: props.productId,
+    item_id: Number(props.productId),
     title: props.productName,
     price: props.price,
     image_url: props.imageUrl || props.sellerAvatar, 

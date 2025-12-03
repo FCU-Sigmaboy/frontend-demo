@@ -33,22 +33,6 @@
       <i class="bi bi-grid-3x3-gap"></i>
       <span class="btn-text">物品</span>
     </button>
-
-    <div class="more-menu-container">
-      <button
-        class="more-btn"
-        :disabled="!conversation"
-        @click="$emit('toggle-menu')"
-      >
-        <i class="bi bi-three-dots-vertical"></i>
-      </button>
-      <div v-if="conversation && showMoreMenu" class="more-menu-dropdown">
-        <button class="menu-item" @click="$emit('archive')">
-          <i :class="conversation._raw.is_archived ? 'bi bi-inbox' : 'bi bi-archive'"></i>
-          {{ conversation._raw.is_archived ? '取消封存' : '封存對話' }}
-        </button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -62,17 +46,13 @@ const props = defineProps({
     type: Object,
     default: null
   },
-  showMoreMenu: {
-    type: Boolean,
-    default: false
-  },
   messagesLoading: {
     type: Boolean,
     default: false
   }
 });
 
-const emit = defineEmits(['back', 'toggle-menu', 'archive', 'view-listings']);
+const emit = defineEmits(['back', 'view-listings']);
 
 const goToUserProfile = () => {
   if (props.conversation?._raw?.other_user?.id) {
@@ -158,75 +138,6 @@ const goToUserProfile = () => {
 .view-listings-btn:hover {
   background: #f0faf8;
   border-color: #1db187;
-}
-
-.more-menu-container {
-  position: relative;
-}
-
-.more-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.more-btn i {
-  font-size: 18px;
-  color: #666;
-}
-
-.more-btn:hover:not(:disabled) {
-  background: #f5f5f5;
-}
-
-.more-menu-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 180px;
-  z-index: 1000;
-  overflow: hidden;
-}
-
-.menu-item {
-  width: 100%;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #1e1e1e;
-  text-align: left;
-  transition: background 0.2s;
-}
-
-.menu-item i {
-  font-size: 16px;
-  color: #666;
-}
-
-.menu-item:hover {
-  background: #f5f5f5;
-}
-
-.menu-item:active {
-  background: #e8e8e8;
 }
 
 .skeleton-avatar,

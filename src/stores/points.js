@@ -1,100 +1,106 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
 import {
   getUserPointsProfile,
   getPointsTransactions,
   dailySignIn,
-  getUserBadges,
+  getUserBadgesWithProgress,
+  manuallyCheckBadges,
   checkListingPermission,
   getLevelTier,
   getTrustTier,
   LEVEL_TIERS,
   TRUST_TIERS
-} from '@/api/pointsAPI'
+} from '@/api/pointsAPI';
 
 export const usePointsStore = defineStore('points', () => {
   // State
-  const profile = ref(null)
-  const transactions = ref([])
-  const badges = ref([])
-  const isLoadingProfile = ref(false)
-  const isLoadingTransactions = ref(false)
-  const isLoadingBadges = ref(false)
-  const lastProfileFetch = ref(null)
-  const lastTransactionsFetch = ref(null)
-  const lastBadgesFetch = ref(null)
+  const profile = ref(null);
+  const transactions = ref([]);
+  const badges = ref([]);
+  const badgeProgress = ref([]);
+  const isLoadingProfile = ref(false);
+  const isLoadingTransactions = ref(false);
+  const isLoadingBadges = ref(false);
+  const lastProfileFetch = ref(null);
+  const lastTransactionsFetch = ref(null);
+  const lastBadgesFetch = ref(null);
+  const transactionsHasMore = ref(true);
+  const transactionsFilter = ref(null);
+  const transactionsPage = ref(1);
 
   // Cache duration in milliseconds (5 minutes)
-  const CACHE_DURATION = 5 * 60 * 1000
+  const CACHE_DURATION = 5 * 60 * 1000;
 
   // Getters
-  const currentBalance = computed(() => profile.value?.current_balance || 0)
+  const currentBalance = computed(() => profile.value?.current_balance || 0);
 
-  const totalEarned = computed(() => profile.value?.total_earned || 0)
+  const totalEarned = computed(() => profile.value?.total_earned || 0);
 
-  const totalSpent = computed(() => profile.value?.total_spent || 0)
+  const totalSpent = computed(() => profile.value?.total_spent || 0);
 
-  const dailyStreak = computed(() => profile.value?.daily_streak || 0)
+  const dailyStreak = computed(() => profile.value?.daily_streak || 0);
 
-  const lastSigninDate = computed(() => profile.value?.last_signin_date || null)
+  const lastSigninDate = computed(() => profile.value?.last_signin_date || null);
 
   const currentLevelTier = computed(() => {
-    if (!profile.value) return LEVEL_TIERS[0]
-    return getLevelTier(profile.value.total_earned)
-  })
+    if (!profile.value) return LEVEL_TIERS[0];
+    return getLevelTier(profile.value.total_earned);
+  });
 
   const nextLevelTier = computed(() => {
-    const currentTier = currentLevelTier.value
-    const currentIndex = LEVEL_TIERS.findIndex(t => t.tier === currentTier.tier)
-    if (currentIndex === LEVEL_TIERS.length - 1) return null
-    return LEVEL_TIERS[currentIndex + 1]
-  })
+    const currentTier = currentLevelTier.value;
+    const currentIndex = LEVEL_TIERS.findIndex(t => t.tier === currentTier.tier);
+    if (currentIndex === LEVEL_TIERS.length - 1) return null;
+    return LEVEL_TIERS[currentIndex + 1];
+  });
 
   const levelProgress = computed(() => {
-    const current = currentLevelTier.value
-    const next = nextLevelTier.value
+    const current = currentLevelTier.value;
+    const next = nextLevelTier.value;
 
-    if (!next) return 100 // Max level reached
+    if (!next) return 100; // Max level reached
 
-    const earned = totalEarned.value
-    const pointsIntoCurrentLevel = earned - current.minPoints
-    const pointsNeededForLevel = next.minPoints - current.minPoints
+    const earned = totalEarned.value;
+    const pointsIntoCurrentLevel = earned - current.minPoints;
+    const pointsNeededForLevel = next.minPoints - current.minPoints;
 
-    return Math.round((pointsIntoCurrentLevel / pointsNeededForLevel) * 100)
-  })
+    return Math.round((pointsIntoCurrentLevel / pointsNeededForLevel) * 100);
+  });
 
   const pointsToNextLevel = computed(() => {
-    const next = nextLevelTier.value
-    if (!next) return 0
-    return Math.max(0, next.minPoints - totalEarned.value)
-  })
+    const next = nextLevelTier.value;
+    if (!next) return 0;
+    return Math.max(0, next.minPoints - totalEarned.value);
+  });
 
   const currentTrustTier = computed(() => {
-    if (!profile.value) return TRUST_TIERS[0]
-    return getTrustTier(profile.value.total_sales_points || 0)
-  })
+    if (!profile.value) return TRUST_TIERS[0];
+    return getTrustTier(profile.value.total_sales_points || 0);
+  });
 
   const nextTrustTier = computed(() => {
-    const currentTier = currentTrustTier.value
-    const currentIndex = TRUST_TIERS.findIndex(t => t.tier === currentTier.tier)
-    if (currentIndex === TRUST_TIERS.length - 1) return null
-    return TRUST_TIERS[currentIndex + 1]
-  })
+    const currentTier = currentTrustTier.value;
+    const currentIndex = TRUST_TIERS.findIndex(t => t.tier === currentTier.tier);
+    if (currentIndex === TRUST_TIERS.length - 1) return null;
+    return TRUST_TIERS[currentIndex + 1];
+  });
 
   const salesPointsToNextTrust = computed(() => {
-    const next = nextTrustTier.value
-    if (!next) return 0
-    const currentSalesPoints = profile.value?.total_sales_points || 0
-    return Math.max(0, next.requiredSales - currentSalesPoints)
-  })
+    const next = nextTrustTier.value;
+    if (!next) return 0;
+    const currentSalesPoints = profile.value?.total_sales_points || 0;
+    return Math.max(0, next.requiredSales - currentSalesPoints);
+  });
 
   const hasSignedInToday = computed(() => {
-    if (!lastSigninDate.value) return false
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
-    return lastSigninDate.value === today
-  })
+    if (!lastSigninDate.value) return false;
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+    return lastSigninDate.value === today;
+  });
 
-  const earnedBadgesCount = computed(() => badges.value.length)
+  const earnedBadgesCount = computed(() => badges.value.length);
+  const inProgressBadgesCount = computed(() => badgeProgress.value.length);
 
   // Actions
 
@@ -102,8 +108,8 @@ export const usePointsStore = defineStore('points', () => {
    * Check if cache is still valid
    */
   function isCacheValid(lastFetch) {
-    if (!lastFetch) return false
-    return Date.now() - lastFetch < CACHE_DURATION
+    if (!lastFetch) return false;
+    return Date.now() - lastFetch < CACHE_DURATION;
   }
 
   /**
@@ -111,37 +117,35 @@ export const usePointsStore = defineStore('points', () => {
    * @param {boolean} forceRefresh - Force refresh even if cache is valid
    */
   async function fetchProfile(forceRefresh = false) {
-    // Return cached data if valid
     if (!forceRefresh && isCacheValid(lastProfileFetch.value) && profile.value) {
-      console.log('Using cached profile data')
-      return profile.value
+      console.log('Using cached profile data');
+      return profile.value;
     }
 
-    // Prevent duplicate calls
     if (isLoadingProfile.value) {
-      console.log('Profile fetch already in progress, skipping...')
-      return profile.value
+      console.log('Profile fetch already in progress, skipping...');
+      return profile.value;
     }
 
     try {
-      isLoadingProfile.value = true
-      const data = await getUserPointsProfile()
-      profile.value = data
-      lastProfileFetch.value = Date.now()
+      isLoadingProfile.value = true;
+      const data = await getUserPointsProfile();
+      profile.value = data;
+      lastProfileFetch.value = Date.now();
 
       console.log('Points profile fetched:', {
         balance: data.current_balance,
         level: currentLevelTier.value.name,
         trust: currentTrustTier.value.name,
         streak: data.daily_streak
-      })
+      });
 
-      return data
+      return data;
     } catch (error) {
-      console.error('Error fetching points profile:', error)
-      throw error
+      console.error('Error fetching points profile:', error);
+      throw error;
     } finally {
-      isLoadingProfile.value = false
+      isLoadingProfile.value = false;
     }
   }
 
@@ -151,36 +155,67 @@ export const usePointsStore = defineStore('points', () => {
    * @param {boolean} forceRefresh - Force refresh even if cache is valid
    */
   async function fetchTransactions(params = {}, forceRefresh = false) {
-    // Return cached data if valid and no filters
+    const size = params.size || 20;
+    const requestedType = params.type !== undefined ? params.type : transactionsFilter.value;
+    const requestedPage = params.page || (params.append ? transactionsPage.value + 1 : 1);
+    const isFilterChanged = requestedType !== transactionsFilter.value;
+    const shouldReset = forceRefresh || isFilterChanged || requestedPage === 1;
+
     if (!forceRefresh && isCacheValid(lastTransactionsFetch.value) &&
-        transactions.value.length > 0 && !params.type && !params.startDate) {
-      console.log('Using cached transactions data')
-      return transactions.value
+      !requestedType && requestedPage === 1 && transactions.value.length > 0) {
+      return {
+        transactions: transactions.value,
+        total: transactions.value.length,
+        page: 1,
+        hasMore: transactionsHasMore.value
+      };
     }
 
-    // Prevent duplicate calls
     if (isLoadingTransactions.value) {
-      console.log('Transactions fetch already in progress, skipping...')
-      return transactions.value
+      console.log('Transactions fetch already in progress, skipping...');
+      return {
+        transactions: transactions.value,
+        total: transactions.value.length,
+        page: transactionsPage.value,
+        hasMore: transactionsHasMore.value
+      };
     }
 
     try {
-      isLoadingTransactions.value = true
-      const result = await getPointsTransactions(params)
-
-      // Only cache if no filters
-      if (!params.type && !params.startDate) {
-        transactions.value = result.transactions
-        lastTransactionsFetch.value = Date.now()
+      isLoadingTransactions.value = true;
+      if (shouldReset) {
+        transactionsPage.value = 1;
+        if (requestedPage === 1) {
+          transactions.value = [];
+        }
       }
 
-      console.log('Transactions fetched:', result.total, 'total')
-      return result
+      const result = await getPointsTransactions({
+        type: requestedType,
+        page: requestedPage,
+        size
+      });
+
+      if (requestedPage === 1) {
+        transactions.value = result.transactions;
+      } else {
+        transactions.value = [...transactions.value, ...result.transactions];
+      }
+
+      transactionsFilter.value = requestedType || null;
+      transactionsPage.value = requestedPage;
+      transactionsHasMore.value = Boolean(result.hasMore);
+      if (requestedPage === 1) {
+        lastTransactionsFetch.value = Date.now();
+      }
+
+      console.log('Transactions fetched:', transactions.value.length, 'loaded');
+      return result;
     } catch (error) {
-      console.error('Error fetching transactions:', error)
-      throw error
+      console.error('Error fetching transactions:', error);
+      throw error;
     } finally {
-      isLoadingTransactions.value = false
+      isLoadingTransactions.value = false;
     }
   }
 
@@ -189,30 +224,31 @@ export const usePointsStore = defineStore('points', () => {
    */
   async function performDailySignIn() {
     try {
-      const result = await dailySignIn()
+      const result = await dailySignIn();
 
-      // Update profile after sign-in
       if (result.success && profile.value) {
-        // Use new_balance from RPC if available, otherwise calculate
         if (result.new_balance !== undefined) {
-          profile.value.current_balance = result.new_balance
+          profile.value.current_balance = result.new_balance;
         } else {
-          profile.value.current_balance += result.points_awarded
+          profile.value.current_balance += result.points_awarded;
         }
 
-        profile.value.total_earned += result.points_awarded
-        profile.value.daily_streak = result.streak_day
-        profile.value.last_signin_date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
+        profile.value.total_earned += result.points_awarded;
+        profile.value.daily_streak = result.streak_day;
+        profile.value.last_signin_date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
 
-        // Invalidate cache to force refresh on next fetch
-        lastProfileFetch.value = null
+        lastProfileFetch.value = null;
       }
 
-      console.log('Daily sign-in successful:', result)
-      return result
+      if (result.badges?.newly_earned_count > 0) {
+        await fetchBadges(true);
+      }
+
+      console.log('Daily sign-in successful:', result);
+      return result;
     } catch (error) {
-      console.error('Error performing daily sign-in:', error)
-      throw error
+      console.error('Error performing daily sign-in:', error);
+      throw error;
     }
   }
 
@@ -221,31 +257,69 @@ export const usePointsStore = defineStore('points', () => {
    * @param {boolean} forceRefresh - Force refresh even if cache is valid
    */
   async function fetchBadges(forceRefresh = false) {
-    // Return cached data if valid
     if (!forceRefresh && isCacheValid(lastBadgesFetch.value) && badges.value.length > 0) {
-      console.log('Using cached badges data')
-      return badges.value
+      console.log('Using cached badges data');
+      return {
+        earned: badges.value,
+        inProgress: badgeProgress.value
+      };
     }
 
-    // Prevent duplicate calls
     if (isLoadingBadges.value) {
-      console.log('Badges fetch already in progress, skipping...')
-      return badges.value
+      console.log('Badges fetch already in progress, skipping...');
+      return {
+        earned: badges.value,
+        inProgress: badgeProgress.value
+      };
     }
 
     try {
-      isLoadingBadges.value = true
-      const data = await getUserBadges()
-      badges.value = data
-      lastBadgesFetch.value = Date.now()
+      isLoadingBadges.value = true;
+      const data = await getUserBadgesWithProgress();
 
-      console.log('Badges fetched:', data.length, 'badges')
-      return data
+      const earnedBadges = (data?.earned_badges || [])
+        .map(normalizeEarnedBadge)
+        .filter(Boolean);
+      const inProgressBadges = (data?.in_progress_badges || [])
+        .map(normalizeProgressBadge)
+        .filter(Boolean);
+
+      badges.value = earnedBadges;
+      badgeProgress.value = inProgressBadges;
+      lastBadgesFetch.value = Date.now();
+
+      console.log('Badges fetched:', {
+        earned: earnedBadges.length,
+        inProgress: inProgressBadges.length
+      });
+
+      return {
+        earned: earnedBadges,
+        inProgress: inProgressBadges
+      };
     } catch (error) {
-      console.error('Error fetching badges:', error)
-      throw error
+      console.error('Error fetching badges:', error);
+      throw error;
     } finally {
-      isLoadingBadges.value = false
+      isLoadingBadges.value = false;
+    }
+  }
+
+  /**
+   * 手動觸發徽章檢查
+   */
+  async function triggerBadgeCheck() {
+    try {
+      const result = await manuallyCheckBadges();
+
+      if (result?.newly_earned_count > 0) {
+        await fetchBadges(true);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error manually checking badges:', error);
+      throw error;
     }
   }
 
@@ -255,11 +329,11 @@ export const usePointsStore = defineStore('points', () => {
    */
   async function canListItem(itemPrice) {
     try {
-      const result = await checkListingPermission(itemPrice)
-      return result
+      const result = await checkListingPermission(itemPrice);
+      return result;
     } catch (error) {
-      console.error('Error checking listing permission:', error)
-      throw error
+      console.error('Error checking listing permission:', error);
+      throw error;
     }
   }
 
@@ -269,49 +343,101 @@ export const usePointsStore = defineStore('points', () => {
    * @param {string} type - Transaction type
    */
   function updateBalance(amount, type) {
-    if (!profile.value) return
+    if (!profile.value) return;
 
-    profile.value.current_balance += amount
+    profile.value.current_balance += amount;
 
     if (amount > 0) {
-      profile.value.total_earned += amount
+      profile.value.total_earned += amount;
 
-      // Update sales points if it's a sale
       if (type === 'sale_earning') {
-        profile.value.total_sales_points = (profile.value.total_sales_points || 0) + amount
+        profile.value.total_sales_points = (profile.value.total_sales_points || 0) + amount;
       }
     } else {
-      profile.value.total_spent += Math.abs(amount)
+      profile.value.total_spent += Math.abs(amount);
     }
 
     console.log('Balance updated:', {
       amount,
       type,
       newBalance: profile.value.current_balance
-    })
+    });
   }
 
   /**
    * Invalidate all caches and force refresh
    */
   function invalidateCache() {
-    lastProfileFetch.value = null
-    lastTransactionsFetch.value = null
-    lastBadgesFetch.value = null
-    console.log('Cache invalidated')
+    lastProfileFetch.value = null;
+    lastTransactionsFetch.value = null;
+    lastBadgesFetch.value = null;
+    console.log('Cache invalidated');
   }
 
   /**
    * Reset store state
    */
   function resetStore() {
-    profile.value = null
-    transactions.value = []
-    badges.value = []
-    lastProfileFetch.value = null
-    lastTransactionsFetch.value = null
-    lastBadgesFetch.value = null
-    console.log('Points store reset')
+    profile.value = null;
+    transactions.value = [];
+    badges.value = [];
+    badgeProgress.value = [];
+    lastProfileFetch.value = null;
+    lastTransactionsFetch.value = null;
+    lastBadgesFetch.value = null;
+    console.log('Points store reset');
+  }
+
+  /**
+   * Normalize earned badge payload for UI consumption
+   * @param {object} badge
+   * @returns {object|null}
+   */
+  function normalizeEarnedBadge(badge) {
+    if (!badge) return null;
+
+    const rarity = badge.rarity ? badge.rarity.toLowerCase() : 'common';
+
+    return {
+      id: badge.badge_id,
+      badge_id: badge.badge_id,
+      name: badge.name,
+      icon: badge.icon,
+      description: badge.description,
+      rarity,
+      category: badge.category,
+      points_reward: badge.points_reward,
+      points_rewarded: badge.points_reward,
+      earned_at: badge.earned_at
+    };
+  }
+
+  /**
+   * Normalize in-progress badge payload with safe percentage values
+   * @param {object} badge
+   * @returns {object|null}
+   */
+  function normalizeProgressBadge(badge) {
+    if (!badge) return null;
+
+    const rarity = badge.rarity ? badge.rarity.toLowerCase() : 'common';
+    const hasPercentage = badge.percentage !== undefined && badge.percentage !== null;
+    const derivedPercentage = badge.target_value
+      ? (badge.current_value / badge.target_value) * 100
+      : 0;
+
+    return {
+      badge_id: badge.badge_id,
+      name: badge.name,
+      icon: badge.icon,
+      description: badge.description,
+      rarity,
+      category: badge.category,
+      points_reward: badge.points_reward,
+      current_value: badge.current_value || 0,
+      target_value: badge.target_value || 0,
+      percentage: Number((hasPercentage ? badge.percentage : derivedPercentage).toFixed(2))
+    };
   }
 
   return {
@@ -319,6 +445,7 @@ export const usePointsStore = defineStore('points', () => {
     profile,
     transactions,
     badges,
+    badgeProgress,
     isLoadingProfile,
     isLoadingTransactions,
     isLoadingBadges,
@@ -338,15 +465,20 @@ export const usePointsStore = defineStore('points', () => {
     salesPointsToNextTrust,
     hasSignedInToday,
     earnedBadgesCount,
+    inProgressBadgesCount,
+    transactionsHasMore,
+    transactionsFilter,
+    transactionsPage,
 
     // Actions
     fetchProfile,
     fetchTransactions,
     performDailySignIn,
     fetchBadges,
+    triggerBadgeCheck,
     canListItem,
     updateBalance,
     invalidateCache,
     resetStore
-  }
-})
+  };
+});

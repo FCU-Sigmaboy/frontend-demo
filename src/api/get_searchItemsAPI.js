@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabase'; // 假設您已在 @/lib/supabase.js 
  * 統一的物品搜尋函式 (RPC)
  * (此函式已更新為使用使用者 "主要地點" 計算距離，不再需要傳入經緯度)
  * @param {object} filters - 篩選條件
+ * @param {number} [filters.user_latitude] - (可選) 使用者當前緯度
+ * @param {number} [filters.user_longitude] - (可選) 使用者當前經度
  * @param {number} [filters.distance_range_km] - (可選) 搜尋半徑 (公里)
  * @param {number} [filters.main_category_id] - (可選) 主分類 ID
  * @param {number} [filters.sub_category_id] - (可選) 子分類 ID
@@ -33,6 +35,8 @@ export async function searchItems(filters = {}) {
     // 2. 準備傳遞給 RPC 函式的參數
     // *** 不再需要 p_user_latitude, p_user_longitude ***
     const rpcParams = {
+        p_user_latitude: filters.user_latitude || null,
+        p_user_longitude: filters.user_longitude || null,
         p_distance_range_km: filters.distance_range_km || null,
         p_main_category_id: filters.main_category_id || null,
         p_sub_category_id: filters.sub_category_id || null,
@@ -48,7 +52,7 @@ export async function searchItems(filters = {}) {
     // return example;
 
     // 3. 呼叫 RPC 函式
-    const { data, error } = await supabase.rpc('search_items', rpcParams);
+    const { data, error } = await supabase.rpc('search_items_tudever', rpcParams);
 
     if (error) {
         console.error('Supabase 搜尋物品失敗:', error);

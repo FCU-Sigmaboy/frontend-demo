@@ -1,14 +1,26 @@
 <template>
-  <div v-if="show || sellers.length > 0" class="search-results-list" :class="{ 'has-results': sellers.length > 0, 'collapsed': !show }">
-    <div class="results-header">
-      <div class="results-count">
-        <span class="count-label">結果</span>
-        <span class="count-number">{{ sellers.length }}</span>
+  <!-- Backdrop for mobile (only show when results are visible) -->
+  <Transition name="backdrop-fade">
+    <div v-if="show && sellers.length > 0" class="search-results-backdrop" @click="$emit('toggle-view')"></div>
+  </Transition>
+
+  <!-- Results List -->
+  <Transition name="slide-up">
+    <div v-if="show || sellers.length > 0" class="search-results-list" :class="{ 'has-results': sellers.length > 0, 'collapsed': !show }">
+      <!-- Drag handle for mobile -->
+      <div class="drag-handle" @click="$emit('toggle-view')">
+        <div class="handle-bar"></div>
       </div>
-      <button class="collapse-btn" @click="$emit('toggle-view')">
-        <i :class="show ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
-      </button>
-    </div>
+
+      <div class="results-header">
+        <div class="results-count">
+          <span class="count-label">結果</span>
+          <span class="count-number">{{ sellers.length }}</span>
+        </div>
+        <button class="collapse-btn" @click="$emit('toggle-view')">
+          <i :class="show ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
+        </button>
+      </div>
 
     <!-- Sub-category Filter Tabs -->
     <div v-if="subCategoryFilters && subCategoryFilters.length > 0" v-show="show" class="sub-category-filters">
@@ -19,7 +31,7 @@
       />
     </div>
 
-    <div v-show="show" class="results-content">
+    <div ref="resultsContentRef" v-show="show" class="results-content">
       <div v-if="sellers.length === 0" class="no-results">
         <i class="bi bi-search"></i>
         <p>沒有找到相關結果</p>
@@ -52,8 +64,8 @@
                 {{ seller.averageRating }}
                 <span class="review-count">({{ seller.totalReviews }})</span>
               </span>
-              <span class="seller-price-range">{{ seller.priceRange }}</span>
               <span class="seller-item-count">{{ seller.itemCount }} 項物品</span>
+              <span class="seller-price-range">{{ seller.priceRange }}</span>
             </div>
           </div>
           <i :class="isSellerExpanded(seller.user_id) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"></i>
@@ -72,17 +84,18 @@
             </div>
             <div class="item-info">
               <h4 class="item-title">{{ item.title }}</h4>
-              <div class="item-price">${{ item.price }}點</div>
+              <div class="item-price">{{ item.price }}點</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import FilterTabs from '@/components/FilterTabs.vue'
 
 const props = defineProps({
@@ -102,8 +115,12 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'item-click', 'toggle-view', 'sub-category-filter'])
 
+// Refs
+const resultsContentRef = ref(null)
+
 // Track which sellers are expanded (all expanded by default)
 const expandedSellers = ref(new Set())
+const initializedSellers = ref(new Set())
 
 // Group items by seller and calculate seller statistics
 const sellers = computed(() => {
@@ -157,8 +174,8 @@ const sellers = computed(() => {
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0
     const priceRange = prices.length > 0
-      ? `$${minPrice}-${maxPrice}點`
-      : '$0-2000點'
+      ? `${minPrice}-${maxPrice}點`
+      : '無資訊'
 
     // Get average rating from user data (backend provides this)
     const averageRating = seller.items[0]?.user?.avg_rating || 0
@@ -184,15 +201,19 @@ const sellers = computed(() => {
     return a.distance_km - b.distance_km
   })
 
-  // Initialize all sellers as expanded
-  sorted.forEach(seller => {
-    if (!expandedSellers.value.has(seller.user_id)) {
-      expandedSellers.value.add(seller.user_id)
-    }
-  })
-
   return sorted
 })
+
+// Watch sellers and initialize new ones as expanded
+watch(sellers, (newSellers) => {
+  newSellers.forEach(seller => {
+    // Only auto-expand sellers we haven't seen before
+    if (!initializedSellers.value.has(seller.user_id)) {
+      expandedSellers.value.add(seller.user_id)
+      initializedSellers.value.add(seller.user_id)
+    }
+  })
+}, { immediate: true })
 
 // Format distance helper
 function formatDistance(km) {
@@ -232,13 +253,23 @@ function scrollToSeller(userId) {
     expandedSellers.value = new Set(expandedSellers.value)
   }
 
-  // Wait for DOM update, then scroll
+  // Wait for DOM update, then scroll within the container only
   nextTick(() => {
     const sellerElement = document.querySelector(`.seller-group[data-seller-id="${userId}"]`)
-    if (sellerElement) {
-      sellerElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
+    const container = resultsContentRef.value
+    
+    if (sellerElement && container) {
+      // Calculate scroll position relative to container, not viewport
+      const containerRect = container.getBoundingClientRect()
+      const sellerRect = sellerElement.getBoundingClientRect()
+      
+      // Calculate offset from top of container
+      const scrollOffset = sellerRect.top - containerRect.top + container.scrollTop
+      
+      // Scroll smoothly within container only
+      container.scrollTo({
+        top: scrollOffset - 20, // 20px padding from top
+        behavior: 'smooth'
       })
 
       // Add highlight effect
@@ -266,15 +297,40 @@ defineExpose({
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.10);
-  overflow: hidden;
-  max-height: 60vh;
+  overflow: hidden; // Changed from auto to hidden to prevent scroll jumps
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
   pointer-events: auto; // Allow interaction with this element
   transition: max-height 0.3s ease;
+  will-change: max-height; // Optimize for height changes
+  contain: layout; // CSS containment to prevent layout thrashing
 
   &.collapsed {
     max-height: auto;
+  }
+}
+
+// Drag handle (hidden on desktop, visible on mobile)
+.drag-handle {
+  display: none;
+  padding: 12px 0;
+  cursor: pointer;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+
+  &:active {
+    opacity: 0.7;
+  }
+
+  .handle-bar {
+    width: 40px;
+    height: 4px;
+    background: #999;
+    border-radius: 2px;
+    margin: 0 auto;
   }
 }
 
@@ -299,8 +355,8 @@ defineExpose({
   }
 
   :deep(.filter-tabs) {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow-x: wrap;
     gap: 8px;
 
     // 隱藏滾動條
@@ -423,12 +479,15 @@ defineExpose({
 .seller-header {
   display: flex;
   align-items: center;
+  position: sticky;
+  top: 0;
   gap: 12px;
   padding: 16px 20px;
   cursor: pointer;
   transition: background 0.3s;
   background: #f9f9f9;
   border-bottom: 1px solid #e0e0e0;
+  z-index: 1;
 
   &:hover {
     background: #f0f0f0;
@@ -644,9 +703,80 @@ defineExpose({
   }
 }
 
+// Mobile backdrop
+.search-results-backdrop {
+  display: none;
+}
+
+// Transition animations
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(0);
+}
+
+.backdrop-fade-enter-active,
+.backdrop-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.backdrop-fade-enter-from,
+.backdrop-fade-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 767.98px) {
+  // Backdrop overlay for mobile
+  .search-results-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1999;
+    pointer-events: auto;
+  }
+
   .search-results-list {
-    max-height: 50vh;
+    // Mobile: fixed position from bottom
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    border-radius: 16px 16px 0 0;
+    z-index: 2000;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+
+    &.collapsed {
+      transform: translateY(100%);
+    }
+  }
+
+  // Show drag handle on mobile
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 16px 16px 0 0;
+  }
+
+  // Slide up transition for mobile
+  .slide-up-enter-from,
+  .slide-up-leave-to {
+    transform: translateY(100%);
+  }
+
+  .slide-up-enter-to,
+  .slide-up-leave-from {
+    transform: translateY(0);
   }
 
   .seller-header {

@@ -434,28 +434,35 @@ async function renderItemMarkers() {
         {
           icon: markerIcon,
           title: itemCount === 1 ? firstItem.title : `${itemCount} 個物品`,
-          zIndexOffset: 500
+          zIndexOffset: 500,
+          autoPan: false, // Prevent auto-panning when marker is clicked
+          keyboard: false // Disable keyboard interaction
         }
       ).addTo(map.value)
 
       // Add click listener
-      marker.on('click', () => {
+      marker.on('click', (e) => {
+        // Prevent event from bubbling to map
+        if (e.originalEvent) {
+          e.originalEvent.stopPropagation()
+        }
+        L.DomEvent.stopPropagation(e)
+        
         if (itemCount === 1) {
           // Single item - emit as before
           emit('marker-click', firstItem)
         } else {
           // Multiple items - emit first item (or could emit array)
-          // You might want to handle this differently in parent component
           emit('marker-click', firstItem, position.items)
         }
 
-        // Add bounce effect
+        // Add subtle pulse effect
         const element = marker.getElement()
         if (element) {
-          element.classList.add('marker-bounce')
+          element.classList.add('marker-pulse')
           setTimeout(() => {
-            element.classList.remove('marker-bounce')
-          }, 700)
+            element.classList.remove('marker-pulse')
+          }, 300)
         }
       })
 
@@ -482,12 +489,21 @@ function retry() {
   initializeMap()
 }
 
-// Watch for center changes
-watch(() => props.center, (newCenter) => {
+// Watch for center changes (only pan if coordinates actually differ significantly)
+watch(() => props.center, (newCenter, oldCenter) => {
   if (map.value && newCenter) {
-    map.value.panTo([newCenter.latitude, newCenter.longitude])
+    // Only pan if coordinates changed significantly (more than ~10 meters)
+    // This prevents unnecessary panning from small floating point differences
+    const threshold = 0.0001 // approximately 10 meters
+    if (!oldCenter || 
+        Math.abs(newCenter.latitude - oldCenter.latitude) > threshold || 
+        Math.abs(newCenter.longitude - oldCenter.longitude) > threshold) {
+      map.value.setView([newCenter.latitude, newCenter.longitude], map.value.getZoom(), {
+        animate: false // Disable animation to prevent jumps
+      })
+    }
   }
-}, { deep: true })
+}, { deep: false })
 
 // Watch for zoom changes
 watch(() => props.zoom, (newZoom) => {
@@ -496,10 +512,15 @@ watch(() => props.zoom, (newZoom) => {
   }
 })
 
-// Watch for items changes
+// Watch for items changes (debounced to avoid excessive re-renders)
+let itemsUpdateTimeout = null
 watch(() => props.items, () => {
-  renderItemMarkers()
-}, { deep: true })
+  // Debounce marker updates to prevent flickering
+  clearTimeout(itemsUpdateTimeout)
+  itemsUpdateTimeout = setTimeout(() => {
+    renderItemMarkers()
+  }, 50)
+}, { deep: false })
 
 // Watch for user location changes
 watch(() => props.userLocation, () => {
@@ -710,17 +731,22 @@ onBeforeUnmount(() => {
   }
 }
 
-// Marker bounce animation
-:deep(.marker-bounce) {
-  animation: marker-bounce 0.6s ease-in-out;
+// Marker pulse animation (only animate opacity and scale without affecting position)
+:deep(.marker-pulse) {
+  .marker-pin {
+    animation: marker-pulse-effect 0.3s ease-out;
+  }
 }
 
-@keyframes marker-bounce {
-  0%, 100% {
-    transform: translateY(0);
+@keyframes marker-pulse-effect {
+  0% {
+    opacity: 1;
   }
   50% {
-    transform: translateY(-10px);
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
   }
 }
 

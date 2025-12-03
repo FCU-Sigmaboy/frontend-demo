@@ -4,7 +4,7 @@ import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionStore } from '@/stores/transaction';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems, archiveConversation } from '@/api/conversation';
+import { getConversationItems } from '@/api/conversation';
 import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
 import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
 
@@ -96,11 +96,9 @@ export function useMessagePage() {
 
   const userPoints = ref(500);
   const searchQuery = ref('');
-  const activeFilter = ref('all');
   const messageInput = ref('');
   const messagesArea = ref(null);
   let registeredMessagesArea = null;
-  const showMoreMenu = ref(false);
   const messagesLoading = ref(false);
   const pendingItemReference = ref(null);
   const itemReferenceCache = ref(new Map());
@@ -349,22 +347,8 @@ export function useMessagePage() {
     };
   });
 
-  const filters = computed(() => {
-    const all = messageStore.conversations;
-    return [
-      { id: 'all', label: '全部', count: all.length },
-      { id: 'archived', label: '封存', count: all.filter(c => c.is_archived).length }
-    ];
-  });
-
   const filteredConversations = computed(() => {
     let filtered = messageStore.conversations;
-
-    if (activeFilter.value === 'archived') {
-      filtered = filtered.filter(c => c.is_archived);
-    } else if (activeFilter.value === 'all') {
-      filtered = filtered.filter(c => !c.is_archived);
-    }
 
     if (searchQuery.value) {
       filtered = filtered.filter(c =>
@@ -819,40 +803,6 @@ export function useMessagePage() {
     } catch (err) {
       messagesLoading.value = false;
       throw err;
-    }
-  }
-
-  async function handleArchiveConversation() {
-    if (!selectedConversation.value) return;
-
-    const conversationId = selectedConversation.value.id;
-    const isCurrentlyArchived = selectedConversation.value._raw.is_archived || false;
-
-    try {
-      showMoreMenu.value = false;
-
-      await archiveConversation(conversationId, !isCurrentlyArchived);
-
-      const conversation = messageStore.conversations.find(c => c.id === conversationId);
-      if (conversation) {
-        conversation.is_archived = !isCurrentlyArchived;
-      }
-
-      if (!isCurrentlyArchived && activeFilter.value === 'all') {
-        deselectConversation();
-      }
-    } catch (error) {
-      console.error('Failed to archive/unarchive conversation:', error);
-      alert('操作失敗，請稍後再試');
-    }
-  }
-
-  function handleClickOutside(event) {
-    if (showMoreMenu.value) {
-      const menuContainer = event.target.closest('.more-menu-container');
-      if (!menuContainer) {
-        showMoreMenu.value = false;
-      }
     }
   }
 
@@ -1461,8 +1411,6 @@ export function useMessagePage() {
 
     await waitForTicks(2);
 
-    document.addEventListener('click', handleClickOutside);
-
     watch(
       () => messageStore.currentMessages.length,
       async (newLen, oldLen) => {
@@ -1509,17 +1457,13 @@ export function useMessagePage() {
     messageStore.setIsAtMessagesBottom(true);
 
     registerMessagesArea(null);
-
-    document.removeEventListener('click', handleClickOutside);
   });
 
   return {
     userPoints,
     searchQuery,
-    activeFilter,
     messageInput,
     messagesArea,
-    showMoreMenu,
     messagesLoading,
     pendingItemReference,
     pendingItemPrice,
@@ -1530,14 +1474,12 @@ export function useMessagePage() {
     typingIndicatorBaseText,
     typingIndicatorText,
     loading,
-    filters,
     displayConversations,
     selectedConversation,
     currentUser,
     groupedMessages,
     selectConversation,
     deselectConversation,
-    handleArchiveConversation,
     handleAttachment,
     sendMessage,
     retryMessage,

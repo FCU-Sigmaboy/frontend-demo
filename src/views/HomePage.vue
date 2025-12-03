@@ -5,7 +5,14 @@
     <main class="main-content">
       <!-- Search Bar Section -->
       <section class="search-section">
-        <SearchBar @search="handleSearch" />
+        <div class="search-section-container">
+          <!-- Map View Toggle Button -->
+          <button class="map-toggle-btn" @click="toggleToMapView">
+            <i class="bi bi-map"></i>
+          </button>
+
+          <SearchBar @search="handleSearch" />
+        </div>
       </section>
 
       <!-- Hero Banner Section -->
@@ -18,7 +25,53 @@
 
       <!-- Filter Tabs Section -->
       <section class="filter-section">
-        <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
+        <div class="filter-section-container">
+          <!-- Location Switcher -->
+          <div class="location-switcher">
+            <button class="location-btn" @click="toggleLocationMenu">
+              <i class="bi bi-geo-alt-fill"></i>
+              <span class="location-text">
+                {{ currentLocationType === 'current' ? '目前位置' :
+                   currentLocationType === 'home' ? '家' : '公司' }}
+              </span>
+              <i class="bi bi-chevron-down"></i>
+            </button>
+
+            <!-- Location Menu -->
+            <div v-if="showLocationMenu" class="location-menu">
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'current' }"
+                @click="switchLocation('current')"
+              >
+                <i class="bi bi-geo-alt-fill"></i>
+                <span>目前位置</span>
+              </button>
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'home', disabled: !savedLocations.home }"
+                :disabled="!savedLocations.home"
+                @click="switchLocation('home')"
+              >
+                <i class="bi bi-house-fill"></i>
+                <span>家</span>
+                <span v-if="!savedLocations.home" class="not-set">(未設定)</span>
+              </button>
+              <button
+                class="location-option"
+                :class="{ active: currentLocationType === 'work', disabled: !savedLocations.work }"
+                :disabled="!savedLocations.work"
+                @click="switchLocation('work')"
+              >
+                <i class="bi bi-briefcase-fill"></i>
+                <span>公司</span>
+                <span v-if="!savedLocations.work" class="not-set">(未設定)</span>
+              </button>
+            </div>
+          </div>
+
+          <FilterTabs :items="products" :filters="filters" v-model:sortedItems="displayedProducts" />
+        </div>
       </section>
 
       <!-- Product Grid Section -->
@@ -52,6 +105,13 @@
               @contact-seller="handleContactSeller"
             />
           </TransitionGroup>
+
+          <!-- Load More Button -->
+          <div v-if="!loading && hasMore && displayedProducts && displayedProducts.length > 0" class="load-more-section">
+            <button class="load-more-btn" @click="loadMore">
+              載入更多
+            </button>
+          </div>
         </div>
       </section>
 
@@ -64,14 +124,6 @@
         <i class="bi bi-arrow-up"></i>
       </button>
 
-      <!-- Map View Toggle Button -->
-      <button
-        class="view-toggle-btn"
-        @click="toggleToMapView"
-      >
-        <i class="bi bi-map"></i>
-        <span class="toggle-text">顯示地圖</span>
-      </button>
     </main>
 
     <AppFooter />
@@ -94,6 +146,7 @@ import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
 import { createOrGetConversation } from '@/api/conversation.js';
 import { useAuthStore } from '@/stores/auth';
+import { getMyLocations } from '@/api/get_userLocationAPI';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -103,6 +156,15 @@ const userPoints = ref(500);
 const showScrollTop = ref(false);
 
 const authenticatedUser = ref(null);
+
+// Location switching
+const currentLocationType = ref('current'); // 'current', 'home', 'work'
+const savedLocations = ref({
+  home: null,
+  work: null
+});
+const showLocationMenu = ref(false);
+const userLocation = ref(null);
 
 // Filters
 const filters = ref([
@@ -136,6 +198,11 @@ const filters = ref([
 const products = ref([]);
 const displayedProducts = ref([]);
 const loading = ref(false);
+
+// Pagination state
+const currentPage = ref(1);
+const pageSize = ref(20);
+const hasMore = ref(true);
 
 // Methods
 const handleSearch = (searchData) => {
@@ -202,6 +269,15 @@ const goToProductDetail = (productId) => {
 
 const handleScroll = () => {
   showScrollTop.value = window.scrollY > 500;
+  
+  const searchSection = document.querySelector('.search-section-container');
+  if (searchSection) {
+    if (window.scrollY > 300) {
+      searchSection.classList.add('scrolled');
+    } else {
+      searchSection.classList.remove('scrolled');
+    }
+  }
 };
 
 const scrollToTop = () => {
@@ -210,6 +286,226 @@ const scrollToTop = () => {
 
 const toggleToMapView = () => {
   router.push({ name: 'MapSearch' });
+};
+
+// Parse PostGIS WKB format to lat/lng
+function parseWKBPoint(wkbHex) {
+  try {
+    const coordsStartChar = 18;
+    const lonHex = wkbHex.substring(coordsStartChar, coordsStartChar + 16);
+    const latHex = wkbHex.substring(coordsStartChar + 16, coordsStartChar + 32);
+
+    if (!lonHex || !latHex || lonHex.length !== 16 || latHex.length !== 16) {
+      return { latitude: null, longitude: null };
+    }
+
+    const lonMatch = lonHex.match(/.{2}/g);
+    const latMatch = latHex.match(/.{2}/g);
+
+    if (!lonMatch || !latMatch) {
+      return { latitude: null, longitude: null };
+    }
+
+    const lonBytes = new Uint8Array(lonMatch.map(byte => parseInt(byte, 16)));
+    const latBytes = new Uint8Array(latMatch.map(byte => parseInt(byte, 16)));
+
+    const longitude = new DataView(lonBytes.buffer).getFloat64(0, true);
+    const latitude = new DataView(latBytes.buffer).getFloat64(0, true);
+
+    return { latitude, longitude };
+  } catch (error) {
+    console.error('[HomePage] Failed to parse WKB:', error);
+    return { latitude: null, longitude: null };
+  }
+}
+
+// Fetch saved locations (home and work)
+async function fetchSavedLocations() {
+  try {
+    const locations = await getMyLocations();
+
+    if (locations && locations.length > 0) {
+      locations.forEach(location => {
+        let latitude = null;
+        let longitude = null;
+
+        if (location.coordinates) {
+          const coords = parseWKBPoint(location.coordinates);
+          latitude = coords.latitude;
+          longitude = coords.longitude;
+        }
+
+        if (latitude !== null && longitude !== null) {
+          const locationData = {
+            ...location,
+            latitude,
+            longitude
+          };
+
+          if (location.type === '家') {
+            savedLocations.value.home = locationData;
+          } else if (location.type === '公司') {
+            savedLocations.value.work = locationData;
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[HomePage] Failed to fetch saved locations:', error);
+  }
+}
+
+// Fetch current location
+async function fetchCurrentLocation() {
+  try {
+    if (!navigator.geolocation) {
+      console.error('[HomePage] Geolocation is not supported');
+      return false;
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          userLocation.value = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            type: 'current'
+          };
+          resolve(true);
+        },
+        (error) => {
+          console.error('[HomePage] Failed to get current location:', error);
+          userLocation.value = null;
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
+  } catch (error) {
+    console.error('[HomePage] Failed to fetch current location:', error);
+    return false;
+  }
+}
+
+// Switch location
+async function switchLocation(locationType) {
+  currentLocationType.value = locationType;
+  showLocationMenu.value = false;
+
+  switch (locationType) {
+    case 'current':
+      await fetchCurrentLocation();
+      break;
+    case 'home':
+      if (savedLocations.value.home) {
+        userLocation.value = savedLocations.value.home;
+      }
+      break;
+    case 'work':
+      if (savedLocations.value.work) {
+        userLocation.value = savedLocations.value.work;
+      }
+      break;
+  }
+
+  // Reload products with new location
+  if (userLocation.value) {
+    await loadProductsWithLocation();
+  }
+}
+
+// Toggle location menu
+function toggleLocationMenu() {
+  showLocationMenu.value = !showLocationMenu.value;
+}
+
+// Close location menu when clicking outside
+function handleClickOutside(event) {
+  const locationSwitcher = document.querySelector('.location-switcher');
+  if (locationSwitcher && !locationSwitcher.contains(event.target)) {
+    showLocationMenu.value = false;
+  }
+}
+
+// Load products with location
+async function loadProductsWithLocation() {
+  loading.value = true;
+  currentPage.value = 1;
+  
+  try {
+    const params = {
+      page: 1,
+      size: pageSize.value
+    };
+    
+    if (userLocation.value) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
+    products.value = data || [];
+    displayedProducts.value = data || [];
+    
+    if (!data || data.length < pageSize.value) {
+      hasMore.value = false;
+    } else {
+      hasMore.value = true;
+    }
+  } catch (error) {
+    console.error('Failed to load products:', error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Load more products
+const loadMore = async () => {
+  if (loading.value || !hasMore.value) return;
+  
+  // Save current scroll position
+  const scrollPosition = window.scrollY;
+  
+  loading.value = true;
+  currentPage.value += 1;
+  
+  try {
+    const params = {
+      page: currentPage.value,
+      size: pageSize.value
+    };
+    
+    if (userLocation.value) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
+    
+    if (data && data.length > 0) {
+      products.value = [...products.value, ...data];
+      displayedProducts.value = [...products.value];
+      
+      // Restore scroll position after DOM update
+      await new Promise(resolve => setTimeout(resolve, 0));
+      window.scrollTo(0, scrollPosition);
+      
+      // Check if there are more products to load
+      if (data.length < pageSize.value) {
+        hasMore.value = false;
+      }
+    } else {
+      hasMore.value = false;
+    }
+  } catch (error) {
+    console.error('Failed to load more products:', error);
+  } finally {
+    loading.value = false;
+  }
 };
 
 // Lifecycle
@@ -225,12 +521,34 @@ onMounted(async () => {
     });
   }
 
-  // Load products
+  // Fetch saved locations
+  await fetchSavedLocations();
+  
+  // Fetch current location
+  await fetchCurrentLocation();
+
+  // Load products (first page)
   loading.value = true;
   try {
-    const data = await searchItems();
-    products.value = data;
-    displayedProducts.value = data;
+    const params = {
+      page: 1,
+      size: pageSize.value
+    };
+    
+    if (userLocation.value) {
+      params.user_latitude = userLocation.value.latitude;
+      params.user_longitude = userLocation.value.longitude;
+    }
+    
+    const data = await searchItems(params);
+    products.value = data || [];
+    displayedProducts.value = data || [];
+    
+    // Check if there are more products
+    if (!data || data.length < pageSize.value) {
+      hasMore.value = false;
+    }
+    
     console.log('Products loaded:', data);
   } catch (error) {
     console.error('Failed to load products:', error);
@@ -240,10 +558,13 @@ onMounted(async () => {
 
   // Add scroll listener
   window.addEventListener('scroll', handleScroll);
+  // Add click outside listener
+  document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -262,10 +583,67 @@ onUnmounted(() => {
 
 // Search Section
 .search-section {
-  padding: 20px 0;
+  padding: 10px 0;
   margin-top: 10px;
-  position: relative;
-  z-index: 1;
+  position: sticky;
+  top: 60px;
+  z-index: 100;
+}
+
+.search-section-container {
+  display: flex;
+  align-items: center;
+  max-width: 1600px;
+  gap: 10px;
+  margin: 0 auto;
+  padding: 0 20px;
+  transition: all 0.3s ease-in-out;
+}
+
+.search-section-container.scrolled {
+  background: transparent;
+  max-width: 800px;
+
+  .map-toggle-btn {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .search-bar-wrapper {
+    background-color: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(10px);
+  } 
+}
+
+// Map Toggle Button (Square style next to SearchBar)
+.map-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: white;
+  border: 1px solid #d5d5d5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+
+  i {
+    font-size: 22px;
+    color: #6fb8a5;
+  }
+
+  &:hover {
+    background: #f8f9fa;
+    border-color: #6fb8a5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: translateY(-1px);
+  }
 }
 
 // Hero Section
@@ -276,6 +654,15 @@ onUnmounted(() => {
 // Filter Section
 .filter-section {
   padding: 30px 0 20px;
+}
+
+.filter-section-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 // Products Section
@@ -371,24 +758,162 @@ onUnmounted(() => {
   position: absolute;
 }
 
+// Location Switcher (Inline style for filter section)
+.location-switcher {
+  position: relative;
+  z-index: 99;
+
+  .location-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 16px;
+    background: white;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+
+    i {
+      font-size: 16px;
+      color: #6fb8a5;
+
+      &.bi-chevron-down {
+        display: inline-block;
+        font-size: 12px;
+        color: #666;
+        margin-left: 2px;
+        transition: transform 0.2s;
+      }
+    }
+
+    .location-text {
+      display: inline-block;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    &:active {
+      transform: translateY(-1px);
+    }
+  }
+
+  .location-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 180px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+
+    .location-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: white;
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+
+      i {
+        font-size: 16px;
+        color: #666;
+        width: 20px;
+      }
+
+      span {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e1e1e;
+
+        &.not-set {
+          font-size: 12px;
+          color: #999;
+          margin-left: auto;
+        }
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover:not(:disabled) {
+        background: #f8f9fa;
+      }
+
+      &.active {
+        background: rgba(111, 184, 165, 0.1);
+
+        i {
+          color: #6fb8a5;
+        }
+
+        span {
+          color: #6fb8a5;
+          font-weight: 600;
+        }
+      }
+
+      &.disabled,
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+
+        &:hover {
+          background: white;
+        }
+      }
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 // Scroll to Top Button
 .scroll-top-btn {
   position: fixed;
   bottom: 30px;
   right: 30px;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(10px);
+  background: white;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 9998;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
   i {
     font-size: 20px;
@@ -396,60 +921,43 @@ onUnmounted(() => {
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-    border-color: rgba(0, 0, 0, 0.12);
+    transform: translateY(-5px);
   }
 
   &:active {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: scale(0.95);
   }
 }
 
-// Map/List View Toggle Button
-.view-toggle-btn {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+// Load More Section
+.load-more-section {
+  grid-column: 1 / -1;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 28px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  z-index: 998;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  justify-content: center;
+  padding: 40px 20px;
 
-  i {
-    font-size: 18px;
-    color: #1e1e1e;
-  }
-
-  .toggle-text {
+  .load-more-btn {
+    padding: 12px 32px;
+    background: white;
+    border: 2px solid #6fb8a5;
+    border-radius: 8px;
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    color: #1e1e1e;
-    letter-spacing: 0.3px;
-  }
+    font-size: 16px;
+    font-weight: 500;
+    color: #6fb8a5;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  &:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateX(-50%) translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-    border-color: rgba(0, 0, 0, 0.12);
-  }
+    &:hover {
+      background: #6fb8a5;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+    }
 
-  &:active {
-    transform: translateX(-50%) translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    &:active {
+      transform: translateY(-1px);
+    }
   }
 }
 
@@ -467,12 +975,31 @@ onUnmounted(() => {
     margin-top: 5px;
   }
 
+  .search-section-container {
+    padding: 0 15px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 52px;
+    height: 52px;
+
+    i {
+      font-size: 20px;
+    }
+  }
+
   .hero-section {
     padding: 15px 0;
   }
 
   .filter-section {
     padding: 25px 0 18px;
+  }
+
+  .filter-section-container {
+    padding: 0 15px;
+    gap: 12px;
   }
 
   .products-section {
@@ -489,18 +1016,60 @@ onUnmounted(() => {
   }
 
   .scroll-top-btn {
-    width: 44px;
-    height: 44px;
-    bottom: 25px;
-    right: 25px;
-
     i {
-      font-size: 28px;
+      font-size: 18px;
     }
   }
 }
 
 @media (max-width: 575.98px) {
+  .search-section-container {
+    flex-direction: column;
+    padding: 0 10px;
+    gap: 10px;
+  }
+
+  .map-toggle-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    gap: 8px;
+    order: 1; // Place after SearchBar
+
+    &::after {
+      content: '顯示地圖';
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e1e;
+    }
+
+    i {
+      font-size: 18px;
+    }
+  }
+
+  .filter-section-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 10px;
+  }
+
+  .location-switcher {
+    .location-btn {
+      width: 100%;
+      justify-content: flex-start;
+      height: 36px;
+      padding: 0 14px;
+    }
+
+    .location-menu {
+      width: 100%;
+      min-width: unset;
+    }
+  }
+
   .search-section {
     padding: 12px 0;
     margin-top: 0;
@@ -529,52 +1098,13 @@ onUnmounted(() => {
 
   // Scroll to Top Button - Mobile: center bottom
   .scroll-top-btn {
-    width: 48px;
-    height: 48px;
     bottom: 24px;
     left: 50%;
     right: auto;
     transform: translateX(-50%);
 
-    i {
-      font-size: 18px;
-    }
-
-    &:hover {
-      transform: translateX(-50%) translateY(-3px);
-    }
-
     &:active {
-      transform: translateX(-50%) translateY(-1px);
-    }
-  }
-
-  // Map/List Toggle Button - Mobile: same size as FAB, positioned above it
-  .view-toggle-btn {
-    bottom: 90px; // Above the floating action button
-    right: 24px;
-    left: auto;
-    transform: none;
-    padding: 0;
-    border-radius: 50%;
-    width: 56px; // Match FAB size
-    height: 56px; // Match FAB size
-    justify-content: center;
-
-    .toggle-text {
-      display: none; // Hide text on mobile
-    }
-
-    i {
-      font-size: 22px;
-    }
-
-    &:hover {
-      transform: translateY(-3px);
-    }
-
-    &:active {
-      transform: translateY(-1px);
+      transform: translateX(-50%) scale(0.95);
     }
   }
 }

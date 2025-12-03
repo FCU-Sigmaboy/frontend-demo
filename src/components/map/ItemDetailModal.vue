@@ -246,6 +246,10 @@ const props = defineProps({
   itemId: {
     type: Number,
     default: null
+  },
+  userLocation: {
+    type: Object,
+    default: null
   }
 })
 
@@ -296,7 +300,15 @@ async function loadItemDetails() {
   currentImageIndex.value = 0
 
   try {
-    const response = await getItemDetails(props.itemId)
+    // Prepare options with user location if available
+    const options = {}
+    if (props.userLocation?.latitude && props.userLocation?.longitude) {
+      options.userLat = props.userLocation.latitude
+      options.userLng = props.userLocation.longitude
+      console.log('[ItemDetailModal] Loading with user location:', options)
+    }
+
+    const response = await getItemDetails(props.itemId, options)
 
     if (response.success && response.data) {
       itemDetail.value = response.data
@@ -541,12 +553,12 @@ async function handleContact() {
   }
 }
 
-// Watch for modal open/close and itemId changes
-watch(() => [props.modelValue, props.itemId], ([isOpen, newItemId]) => {
+// Watch for modal open/close, itemId changes, and userLocation changes
+watch(() => [props.modelValue, props.itemId, props.userLocation], ([isOpen, newItemId, newLocation]) => {
   if (isOpen && newItemId) {
     loadItemDetails()
   }
-})
+}, { deep: true })
 </script>
 
 <style scoped lang="scss">

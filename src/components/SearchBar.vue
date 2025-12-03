@@ -1,14 +1,6 @@
 <template>
   <div class="search-bar-wrapper">
     <div class="search-bar">
-      <!-- Menu Icon (Hamburger) -->
-      <button class="menu-btn" @click="handleMenuClick">
-        <i class="bi bi-list"></i>
-      </button>
-
-      <!-- Divider -->
-      <div class="search-divider"></div>
-
       <!-- Search Icon and Input -->
       <div class="search-input-section">
         <i class="bi bi-search search-icon"></i>
@@ -71,16 +63,26 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { BDropdown, BDropdownItem } from 'bootstrap-vue-next';
 
-const emit = defineEmits(['search', 'menu-click']);
+const emit = defineEmits(['search']);
 const route = useRoute();
 
+const props = defineProps({
+  initialQuery: {
+    type: String,
+    default: ''
+  },
+  initialDistance: {
+    type: [String, Number, null],
+    default: '5'
+  }
+});
+
 const searchQuery = ref('');
-const distance = ref('');
-// const location = ref('taichung');
+const distance = ref('5');
 
 // const selectedLocation = computed(() => {
 //   const selected = location_options.find(opt => opt.value === location.value);
@@ -89,7 +91,7 @@ const distance = ref('');
 
 const selectedDistanceLabel = computed(() => {
   const selected = distance_options.find(opt => opt.value === distance.value);
-  return selected ? selected.label : '不限距離';
+  return selected ? selected.label : '5 km 以內';
 });
 
 // const location_options = [
@@ -115,18 +117,23 @@ const distance_options = [
 
 const selectDistance = (value) => {
   distance.value = value;
+  emit('distance-change', {
+    query: searchQuery.value,
+    distance: distance.value
+  });
+  triggerSearch();
 };
 
 const handleSearch = () => {
+  triggerSearch();
+};
+
+function triggerSearch() {
   emit('search', {
     query: searchQuery.value,
     distance: distance.value
   });
-};
-
-const handleMenuClick = () => {
-  emit('menu-click');
-};
+}
 
 // Watch for URL changes and update search bar values
 watch(() => route.query.search, (newSearch) => {
@@ -134,8 +141,15 @@ watch(() => route.query.search, (newSearch) => {
 }, { immediate: true });
 
 watch(() => route.query.distance, (newDistance) => {
-  distance.value = newDistance || '';
+  distance.value = newDistance || '5';
 }, { immediate: true });
+
+onMounted(() => {
+  searchQuery.value = props.initialQuery || route.query.search || '';
+  distance.value = props.initialDistance !== undefined && props.initialDistance !== null
+    ? String(props.initialDistance)
+    : (route.query.distance || '5');
+});
 </script>
 
 <style scoped lang="scss">
@@ -150,7 +164,7 @@ watch(() => route.query.distance, (newDistance) => {
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);
   border: 1px solid #d5d5d5;
   border-radius: 8px;
@@ -158,39 +172,6 @@ watch(() => route.query.distance, (newDistance) => {
   height: 56px;
   position: relative;
   gap: 2px;
-
-  .menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 100%;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
-
-    i {
-      font-size: 24px;
-      color: #666;
-      transition: color 0.2s;
-    }
-
-    &:hover {
-      background: #f5f5f5;
-
-      i {
-        color: $primary;
-      }
-    }
-
-    &:active {
-      background: #e0e0e0;
-    }
-  }
 
   .search-input-section {
     flex: 1;
@@ -400,19 +381,11 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 1600px) {
   .search-bar-wrapper {
-    padding: 0 20px;
+    padding: 0;
   }
 
   .search-bar {
     height: 52px;
-
-    .menu-btn {
-      width: 52px;
-
-      i {
-        font-size: 22px;
-      }
-    }
 
     .search-input-section {
       padding: 0 16px;
@@ -463,19 +436,11 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 991.98px) {
   .search-bar-wrapper {
-    padding: 0 15px;
+    padding: 0;
   }
 
   .search-bar {
     height: 48px;
-
-    .menu-btn {
-      width: 48px;
-
-      i {
-        font-size: 20px;
-      }
-    }
 
     .search-input-section {
       padding: 0 12px;
@@ -517,21 +482,13 @@ watch(() => route.query.distance, (newDistance) => {
 
 @media (max-width: 575.98px) {
   .search-bar-wrapper {
-    padding: 0 16px;
+    padding: 0;
     max-width: 100%;
   }
 
   .search-bar {
     height: 44px;
     gap: 0;
-
-    .menu-btn {
-      width: 44px;
-
-      i {
-        font-size: 20px;
-      }
-    }
 
     .search-input-section {
       padding: 0 10px;

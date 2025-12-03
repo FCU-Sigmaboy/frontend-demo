@@ -4,7 +4,7 @@
       <div class="card-header-section">
         <h3 class="card-title">
           <i class="bi bi-clock-history"></i>
-          交易記錄
+          點數紀錄
         </h3>
       </div>
 
@@ -30,7 +30,7 @@
       </div>
 
       <!-- Transactions List -->
-      <div v-else class="transactions-list">
+      <div v-else-if="transactions.length > 0" class="transactions-list">
         <div
           v-for="transaction in transactions"
           :key="transaction.id"
@@ -59,7 +59,7 @@
 
       <!-- Load More Button -->
       <div v-if="transactions.length > 0 && hasMore" class="load-more-section">
-        <button class="load-more-btn" @click="handleLoadMore" :disabled="isLoading">
+        <button class="load-more-btn" @click="handleLoadMore" :disabled="isLoading || !hasMore">
           <i class="bi bi-arrow-down-circle"></i>
           <span v-if="!isLoading">載入更多</span>
           <span v-else>載入中...</span>
@@ -112,31 +112,45 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { TRANSACTION_TYPES } from '@/api/pointsAPI';
 
 const props = defineProps({
   transactions: {
     type: Array,
     default: () => []
+  },
+  hasMore: {
+    type: Boolean,
+    default: true
+  },
+  isLoading: {
+    type: Boolean,
+    default: false
+  },
+  activeFilter: {
+    type: String,
+    default: null
   }
 });
 
 const emit = defineEmits(['filter', 'load-more']);
 
 // State
-const activeFilter = ref('all');
+const activeFilter = ref(props.activeFilter || 'all');
+watch(() => props.activeFilter, value => {
+  activeFilter.value = value || 'all';
+});
 const selectedTransaction = ref(null);
 const isLoading = ref(false);
-const hasMore = ref(true);
 const currentPage = ref(1);
 
 // Filter tabs configuration
 const filterTabs = [
   { key: 'all', label: '全部', icon: 'bi bi-list' },
-  { key: 'income', label: '收入', icon: 'bi bi-arrow-up-circle' },
-  { key: 'spending', label: '支出', icon: 'bi bi-arrow-down-circle' },
-  { key: 'rewards', label: '獎勵', icon: 'bi bi-gift' }
+  { key: 'income', label: '收入', icon: 'bi bi-arrow-up-circle', rpcType: 'transaction_income' },
+  { key: 'spending', label: '支出', icon: 'bi bi-arrow-down-circle', rpcType: 'transaction_expense' },
+  { key: 'rewards', label: '任務獎勵', icon: 'bi bi-gift', rpcType: 'quest_reward' }
 ];
 
 // Methods
@@ -144,24 +158,16 @@ function handleFilterChange(filterKey) {
   activeFilter.value = filterKey;
   currentPage.value = 1;
 
-  // Map filter to transaction types
-  let typeFilter = null;
-  if (filterKey === 'income') {
-    typeFilter = 'sale_earning';
-  } else if (filterKey === 'spending') {
-    typeFilter = 'purchase_spending';
-  } else if (filterKey === 'rewards') {
-    typeFilter = 'daily_signin,level_bonus,badge_reward';
-  }
-
+  const selected = filterTabs.find(tab => tab.key === filterKey);
   emit('filter', {
-    type: typeFilter,
+    type: selected?.rpcType || null,
     page: 1,
     size: 20
   });
 }
 
 function handleLoadMore() {
+  if (props.isLoading || !props.hasMore) return;
   isLoading.value = true;
   currentPage.value += 1;
 
@@ -177,15 +183,15 @@ function selectTransaction(transaction) {
 }
 
 function getTransactionIcon(type) {
-  return TRANSACTION_TYPES[type.toUpperCase()]?.icon || '💰';
+  return TRANSACTION_TYPES[type?.toUpperCase()]?.icon || '💰';
 }
 
 function getTransactionLabel(type) {
-  return TRANSACTION_TYPES[type.toUpperCase()]?.label || type;
+  return TRANSACTION_TYPES[type?.toUpperCase()]?.label || type;
 }
 
 function getTransactionColor(type) {
-  return TRANSACTION_TYPES[type.toUpperCase()]?.color || '#95a5a6';
+  return TRANSACTION_TYPES[type?.toUpperCase()]?.color || '#95a5a6';
 }
 
 function formatDate(dateString) {

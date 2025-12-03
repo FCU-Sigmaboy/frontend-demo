@@ -392,6 +392,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { BNavbar, BContainer, BNav, BNavItem, BButton, BTooltip } from 'bootstrap-vue-next';
+import _ from 'lodash-es';
 import { useAuthStore } from '../stores/auth';
 
 import { useCategoriesStore } from '@/stores/categories.js';
@@ -415,6 +416,15 @@ const props = defineProps({
     default: 0
   }
 });
+
+window.addEventListener('scroll', _.debounce(() => {
+  const header = document.querySelector('.header-navbar');
+  if (window.scrollY > 50) {
+    header.classList.add('scrolled');
+  } else {
+    header.classList.remove('scrolled');
+  }
+}, 50));
 
 // Computed: 從 auth store 獲取使用者的點數
 const userBalance = computed(() => {
@@ -582,21 +592,28 @@ const navigateToCategory = (categoryId, subCategoryId) => {
 <style scoped lang="scss">
 @import '@/styles/variables';
 
+
 .app-header {
   position: sticky;
   top: 0;
   z-index: 9000; // High enough to be above search components
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s;
 }
 
 .header-navbar {
-  background-color: #f2efeb;
   height: 50px;
+  background-color: white;
   padding: 0;
-
+  
   :deep(.navbar) {
     padding: 0;
   }
+}
+
+.scrolled {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f2efeb;
+  transition: box-shadow 0.1s, background-color 0.1s;
 }
 
 .header-content {
@@ -800,33 +817,32 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 5px;
-  min-width: 80px; // Ensure consistent spacing
+  min-width: 80px;
   position: relative;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
   transition: all 0.3s;
 
   &:hover {
-    background-color: rgba(111, 184, 165, 0.1);
+    background: rgba(111, 184, 165, 0.15);
   }
 
   .points-icon {
-    background: #f2efeb;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-weight: 600;
     font-size: 14px;
     color: $primary;
   }
 
   .points-value {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px; // Increased from 16px
-    font-weight: 700; // Bolder to make it more prominent
+    font-size: 20px;
+    font-weight: 700;
     color: $primary;
-    min-width: 30px; // Ensure consistent width
+    min-width: 30px;
   }
 
   .notification-dot {
@@ -837,7 +853,6 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     height: 8px;
     background-color: #ff6b6b;
     border-radius: 50%;
-    border: 2px solid #f2efeb;
   }
 }
 
@@ -974,15 +989,12 @@ const navigateToCategory = (categoryId, subCategoryId) => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background-color: #e8f5f1;
-  border-radius: 12px;
-  padding: 4px 10px;
+  background: rgba(111, 184, 165, 0.15);
+  border-radius: 6px;
+  padding: 4px 12px;
   position: relative;
   transition: all 0.3s;
-
-  &:hover {
-    background-color: #d0ebe4;
-  }
+  border: none;
 
   i {
     font-size: 16px;
@@ -1004,7 +1016,6 @@ const navigateToCategory = (categoryId, subCategoryId) => {
     height: 8px;
     background-color: #ff6b6b;
     border-radius: 50%;
-    border: 2px solid #f2efeb;
   }
 }
 

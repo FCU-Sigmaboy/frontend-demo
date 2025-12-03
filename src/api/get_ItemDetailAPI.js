@@ -1,53 +1,46 @@
 import { supabase } from '@/lib/supabase.js'; // 假設您已在 src/supabaseClient.js 初始化
 
 // ===================================================================
-// ### 單一物品詳情 API - v4.0（2025-11-09）
-// ### Migration v3.0 變更說明：
-// ###   - ✅ 支援 items.use_primary_location 欄位
-// ###   - ✅ 物品可選擇使用主要或次要地點
-// ###   - ✅ 根據 use_primary_location 自動關聯正確的地點
-// ###   - ✅ 已移除 items.location_id（已於前次遷移移除）
+// ### 單一物品詳情 API - v5.2.0（2025-11-27）
 // ###
-// ### 特性：
-// ###   - 買家位置：自動使用資料庫位置（主要地點優先）
-// ###   - 賣家位置：根據物品的 use_primary_location 決定使用主要或次要地點
-// ###   - 隱私保護：只有登入買家可查看距離資訊
-// ###   - 支援未登入用戶瀏覽物品基本資訊
-// ###   - PostGIS 精確距離計算
-// ###   - 完整的錯誤處理和異常處理
-// ###   - 使用 JSONB 優化效能
+// ### v5.2.0 (2025-11-27):
+// ###   - 支援前端傳入當前位置（p_user_lat, p_user_lng）
+// ###   - 支援次要地點切換（p_use_secondary_location）
+// ###   - 更新 RPC 函數名稱為 get_item_details_with_location_v2
+// ###   - 新增 current_position 位置來源類型
+// ###   - 返回值改為 JSONB 格式
+// ###   - 增強參數驗證（經緯度範圍檢查）
+// ###   - 改進錯誤處理（新增 INVALID_COORDINATES 錯誤代碼）
+// ###
+// ### v4.1.1 (2025-11-18):
+// ###   - 修復所有者無法查看已下架物品的缺陷
+// ###
+// ### v4.1.0:
+// ###   - 改進上架狀態判邏輯與地點驗證
+// ###   - 新增 LOCATION_NOT_FOUND 錯誤代碼處理
+// ###
+// ### v4.0.0:
+// ###   - 支援 items.use_primary_location 欄位
+// ###   - 物品可選擇使用主要或次要地點
 // ===================================================================
 
 /**
- * 【主要函數】獲取單一物品的完整詳情（v4.0 優化版）
+ * 【主要函數】獲取單一物品的完整詳情（v5.2.0）
  *
- * 🔄 Migration v3.0 更新 (2025-11-09):
- *   - 支援 items.use_primary_location 欄位
- *   - 物品可選擇使用主要地點 (true) 或次要地點 (false)
- *   - 賣家位置: items.user_id + use_primary_location → locations (user_id, is_primary)
- *   - 買家位置: 自動從 locations 表取得登入者的主要地點
- *
- * 買家位置策略：
- *   - 自動使用資料庫中的主要地點（is_primary=true）
- *   - 若無主要地點，則使用最早建立的地點
- *   - 若無任何地點，distance_km 為 null
- *
- * 賣家位置策略（新增）：
- *   - 根據物品的 use_primary_location 欄位決定
- *   - true: 使用該賣家的主要地點（is_primary=true）
- *   - false: 使用該賣家的次要地點（is_primary=false）
- *   - 透過 items.user_id 和 use_primary_location 關聯 locations
- *
- * 隱私保護：
- *   - 只有已登入用戶可以查看距離資訊
- *   - 未登入用戶僅能查看物品基本資訊、文字地址
- *   - 未登入用戶無法查看精確座標
- *   - 物品擁有者查看自己的物品時，不顯示距離資訊
+ * 買家位置優先級（新版）：
+ *   1. 當前位置（前端傳入的 userLat, userLng）
+ *   2. 次要地點（如 useSecondaryLocation = true）
+ *   3. 主要地點（預設）
+ *   4. 無位置
  *
  * @param {number} itemId - 要查詢的物品 ID
+ * @param {object} options - 可選參數
+ * @param {number} options.userLat - 用戶當前緯度（-90 ~ 90）
+ * @param {number} options.userLng - 用戶當前經度（-180 ~ 180）
+ * @param {boolean} options.useSecondaryLocation - 是否使用次要地點（預設 false）
  * @returns {Promise<object>} - 回傳統一格式的回應物件
  */
-export async function getItemDetails(itemId) {
+export async function getItemDetails(itemId, options = {}) {
   try {
     // 1. 參數驗證
     if (!itemId || typeof itemId !== "number") {
@@ -58,7 +51,36 @@ export async function getItemDetails(itemId) {
       throw new Error("itemId 必須是正整數");
     }
 
+    // 解構可選參數
+    const {
+      userLat = null,
+      userLng = null,
+      useSecondaryLocation = false,
+    } = options;
+
+    // 驗證經緯度參數
+    if (
+      (userLat !== null && userLng === null) ||
+      (userLat === null && userLng !== null)
+    ) {
+      throw new Error("經緯度參數必須同時提供或同時為空");
+    }
+
+    if (userLat !== null) {
+      if (userLat < -90 || userLat > 90) {
+        throw new Error("緯度必須在 -90 到 90 之間");
+      }
+      if (userLng < -180 || userLng > 180) {
+        throw new Error("經度必須在 -180 到 180 之間");
+      }
+    }
+
     console.log(`正在獲取物品 #${itemId} 的詳情...`);
+    if (userLat !== null && userLng !== null) {
+      console.log(`使用當前位置: (${userLat}, ${userLng})`);
+    } else if (useSecondaryLocation) {
+      console.log(`使用次要地點`);
+    }
 
     // 2. 檢查登入狀態
     const isLoggedIn = await checkUserAuthentication();
@@ -67,11 +89,13 @@ export async function getItemDetails(itemId) {
       console.log("提示：未登入用戶僅能查看物品基本資訊");
     }
 
-    // 3. 呼叫 v3.0 優化版 RPC 函式（使用 user_id 關聯位置）
-    // Migration v2.0: 已更新為使用 items.user_id 關聯賣家位置
+    // 3. 呼叫 v5.2.0 RPC 函式
     const { data, error } = await supabase
-      .rpc("get_item_details_with_location", {
+      .rpc("get_item_details_with_location_v2", {
         p_item_id: itemId,
+        p_user_lat: userLat,
+        p_user_lng: userLng,
+        p_use_secondary_location: useSecondaryLocation,
       })
       .maybeSingle();
 
@@ -103,7 +127,6 @@ export async function getItemDetails(itemId) {
       // 處理地理座標（JSONB 格式）
       if (data.location && data.location.coordinates) {
         try {
-          // 檢查是否需要解析（可能已經是物件）
           if (typeof data.location.coordinates === "string") {
             data.location.coordinates = JSON.parse(data.location.coordinates);
           }
