@@ -49,7 +49,7 @@
           <!-- Transaction History Section -->
           <div class="row g-4">
             <div class="col-12">
-              <TransactionHistoryCard
+              <PointsHistoryCard
                 :transactions="pointsStore.transactions"
                 :has-more="pointsStore.transactionsHasMore"
                 :is-loading="pointsStore.isLoadingTransactions"
@@ -76,7 +76,7 @@ import Breadcrumb from '@/components/Breadcrumb.vue'
 import PointsBalanceCard from '@/components/dashboard/PointsBalanceCard.vue'
 import DailyStreakCard from '@/components/dashboard/DailyStreakCard.vue'
 import BadgesCard from '@/components/dashboard/BadgesCard.vue'
-import TransactionHistoryCard from '@/components/dashboard/TransactionHistoryCard.vue'
+import PointsHistoryCard from '@/components/dashboard/PointsHistoryCard.vue'
 
 const pointsStore = usePointsStore()
 
