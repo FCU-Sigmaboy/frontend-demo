@@ -55,7 +55,7 @@
       <div class="quick-actions">
         <button class="action-btn primary" @click="goToTransactions">
           <i class="bi bi-clock-history"></i>
-          查看交易記錄
+          查看點數記錄
         </button>
         <button class="action-btn secondary" @click="goToEarnPoints">
           <i class="bi bi-plus-circle"></i>
