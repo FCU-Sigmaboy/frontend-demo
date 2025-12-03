@@ -271,11 +271,15 @@ const handleScroll = () => {
   showScrollTop.value = window.scrollY > 500;
   
   const searchSection = document.querySelector('.search-section-container');
+  const mapToggleBtn = document.querySelector('.map-toggle-btn');
+
   if (searchSection) {
     if (window.scrollY > 300) {
       searchSection.classList.add('scrolled');
+      mapToggleBtn.classList.add('scrolled');
     } else {
       searchSection.classList.remove('scrolled');
+      mapToggleBtn.classList.remove('scrolled');
     }
   }
 };
@@ -620,14 +624,24 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
   height: 56px;
+  width: 128px;
+  gap: 10px;
+  padding: 0 15px;
   background: white;
   border: 1px solid #d5d5d5;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+
+  &::after {
+    content: '顯示地圖';
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e1e1e;
+  }
 
   i {
     font-size: 22px;
@@ -981,7 +995,7 @@ onUnmounted(() => {
   }
 
   .map-toggle-btn {
-    width: 52px;
+    width: 128px;
     height: 52px;
 
     i {
@@ -1047,6 +1061,13 @@ onUnmounted(() => {
     i {
       font-size: 18px;
     }
+  }
+
+  .map-toggle-btn.scrolled {
+    width: 25%;
+    min-width: 88px;
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
   }
 
   .filter-section-container {
