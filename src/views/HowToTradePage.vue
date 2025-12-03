@@ -72,28 +72,28 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 
 // Import buyer images
-import buy1 from '../assets/images/buy1.jpg';
-import buy2 from '../assets/images/buy2.jpg';
-import buy3 from '../assets/images/buy3.jpg';
-import buy4 from '../assets/images/buy4.jpg';
-import buy5 from '../assets/images/buy5.jpg';
-import buy6 from '../assets/images/buy6.jpg';
-import buy7 from '../assets/images/buy7.jpg';
+import buy1 from '../assets/images/buy1.webp';
+import buy2 from '../assets/images/buy2.webp';
+import buy3 from '../assets/images/buy3.webp';
+import buy4 from '../assets/images/buy4.webp';
+import buy5 from '../assets/images/buy5.webp';
+import buy6 from '../assets/images/buy6.webp';
+import buy7 from '../assets/images/buy7.webp';
 
 // Import seller images
-import sell1 from '../assets/images/sell1.jpg';
-import sell2 from '../assets/images/sell2.jpg';
-import sell3 from '../assets/images/sell3.jpg';
-import sell4 from '../assets/images/sell4.jpg';
-import sell5 from '../assets/images/sell5.jpg';
-import sell7 from '../assets/images/sell 7ps.png';
+import sell1 from '../assets/images/sell1.webp';
+import sell2 from '../assets/images/sell2.webp';
+import sell3 from '../assets/images/sell3.webp';
+import sell4 from '../assets/images/sell4.webp';
+import sell5 from '../assets/images/sell5.webp';
+import sell7 from '../assets/images/sell 7ps.webp';
 
 // Import posting guide images
-import post1 from '../assets/images/post1.jpg';
-import post2 from '../assets/images/post2.jpg';
-import post3 from '../assets/images/post3.jpg';
-import post4 from '../assets/images/post4.jpg';
-import post5 from '../assets/images/post5.jpg';
+import post1 from '../assets/images/post1.webp';
+import post2 from '../assets/images/post2.webp';
+import post3 from '../assets/images/post3.webp';
+import post4 from '../assets/images/post4.webp';
+import post5 from '../assets/images/post5.webp';
 
 const activeTab = ref('buyer');
 
