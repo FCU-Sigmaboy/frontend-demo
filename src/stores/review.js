@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getMyReviews } from '@/api/get_my_reviews'
-import { createReview, canCreateReview } from '@/api/create_review'
+import { getMyReviews, createReview, canCreateReview } from '@/api/reviewAPI'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 

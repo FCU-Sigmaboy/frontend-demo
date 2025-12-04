@@ -320,7 +320,7 @@ import FollowersFollowingModal from '../components/FollowersFollowingModal.vue';
 import { searchItems } from '../api/itemsAPI';
 import { getPublicUserProfile } from '../api/profileAPI';
 import { followUser, unfollowUser } from '../api/followAPI';
-import { getOthersReviews } from '../api/get_others_reviews';
+import { getOthersReviews } from '../api/reviewAPI';
 
 const route = useRoute();
 const router = useRouter();
