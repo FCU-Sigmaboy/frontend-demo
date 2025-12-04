@@ -1065,7 +1065,7 @@ onUnmounted(() => {
 
   .map-toggle-btn.scrolled {
     width: 25%;
-    min-width: 88px;
+    min-width: 120px;
     background-color: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
   }
