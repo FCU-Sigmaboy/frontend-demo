@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
-import { getMyTransactionsByStatus } from '@/api/transaction_before_meetAPI'
+import { getMyTransactionsByStatus } from '@/api/transactionAPI'
 import { supabase } from '@/lib/supabase'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes

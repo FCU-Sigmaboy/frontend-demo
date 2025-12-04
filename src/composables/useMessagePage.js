@@ -1006,7 +1006,7 @@ export function useMessagePage() {
       const receiverId = selectedConversation.value._raw.other_user.id;
 
       // 調用發起交易 API
-      const transactionApi = await import('@/api/transaction_before_meetAPI');
+      const transactionApi = await import('@/api/transactionAPI');
       const result = await transactionApi.initiateTransaction(item.id, receiverId);
 
       console.log('Transaction initiated:', result);
