@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '../lib/supabase'
-import { getMyProfileForEdit } from '@/api/get_myProfileDetailsAPI.js'
+import { getMyProfileForEdit } from '@/api/profileAPI'
 import { getCurrentPosition, saveLocation } from '@/api/location.js'
 
 export const useAuthStore = defineStore('auth', () => {
