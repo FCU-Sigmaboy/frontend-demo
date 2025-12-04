@@ -250,7 +250,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getMyProfileForEdit, updateMyProfile } from '../api/profileAPI';
 import { uploadProfilePicture } from '@/api/image';
-import { getCurrentPosition } from '../api/location';
+import { getCurrentPosition } from '../api/locationAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';

@@ -150,7 +150,7 @@ import FilterTabs from '../components/FilterTabs.vue';
 import { useCategoriesStore } from '@/stores/categories.js';
 import { searchItems } from '@/api/itemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
-import { getMyLocations } from '@/api/get_userLocationAPI';
+import { getMyLocations } from '@/api/locationAPI';
 
 const route = useRoute();
 const router = useRouter();

@@ -146,7 +146,7 @@ import { searchItems } from '@/api/itemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
 import { createOrGetConversation } from '@/api/conversation.js';
 import { useAuthStore } from '@/stores/auth';
-import { getMyLocations } from '@/api/get_userLocationAPI';
+import { getMyLocations } from '@/api/locationAPI';
 
 const router = useRouter();
 const authStore = useAuthStore();
