@@ -148,7 +148,7 @@ import CategoryTabs from '../components/CategoryTabs.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 
 import { useCategoriesStore } from '@/stores/categories.js';
-import { searchItems } from '@/api/get_searchItemsAPI';
+import { searchItems } from '@/api/itemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
 import { getMyLocations } from '@/api/get_userLocationAPI';
 

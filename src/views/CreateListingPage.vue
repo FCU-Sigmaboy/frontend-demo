@@ -388,8 +388,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
-import { getItemById } from '../api/get_itemByIdAPI';
-import { updateMyItem } from '../api/update_myItemAPI';
+import { getItemById } from '../api/itemsAPI';
+import { updateMyItem } from '../api/itemsAPI';
 import { compressImage, uploadItemImage, analyzeItemImage } from '@/api/image';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
@@ -941,7 +941,7 @@ const handleSubmit = async () => {
 
       // Use createItemWithImages to upload images and create item
       // 傳入 true 表示檔案已經在前端壓縮過，避免重複壓縮
-      const { createItemWithImages } = await import('../api/create_myItemAPI');
+      const { createItemWithImages } = await import('../api/itemsAPI');
       const result = await createItemWithImages(itemData, formData.value.imageFiles, true);
 
       console.log('✅ Listing created successfully:', result);

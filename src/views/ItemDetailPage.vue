@@ -232,8 +232,7 @@ import ProductCard from '../components/ProductCard.vue';
 
 import { useAuthStore } from '../stores/auth';
 import { useTransactionStore } from '../stores/transaction';
-import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
-import { searchItems } from '@/api/get_searchItemsAPI.js';
+import { getItemDetails, searchItems } from '@/api/itemsAPI';
 import { createOrGetConversation } from '@/api/conversation.js';
 
 const authStore = useAuthStore();

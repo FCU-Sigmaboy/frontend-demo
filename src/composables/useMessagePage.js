@@ -957,7 +957,7 @@ export function useMessagePage() {
 
   async function enrichItemsWithOwnerInfo() {
     // 為聊天室中的商品補充擁有者信息和交易狀態
-    const { getItemById } = await import('@/api/get_itemByIdAPI');
+    const { getItemById } = await import('@/api/itemsAPI');
     try {
       await transactionStore.fetchAllTransactions();
     } catch (error) {

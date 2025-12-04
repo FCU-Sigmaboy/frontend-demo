@@ -317,7 +317,7 @@ import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import CombinedAchievements from '../components/CombinedAchievements.vue';
 import FollowersFollowingModal from '../components/FollowersFollowingModal.vue';
-import { searchItems } from '../api/get_searchItemsAPI';
+import { searchItems } from '../api/itemsAPI';
 import { getPublicUserProfile } from '../api/get_userProfileAPI';
 import { followUser, unfollowUser } from '../api/followAPI';
 import { getOthersReviews } from '../api/get_others_reviews';
