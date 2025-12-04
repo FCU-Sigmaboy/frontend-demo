@@ -1,17 +1,42 @@
 <template>
-  <div class="transaction-card">
+  <div class="transaction-card" @click="closeReportMenu">
     <!-- Product Name and Favorite -->
     <div class="product-header">
       <h3 class="product-name">{{ productName }}</h3>
-      <button 
-        class="favorite-btn" 
-        :class="{ active: isFavorite }"
-        @click.stop="handleToggleFavorite"
-        :title="isFavorite ? '取消收藏' : '加入收藏'"
-      >
-        <i :class="['bi', isFavorite ? 'bi-heart-fill' : 'bi-heart']"></i>
-      </button>
+      <div class="header-actions">
+        <button
+          class="favorite-btn"
+          :class="{ active: isFavorite }"
+          @click.stop="handleToggleFavorite"
+          :title="isFavorite ? '取消收藏' : '加入收藏'"
+        >
+          <i :class="['bi', isFavorite ? 'bi-heart-fill' : 'bi-heart']"></i>
+        </button>
+        <button
+          v-if="!isOwner"
+          class="report-btn"
+          @click.stop="toggleReportMenu"
+          ref="reportBtnRef"
+        >
+          <i class="bi bi-flag"></i>
+          <span class="hint-text">檢舉</span>
+        </button>
+      </div>
     </div>
+
+    <!-- Report Context Menu -->
+    <Transition name="menu-fade">
+      <div
+        v-if="showReportMenu"
+        class="context-menu"
+        :style="reportMenuStyle"
+        @click.stop
+      >
+        <div class="context-menu-item danger" @click="handleReport">
+          <i class="bi bi-flag"></i> 檢舉物品
+        </div>
+      </div>
+    </Transition>
 
     <!-- Unlisted Status Warning -->
     <div v-if="!listingStatus || isInTransaction" class="unlisted-warning">
@@ -130,7 +155,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { useAuthStore } from '@/stores/auth';
@@ -151,6 +176,53 @@ const router = useRouter();
 // Description expansion state
 const isExpanded = ref(false);
 const MAX_DESCRIPTION_LENGTH = 100;
+
+// Report menu state
+const showReportMenu = ref(false);
+const reportBtnRef = ref(null);
+const reportMenuStyle = ref({});
+
+const toggleReportMenu = () => {
+  if (!showReportMenu.value && reportBtnRef.value) {
+    const rect = reportBtnRef.value.getBoundingClientRect();
+    reportMenuStyle.value = {
+      top: `${rect.bottom + 5}px`,
+      right: `${window.innerWidth - rect.right}px`
+    };
+  }
+  showReportMenu.value = !showReportMenu.value;
+};
+
+const closeReportMenu = () => {
+  showReportMenu.value = false;
+};
+
+const handleReport = () => {
+  closeReportMenu();
+  if (!authStore.user) {
+    alert('請先登入才能檢舉物品');
+    authStore.signInWithGoogle();
+    return;
+  }
+  // TODO: Implement report functionality
+  alert('檢舉功能開發中\n物品 ID: ' + props.productId);
+  console.log('Report item:', props.productId);
+};
+
+// Close report menu when clicking outside
+const handleClickOutside = (event) => {
+  if (showReportMenu.value && reportBtnRef.value && !reportBtnRef.value.contains(event.target)) {
+    closeReportMenu();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 
 const props = defineProps({
   productId: {
@@ -412,26 +484,94 @@ const goToSellerProfile = () => {
   flex: 1;
 }
 
-.favorite-btn {
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.favorite-btn,
+.report-btn {
   background: transparent;
   border: none;
   padding: 4px;
   cursor: pointer;
   transition: transform 0.2s;
-  
+  position: relative;
+
   i {
     font-size: 24px;
     color: #ccc;
     transition: color 0.3s;
   }
   
+  &:hover {
+    transform: scale(1.1);
+
+    i {
+      color: #999;
+    }
+  }
+}
+
+.favorite-btn {
   &.active i {
     color: #ff4757;
     animation: heart-pulse 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   
+  &:hover.active i {
+    color: #ff4757;
+  }
+}
+
+.report-btn {
+  i {
+    font-size: 22px;
+  }
+
+  .hint-text {
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10000;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid rgba(0, 0, 0, 0.85);
+    }
+  }
+
   &:hover {
-    transform: scale(1.1);
+    i {
+      color: #ff4757;
+    }
+
+    .hint-text {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
   }
 }
 
@@ -762,6 +902,63 @@ const goToSellerProfile = () => {
     transform: none;
     box-shadow: none;
   }
+}
+
+// Context Menu Styles
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px 0;
+  min-width: 160px;
+  overflow: hidden;
+
+  .context-menu-item {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #333;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #f5f5f5;
+    }
+
+    i {
+      font-size: 16px;
+      color: #666;
+    }
+
+    &.danger {
+      color: #ff4757;
+
+      i {
+        color: #ff4757;
+      }
+
+      &:hover {
+        background: #fff0f0;
+      }
+    }
+  }
+}
+
+// Menu fade animation
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: all 0.2s ease-out;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 // Responsive Design

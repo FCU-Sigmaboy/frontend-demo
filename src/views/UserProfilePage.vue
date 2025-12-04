@@ -514,7 +514,7 @@ import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import ProductCard from '../components/ProductCard.vue';
-import TransactionCard from '../components/TransactionCard.vue';
+import ItemDetailsCard from '../components/ItemDetailsCard.vue';
 import CombinedAchievements from '../components/CombinedAchievements.vue';
 import { Modal } from 'bootstrap';
 
