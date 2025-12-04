@@ -1,0 +1,24 @@
+# robots.txt for 台中易起來
+
+User-agent: *
+Allow: /
+
+# 禁止爬取需要登入的頁面
+Disallow: /profile
+Disallow: /profile/edit
+Disallow: /favorites
+Disallow: /messages
+Disallow: /create-listing
+Disallow: /listing/*/edit
+Disallow: /settings
+Disallow: /manage-listings
+Disallow: /my-reviews
+Disallow: /my-followers
+Disallow: /transactions
+Disallow: /dashboard
+
+# Sitemap 位置
+Sitemap: https://fcu-sigmaboy.github.io/frontend-demo/sitemap.xml
+
+# 爬蟲延遲（秒）
+Crawl-delay: 1

@@ -7,7 +7,7 @@
       <section class="search-section">
         <div class="search-section-container">
           <!-- Map View Toggle Button -->
-          <button class="map-toggle-btn" @click="toggleToMapView">
+          <button class="map-toggle-btn" title="map toggle button" @click="toggleToMapView">
             <i class="bi bi-map"></i>
           </button>
 

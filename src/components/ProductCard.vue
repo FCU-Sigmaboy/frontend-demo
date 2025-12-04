@@ -6,7 +6,7 @@
         <img :src="sellerAvatar" :alt="sellerName" class="seller-avatar" />
         <span class="seller-name">{{ sellerName }}</span>
       </div>
-      <button v-if="!isOwner" class="contact-btn" @click.stop="handleContact">
+      <button v-if="!isOwner" title="私訊此商品" class="contact-btn" @click.stop="handleContact">
         私訊此商品
       </button>
     </div>
@@ -26,6 +26,7 @@
         <!-- Favorite Button -->
         <button
           v-if="!isOwner"
+          title="收藏此商品"
           class="favorite-btn"
           :class="{ active: isFavorite }"
           @click.stop="toggleFavorite"
