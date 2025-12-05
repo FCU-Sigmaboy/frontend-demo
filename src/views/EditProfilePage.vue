@@ -126,12 +126,17 @@
               <input
                 id="nickname"
                 v-model="formData.nickname"
+                :maxlength="maxNicknameLength"
+                @input="handleNicknameInput"
                 type="text"
                 class="form-input"
                 placeholder="請輸入暱稱"
                 required
               />
-              <p class="field-hint">Google 帳戶預設顯示名稱，可隨時修改</p>
+              <div class="hint-row">
+                <p class="field-hint">Google 帳戶預設顯示名稱，可隨時修改（最多 {{ maxNicknameLength }} 字）</p>
+                <div class="char-count">{{ nicknameLength }} / {{ maxNicknameLength }}</div>
+              </div>
             </div>
 
             <!-- Login Method Field (Read-only) -->
@@ -245,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getMyProfileForEdit, updateMyProfile } from '../api/profileAPI';
@@ -290,6 +295,10 @@ const formData = ref({
   officeAddressDisplay: '',
   officeAddressCoords: null
 });
+
+// Nickname settings
+const maxNicknameLength = 20; // 先預設 20 但資料庫最多允許 50 字元
+const nicknameLength = computed(() => (formData.value.nickname || '').length);
 
 // District coordinate mapping (Taichung districts)
 const districtCoordinates = {
@@ -365,6 +374,18 @@ const processImageFile = (file) => {
       showCropper.value = true;
     };
     reader.readAsDataURL(file);
+  }
+};
+
+const handleNicknameInput = (event) => {
+  const value = event.target.value || '';
+  if (value.length > maxNicknameLength) {
+    // Trim the input to the max length and update the model
+    formData.value.nickname = value.substring(0, maxNicknameLength);
+    // Optional: provide a subtle feedback
+    alert(`暱稱不可超過 ${maxNicknameLength} 字元`);
+  } else {
+    formData.value.nickname = value;
   }
 };
 
@@ -598,12 +619,13 @@ const loadProfileData = async () => {
     const profile = await getMyProfileForEdit();
     console.log('📋 Loaded profile data:', profile);
 
-    if (profile) {
+      if (profile) {
       originalProfile.value = profile;
 
       // Populate form data
       formData.value.avatar = profile.profile_picture_url || '';
-      formData.value.nickname = profile.nickname || '';
+      // Ensure nickname not exceed max length
+      formData.value.nickname = (profile.nickname || '').substring(0, maxNicknameLength);
 
       // Extract primary location district name
       if (profile.locations && profile.locations.length > 0) {
@@ -669,6 +691,12 @@ const handleSubmit = async () => {
   isSaving.value = true;
 
   try {
+    // Validate nickname length on submit
+    if ((formData.value.nickname || '').length > maxNicknameLength) {
+      alert(`暱稱不可超過 ${maxNicknameLength} 字元`);
+      isSaving.value = false;
+      return;
+    }
     // Prepare userData (only changed fields)
     const userData = {};
     if (formData.value.nickname !== originalProfile.value?.nickname) {
@@ -950,7 +978,24 @@ onMounted(() => {
   font-size: 13px;
   color: #999;
   text-align: right;
-  margin: 6px 0 0 0;
+  margin: 0;
+}
+
+.hint-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+@media (max-width: 575.98px) {
+  .hint-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .char-count { text-align: left; }
 }
 
 // Avatar Upload
