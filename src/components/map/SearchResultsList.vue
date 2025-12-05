@@ -84,7 +84,7 @@
             </div>
             <div class="item-info">
               <h4 class="item-title">{{ item.title }}</h4>
-              <div class="item-price">{{ item.price }}點</div>
+              <div class="item-price">{{ new Intl.NumberFormat('zh-TW').format(item.price) }}點</div>
             </div>
           </div>
         </div>
@@ -173,9 +173,16 @@ const sellers = computed(() => {
 
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0
-    const priceRange = prices.length > 0
-      ? `${minPrice}-${maxPrice}點`
-      : '無資訊'
+    let priceRange = ''
+    if (prices.length > 0) {
+      if (minPrice === maxPrice) {
+        priceRange = `${new Intl.NumberFormat('zh-TW').format(minPrice)}點`
+      } else {
+        priceRange = `${new Intl.NumberFormat('zh-TW').format(minPrice)}~${new Intl.NumberFormat('zh-TW').format(maxPrice)}點`
+      }
+    } else {
+      priceRange = '0點'
+    }
 
     // Get average rating from user data (backend provides this)
     const averageRating = seller.items[0]?.user?.avg_rating || 0
@@ -608,7 +615,7 @@ defineExpose({
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s;
-  border: 2px solid transparent;
+  border: 2px solid #e0e0e0;
 
   &:hover {
     transform: translateY(-2px);
