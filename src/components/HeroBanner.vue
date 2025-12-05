@@ -1,7 +1,6 @@
 <template>
   <div class="hero-banner">
     <div class="banner-content">
-      <div class="decorative-element sparkle">✨</div>
       <div class="event-text">
         <h1 class="event-title">台中花草節</h1>
         <p class="event-subtitle">買之林環保市集</p>
@@ -38,28 +37,6 @@
   justify-content: center;
   padding: 40px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.decorative-element {
-  position: absolute;
-  font-size: 48px;
-
-  &.sparkle {
-    top: 15%;
-    left: 15%;
-    animation: sparkle 2s ease-in-out infinite;
-  }
-}
-
-@keyframes sparkle {
-  0%, 100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
 }
 
 .event-text {
@@ -172,12 +149,6 @@
       font-size: 14px;
     }
   }
-
-  .decorative-element.sparkle {
-    font-size: 32px;
-    top: 10%;
-    left: 10%;
-  }
 }
 
 // Extra small phones (360px)
@@ -204,10 +175,6 @@
     .event-date {
       font-size: 12px;
     }
-  }
-
-  .decorative-element.sparkle {
-    font-size: 28px;
   }
 }
 </style>
