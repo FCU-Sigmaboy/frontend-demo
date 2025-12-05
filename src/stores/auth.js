@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { getMyProfileForEdit } from '@/api/profileAPI'
 import { getCurrentPosition, saveLocation } from '@/api/locationAPI'
 
