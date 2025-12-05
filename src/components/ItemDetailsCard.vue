@@ -160,7 +160,7 @@ import { useRouter } from 'vue-router';
 import { formatRelativeTime } from '@/utils/timeFormat';
 import { useAuthStore } from '@/stores/auth';
 import { useFavoritesStore } from '@/stores/favorites';
-import { createOrGetConversation } from '@/api/conversation';
+import { createOrGetConversation } from '@/api/conversationAPI';
 import { getPublicUserProfile } from '@/api/profileAPI';
 import { followUser, unfollowUser } from '@/api/followAPI';
 

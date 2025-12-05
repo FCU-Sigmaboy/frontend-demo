@@ -4,7 +4,7 @@ import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionStore } from '@/stores/transaction';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems } from '@/api/conversation';
+import { getConversationItems } from '@/api/conversationAPI';
 import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
 import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
 

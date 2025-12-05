@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { uploadItemImages } from '@/api/image';
+import { uploadItemImages } from '@/api/imageAPI';
 
 // ===================================================================
 // ### 物品 API (Items API) - 整合版

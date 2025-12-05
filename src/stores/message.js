@@ -9,7 +9,7 @@ import {
   subscribeToAllMessages,
   subscribeToMessageUpdates,
   createConversationTypingChannel
-} from '@/api/conversation'
+} from '@/api/conversationAPI'
 
 export const useMessageStore = defineStore('message', () => {
   // ===== 狀態 =====

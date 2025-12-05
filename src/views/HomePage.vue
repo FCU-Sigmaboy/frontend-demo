@@ -144,7 +144,7 @@ import ProductCard from '../components/ProductCard.vue';
 import { supabase } from '@/lib/supabase';
 import { searchItems } from '@/api/itemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
-import { createOrGetConversation } from '@/api/conversation.js';
+import { createOrGetConversation } from '@/api/conversationAPI.js';
 import { useAuthStore } from '@/stores/auth';
 import { getMyLocations } from '@/api/locationAPI';
 
