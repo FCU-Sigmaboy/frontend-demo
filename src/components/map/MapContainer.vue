@@ -280,74 +280,15 @@ function groupItemsByLocation(items, zoom) {
   return groups
 }
 
-// Simple hash function to generate deterministic pseudo-random number from string
-function hashCode(str) {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32bit integer
-  }
-  return Math.abs(hash)
-}
-
-// Generate deterministic pseudo-random number between 0 and 1 based on seed
-function seededRandom(seed) {
-  const x = Math.sin(seed) * 10000
-  return x - Math.floor(x)
-}
-
-// Create markers with random jitter for items at the same location
+// Create markers - always keep items grouped (no jitter)
 function createJitteredMarkers(group, zoom) {
-  const itemCount = group.items.length
-
-  // If only 1 item, no jitter needed
-  if (itemCount === 1) {
-    return [{
-      latitude: group.latitude,
-      longitude: group.longitude,
-      items: group.items
-    }]
-  }
-
-  // Determine if we should show as cluster or jitter based on zoom level
-  // At lower zoom levels (< 15), show clusters for groups with many items
-  // At higher zoom levels (>= 15), use jitter to spread them out
-  const shouldCluster = zoom < 15 && itemCount > 3
-
-  if (shouldCluster) {
-    // Keep as single cluster marker with count
-    return [{
-      latitude: group.latitude,
-      longitude: group.longitude,
-      items: group.items
-    }]
-  }
-
-  // For multiple items at high zoom or small groups, add deterministic jitter
-  const jitteredPositions = []
-  // Adjust jitter radius based on zoom level
-  const baseRadius = zoom >= 15 ? 0.0001 : 0.0002 // ~10m or ~20m
-
-  group.items.forEach((item) => {
-    // Use item_id to generate deterministic random values
-    const seed = hashCode(String(item.item_id || item.id))
-
-    // Generate deterministic angle and distance based on item_id
-    const angle = seededRandom(seed) * 2 * Math.PI
-    const distance = seededRandom(seed + 1) * baseRadius
-
-    const offsetLat = Math.cos(angle) * distance
-    const offsetLng = Math.sin(angle) * distance
-
-    jitteredPositions.push({
-      latitude: group.latitude + offsetLat,
-      longitude: group.longitude + offsetLng,
-      items: [item] // Single item per marker
-    })
-  })
-
-  return jitteredPositions
+  // Always keep as single cluster marker, regardless of zoom level
+  // This ensures items at the same location stay grouped
+  return [{
+    latitude: group.latitude,
+    longitude: group.longitude,
+    items: group.items
+  }]
 }
 
 // Render item markers
