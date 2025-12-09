@@ -136,7 +136,8 @@
               <div class="stat-card">
                 <i class="bi bi-star stat-icon"></i>
                 <div class="stat-info">
-                  <span class="stat-value">{{ averageRating.toFixed(1) }}</span>
+                  <span v-if="reviews.length > 0" class="stat-value">{{ averageRating.toFixed(1) }}</span>
+                  <span v-else class="stat-value">無評分</span>
                   <span class="stat-name">平均評分</span>
                 </div>
               </div>
