@@ -50,7 +50,7 @@
           </div>
 
           <div class="transaction-amount" :class="{ positive: transaction.amount > 0, negative: transaction.amount < 0 }">
-            {{ transaction.amount > 0 ? '+' : '' }}{{ transaction.amount }}P
+            {{ Intl.NumberFormat('zh-TW', { signDisplay: 'always' }).format(transaction.amount) }}P
           </div>
 
           <i class="bi bi-chevron-right transaction-arrow"></i>
@@ -80,7 +80,7 @@
           <h4 class="modal-transaction-title">{{ selectedTransaction.description }}</h4>
 
           <div class="modal-transaction-amount" :class="{ positive: selectedTransaction.amount > 0, negative: selectedTransaction.amount < 0 }">
-            {{ selectedTransaction.amount > 0 ? '+' : '' }}{{ selectedTransaction.amount }}P
+            {{ Intl.NumberFormat('zh-TW', { signDisplay: 'always' }).format(selectedTransaction.amount) }}P
           </div>
 
           <div class="modal-transaction-details">
@@ -91,14 +91,6 @@
             <div class="detail-item">
               <span class="detail-label">交易時間</span>
               <span class="detail-value">{{ formatDateTime(selectedTransaction.created_at) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">交易前餘額</span>
-              <span class="detail-value">{{ selectedTransaction.balance_before }}P</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">交易後餘額</span>
-              <span class="detail-value">{{ selectedTransaction.balance_after }}P</span>
             </div>
             <div v-if="selectedTransaction.reference_type" class="detail-item">
               <span class="detail-label">關聯項目</span>
