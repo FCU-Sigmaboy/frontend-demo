@@ -99,6 +99,18 @@ export const usePointsStore = defineStore('points', () => {
     return lastSigninDate.value === today;
   });
 
+  const isStreakBroken = computed(() => {
+    // Streak is broken if user has never signed in or streak is 1 and hasn't signed in today
+    if (!lastSigninDate.value || dailyStreak.value === 0) {
+      return true;
+    }
+    // If streak is 1 and user hasn't signed in today, it means the streak was broken
+    if (dailyStreak.value === 1 && !hasSignedInToday.value) {
+      return true;
+    }
+    return false;
+  });
+
   const earnedBadgesCount = computed(() => badges.value.length);
   const inProgressBadgesCount = computed(() => badgeProgress.value.length);
 
@@ -464,6 +476,7 @@ export const usePointsStore = defineStore('points', () => {
     nextTrustTier,
     salesPointsToNextTrust,
     hasSignedInToday,
+    isStreakBroken,
     earnedBadgesCount,
     inProgressBadgesCount,
     transactionsHasMore,

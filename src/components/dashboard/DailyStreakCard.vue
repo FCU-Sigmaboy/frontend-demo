@@ -10,14 +10,17 @@
 
       <!-- Streak Display -->
       <div class="streak-display">
-        <div class="streak-icon">
+        <div class="streak-icon" :class="{ 'streak-broken': isStreakBroken }">
           🔥
         </div>
         <div class="streak-count">
-          <span class="count-value">{{ streakDays }}</span>
-          <span class="count-unit">天</span>
+          <span class="count-value" :class="{ 'text-danger': isStreakBroken }">{{ streakDays }}</span>
+          <span class="count-unit" :class="{ 'text-danger': isStreakBroken }">天</span>
         </div>
-        <p class="streak-label">連續簽到</p>
+        <p class="streak-label">
+          <span v-if="isStreakBroken" class="streak-status-broken">連續簽到中斷</span>
+          <span v-else>連續簽到</span>
+        </p>
       </div>
 
       <!-- Next Milestone -->
@@ -62,6 +65,10 @@ const props = defineProps({
     default: 0
   },
   hasSignedInToday: {
+    type: Boolean,
+    default: false
+  },
+  isStreakBroken: {
     type: Boolean,
     default: false
   }
@@ -177,6 +184,12 @@ async function handleSignIn() {
   animation: flameFlicker 1.5s ease-in-out infinite;
 }
 
+.streak-icon.streak-broken {
+  opacity: 0.5;
+  animation: none;
+  filter: grayscale(1);
+}
+
 @keyframes flameFlicker {
   0%, 100% {
     transform: scale(1);
@@ -204,6 +217,11 @@ async function handleSignIn() {
   line-height: 1;
 }
 
+.count-value.text-danger {
+  color: #d32f2f;
+  opacity: 0.7;
+}
+
 .count-unit {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 20px;
@@ -211,11 +229,21 @@ async function handleSignIn() {
   color: #ff6b6b;
 }
 
+.count-unit.text-danger {
+  color: #d32f2f;
+  opacity: 0.7;
+}
+
 .streak-label {
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 14px;
   color: #555;
   margin: 0;
+}
+
+.streak-status-broken {
+  font-weight: 600;
+  color: #d32f2f;
 }
 
 // Milestone Section

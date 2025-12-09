@@ -31,6 +31,7 @@
               <DailyStreakCard
                 :streak-days="pointsStore.dailyStreak"
                 :has-signed-in-today="pointsStore.hasSignedInToday"
+                :is-streak-broken="pointsStore.isStreakBroken"
                 @sign-in="handleSignIn"
               />
             </div>
