@@ -92,10 +92,14 @@
               <span class="detail-label">交易時間</span>
               <span class="detail-value">{{ formatDateTime(selectedTransaction.created_at) }}</span>
             </div>
-            <div v-if="selectedTransaction.reference_type" class="detail-item">
-              <span class="detail-label">關聯項目</span>
-              <span class="detail-value">{{ selectedTransaction.reference_type }}</span>
-            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="modal-action" v-if="selectedTransaction.transaction_id">
+            <button class="btn-view-transaction" @click="navigateToTransaction">
+              <i class="bi bi-arrow-right-circle"></i>
+              查看交易詳情
+            </button>
           </div>
         </div>
       </div>
@@ -105,7 +109,10 @@
 
 <script setup>
 import { ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { TRANSACTION_TYPES } from '@/api/pointsAPI';
+
+const router = useRouter();
 
 const props = defineProps({
   transactions: {
@@ -172,6 +179,21 @@ function handleLoadMore() {
 
 function selectTransaction(transaction) {
   selectedTransaction.value = transaction;
+}
+
+function navigateToTransaction() {
+  if (!selectedTransaction.value?.transaction_id) return;
+  
+  const transactionId = selectedTransaction.value.transaction_id;
+  
+  // Close modal
+  selectedTransaction.value = null;
+  
+  // Navigate to MyTransactionsPage with transaction ID
+  router.push({
+    name: 'TransactionRecords',
+    query: { transactionId }
+  });
 }
 
 function getTransactionIcon(type) {
@@ -570,6 +592,44 @@ function formatDateTime(dateString) {
   font-size: 14px;
   font-weight: 600;
   color: #1e1e1e;
+}
+
+.modal-action {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn-view-transaction {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: $primary;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  i {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: #5fa795;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 // Responsive Design

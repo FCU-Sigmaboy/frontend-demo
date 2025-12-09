@@ -97,8 +97,6 @@ function normalizePointLog(log, { page, index }) {
     type: log.type,
     amount: log.amount,
     description: log.description,
-    reference_type: log.reference_type || null,
-    reference_id: log.reference_id || log.transaction_id || null,
     created_at: log.created_at,
     transaction_id: log.transaction_id || null
   };
