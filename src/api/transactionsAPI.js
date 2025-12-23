@@ -43,7 +43,7 @@ export async function respondToOffer(offerId, action, counterAmount = null) {
 
   const exampleResponse = {
     id: offerId,
-    status: action === 'counter' ? 'countered' : action + 'd',
+    status: action === 'counter' ? 'countered' : action + 'ed',
     responded_at: new Date().toISOString(),
     counter_offer: action === 'counter' ? {
       id: `offer_${Date.now()}`,

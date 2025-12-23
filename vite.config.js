@@ -4,7 +4,9 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
+  // Prefer explicit env, otherwise derive repo folder from CI env or cwd
+  base: process.env.VITE_BASE_PATH
+    || (process.env.GITHUB_REPOSITORY ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` : `/${path.basename(process.cwd())}/`),
   plugins: [vue()],
   resolve: {
     alias: {

@@ -1,0 +1,232 @@
+name: 自動化測試
+
+on:
+  # 推送到主要分支時觸發
+  push:
+    branches: [ main, master, vibe ]
+  
+  # Pull Request 時觸發
+  pull_request:
+    branches: [ main, master, vibe ]
+  
+  # 手動觸發
+  workflow_dispatch:
+
+# 設定權限
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+# 並行控制 - 同一 PR 或分支只執行最新的工作流程
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 測試執行作業
+  test:
+    name: 執行測試套件
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 設置 Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          
+      - name: 安裝依賴
+        run: npm ci
+        
+      - name: 執行測試
+        run: npm run test
+        
+      - name: 上傳測試結果
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results.xml
+          retention-days: 7
+
+  # 覆蓋率分析作業
+  coverage:
+    name: 測試覆蓋率分析
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 設置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 安裝依賴
+        run: npm ci
+        
+      - name: 執行覆蓋率測試
+        run: npm run test:coverage:ci
+        
+      - name: 上傳覆蓋率報告到 Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          
+      - name: 上傳覆蓋率 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+          
+      - name: 覆蓋率報告註解
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: coverage/coverage-summary.txt
+
+  # 程式碼品質檢查
+  quality:
+    name: 程式碼品質檢查
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 設置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 安裝依賴
+        run: npm ci
+        
+      - name: 檢查測試檔案結構
+        run: npm run test -- --run tests/unit/helpers/test-structure.test.js
+        
+      - name: 驗證覆蓋率配置
+        run: npm run test -- --run tests/unit/coverage-validation.test.js
+
+  # 並行測試執行 - 按測試類型分組
+  parallel-tests:
+    name: 並行測試執行
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        test-group: 
+          - api
+          - components
+          - stores
+          - composables
+          - utils
+          
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 設置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 安裝依賴
+        run: npm ci
+        
+      - name: 執行 ${{ matrix.test-group }} 測試
+        run: npm run test -- --run tests/unit/${{ matrix.test-group }}/
+        
+      - name: 上傳測試結果
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-group }}
+          path: |
+            coverage/
+            test-results-${{ matrix.test-group }}.xml
+          retention-days: 7
+
+  # 測試結果彙總
+  test-summary:
+    name: 測試結果彙總
+    runs-on: ubuntu-latest
+    needs: [test, coverage, quality, parallel-tests]
+    if: always()
+    
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 下載所有測試結果
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts/
+          
+      - name: 生成測試摘要
+        run: |
+          echo "## 🧪 測試執行摘要" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 檢查測試狀態
+          if [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ **單元測試**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **單元測試**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.coverage.result }}" == "success" ]; then
+            echo "✅ **覆蓋率測試**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **覆蓋率測試**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.quality.result }}" == "success" ]; then
+            echo "✅ **程式碼品質**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **程式碼品質**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.parallel-tests.result }}" == "success" ]; then
+            echo "✅ **並行測試**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **並行測試**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 詳細報告請查看各個作業的輸出和上傳的 artifacts。" >> $GITHUB_STEP_SUMMARY
+          
+      - name: 設定 PR 狀態
+        if: github.event_name == 'pull_request'
+        run: |
+          # 檢查是否所有測試都通過
+          if [ "${{ needs.test.result }}" == "success" ] && \
+             [ "${{ needs.coverage.result }}" == "success" ] && \
+             [ "${{ needs.quality.result }}" == "success" ] && \
+             [ "${{ needs.parallel-tests.result }}" == "success" ]; then
+            echo "所有測試通過 ✅"
+            exit 0
+          else
+            echo "測試失敗，阻止 PR 合併 ❌"
+            exit 1
+          fi

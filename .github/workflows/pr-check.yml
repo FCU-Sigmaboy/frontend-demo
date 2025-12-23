@@ -1,0 +1,101 @@
+name: PR 檢查
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  statuses: write
+
+jobs:
+  # 必要檢查 - 這個作業必須通過才能合併 PR
+  required-checks:
+    name: 必要檢查
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 設置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 安裝依賴
+        run: npm ci
+        
+      - name: 執行快速測試
+        run: npm run test
+        
+      - name: 檢查基本覆蓋率
+        run: npm run test:coverage:ci
+        
+      - name: 驗證測試結構
+        run: npm run test -- --run tests/unit/helpers/test-structure.test.js
+        
+      - name: 設定 PR 狀態
+        if: success()
+        run: |
+          echo "✅ 所有必要檢查通過"
+          echo "PR 可以進行合併"
+          
+      - name: 失敗處理
+        if: failure()
+        run: |
+          echo "❌ 必要檢查失敗"
+          echo "請修復測試問題後再次提交"
+          exit 1
+
+  # 品質檢查 - 提供額外的品質資訊但不阻止合併
+  quality-checks:
+    name: 品質檢查
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+        
+      - name: 設置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 安裝依賴
+        run: npm ci
+        
+      - name: 執行完整覆蓋率分析
+        run: npm run test:coverage:ci
+        
+      - name: 生成品質報告
+        run: |
+          echo "## 📊 品質檢查報告" >> quality-report.md
+          echo "" >> quality-report.md
+          echo "此檢查提供額外的品質資訊，不會阻止 PR 合併。" >> quality-report.md
+          echo "" >> quality-report.md
+          
+          # 檢查是否有覆蓋率報告
+          if [ -f "coverage/coverage-summary.txt" ]; then
+            cat coverage/coverage-summary.txt >> quality-report.md
+          else
+            echo "⚠️ 無法生成覆蓋率摘要" >> quality-report.md
+          fi
+          
+      - name: 上傳品質報告
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-report
+          path: quality-report.md
+          retention-days: 7
+          
+      - name: 品質報告註解
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: quality-check
+          path: quality-report.md

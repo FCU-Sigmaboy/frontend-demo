@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試覆蓋率報告</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .metric { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metric-value { font-size: 2em; font-weight: bold; color: #007bff; }
+        .metric-label { color: #6c757d; font-size: 0.9em; }
+        .priority-section { margin-bottom: 30px; }
+        .priority-title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
+        .file-list { background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .file-item { padding: 8px 0; border-bottom: 1px solid #dee2e6; }
+        .coverage-bar { height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; }
+        .coverage-fill { height: 100%; transition: width 0.3s ease; }
+        .high { background: #28a745; }
+        .medium { background: #ffc107; }
+        .low { background: #dc3545; }
+        .timestamp { color: #6c757d; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 測試覆蓋率報告</h1>
+        <p class="timestamp">生成時間: 2025/12/11 下午9:30:59</p>
+    </div>
+    
+    <div class="summary">
+        <div class="metric">
+            <div class="metric-value">0.0%</div>
+            <div class="metric-label">行覆蓋率</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0.0%</div>
+            <div class="metric-label">函數覆蓋率</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0.0%</div>
+            <div class="metric-label">分支覆蓋率</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0.0%</div>
+            <div class="metric-label">語句覆蓋率</div>
+        </div>
+    </div>
+    
+    
+        <div class="priority-section">
+            <div class="priority-title">❌ 最高優先級 - API 層</div>
+            <div class="file-list">
+                <p>目標閾值: 90% | 平均覆蓋率: 0.0% | 檔案數量: 0</p>
+                <div class="coverage-bar">
+                    <div class="coverage-fill low" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="priority-section">
+            <div class="priority-title">❌ 高優先級 - Store 狀態管理</div>
+            <div class="file-list">
+                <p>目標閾值: 85% | 平均覆蓋率: 0.0% | 檔案數量: 0</p>
+                <div class="coverage-bar">
+                    <div class="coverage-fill low" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="priority-section">
+            <div class="priority-title">❌ 高優先級 - 核心 Composables</div>
+            <div class="file-list">
+                <p>目標閾值: 85% | 平均覆蓋率: 0.0% | 檔案數量: 0</p>
+                <div class="coverage-bar">
+                    <div class="coverage-fill low" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="priority-section">
+            <div class="priority-title">❌ 中優先級 - 工具函數</div>
+            <div class="file-list">
+                <p>目標閾值: 100% | 平均覆蓋率: 0.0% | 檔案數量: 0</p>
+                <div class="coverage-bar">
+                    <div class="coverage-fill low" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="priority-section">
+            <div class="priority-title">❌ 中優先級 - 業務邏輯組件</div>
+            <div class="file-list">
+                <p>目標閾值: 80% | 平均覆蓋率: 0.0% | 檔案數量: 0</p>
+                <div class="coverage-bar">
+                    <div class="coverage-fill low" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    
+    <div class="priority-section">
+        <div class="priority-title">📁 檔案覆蓋率詳情</div>
+        <div class="file-list">
+            <p>無覆蓋率資料</p>
+        </div>
+    </div>
+</body>
+</html>

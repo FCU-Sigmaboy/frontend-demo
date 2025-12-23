@@ -50,6 +50,14 @@ export function usePointsProfile() {
   }
 }
 
+// Export function to reset state for testing
+export function resetPointsProfileState() {
+  profileState.value = null
+  isLoadingState.value = false
+  errorState.value = null
+  lastFetchedAt.value = null
+}
+
 
 
 
