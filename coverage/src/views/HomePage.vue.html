@@ -1195,28 +1195,7 @@
 <a name='L1130'></a><a href='#L1130'>1130</a>
 <a name='L1131'></a><a href='#L1131'>1131</a>
 <a name='L1132'></a><a href='#L1132'>1132</a>
-<a name='L1133'></a><a href='#L1133'>1133</a>
-<a name='L1134'></a><a href='#L1134'>1134</a>
-<a name='L1135'></a><a href='#L1135'>1135</a>
-<a name='L1136'></a><a href='#L1136'>1136</a>
-<a name='L1137'></a><a href='#L1137'>1137</a>
-<a name='L1138'></a><a href='#L1138'>1138</a>
-<a name='L1139'></a><a href='#L1139'>1139</a>
-<a name='L1140'></a><a href='#L1140'>1140</a>
-<a name='L1141'></a><a href='#L1141'>1141</a>
-<a name='L1142'></a><a href='#L1142'>1142</a>
-<a name='L1143'></a><a href='#L1143'>1143</a>
-<a name='L1144'></a><a href='#L1144'>1144</a>
-<a name='L1145'></a><a href='#L1145'>1145</a>
-<a name='L1146'></a><a href='#L1146'>1146</a>
-<a name='L1147'></a><a href='#L1147'>1147</a>
-<a name='L1148'></a><a href='#L1148'>1148</a>
-<a name='L1149'></a><a href='#L1149'>1149</a>
-<a name='L1150'></a><a href='#L1150'>1150</a>
-<a name='L1151'></a><a href='#L1151'>1151</a>
-<a name='L1152'></a><a href='#L1152'>1152</a>
-<a name='L1153'></a><a href='#L1153'>1153</a>
-<a name='L1154'></a><a href='#L1154'>1154</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L1133'></a><a href='#L1133'>1133</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1787,27 +1766,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -2513,11 +2471,11 @@ import FilterTabs from '../components/FilterTabs.vue';
 import ProductCard from '../components/ProductCard.vue';
 &nbsp;
 import { supabase } from '@/lib/supabase';
-import { searchItems } from '@/api/itemsAPI';
+import { searchItems } from '@/api/get_searchItemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
-import { createOrGetConversation } from '@/api/conversationAPI.js';
+import { createOrGetConversation } from '@/api/conversation.js';
 import { useAuthStore } from '@/stores/auth';
-import { getMyLocations } from '@/api/locationAPI';
+import { getMyLocations } from '@/api/get_userLocationAPI';
 &nbsp;
 const router =<span class="cstat-no" title="statement not covered" > useRouter();</span>
 const authStore =<span class="cstat-no" title="statement not covered" > useAuthStore();</span>
@@ -3290,55 +3248,27 @@ const loadMore = <span class="cstat-no" title="statement not covered" ><span cla
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid #d9d9d9;
+  background: white;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9998;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 &nbsp;
   i {
-    font-size: 24px;
+    font-size: 20px;
     color: #1e1e1e;
-    text-shadow: 0 0 1px rgba(0, 0, 0, 0.45);
   }
 &nbsp;
   &amp;:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 28px rgba(66, 128, 112, 0.28);
-    animation: gentle-shake 0.55s ease-in-out;
+    transform: translateY(-5px);
   }
 &nbsp;
   &amp;:active {
     transform: scale(0.95);
-  }
-&nbsp;
-  &amp;:focus-visible {
-    outline: 3px solid rgba(111, 184, 165, 0.3);
-    outline-offset: 3px;
-  }
-}
-&nbsp;
-@keyframes gentle-shake {
-  0% { transform: translateY(-3px) rotate(0deg); }
-  25% { transform: translateY(-5px) rotate(-2deg); }
-  50% { transform: translateY(-4px) rotate(2deg); }
-  75% { transform: translateY(-5px) rotate(-1deg); }
-  100% { transform: translateY(-3px) rotate(0deg); }
-}
-&nbsp;
-@media (prefers-reduced-motion: reduce) {
-  .scroll-top-btn {
-    transition: none;
-  }
-&nbsp;
-  .scroll-top-btn:hover {
-    animation: none;
-    transform: translateY(-3px);
   }
 }
 &nbsp;
@@ -3516,9 +3446,16 @@ const loadMore = <span class="cstat-no" title="statement not covered" ><span cla
     gap: 12px;
   }
 &nbsp;
-  // Scroll to Top Button - Mobile: hidden to leave space for chat CTA
+  // Scroll to Top Button - Mobile: center bottom
   .scroll-top-btn {
-    display: none;
+    bottom: 24px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+&nbsp;
+    &amp;:active {
+      transform: translateX(-50%) scale(0.95);
+    }
   }
 }
 &lt;/style&gt;
@@ -3529,7 +3466,7 @@ const loadMore = <span class="cstat-no" title="statement not covered" ><span cla
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T13:28:40.236Z
+                at 2025-12-30T13:33:52.583Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
