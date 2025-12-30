@@ -164,7 +164,8 @@ describe('save_locationAPI', () => {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis()
       };
-      mockQuery.eq.mockResolvedValueOnce({ error: null });
+      // 第一次 eq() 返回 this，第二次 eq() 返回結果
+      mockQuery.eq.mockReturnValueOnce(mockQuery).mockResolvedValueOnce({ error: null });
 
       supabase.auth.getUser.mockResolvedValueOnce({
         data: { user: mockUser },
@@ -201,7 +202,7 @@ describe('save_locationAPI', () => {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis()
       };
-      mockQuery.eq.mockResolvedValueOnce({ error: { message: errorMessage } });
+      mockQuery.eq.mockReturnValueOnce(mockQuery).mockResolvedValueOnce({ error: { message: errorMessage } });
 
       supabase.auth.getUser.mockResolvedValueOnce({
         data: { user: mockUser },
@@ -225,7 +226,7 @@ describe('save_locationAPI', () => {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis()
       };
-      mockQuery.eq.mockResolvedValueOnce({ error: null });
+      mockQuery.eq.mockReturnValueOnce(mockQuery).mockResolvedValueOnce({ error: null });
 
       supabase.auth.getUser.mockResolvedValueOnce({
         data: { user: mockUser },
@@ -262,7 +263,7 @@ describe('save_locationAPI', () => {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis()
       };
-      mockQuery.eq.mockResolvedValueOnce({ error: { message: errorMessage } });
+      mockQuery.eq.mockReturnValueOnce(mockQuery).mockResolvedValueOnce({ error: { message: errorMessage } });
 
       supabase.auth.getUser.mockResolvedValueOnce({
         data: { user: mockUser },

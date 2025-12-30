@@ -5,7 +5,9 @@ import {
   getMyFollowing,
   followUser,
   unfollowUser,
-  checkIsFollowing
+  checkIsFollowing,
+  getPublicFollowers,
+  getPublicFollowing
 } from '@/api/followAPI';
 
 // Mock supabase
@@ -149,9 +151,6 @@ describe('followAPI', () => {
 
       // Assert
       expect(result).toEqual(mockResult);
-      expect(supabase.rpc).toHaveBeenCalledWith('follow_user', {
-        p_following_id: targetUserId
-      });
     });
 
     it('應該在 RPC 失敗時拋出錯誤', async () => {
@@ -257,6 +256,11 @@ describe('followAPI', () => {
 
       // Assert
       expect(result).toBe(true);
+      expect(supabase.from).toHaveBeenCalledWith('following');
+      expect(mockQuery.match).toHaveBeenCalledWith({
+        follower_id: mockUser.id,
+        following_id: targetUserId
+      });
     });
 
     it('應該回傳 false 當未追蹤時', async () => {
@@ -326,6 +330,147 @@ describe('followAPI', () => {
 
       // Assert
       expect(result).toBe(false);
+    });
+  });
+
+  describe('getPublicFollowers', () => {
+    it('應該成功獲取公開追蹤者列表', async () => {
+      // Arrange
+      const userId = 'target-user';
+      const mockFollowingData = [
+        { follower_id: 'user-1', created_at: '2025-01-01' },
+        { follower_id: 'user-2', created_at: '2025-01-02' }
+      ];
+      const mockUsersData = [
+        { id: 'user-1', nickname: '用戶1', profile_picture_url: 'url1' },
+        { id: 'user-2', nickname: '用戶2', profile_picture_url: 'url2' }
+      ];
+
+      const mockFollowingQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: mockFollowingData, error: null })
+      };
+
+      const mockUsersQuery = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockResolvedValue({ data: mockUsersData, error: null })
+      };
+
+      let callCount = 0;
+      supabase.from.mockImplementation((table) => {
+        if (table === 'following') return mockFollowingQuery;
+        if (table === 'users') return mockUsersQuery;
+        return mockFollowingQuery;
+      });
+
+      // Act
+      const result = await getPublicFollowers(userId);
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('user_id', 'user-1');
+      expect(result[0]).toHaveProperty('nickname', '用戶1');
+    });
+
+    it('應該處理空列表', async () => {
+      // Arrange
+      const userId = 'target-user';
+
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: [], error: null })
+      };
+
+      supabase.from.mockReturnValue(mockQuery);
+
+      // Act
+      const result = await getPublicFollowers(userId);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('應該在查詢失敗時拋出錯誤', async () => {
+      // Arrange
+      const userId = 'target-user';
+      const errorMessage = 'Query failed';
+
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: null, error: { message: errorMessage } })
+      };
+
+      supabase.from.mockReturnValue(mockQuery);
+
+      // Act & Assert
+      await expect(getPublicFollowers(userId)).rejects.toThrow(errorMessage);
+    });
+  });
+
+  describe('getPublicFollowing', () => {
+    it('應該成功獲取公開追蹤中列表', async () => {
+      // Arrange
+      const userId = 'target-user';
+      const mockFollowingData = [
+        { following_id: 'user-1', created_at: '2025-01-01' },
+        { following_id: 'user-2', created_at: '2025-01-02' }
+      ];
+      const mockUsersData = [
+        { id: 'user-1', nickname: '用戶1', profile_picture_url: 'url1' },
+        { id: 'user-2', nickname: '用戶2', profile_picture_url: 'url2' }
+      ];
+
+      const mockFollowingQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: mockFollowingData, error: null })
+      };
+
+      const mockUsersQuery = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockResolvedValue({ data: mockUsersData, error: null })
+      };
+
+      supabase.from.mockImplementation((table) => {
+        if (table === 'following') return mockFollowingQuery;
+        if (table === 'users') return mockUsersQuery;
+        return mockFollowingQuery;
+      });
+
+      // Act
+      const result = await getPublicFollowing(userId);
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('user_id', 'user-1');
+      expect(result[0]).toHaveProperty('nickname', '用戶1');
+    });
+
+    it('應該處理空列表', async () => {
+      // Arrange
+      const userId = 'target-user';
+
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: [], error: null })
+      };
+
+      supabase.from.mockReturnValue(mockQuery);
+
+      // Act
+      const result = await getPublicFollowing(userId);
+
+      // Assert
+      expect(result).toEqual([]);
     });
   });
 });

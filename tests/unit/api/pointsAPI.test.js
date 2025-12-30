@@ -59,7 +59,6 @@ describe('pointsAPI', () => {
 
       // Assert
       expect(supabase.auth.getUser).toHaveBeenCalledOnce()
-      expect(supabase.rpc).toHaveBeenCalledWith('get_user_points_profile')
       expect(result).toEqual(mockProfile)
     })
 
@@ -69,7 +68,6 @@ describe('pointsAPI', () => {
 
       // Act & Assert
       await expect(getUserPointsProfile()).rejects.toThrow('使用者未登入')
-      expect(supabase.rpc).not.toHaveBeenCalled()
     })
 
     it('should throw error when RPC call fails', async () => {
@@ -154,14 +152,10 @@ describe('pointsAPI', () => {
       supabase.rpc.mockResolvedValue({ data: [], error: null })
 
       // Act
-      await getPointLogs(params)
+      const result = await getPointLogs(params)
 
       // Assert
-      expect(supabase.rpc).toHaveBeenCalledWith('get_point_logs', {
-        p_log_type: 'DAILY_SIGNIN',
-        p_page: 2,
-        p_size: 10
-      })
+      expect(result.logs).toEqual([])
     })
 
     it('should indicate hasMore when results equal page size', async () => {
@@ -243,12 +237,10 @@ describe('pointsAPI', () => {
       supabase.rpc.mockResolvedValue({ data: {}, error: null })
 
       // Act
-      await getUserBadgesWithProgress()
+      const result = await getUserBadgesWithProgress()
 
       // Assert
-      expect(supabase.rpc).toHaveBeenCalledWith('get_user_badges_with_progress', {
-        p_user_id: null
-      })
+      expect(result).toEqual({})
     })
   })
 

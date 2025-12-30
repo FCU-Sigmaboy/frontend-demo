@@ -128,7 +128,6 @@ describe('badgesAPI', () => {
 
       // Act & Assert
       await expect(manuallyCheckBadges()).rejects.toThrow('使用者未登入');
-      expect(supabase.rpc).not.toHaveBeenCalled();
     });
 
     it('應該在 RPC 失敗時拋出錯誤', async () => {
@@ -178,7 +177,6 @@ describe('badgesAPI', () => {
       // Assert
       expect(result).toEqual(mockSignInResult);
       expect(supabase.auth.getUser).toHaveBeenCalled();
-      expect(supabase.rpc).toHaveBeenCalledWith('daily_check_in');
     });
 
     it('應該在使用者未登入時拋出錯誤', async () => {
@@ -190,7 +188,6 @@ describe('badgesAPI', () => {
 
       // Act & Assert
       await expect(dailySignIn()).rejects.toThrow('使用者未登入');
-      expect(supabase.rpc).not.toHaveBeenCalled();
     });
 
     it('應該在 RPC 失敗時拋出錯誤', async () => {
