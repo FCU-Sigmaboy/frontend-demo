@@ -626,4 +626,219 @@ describe('conversation API', () => {
       expect(channel).toBeDefined();
     });
   });
+
+  describe('錯誤處理邊界情況', () => {
+    it('getConversations 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'RPC connection failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(getConversations()).rejects.toThrow(errorMessage);
+    });
+
+    it('getMessages 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Messages query failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(getMessages(456)).rejects.toThrow(errorMessage);
+    });
+
+    it('markAsRead 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Mark read failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(markAsRead(456)).rejects.toThrow(errorMessage);
+    });
+
+    it('getConversationItems 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Get items failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(getConversationItems(456)).rejects.toThrow(errorMessage);
+    });
+
+    it('archiveConversation 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Archive failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(archiveConversation(456)).rejects.toThrow(errorMessage);
+    });
+
+    it('deleteMessage 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Delete message failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(deleteMessage(789)).rejects.toThrow(errorMessage);
+    });
+
+    it('restoreMessage 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Restore message failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(restoreMessage(789)).rejects.toThrow(errorMessage);
+    });
+  });
+
+  describe('進階場景', () => {
+    it('sendMessage 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const errorMessage = 'Send message failed';
+      supabase.rpc.mockResolvedValueOnce({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      // Act & Assert
+      await expect(sendMessage(789, 'Hello')).rejects.toThrow(errorMessage);
+    });
+
+    it('getTotalUnreadCount 應該計算所有未讀訊息', async () => {
+      // Arrange
+      const mockConversations = [
+        { conversation_id: 1, unread_count: 2 },
+        { conversation_id: 2, unread_count: 3 },
+        { conversation_id: 3, unread_count: 1 },
+        { conversation_id: 4, unread_count: 0 }
+      ];
+
+      supabase.rpc.mockResolvedValueOnce({
+        data: mockConversations,
+        error: null
+      });
+
+      // Act
+      const result = await getTotalUnreadCount();
+
+      // Assert
+      expect(result).toBe(6);
+    });
+
+    it('subscribeToMessages 應該使用預設表名', () => {
+      // Arrange
+      const conversationId = 456;
+      const callback = vi.fn();
+
+      // Act
+      const channel = subscribeToMessages(conversationId, callback);
+
+      // Assert
+      expect(channel.on).toHaveBeenCalledWith(
+        'postgres_changes',
+        expect.objectContaining({
+          table: 'conversation_messages_v2'
+        }),
+        expect.any(Function)
+      );
+    });
+
+    it('subscribeToMessageUpdates 應該在 RPC 失敗時拋出錯誤', async () => {
+      // Arrange
+      const onUpdate = vi.fn();
+      const mockChannel = {
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn()
+      };
+      supabase.channel.mockReturnValueOnce(mockChannel);
+
+      // Act
+      const channel = subscribeToMessageUpdates(onUpdate);
+
+      // Assert
+      expect(mockChannel.on).toHaveBeenCalled();
+      expect(mockChannel.subscribe).toHaveBeenCalled();
+    });
+
+    it('subscribeToAllMessages 應該支援自訂表名', () => {
+      // Arrange
+      const callback = vi.fn();
+      const customTable = 'old_messages';
+
+      // Act
+      const channel = subscribeToAllMessages(callback, customTable);
+
+      // Assert
+      expect(channel.on).toHaveBeenCalledWith(
+        'postgres_changes',
+        expect.objectContaining({
+          table: customTable
+        }),
+        expect.any(Function)
+      );
+    });
+
+    it('subscribeToUserPresence 應該處理 sync 事件', () => {
+      // Arrange
+      const onPresenceUpdate = vi.fn();
+      const mockChannel = {
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn(),
+        presenceState: vi.fn(() => ({ 'user-123': [{ online_at: '2024-01-15T10:30:00Z' }] }))
+      };
+      supabase.channel.mockReturnValueOnce(mockChannel);
+
+      // Act
+      const channel = subscribeToUserPresence(onPresenceUpdate);
+
+      // Assert
+      expect(mockChannel.on).toHaveBeenCalledWith(
+        'presence',
+        expect.objectContaining({ event: 'sync' }),
+        expect.any(Function)
+      );
+    });
+
+    it('createConversationTypingChannel 應該設定廣播配置', () => {
+      // Arrange
+      const conversationId = 456;
+      const presenceKey = 'user-123';
+
+      // Act
+      const channel = createConversationTypingChannel(conversationId, presenceKey);
+
+      // Assert
+      expect(supabase.channel).toHaveBeenCalledWith(
+        `conversation-typing-${conversationId}`,
+        expect.objectContaining({
+          config: expect.objectContaining({
+            broadcast: { self: true },
+            presence: { key: presenceKey }
+          })
+        })
+      );
+    });
+  });
 });

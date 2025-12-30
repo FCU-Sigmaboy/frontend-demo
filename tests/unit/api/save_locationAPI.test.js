@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
 import {
   saveUserLocation,
+  saveCurrentLocation,
   setPrimaryLocation,
   deleteUserLocation
 } from '@/api/save_locationAPI';
@@ -274,6 +275,171 @@ describe('save_locationAPI', () => {
 
       // Act & Assert
       await expect(deleteUserLocation(123)).rejects.toThrow('Failed to delete location');
+    });
+  });
+
+  describe('saveCurrentLocation', () => {
+    it('應該推進覽器定位並保存位置', async () => {
+      // Arrange
+      const mockPosition = {
+        coords: {
+          latitude: 24.1817,
+          longitude: 120.7344
+        }
+      };
+      const mockLocationData = {
+        id: 1,
+        latitude: 24.1817,
+        longitude: 120.7344,
+        type: '家'
+      };
+
+      // Mock navigator.geolocation
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success) => {
+            success(mockPosition);
+          })
+        }
+      };
+
+      supabase.functions.invoke.mockResolvedValueOnce({
+        data: { success: true, data: mockLocationData },
+        error: null
+      });
+
+      // Act
+      const result = await saveCurrentLocation('家', false);
+
+      // Assert
+      expect(result).toEqual(mockLocationData);
+      expect(navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
+    });
+
+    it('應該支持作種推進為主要位置', async () => {
+      // Arrange
+      const mockPosition = {
+        coords: {
+          latitude: 25.03,
+          longitude: 121.56
+        }
+      };
+
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success) => {
+            success(mockPosition);
+          })
+        }
+      };
+
+      supabase.functions.invoke.mockResolvedValueOnce({
+        data: { success: true, data: {} },
+        error: null
+      });
+
+      // Act
+      await saveCurrentLocation('公司', true);
+
+      // Assert
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('save-location', {
+        body: expect.objectContaining({
+          latitude: 25.03,
+          longitude: 121.56,
+          type: '公司',
+          is_primary: true
+        })
+      });
+    });
+
+    it('應該處理地理定位不支援錯誤', async () => {
+      // Arrange
+      global.navigator = {};
+
+      // Act & Assert
+      await expect(saveCurrentLocation()).rejects.toThrow('您的瀏覽器不支援定位功能');
+    });
+
+    it('應該處理被拒絕的地理定位權限', async () => {
+      // Arrange
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success, error) => {
+            error({ code: 1 }); // PERMISSION_DENIED
+          })
+        }
+      };
+
+      // Act & Assert
+      await expect(saveCurrentLocation()).rejects.toThrow('使用者拒絕');
+    });
+
+    it('應該處理無法取得位置資訊錯誤', async () => {
+      // Arrange
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success, error) => {
+            error({ code: 2 }); // POSITION_UNAVAILABLE
+          })
+        }
+      };
+
+      // Act & Assert
+      await expect(saveCurrentLocation()).rejects.toThrow('無法取得位置');
+    });
+
+    it('應該處理逾時錯誤', async () => {
+      // Arrange
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success, error) => {
+            error({ code: 3 }); // TIMEOUT
+          })
+        }
+      };
+
+      // Act & Assert
+      await expect(saveCurrentLocation()).rejects.toThrow('逾時');
+    });
+
+    it('應該處理未知錯誤', async () => {
+      // Arrange
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success, error) => {
+            error({ code: 99 }); // Unknown error
+          })
+        }
+      };
+
+      // Act & Assert
+      await expect(saveCurrentLocation()).rejects.toThrow('未知');
+    });
+
+    it('應該處理保存失敗', async () => {
+      // Arrange
+      const mockPosition = {
+        coords: {
+          latitude: 24.1817,
+          longitude: 120.7344
+        }
+      };
+
+      global.navigator = {
+        geolocation: {
+          getCurrentPosition: vi.fn((success) => {
+            success(mockPosition);
+          })
+        }
+      };
+
+      supabase.functions.invoke.mockResolvedValueOnce({
+        data: { success: false, error: 'Save failed' },
+        error: null
+      });
+
+      // Act & Assert
+      await expect(saveCurrentLocation()).rejects.toThrow('Save failed');
     });
   });
 });
