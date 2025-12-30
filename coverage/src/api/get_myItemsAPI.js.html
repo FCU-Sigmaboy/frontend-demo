@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>15/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -154,33 +154,33 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -223,36 +223,36 @@
  * @param {string} [options.sort_direction='desc'] - 排序方向
  * @returns {Promise&lt;Array | null&gt;} - 回傳物品陣列, 未登入回傳 null
  */
-export async function <span class="fstat-no" title="function not covered" >getMyItems(</span>options = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
+export async function getMyItems(options = {}) {
 &nbsp;
     // 1. "前置作業": 獲取當前登入的使用者
-    const { data: { user }, error: authError } = <span class="cstat-no" title="statement not covered" >await supabase.auth.getUser();</span>
-<span class="cstat-no" title="statement not covered" >    if (authError || !user) {</span>
-<span class="cstat-no" title="statement not covered" >        console.warn('getMyItems: User not logged in.');</span>
-<span class="cstat-no" title="statement not covered" >        return null;</span>
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        console.warn('getMyItems: User not logged in.');
+        return null;
     }
 &nbsp;
     // 2. 準備 RPC 參數
-    const rpcParams = <span class="cstat-no" title="statement not covered" >{</span>
+    const rpcParams = {
         p_page: options.page || 1,
         p_size: options.size || 20,
         p_sort_by: options.sort_by || 'created_at',
         p_sort_direction: options.sort_direction || 'desc'
     };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    console.log('Calling get_my_items RPC with params:', rpcParams);</span>
+    console.log('Calling get_my_items RPC with params:', rpcParams);
 &nbsp;
     // 3. 呼叫 RPC 函式
-    const { data, error } = <span class="cstat-no" title="statement not covered" >await supabase.rpc('get_my_items', rpcParams);</span>
+    const { data, error } = await supabase.rpc('get_my_items', rpcParams);
 &nbsp;
     // 4. 錯誤處理
-<span class="cstat-no" title="statement not covered" >    if (error) {</span>
-<span class="cstat-no" title="statement not covered" >        console.error('Supabase 獲取 "我的物品" 失敗:', error);</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error(error.message);</span>
+    if (error) {
+        console.error('Supabase 獲取 "我的物品" 失敗:', error);
+        throw new Error(error.message);
     }
 &nbsp;
     // 5. data 就是您要的 JSON 陣列，直接回傳
-<span class="cstat-no" title="statement not covered" >    return data;</span>
+    return data;
 }
 &nbsp;
 /* ===== RPC 回傳範例 (Example Response) =====
@@ -286,7 +286,7 @@ export async function <span class="fstat-no" title="function not covered" >getMy
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-30T13:33:52.583Z
+                at 2025-12-30T13:58:02.794Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
