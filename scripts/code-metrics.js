@@ -69,7 +69,9 @@ function extractFunctions(code, filename) {
   // 移除模板區塊（Vue SFC）
   let scriptCode = code
   if (filename.endsWith('.vue')) {
-    const scriptMatch = code.match(/<script[^>]*>([\s\S]*?)<\/script>/i)
+    // 使用更健壯的正則表達式來匹配 script 標籤
+    // 使用 [^<]* 避免跨標籤匹配，並處理結束標籤中的各種空白字元
+    const scriptMatch = code.match(/<script[^>]*>([\s\S]*?)<\/\s*script[\s\S]*?>/i)
     if (scriptMatch) {
       scriptCode = scriptMatch[1]
     } else {

@@ -60,7 +60,9 @@ export default defineConfig({
       ],
       
       // 全域覆蓋率閾值 - 目前實際可達成的值
-      // 注意：系統要求為 90% branch coverage，但這需要更多測試開發
+      // 注意：課程系統要求為 90% branch coverage
+      // 目前專案覆蓋率為 19.6%，需要更多測試開發才能達到目標
+      // 這些閾值設定為目前可達成的最低值，以確保 CI 不會失敗
       thresholds: {
         global: {
           lines: 15,
