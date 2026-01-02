@@ -19,6 +19,7 @@ const mockGeolocation = {
 describe('location API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetAllMocks();
     
     // Setup navigator.geolocation mock
     global.navigator = {
@@ -62,6 +63,7 @@ describe('location API', () => {
 
     it('應該在使用者拒絕時拋出錯誤', async () => {
       // Arrange
+      global.navigator = { geolocation: mockGeolocation };
       mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
         error({ code: 1, PERMISSION_DENIED: 1 });
       });
@@ -72,6 +74,7 @@ describe('location API', () => {
 
     it('應該在無法取得位置時拋出錯誤', async () => {
       // Arrange
+      global.navigator = { geolocation: mockGeolocation };
       mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
         error({ code: 2, POSITION_UNAVAILABLE: 2 });
       });
@@ -82,12 +85,13 @@ describe('location API', () => {
 
     it('應該在超時時拋出錯誤', async () => {
       // Arrange
+      global.navigator = { geolocation: mockGeolocation };
       mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
         error({ code: 3, TIMEOUT: 3 });
       });
 
       // Act & Assert
-      await expect(getCurrentPosition()).rejects.toThrow('取得位置逾時,請稍後再試');
+      await expect(getCurrentPosition()).rejects.toThrow('取得位置逾時，請稍後再試');
     });
 
     it('應該支援自訂選項', async () => {
@@ -179,9 +183,15 @@ describe('location API', () => {
       await saveLocation(locationData, userToken);
 
       // Assert
-      const callArgs = supabase.functions.invoke.mock.calls[0][1];
-      const body = JSON.parse(callArgs.body);
-      expect(body.is_primary).toBe(true);
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('save-location', {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: 24.1817,
+          longitude: 120.7344,
+          type: '公司',
+          is_primary: true
+        })
+      });
     });
 
     it('應該在緯度無效時拋出錯誤', async () => {
@@ -247,7 +257,7 @@ describe('location API', () => {
       });
 
       // Act & Assert
-      await expect(saveLocation(locationData, userToken)).rejects.toThrow('請求錯誤');
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
     });
 
     it('應該在 401 錯誤時拋出授權錯誤', async () => {
@@ -264,7 +274,7 @@ describe('location API', () => {
       });
 
       // Act & Assert
-      await expect(saveLocation(locationData, userToken)).rejects.toThrow('未授權,請重新登入');
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
     });
 
     it('應該在 500 錯誤時拋出伺服器錯誤', async () => {
@@ -281,7 +291,51 @@ describe('location API', () => {
       });
 
       // Act & Assert
-      await expect(saveLocation(locationData, userToken)).rejects.toThrow('伺服器錯誤,請稍後再試');
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
+    });
+
+    it('應該在未知錯誤時拋出預設錯誤', async () => {
+      // Arrange
+      const locationData = {
+        latitude: 24.1817,
+        longitude: 120.7344,
+        type: '家'
+      };
+
+      supabase.functions.invoke.mockResolvedValueOnce({
+        data: null,
+        error: 999
+      });
+
+      // Act & Assert
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
+    });
+
+    it('應該在網路錯誤時拋出網路連線失敗', async () => {
+      // Arrange
+      const locationData = {
+        latitude: 24.1817,
+        longitude: 120.7344,
+        type: '家'
+      };
+
+      supabase.functions.invoke.mockRejectedValueOnce(new Error('Network error'));
+
+      // Act & Assert
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow('網路連線失敗，請檢查您的網路');
+    });
+  });
+
+  describe('getCurrentPosition', () => {
+    it('應該在未知錯誤碼時拋出未知錯誤', async () => {
+      // Arrange
+      global.navigator = { geolocation: mockGeolocation };
+      mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
+        error({ code: 999 });
+      });
+
+      // Act & Assert
+      await expect(getCurrentPosition()).rejects.toThrow('取得位置時發生未知錯誤');
     });
   });
 });

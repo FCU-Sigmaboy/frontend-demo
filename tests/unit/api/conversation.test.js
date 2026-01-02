@@ -840,5 +840,128 @@ describe('conversation API', () => {
         })
       );
     });
+
+    describe('Realtime advanced behaviors', () => {
+      it('subscribeToMessages 應處理 CHANNEL_ERROR 狀態並建立訂閱', () => {
+        const conversationId = 1;
+        const callback = vi.fn();
+        const mockChannel = {
+          on: vi.fn().mockReturnThis(),
+          subscribe: vi.fn((cb) => { if (cb) cb('CHANNEL_ERROR'); }),
+          unsubscribe: vi.fn()
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        const channel = subscribeToMessages(conversationId, callback);
+
+        expect(mockChannel.subscribe).toHaveBeenCalled();
+        expect(channel).toBeDefined();
+      });
+
+      it('subscribeToMessages 應在 INSERT payload 時呼叫 callback', () => {
+        const conversationId = 1;
+        const callback = vi.fn();
+        let storedHandler;
+        const mockChannel = {
+          on: vi.fn((event, opts, cb) => { storedHandler = cb; return mockChannel; }),
+          subscribe: vi.fn(),
+          unsubscribe: vi.fn()
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        subscribeToMessages(conversationId, callback);
+
+        // Simulate payload
+        storedHandler({ new: { message_id: 999, conversation_id: conversationId } });
+
+        expect(callback).toHaveBeenCalledWith({ message_id: 999, conversation_id: conversationId });
+      });
+
+      it('subscribeToMessageUpdates 應處理 TIMED_OUT 狀態', () => {
+        const onUpdate = vi.fn();
+        const mockChannel = {
+          on: vi.fn().mockReturnThis(),
+          subscribe: vi.fn((cb) => { if (cb) cb('TIMED_OUT'); })
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        const channel = subscribeToMessageUpdates(onUpdate);
+
+        expect(mockChannel.subscribe).toHaveBeenCalled();
+        expect(channel).toBeDefined();
+      });
+
+      it('subscribeToMessageUpdates 應在 UPDATE 時呼叫 onUpdate', () => {
+        let storedHandler;
+        const onUpdate = vi.fn();
+        const mockChannel = {
+          on: vi.fn((event, opts, cb) => { storedHandler = cb; return mockChannel; }),
+          subscribe: vi.fn()
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        subscribeToMessageUpdates(onUpdate);
+        storedHandler({ new: { message_id: 1 }, old: { message_id: 0 } });
+
+        expect(onUpdate).toHaveBeenCalledWith({ message_id: 1 });
+      });
+
+      it('subscribeToAllMessages 應在 INSERT 時呼叫 callback', () => {
+        let storedHandler;
+        const callback = vi.fn();
+        const mockChannel = {
+          on: vi.fn((event, opts, cb) => { storedHandler = cb; return mockChannel; }),
+          subscribe: vi.fn()
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        subscribeToAllMessages(callback);
+        storedHandler({ new: { conversation_id: 42 } });
+
+        expect(callback).toHaveBeenCalledWith({ conversation_id: 42 });
+      });
+
+      it('subscribeToUserPresence 在 sync 時應觸發 onPresenceUpdate', () => {
+        const onPresenceUpdate = vi.fn();
+        const mockChannel = {
+          on: vi.fn((event, opts, cb) => { if (event === 'presence' && opts.event === 'sync') cb(); return mockChannel; }),
+          subscribe: vi.fn(),
+          presenceState: vi.fn(() => ({ 'user-123': [{ online_at: '2025-01-01T00:00:00Z' }] }))
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        subscribeToUserPresence(onPresenceUpdate);
+
+        expect(onPresenceUpdate).toHaveBeenCalledWith({ 'user-123': [{ online_at: '2025-01-01T00:00:00Z' }] });
+      });
+
+      it('subscribeToAllMessages 應處理 CHANNEL_ERROR 狀態', () => {
+        const callback = vi.fn();
+        const mockChannel = {
+          on: vi.fn().mockReturnThis(),
+          subscribe: vi.fn((cb) => { if (cb) cb('CHANNEL_ERROR'); })
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        const channel = subscribeToAllMessages(callback);
+
+        expect(mockChannel.subscribe).toHaveBeenCalled();
+        expect(channel).toBeDefined();
+      });
+
+      it('subscribeToAllMessages 應處理 CLOSED 狀態', () => {
+        const callback = vi.fn();
+        const mockChannel = {
+          on: vi.fn().mockReturnThis(),
+          subscribe: vi.fn((cb) => { if (cb) cb('CLOSED'); })
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        const channel = subscribeToAllMessages(callback);
+
+        expect(mockChannel.subscribe).toHaveBeenCalled();
+        expect(channel).toBeDefined();
+      });
+    });
   });
 });

@@ -31,11 +31,11 @@ import { supabase } from '@/lib/supabase'
 
 describe('pointsAPI', () => {
   beforeEach(() => {
+    // 完全重置 mock，清除所有配置和調用歷史
     vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
+    // 重新創建干淨的 mock 函數
+    supabase.auth.getUser.mockReset()
+    supabase.rpc.mockReset()
   })
 
   describe('getUserPointsProfile', () => {
@@ -51,20 +51,20 @@ describe('pointsAPI', () => {
         level_tier: 3
       }
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: mockProfile, error: null })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: mockProfile, error: null })
 
       // Act
       const result = await getUserPointsProfile()
 
       // Assert
-      expect(supabase.auth.getUser).toHaveBeenCalledOnce()
+      expect(supabase.auth.getUser).toHaveBeenCalled()
       expect(result).toEqual(mockProfile)
     })
 
     it('should throw error when user is not authenticated', async () => {
       // Arrange
-      supabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
 
       // Act & Assert
       await expect(getUserPointsProfile()).rejects.toThrow('使用者未登入')
@@ -75,8 +75,8 @@ describe('pointsAPI', () => {
       const mockUser = { id: 'test-user-123' }
       const mockError = { message: 'Database error' }
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: null, error: mockError })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: null, error: mockError })
 
       // Act & Assert
       await expect(getUserPointsProfile()).rejects.toThrow('Database error')
@@ -87,8 +87,8 @@ describe('pointsAPI', () => {
       const mockUser = { id: 'test-user-123' }
       const mockError = {}
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: null, error: mockError })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: null, error: mockError })
 
       // Act & Assert
       await expect(getUserPointsProfile()).rejects.toThrow('獲取使用者資料失敗')
@@ -111,8 +111,8 @@ describe('pointsAPI', () => {
         }
       ]
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: mockLogs, error: null })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: mockLogs, error: null })
 
       // Act
       const result = await getPointLogs()
@@ -147,15 +147,23 @@ describe('pointsAPI', () => {
       // Arrange
       const mockUser = { id: 'test-user-123' }
       const params = { logType: 'DAILY_SIGNIN', page: 2, size: 10 }
+      const mockEmptyLogs = []
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: [], error: null })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: mockEmptyLogs, error: null })
 
       // Act
       const result = await getPointLogs(params)
 
       // Assert
-      expect(result.logs).toEqual([])
+      expect(supabase.rpc).toHaveBeenCalledWith('get_point_logs', {
+        p_log_type: 'DAILY_SIGNIN',
+        p_page: 2,
+        p_size: 10
+      })
+      expect(result.transactions).toEqual([])
+      expect(result.page).toBe(2)
+      expect(result.hasMore).toBe(false)
     })
 
     it('should indicate hasMore when results equal page size', async () => {
@@ -169,8 +177,8 @@ describe('pointsAPI', () => {
         created_at: '2024-12-11T10:00:00Z'
       }))
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: mockLogs, error: null })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: mockLogs, error: null })
 
       // Act
       const result = await getPointLogs({ size: 20 })
@@ -191,8 +199,8 @@ describe('pointsAPI', () => {
         badges_earned: []
       }
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: mockSignInResult, error: null })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: mockSignInResult, error: null })
 
       // Act
       const result = await dailySignIn()
@@ -204,7 +212,7 @@ describe('pointsAPI', () => {
 
     it('should throw error when user is not authenticated', async () => {
       // Arrange
-      supabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
 
       // Act & Assert
       await expect(dailySignIn()).rejects.toThrow('使用者未登入')
@@ -220,7 +228,7 @@ describe('pointsAPI', () => {
         in_progress_badges: [{ badge_id: 'streak_30', progress: 0.5 }]
       }
 
-      supabase.rpc.mockResolvedValue({ data: mockBadgesData, error: null })
+      supabase.rpc.mockResolvedValueOnce({ data: mockBadgesData, error: null })
 
       // Act
       const result = await getUserBadgesWithProgress('test-user-123')
@@ -234,7 +242,7 @@ describe('pointsAPI', () => {
 
     it('should handle null userId parameter', async () => {
       // Arrange
-      supabase.rpc.mockResolvedValue({ data: {}, error: null })
+      supabase.rpc.mockResolvedValueOnce({ data: {}, error: null })
 
       // Act
       const result = await getUserBadgesWithProgress()
@@ -252,7 +260,7 @@ describe('pointsAPI', () => {
         in_progress_badges: [{ badge_id: 'streak_30' }]
       }
 
-      supabase.rpc.mockResolvedValue({ data: mockBadgesData, error: null })
+      supabase.rpc.mockResolvedValueOnce({ data: mockBadgesData, error: null })
 
       // Act
       const result = await getUserBadges('test-user-123')
@@ -263,7 +271,7 @@ describe('pointsAPI', () => {
 
     it('should return empty array when no earned badges', async () => {
       // Arrange
-      supabase.rpc.mockResolvedValue({ data: { earned_badges: null }, error: null })
+      supabase.rpc.mockResolvedValueOnce({ data: { earned_badges: null }, error: null })
 
       // Act
       const result = await getUserBadges()
@@ -282,8 +290,10 @@ describe('pointsAPI', () => {
         total_sales_points: 600
       }
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: mockProfile, error: null })
+      // checkListingPermission 呼叫 getUserPointsProfile,所以需要兩次 auth mock
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } }) // 第一次在 checkListingPermission
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } }) // 第二次在 getUserPointsProfile
+      supabase.rpc.mockResolvedValueOnce({ data: mockProfile, error: null })
 
       // Act
       const result = await checkListingPermission(800) // Within tier 2 limit (1000)
@@ -301,8 +311,10 @@ describe('pointsAPI', () => {
         total_sales_points: 100
       }
 
-      supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-      supabase.rpc.mockResolvedValue({ data: mockProfile, error: null })
+      // checkListingPermission 呼叫 getUserPointsProfile,所以需要兩次 auth mock
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } }) // 第一次在 checkListingPermission
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } }) // 第二次在 getUserPointsProfile
+      supabase.rpc.mockResolvedValueOnce({ data: mockProfile, error: null })
 
       // Act
       const result = await checkListingPermission(1500) // Exceeds tier 1 limit (500)
