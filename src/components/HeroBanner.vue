@@ -1,20 +1,96 @@
 <template>
   <div class="hero-banner">
     <div class="banner-content">
-      <div class="event-text">
-        <h1 class="event-title">台中花草節</h1>
-        <p class="event-subtitle">買之林環保市集</p>
-        <p class="event-date">2025.10.10 - 10.17</p>
+      <transition name="fade" mode="out-in">
+        <img 
+          :key="currentIndex" 
+          :src="currentBanner" 
+          :alt="`Banner ${currentIndex + 1}`"
+          class="banner-image"
+        />
+      </transition>
+      
+      <!-- 導航點 -->
+      <div class="carousel-dots">
+        <button 
+          v-for="(banner, index) in banners" 
+          :key="index"
+          :class="['dot', { active: index === currentIndex }]"
+          @click="goToSlide(index)"
+          :aria-label="`跳轉至第 ${index + 1} 張圖片`"
+        ></button>
       </div>
-      <div class="decorative-flowers">
-        <!-- Floral decorative elements -->
-      </div>
+
+      <!-- 左右箭頭 -->
+      <button class="carousel-arrow prev" @click="prevSlide" aria-label="上一張">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <button class="carousel-arrow next" @click="nextSlide" aria-label="下一張">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-// No props or state needed for static banner
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+
+// 導入 banner 圖片
+const banners = [
+  new URL('@/assets/banners/1.webp', import.meta.url).href,
+  new URL('@/assets/banners/2.webp', import.meta.url).href,
+  new URL('@/assets/banners/3.webp', import.meta.url).href
+]
+
+const currentIndex = ref(0)
+let intervalId = null
+
+const currentBanner = computed(() => banners[currentIndex.value])
+
+const nextSlide = () => {
+  currentIndex.value = (currentIndex.value + 1) % banners.length
+  resetAutoPlay()
+}
+
+const prevSlide = () => {
+  currentIndex.value = (currentIndex.value - 1 + banners.length) % banners.length
+  resetAutoPlay()
+}
+
+const goToSlide = (index) => {
+  currentIndex.value = index
+  resetAutoPlay()
+}
+
+const startAutoPlay = () => {
+  intervalId = setInterval(() => {
+    currentIndex.value = (currentIndex.value + 1) % banners.length
+  }, 5000) // 每 5 秒切換
+}
+
+const stopAutoPlay = () => {
+  if (intervalId) {
+    clearInterval(intervalId)
+    intervalId = null
+  }
+}
+
+const resetAutoPlay = () => {
+  stopAutoPlay()
+  startAutoPlay()
+}
+
+onMounted(() => {
+  startAutoPlay()
+})
+
+onBeforeUnmount(() => {
+  stopAutoPlay()
+})
 </script>
 
 <style scoped lang="scss">
@@ -27,74 +103,93 @@
 }
 
 .banner-content {
-  background: linear-gradient(135deg, $primary 0%, #5a9d8c 100%);
-  border-radius: 5px;
-  min-height: 400px;
   position: relative;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
+  border-radius: 5px;
+  min-height: 400px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.event-text {
-  text-align: center;
+.banner-image {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+  display: block;
+}
+
+// 淡入淡出動畫
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// 導航點
+.carousel-dots {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
   z-index: 2;
-  color: white;
+}
 
-  .event-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 64px;
-    font-weight: 700;
-    margin-bottom: 15px;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    letter-spacing: 4px;
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: scale(1.1);
   }
 
-  .event-subtitle {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 400;
-    margin-bottom: 10px;
-    letter-spacing: 2px;
-  }
-
-  .event-date {
-    font-family: 'Inter', 'Noto Sans TC', sans-serif;
-    font-size: 20px;
-    font-weight: 300;
-    opacity: 0.95;
-    letter-spacing: 1px;
+  &.active {
+    background: white;
+    width: 32px;
+    border-radius: 6px;
   }
 }
 
-.decorative-flowers {
+// 左右箭頭
+.carousel-arrow {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.3s ease;
+  color: #333;
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
+  &:hover {
+    background: white;
+    transform: translateY(-50%) scale(1.1);
   }
 
-  &::before {
-    width: 300px;
-    height: 300px;
-    top: -150px;
-    right: -100px;
+  &.prev {
+    left: 20px;
   }
 
-  &::after {
-    width: 200px;
-    height: 200px;
-    bottom: -80px;
-    left: -60px;
+  &.next {
+    right: 20px;
   }
 }
 
@@ -105,22 +200,10 @@
 
   .banner-content {
     min-height: 300px;
-    padding: 30px;
   }
 
-  .event-text {
-    .event-title {
-      font-size: 48px;
-      letter-spacing: 2px;
-    }
-
-    .event-subtitle {
-      font-size: 20px;
-    }
-
-    .event-date {
-      font-size: 16px;
-    }
+  .banner-image {
+    height: 300px;
   }
 }
 
@@ -131,22 +214,42 @@
 
   .banner-content {
     min-height: 250px;
-    padding: 20px;
     border-radius: 10px;
   }
 
-  .event-text {
-    .event-title {
-      font-size: 36px;
-      letter-spacing: 1px;
+  .banner-image {
+    height: 250px;
+  }
+
+  .carousel-arrow {
+    width: 36px;
+    height: 36px;
+
+    &.prev {
+      left: 10px;
     }
 
-    .event-subtitle {
-      font-size: 16px;
+    &.next {
+      right: 10px;
     }
 
-    .event-date {
-      font-size: 14px;
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .carousel-dots {
+    bottom: 15px;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+
+    &.active {
+      width: 24px;
     }
   }
 }
@@ -159,21 +262,41 @@
 
   .banner-content {
     min-height: 220px;
-    padding: 15px;
   }
 
-  .event-text {
-    .event-title {
-      font-size: 30px;
-      letter-spacing: 0.5px;
+  .banner-image {
+    height: 220px;
+  }
+
+  .carousel-arrow {
+    width: 32px;
+    height: 32px;
+
+    &.prev {
+      left: 8px;
     }
 
-    .event-subtitle {
-      font-size: 14px;
+    &.next {
+      right: 8px;
     }
 
-    .event-date {
-      font-size: 12px;
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .carousel-dots {
+    bottom: 12px;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+
+    &.active {
+      width: 20px;
     }
   }
 }
