@@ -1027,7 +1027,7 @@ onUnmounted(() => {
   position: fixed;
   top: 60px;
   right: 30px;
-  z-index: 1002;
+  z-index: 1000;
 
   .location-btn {
     display: flex;
