@@ -104,16 +104,15 @@ onBeforeUnmount(() => {
 
 .banner-content {
   position: relative;
-  overflow: hidden;
+  width: 100%;
+  height: fit-content;
   border-radius: 5px;
-  min-height: 400px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .banner-image {
   width: 100%;
-  height: 400px;
-  object-fit: cover;
+  aspect-ratio: 2/1;
   display: block;
 }
 
@@ -197,14 +196,6 @@ onBeforeUnmount(() => {
   .hero-banner {
     padding: 0 15px;
   }
-
-  .banner-content {
-    min-height: 300px;
-  }
-
-  .banner-image {
-    height: 300px;
-  }
 }
 
 @media (max-width: 575.98px) {
@@ -213,12 +204,7 @@ onBeforeUnmount(() => {
   }
 
   .banner-content {
-    min-height: 250px;
     border-radius: 10px;
-  }
-
-  .banner-image {
-    height: 250px;
   }
 
   .carousel-arrow {
@@ -260,24 +246,16 @@ onBeforeUnmount(() => {
     padding: 0 8px;
   }
 
-  .banner-content {
-    min-height: 220px;
-  }
-
-  .banner-image {
-    height: 220px;
-  }
-
   .carousel-arrow {
     width: 32px;
     height: 32px;
 
     &.prev {
-      left: 8px;
+      left: 4px;
     }
 
     &.next {
-      right: 8px;
+      right: 4px;
     }
 
     svg {

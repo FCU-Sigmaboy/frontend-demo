@@ -589,7 +589,11 @@ onUnmounted(() => {
 .search-section {
   padding: 10px 0;
   margin-top: 10px;
-  position: sticky;
+  position: fixed;
+  width: 100%;
+  max-width: 1600px;
+  left: 50%;
+  transform: translateX(-50%);
   top: 60px;
   z-index: 100;
 }
@@ -1061,6 +1065,15 @@ onUnmounted(() => {
     i {
       font-size: 18px;
     }
+  }
+}
+
+@media (max-width: 650px) {
+  .search-section {
+    position: sticky;
+    top: 60px;
+    transform: none;
+    left: none;
   }
 }
 
