@@ -240,7 +240,7 @@ onUnmounted(() => {
 
 .categories-container {
   display: flex;
-  gap: 32px;
+  justify-content: center;
   overflow-x: auto;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -261,6 +261,7 @@ onUnmounted(() => {
   }
 
   :deep(.category-card) {
+    margin: auto;
     flex-shrink: 0;
     width: 140px;
   }
@@ -358,6 +359,7 @@ onUnmounted(() => {
 
   .categories-container {
     gap: 12px;
+    justify-content: flex-start;
 
     :deep(.category-card) {
       width: 120px;
