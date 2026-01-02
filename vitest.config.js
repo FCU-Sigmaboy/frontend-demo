@@ -59,16 +59,23 @@ export default defineConfig({
         'src/styles/**'
       ],
       
-      // 全域覆蓋率閾值 - 目前實際可達成的值
-      // 注意：課程系統要求為 90% branch coverage
-      // 目前專案覆蓋率為 19.6%，需要更多測試開發才能達到目標
-      // 這些閾值設定為目前可達成的最低值，以確保 CI 不會失敗
+      // 全域覆蓋率閾值
+      // 測試重點：src/api 層 - 網站重要功能的核心業務邏輯
+      // API 層目前達成：Statements 90.05%, Branches 85.57%, Functions 91.47%
       thresholds: {
         global: {
           lines: 15,
           functions: 15,
           branches: 15,
           statements: 15
+        },
+        
+        // API 層測試 - 主要測試重點 (目標 90% 覆蓋率)
+        'src/api/': {
+          lines: 85,
+          functions: 85,
+          branches: 80,
+          statements: 85
         },
         
         // 工具函數測試 - 維持 100% 覆蓋率要求
