@@ -4,8 +4,9 @@
       <transition name="fade" mode="out-in">
         <img 
           :key="currentIndex" 
-          :src="currentBanner" 
+          :src="currentBanner.url" 
           :alt="`Banner ${currentIndex + 1}`"
+          @click="()=> router.push({name: 'ItemList', query: { subCategory: currentBanner.id }})"
           class="banner-image"
         />
       </transition>
@@ -38,12 +39,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 // 導入 banner 圖片
 const banners = [
-  new URL('@/assets/banners/1.webp', import.meta.url).href,
-  new URL('@/assets/banners/2.webp', import.meta.url).href,
-  new URL('@/assets/banners/3.webp', import.meta.url).href
+  {url: new URL('@/assets/banners/1.webp', import.meta.url).href, id: 36},
+  {url: new URL('@/assets/banners/2.webp', import.meta.url).href, id: 13},
+  {url: new URL('@/assets/banners/3.webp', import.meta.url).href, id: 42}
 ]
 
 const currentIndex = ref(0)
@@ -113,6 +117,7 @@ onBeforeUnmount(() => {
 .banner-image {
   width: 100%;
   aspect-ratio: 2/1;
+  cursor: pointer;
   display: block;
 }
 
