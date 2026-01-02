@@ -20,7 +20,7 @@ vi.mock('@/lib/supabase', () => ({
   }
 }));
 
-describe('save_locationAPI', () => {
+describe.sequential('save_locationAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();
@@ -365,7 +365,7 @@ describe('save_locationAPI', () => {
       global.navigator = {
         geolocation: {
           getCurrentPosition: vi.fn((success, error) => {
-            error({ code: 1 }); // PERMISSION_DENIED
+             error({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }); // PERMISSION_DENIED
           })
         }
       };
@@ -379,7 +379,7 @@ describe('save_locationAPI', () => {
       global.navigator = {
         geolocation: {
           getCurrentPosition: vi.fn((success, error) => {
-            error({ code: 2 }); // POSITION_UNAVAILABLE
+             error({ code: 2, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }); // POSITION_UNAVAILABLE
           })
         }
       };
@@ -393,7 +393,7 @@ describe('save_locationAPI', () => {
       global.navigator = {
         geolocation: {
           getCurrentPosition: vi.fn((success, error) => {
-            error({ code: 3 }); // TIMEOUT
+             error({ code: 3, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }); // TIMEOUT
           })
         }
       };
@@ -407,7 +407,7 @@ describe('save_locationAPI', () => {
       global.navigator = {
         geolocation: {
           getCurrentPosition: vi.fn((success, error) => {
-            error({ code: 99 }); // Unknown error
+             error({ code: 99, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }); // Unknown error
           })
         }
       };

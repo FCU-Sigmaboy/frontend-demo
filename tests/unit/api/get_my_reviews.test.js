@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import { supabase } from '@/lib/supabase'
 
-describe('get_my_reviews', () => {
+describe.sequential('get_my_reviews', () => {
   const mockReviews = [
     {
       review_id: 1,

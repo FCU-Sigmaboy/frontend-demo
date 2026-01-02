@@ -257,7 +257,7 @@ describe('location API', () => {
       });
 
       // Act & Assert
-      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow('請求錯誤');
     });
 
     it('應該在 401 錯誤時拋出授權錯誤', async () => {
@@ -274,7 +274,7 @@ describe('location API', () => {
       });
 
       // Act & Assert
-      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow('未授權，請重新登入');
     });
 
     it('應該在 500 錯誤時拋出伺服器錯誤', async () => {
@@ -291,7 +291,7 @@ describe('location API', () => {
       });
 
       // Act & Assert
-      await expect(saveLocation(locationData, userToken)).rejects.toThrow();
+      await expect(saveLocation(locationData, userToken)).rejects.toThrow('伺服器錯誤，請稍後再試');
     });
 
     it('應該在未知錯誤時拋出預設錯誤', async () => {

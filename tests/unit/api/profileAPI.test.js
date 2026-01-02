@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { 
-  getMyProfileForEdit,
-  updateMyProfile,
-  getPublicUserProfile
-} from '@/api/profileAPI.js'
+import { getMyProfileForEdit } from '@/api/get_myProfileDetailsAPI.js'
+import { updateMyProfile } from '@/api/update_myProfileDetailsAPI.js'
+import { getPublicUserProfile } from '@/api/get_userProfileAPI.js'
 
 // 模擬 Supabase
 vi.mock('@/lib/supabase', () => ({
@@ -25,7 +23,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import { supabase } from '@/lib/supabase'
 
-describe('profileAPI', () => {
+describe.sequential('profileAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

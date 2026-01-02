@@ -13,7 +13,7 @@ vi.mock('@/lib/supabase', () => ({
   }
 }))
 
-describe('create_review', () => {
+describe.sequential('create_review', () => {
   let consoleErrorSpy
 
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe('create_review', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
-  describe('createReview', () => {
+  describe.sequential('createReview', () => {
     it('should create review with valid data', async () => {
       const reviewData = {
         transaction_id: 123,
@@ -85,7 +85,8 @@ describe('create_review', () => {
         comment: '很好'
       }
 
-      await expect(createReview(reviewData))
+      // Explicitly pass undefined as score might be missing
+      await expect(createReview({ ...reviewData, score: undefined }))
         .rejects.toThrow('缺少必填欄位：score')
     })
 
@@ -145,9 +146,33 @@ describe('create_review', () => {
 
       expect(result.comment).toHaveLength(1000)
     })
+
+    it('should throw error when RPC returns empty data', async () => {
+      const reviewData = {
+        transaction_id: 123,
+        score: 5
+      }
+
+      supabase.rpc.mockResolvedValueOnce({ data: [], error: null })
+
+      await expect(createReview(reviewData))
+        .rejects.toThrow('評價建立失敗：未回傳資料')
+    })
+
+    it('should throw error when RPC returns null data', async () => {
+      const reviewData = {
+        transaction_id: 123,
+        score: 5
+      }
+
+      supabase.rpc.mockResolvedValueOnce({ data: null, error: null })
+
+      await expect(createReview(reviewData))
+        .rejects.toThrow('評價建立失敗：未回傳資料')
+    })
   })
 
-  describe('canCreateReview', () => {
+  describe.sequential('canCreateReview', () => {
     it('should return true when all conditions are met', async () => {
       const mockUser = { id: 'user-123' }
       const mockTransaction = {
@@ -197,6 +222,106 @@ describe('create_review', () => {
 
       expect(result.canReview).toBe(false)
       expect(result.reason).toBe('交易不存在')
+    })
+
+    it('should return false when transaction is not completed', async () => {
+      const mockUser = { id: 'user-123' }
+      const mockTransaction = {
+        id: 1,
+        giver_id: 'user-123',
+        receiver_id: 'user-456',
+        transaction_status: 'pending' // Not completed
+      }
+
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser }, error: null })
+      
+      const mockFrom = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValueOnce({ data: mockTransaction, error: null })
+      }
+      supabase.from.mockReturnValue(mockFrom)
+
+      const result = await canCreateReview(1)
+
+      expect(result.canReview).toBe(false)
+      expect(result.reason).toBe('只有已完成的交易才能建立評價')
+    })
+
+    it('should return false when user is not a participant', async () => {
+      const mockUser = { id: 'user-789' } // Not a participant
+      const mockTransaction = {
+        id: 1,
+        giver_id: 'user-123',
+        receiver_id: 'user-456',
+        transaction_status: 'completed'
+      }
+
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser }, error: null })
+      
+      const mockFrom = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValueOnce({ data: mockTransaction, error: null })
+      }
+      supabase.from.mockReturnValue(mockFrom)
+
+      const result = await canCreateReview(1)
+
+      expect(result.canReview).toBe(false)
+      expect(result.reason).toBe('您不是此交易的參與者')
+    })
+
+    it('should return false when error checking existing review', async () => {
+      const mockUser = { id: 'user-123' }
+      const mockTransaction = {
+        id: 1,
+        giver_id: 'user-123',
+        receiver_id: 'user-456',
+        transaction_status: 'completed'
+      }
+
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser }, error: null })
+      
+      const mockFrom = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValueOnce({ data: mockTransaction, error: null }),
+        maybeSingle: vi.fn().mockResolvedValueOnce({ data: null, error: { message: 'DB Error' } })
+      }
+      supabase.from.mockReturnValue(mockFrom)
+
+      const result = await canCreateReview(1)
+
+      expect(result.canReview).toBe(false)
+      expect(result.reason).toBe('檢查評價狀態失敗')
+      expect(consoleErrorSpy).toHaveBeenCalled()
+    })
+
+    it('should return false when review already exists', async () => {
+      const mockUser = { id: 'user-123' }
+      const mockTransaction = {
+        id: 1,
+        giver_id: 'user-123',
+        receiver_id: 'user-456',
+        transaction_status: 'completed'
+      }
+      const mockExistingReview = { id: 100 }
+
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser }, error: null })
+      
+      const mockFrom = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValueOnce({ data: mockTransaction, error: null }),
+        maybeSingle: vi.fn().mockResolvedValueOnce({ data: mockExistingReview, error: null })
+      }
+      supabase.from.mockReturnValue(mockFrom)
+
+      const result = await canCreateReview(1)
+
+      expect(result.canReview).toBe(false)
+      expect(result.reason).toBe('您已經對此交易建立過評價')
     })
 
     it('should handle exception and return system error', async () => {

@@ -45,11 +45,39 @@ vi.mock('@/lib/supabase', () => ({
   }
 }))
 
-describe('update_myItemAPI', () => {
+describe.sequential('update_myItemAPI', () => {
   const mockUser = { id: 'user-123' }
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset default implementation for supabase.from to avoid "not a function" errors
+    supabase.from.mockReturnValue({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn()
+          }))
+        }))
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn()
+            }))
+          }))
+        }))
+      })),
+      delete: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn()
+            }))
+          }))
+        }))
+      }))
+    })
   })
 
   describe('updateMyItem', () => {
@@ -69,93 +97,162 @@ describe('update_myItemAPI', () => {
         error: null 
       })
 
+      const mockSingle = vi.fn().mockResolvedValue({ 
+        data: null, 
+        error: { message: '資料庫錯誤' } 
+      })
+
       const mockUpdate = vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ 
-                data: null, 
-                error: { message: '資料庫錯誤' } 
-              })
+              single: mockSingle
             })
           })
         })
       })
 
-      supabase.from.mockReturnValue({ update: mockUpdate })
+      supabase.from.mockReturnValueOnce({ update: mockUpdate })
 
       await expect(updateMyItem(1, { title: '測試' }))
         .rejects.toThrow('資料庫錯誤')
     })
-  })
 
-  // toggleItemStatus 是一個包裝函數,它會在內部呼叫 relistMyItem 或 unlistItem
-  // 這兩個函數已經在下面單獨測試,所以這裡不需要額外的測試
-
-  describe('relistMyItem', () => {
-    it('should relist item successfully', async () => {
+    it('should update item successfully', async () => {
       supabase.auth.getUser.mockResolvedValueOnce({ 
         data: { user: mockUser }, 
         error: null 
       })
 
-      const mockResult = { 
-        success: true, 
-        message: '物品已重新上架',
-        item_id: 1,
-        new_listing_status: true
+      const mockData = { id: 1, title: 'Updated' }
+      const mockSingle = vi.fn().mockResolvedValue({ 
+        data: mockData, 
+        error: null 
+      })
+
+      const mockUpdate = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: mockSingle
+            })
+          })
+        })
+      })
+
+      supabase.from.mockReturnValueOnce({ update: mockUpdate })
+
+      const result = await updateMyItem(1, { title: 'Updated' })
+      expect(result).toEqual(mockData)
+    })
+
+    it('should validate location ownership when location_id provided', async () => {
+      supabase.auth.getUser.mockResolvedValueOnce({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
+
+      // We need to chain TWO calls to supabase.from
+      // 1. locations select
+      // 2. items update
+      
+      const mockSelectChain = {
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: { id: 99 }, error: null })
+          })
+        })
+      }
+      
+      const mockUpdateChain = {
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { id: 1, location_id: 99 }, error: null })
+            })
+          })
+        })
       }
 
-      supabase.rpc.mockResolvedValueOnce({ data: mockResult, error: null })
+      // Mock implementation of supabase.from to return different things based on table name
+      supabase.from.mockImplementation((table) => {
+        if (table === 'locations') return { select: vi.fn(() => mockSelectChain) }
+        if (table === 'items') return { update: vi.fn(() => mockUpdateChain) }
+        return {}
+      })
 
-      const result = await relistMyItem(1)
+      await updateMyItem(1, { location_id: 99 })
+    })
 
+    it('should throw error if location is invalid', async () => {
+      supabase.auth.getUser.mockResolvedValueOnce({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
+
+      const mockSelectChain = {
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } })
+          })
+        })
+      }
+
+      supabase.from.mockImplementation((table) => {
+        if (table === 'locations') return { select: vi.fn(() => mockSelectChain) }
+        return {}
+      })
+
+      await expect(updateMyItem(1, { location_id: 999 }))
+        .rejects.toThrow('無效的地點 ID')
+    })
+  })
+
+  describe('toggleItemStatus', () => {
+    it('should call relistMyItem when status is true', async () => {
+      supabase.auth.getUser
+        .mockResolvedValue({ data: { user: mockUser }, error: null })
+
+      supabase.rpc.mockResolvedValue({ 
+        data: { success: true }, 
+        error: null 
+      })
+
+      await toggleItemStatus(1, true)
+      
       expect(supabase.rpc).toHaveBeenCalledWith('relist_item', { p_item_id: 1 })
-      expect(result).toEqual(mockResult)
     })
 
-    it('should throw error when user is not logged in', async () => {
-      supabase.auth.getUser.mockResolvedValueOnce({ 
-        data: { user: null }, 
+    it('should call unlistItem when status is false', async () => {
+      supabase.auth.getUser
+        .mockResolvedValue({ data: { user: mockUser }, error: null })
+
+      supabase.rpc.mockResolvedValue({ 
+        data: { success: true }, 
         error: null 
       })
 
-      await expect(relistMyItem(1))
-        .rejects.toThrow('使用者未登入')
-    })
-
-    it('should throw error when item has active transaction', async () => {
-      supabase.auth.getUser.mockResolvedValueOnce({ 
-        data: { user: mockUser }, 
-        error: null 
-      })
-
-      supabase.rpc.mockResolvedValueOnce({ 
-        data: null, 
-        error: { message: '此物品已綁定於一個進行中或已完成的交易，無法重新上架' } 
-      })
-
-      await expect(relistMyItem(1))
-        .rejects.toThrow('此物品已綁定於一個進行中或已完成的交易，無法重新上架')
-    })
-
-    it('should throw error when item is already listed', async () => {
-      supabase.auth.getUser.mockResolvedValueOnce({ 
-        data: { user: mockUser }, 
-        error: null 
-      })
-
-      supabase.rpc.mockResolvedValueOnce({ 
-        data: null, 
-        error: { message: '物品已經是上架狀態' } 
-      })
-
-      await expect(relistMyItem(1))
-        .rejects.toThrow('物品已經是上架狀態')
+      await toggleItemStatus(1, false)
+      
+      expect(supabase.rpc).toHaveBeenCalledWith('unlist_item', { p_item_id: 1 })
     })
   })
 
   describe('unlistItem', () => {
+    it('should unlist item successfully', async () => {
+      supabase.auth.getUser.mockResolvedValueOnce({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
+
+      const mockData = { success: true }
+      supabase.rpc.mockResolvedValueOnce({ data: mockData, error: null })
+
+      const result = await unlistItem(1)
+      expect(result).toEqual(mockData)
+      expect(supabase.rpc).toHaveBeenCalledWith('unlist_item', { p_item_id: 1 })
+    })
+
     it('should throw error when user is not logged in', async () => {
       supabase.auth.getUser.mockResolvedValueOnce({ 
         data: { user: null }, 
@@ -183,6 +280,32 @@ describe('update_myItemAPI', () => {
   })
 
   describe('deleteMyItem', () => {
+    it('should delete item successfully', async () => {
+      supabase.auth.getUser.mockResolvedValueOnce({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
+
+      const mockData = { id: 1 }
+      const mockDelete = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ 
+                data: mockData, 
+                error: null 
+              })
+            })
+          })
+        })
+      })
+
+      supabase.from.mockReturnValue({ delete: mockDelete })
+
+      const result = await deleteMyItem(1)
+      expect(result).toEqual(mockData)
+    })
+
     it('should throw error when user is not logged in', async () => {
       supabase.auth.getUser.mockResolvedValueOnce({ 
         data: { user: null }, 

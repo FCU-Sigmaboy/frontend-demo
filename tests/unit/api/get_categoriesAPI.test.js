@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import { supabase } from '@/lib/supabase'
 
-describe('get_categoriesAPI', () => {
+describe.sequential('get_categoriesAPI', () => {
   const mockCategories = [
     {
       id: 1,

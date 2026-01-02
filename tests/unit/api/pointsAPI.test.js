@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { 
   getUserPointsProfile,
   getPointLogs,
@@ -29,7 +29,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import { supabase } from '@/lib/supabase'
 
-describe('pointsAPI', () => {
+describe.sequential('pointsAPI', () => {
   beforeEach(() => {
     // 完全重置 mock，清除所有配置和調用歷史
     vi.clearAllMocks()
@@ -186,6 +186,93 @@ describe('pointsAPI', () => {
       // Assert
       expect(result.hasMore).toBe(true)
     })
+
+    it('should throw error when RPC call fails', async () => {
+        const mockUser = { id: 'test-user-123' }
+        supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+        supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Fetch logs failed' } })
+        
+        await expect(getPointLogs()).rejects.toThrow('Fetch logs failed')
+    })
+
+    it('should handle missing fields in normalization', async () => {
+       const mockUser = { id: 'test-user-123' }
+       const mockIncompleteLog = [{
+         type: 'TEST_TYPE',
+         amount: 100,
+         description: 'Test',
+         created_at: '2024-01-01'
+       }]
+ 
+       supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+       supabase.rpc.mockResolvedValueOnce({ data: mockIncompleteLog, error: null })
+ 
+       const result = await getPointLogs()
+       const log = result.transactions[0]
+       
+       expect(log.balance_before).toBeNull()
+       expect(log.transaction_id).toBeNull()
+       expect(log.reference_id).toBeNull()
+       // Should generate fallback ID
+       expect(log.id).toContain('1-0-2024-01-01')
+    })
+  })
+
+  describe('getPointsTransactions', () => {
+    it('should call getPointLogs with correct parameters', async () => {
+      // Mock getPointLogs indirectly by catching the rpc call it makes
+      const mockUser = { id: 'test-user-123' }
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: [], error: null })
+
+      await getPointsTransactions({ type: 'TEST', page: 2, size: 5 })
+
+      expect(supabase.rpc).toHaveBeenCalledWith('get_point_logs', {
+        p_log_type: 'TEST',
+        p_page: 2,
+        p_size: 5
+      })
+    })
+  })
+
+  describe('manuallyCheckBadges', () => {
+    it('should successfully check badges', async () => {
+      const mockUser = { id: 'test-user-123' }
+      const mockResponse = {
+        newly_earned_count: 1,
+        total_points_awarded: 50,
+        badges: [{ badge_id: 'points_1000' }]
+      }
+
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: mockResponse, error: null })
+
+      const result = await manuallyCheckBadges()
+
+      expect(supabase.rpc).toHaveBeenCalledWith('manually_check_badges')
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw error when user is not logged in', async () => {
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
+      await expect(manuallyCheckBadges()).rejects.toThrow('使用者未登入')
+    })
+
+    it('should throw error when RPC fails', async () => {
+      const mockUser = { id: 'test-user-123' }
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Check badges failed' } })
+
+      await expect(manuallyCheckBadges()).rejects.toThrow('Check badges failed')
+    })
+
+    it('should throw default error when RPC fails with no message', async () => {
+      const mockUser = { id: 'test-user-123' }
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+      supabase.rpc.mockResolvedValueOnce({ data: null, error: {} })
+
+      await expect(manuallyCheckBadges()).rejects.toThrow('手動檢查徽章失敗')
+    })
   })
 
   describe('dailySignIn', () => {
@@ -216,6 +303,14 @@ describe('pointsAPI', () => {
 
       // Act & Assert
       await expect(dailySignIn()).rejects.toThrow('使用者未登入')
+    })
+
+    it('should throw error when RPC works fails', async () => {
+        const mockUser = { id: 'test-user-123' }
+        supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+        supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Sign in failed' } })
+  
+        await expect(dailySignIn()).rejects.toThrow('Sign in failed')
     })
   })
 
@@ -249,6 +344,11 @@ describe('pointsAPI', () => {
 
       // Assert
       expect(result).toEqual({})
+    })
+
+    it('should throw error when RPC fails', async () => {
+        supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Fetch badges failed' } })
+        await expect(getUserBadgesWithProgress()).rejects.toThrow('Fetch badges failed')
     })
   })
 

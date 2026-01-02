@@ -43,7 +43,7 @@ import { supabase } from '@/lib/supabase.js'; // 假設您已在 src/supabaseCli
 export async function getItemDetails(itemId, options = {}) {
   try {
     // 1. 參數驗證
-    if (!itemId || typeof itemId !== "number") {
+    if (itemId === null || itemId === undefined || typeof itemId !== "number") {
       throw new Error("itemId 必須是有效的數字");
     }
 

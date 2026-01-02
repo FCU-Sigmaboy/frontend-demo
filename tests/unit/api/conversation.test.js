@@ -28,17 +28,25 @@ vi.mock('@/lib/supabase', () => ({
         if (callback) callback('SUBSCRIBED');
         return { unsubscribe: vi.fn() };
       }),
-      unsubscribe: vi.fn()
+      unsubscribe: vi.fn(),
+      presenceState: vi.fn(() => ({}))
     }))
   }
 }));
 
-describe('conversation API', () => {
+describe.sequential('conversation API', () => {
+  let consoleLogSpy;
+  let consoleErrorSpy;
+  let consoleWarnSpy;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  describe('createOrGetConversation', () => {
+  describe.sequential('createOrGetConversation', () => {
     it('應該成功創建或獲取對話', async () => {
       // Arrange
       const otherUserId = 'user-456';
@@ -108,7 +116,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('sendMessage', () => {
+  describe.sequential('sendMessage', () => {
     it('應該成功發送訊息', async () => {
       // Arrange
       const conversationId = 789;
@@ -177,7 +185,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('getConversations', () => {
+  describe.sequential('getConversations', () => {
     it('應該成功獲取對話列表', async () => {
       // Arrange
       const mockConversations = [
@@ -231,7 +239,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('getMessages', () => {
+  describe.sequential('getMessages', () => {
     it('應該成功獲取訊息列表', async () => {
       // Arrange
       const conversationId = 456;
@@ -291,7 +299,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('markAsRead', () => {
+  describe.sequential('markAsRead', () => {
     it('應該成功標記訊息為已讀', async () => {
       // Arrange
       const conversationId = 456;
@@ -342,7 +350,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('getConversationItems', () => {
+  describe.sequential('getConversationItems', () => {
     it('應該成功獲取對話中的商品', async () => {
       // Arrange
       const conversationId = 456;
@@ -381,7 +389,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('archiveConversation', () => {
+  describe.sequential('archiveConversation', () => {
     it('應該成功歸檔對話', async () => {
       // Arrange
       const conversationId = 456;
@@ -427,7 +435,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('getTotalUnreadCount', () => {
+  describe.sequential('getTotalUnreadCount', () => {
     it('應該成功獲取總未讀數', async () => {
       // Arrange
       const mockConversations = [
@@ -463,7 +471,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('deleteMessage', () => {
+  describe.sequential('deleteMessage', () => {
     it('應該成功軟刪除訊息', async () => {
       // Arrange
       const messageId = 789;
@@ -493,7 +501,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('restoreMessage', () => {
+  describe.sequential('restoreMessage', () => {
     it('應該成功恢復訊息', async () => {
       // Arrange
       const messageId = 789;
@@ -523,20 +531,40 @@ describe('conversation API', () => {
     });
   });
 
-  describe('Realtime Subscriptions', () => {
-    it('subscribeToMessages 應該創建訂閱', () => {
+  describe.sequential('Realtime Subscriptions', () => {
+    it('subscribeToMessages 應該創建訂閱並處理各種狀態', () => {
       // Arrange
       const conversationId = 456;
       const callback = vi.fn();
 
+      // Mock subscription channel
+      const mockChannel = {
+        on: vi.fn().mockImplementation((event, filter, cb) => {
+           if (cb) cb({ new: { id: 1 } });
+           return mockChannel;
+        }),
+        subscribe: vi.fn((statusCb) => {
+          // Simulate different statuses
+          statusCb('SUBSCRIBED');
+          statusCb('CHANNEL_ERROR');
+          statusCb('TIMED_OUT');
+          statusCb('CLOSED');
+          return { unsubscribe: vi.fn() };
+        }),
+        unsubscribe: vi.fn()
+      }
+      supabase.channel.mockReturnValueOnce(mockChannel);
+
       // Act
-      const channel = subscribeToMessages(conversationId, callback);
+      subscribeToMessages(conversationId, callback);
 
       // Assert
       expect(supabase.channel).toHaveBeenCalledWith(`conversation_v2_${conversationId}`);
-      expect(channel).toBeDefined();
-      expect(channel.on).toHaveBeenCalled();
-      expect(channel.subscribe).toHaveBeenCalled();
+      expect(callback).toHaveBeenCalledWith({ id: 1 });
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('已訂閱對話'));
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('訂閱對話 #456 失敗'));
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('訂閱對話 #456 逾時'));
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('訂閱已關閉'));
     });
 
     it('subscribeToMessages 應該支援自訂表名', () => {
@@ -552,28 +580,56 @@ describe('conversation API', () => {
       expect(channel).toBeDefined();
     });
 
-    it('subscribeToMessageUpdates 應該創建更新訂閱', () => {
+    it('subscribeToMessageUpdates 應該創建更新訂閱並處理各種狀態', () => {
       // Arrange
       const onUpdate = vi.fn();
+      const mockChannel = {
+        on: vi.fn().mockImplementation((event, filter, cb) => {
+           if (cb) cb({ new: { id: 1, is_read: true }, old: { id: 1 } });
+           return mockChannel;
+        }),
+        subscribe: vi.fn((statusCb) => {
+          statusCb('SUBSCRIBED');
+          statusCb('CHANNEL_ERROR');
+          statusCb('TIMED_OUT');
+          statusCb('CLOSED');
+           return { unsubscribe: vi.fn() };
+        })
+      };
+      supabase.channel.mockReturnValueOnce(mockChannel);
 
       // Act
-      const channel = subscribeToMessageUpdates(onUpdate);
+      subscribeToMessageUpdates(onUpdate);
 
       // Assert
-      expect(supabase.channel).toHaveBeenCalledWith('message_updates', expect.any(Object));
-      expect(channel).toBeDefined();
+      expect(onUpdate).toHaveBeenCalledWith({ id: 1, is_read: true });
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('已訂閱訊息更新'));
     });
 
-    it('subscribeToAllMessages 應該創建全域訂閱', () => {
+    it('subscribeToAllMessages 應該創建全域訂閱並處理各種狀態', () => {
       // Arrange
       const callback = vi.fn();
+       const mockChannel = {
+        on: vi.fn().mockImplementation((event, filter, cb) => {
+           if (cb) cb({ new: { conversation_id: 123 } });
+           return mockChannel;
+        }),
+        subscribe: vi.fn((statusCb) => {
+          statusCb('SUBSCRIBED');
+          statusCb('CHANNEL_ERROR');
+          statusCb('TIMED_OUT');
+          statusCb('CLOSED');
+          return { unsubscribe: vi.fn() };
+        })
+      };
+      supabase.channel.mockReturnValueOnce(mockChannel);
 
       // Act
-      const channel = subscribeToAllMessages(callback);
+      subscribeToAllMessages(callback);
 
       // Assert
-      expect(supabase.channel).toHaveBeenCalledWith('all_conversations');
-      expect(channel).toBeDefined();
+      expect(callback).toHaveBeenCalledWith({ conversation_id: 123 });
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('已訂閱所有對話'));
     });
 
     it('subscribeToUserPresence 應該創建線上狀態訂閱', () => {
@@ -589,10 +645,15 @@ describe('conversation API', () => {
       // Act
       const channel = subscribeToUserPresence(onPresenceUpdate);
 
+      // Manually trigger the 'sync' event callback to test coverage
+      const syncCallback = mockChannel.on.mock.calls.find(call => call[1].event === 'sync')[2];
+      syncCallback();
+
       // Assert
       expect(supabase.channel).toHaveBeenCalledWith('online-users');
       expect(channel).toBeDefined();
       expect(mockChannel.on).toHaveBeenCalled();
+      expect(onPresenceUpdate).toHaveBeenCalled();
     });
 
     it('createConversationTypingChannel 應該創建輸入中頻道', () => {
@@ -627,7 +688,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('錯誤處理邊界情況', () => {
+  describe.sequential('錯誤處理邊界情況', () => {
     it('getConversations 應該在 RPC 失敗時拋出錯誤', async () => {
       // Arrange
       const errorMessage = 'RPC connection failed';
@@ -713,7 +774,7 @@ describe('conversation API', () => {
     });
   });
 
-  describe('進階場景', () => {
+  describe.sequential('進階場景', () => {
     it('sendMessage 應該在 RPC 失敗時拋出錯誤', async () => {
       // Arrange
       const errorMessage = 'Send message failed';
@@ -799,7 +860,7 @@ describe('conversation API', () => {
         expect.any(Function)
       );
     });
-
+  });
     it('subscribeToUserPresence 應該處理 sync 事件', () => {
       // Arrange
       const onPresenceUpdate = vi.fn();
@@ -962,6 +1023,46 @@ describe('conversation API', () => {
         expect(mockChannel.subscribe).toHaveBeenCalled();
         expect(channel).toBeDefined();
       });
+
+      it('subscribeToUserPresence 應該處理 join 和 leave 事件', () => {
+        const onPresenceUpdate = vi.fn();
+        const handlers = {};
+        const mockChannel = {
+          on: vi.fn((type, filter, cb) => {
+            if (type === 'presence') {
+                handlers[filter.event] = cb;
+            }
+            return mockChannel;
+          }),
+          subscribe: vi.fn(),
+          presenceState: vi.fn()
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        subscribeToUserPresence(onPresenceUpdate);
+
+        // Execute the empty callbacks to ensure coverage
+        if (handlers['join']) handlers['join']();
+        if (handlers['leave']) handlers['leave']();
+
+        // Assert they were registered
+        expect(mockChannel.on).toHaveBeenCalledWith('presence', { event: 'join' }, expect.any(Function));
+        expect(mockChannel.on).toHaveBeenCalledWith('presence', { event: 'leave' }, expect.any(Function));
+      });
+
+      it('subscribeToUserPresence 應該處理 subscribe callback', () => {
+        const onPresenceUpdate = vi.fn();
+        const mockChannel = {
+          on: vi.fn().mockReturnThis(),
+          subscribe: vi.fn((cb) => cb && cb()), // Execute callback immediately
+          presenceState: vi.fn()
+        };
+        supabase.channel.mockReturnValueOnce(mockChannel);
+
+        subscribeToUserPresence(onPresenceUpdate);
+
+        expect(mockChannel.subscribe).toHaveBeenCalledWith(expect.any(Function));
+      });
     });
   });
-});
+

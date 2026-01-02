@@ -18,7 +18,7 @@ vi.mock('@/api/image', () => ({
   uploadItemImages: vi.fn()
 }))
 
-describe('create_myItemAPI', () => {
+describe.sequential('create_myItemAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     supabase.rpc.mockReset()

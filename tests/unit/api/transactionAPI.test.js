@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { 
-  initiateTransaction,
-  getMyTransactionsByStatus,
-  updateGiverNote,
-  buyerConfirmTransaction,
-  cancelTransaction,
-  finalizeTransactionWithCode,
   createOffer,
   respondToOffer,
   createOrderRequest,
@@ -16,7 +10,19 @@ import {
   getMyTransactions,
   getTransactionById,
   getReviewByTransaction
-} from '@/api/transactionAPI.js'
+} from '@/api/transactionsAPI.js'
+
+import {
+  initiateTransaction,
+  getMyTransactionsByStatus,
+  updateGiverNote,
+  buyerConfirmTransaction,
+  cancelTransaction
+} from '@/api/transaction_before_meetAPI.js'
+
+import {
+  finalizeTransactionWithCode
+} from '@/api/transaction_meetAPI.js'
 
 // 模擬 Supabase
 vi.mock('@/lib/supabase', () => ({
@@ -30,7 +36,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import { supabase } from '@/lib/supabase'
 
-describe('transactionAPI', () => {
+describe.sequential('transactionAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

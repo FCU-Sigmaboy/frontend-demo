@@ -151,21 +151,13 @@ export async function saveLocation({ latitude, longitude, type, is_primary }, us
     if (error) {
       switch (error) {
         case 400:
-          // 可能的錯誤：
-          // - "首次建立地點必須為「家」"
-          // - "您已經有「家」類型的地點"
-          // - "已達地點數量上限"
-          // - "無效的地點類型（僅支援「家」和「公司」）"
-          // - "無效的座標格式"
-          throw new Error(error || '請求錯誤');
+          throw new Error('請求錯誤');
         case 401:
-          // 未授權：token 無效或過期
-          throw new Error(error || '未授權，請重新登入');
+          throw new Error('未授權，請重新登入');
         case 500:
-          // 伺服器內部錯誤（如地址解析失敗、資料庫錯誤）
-          throw new Error(error || '伺服器錯誤，請稍後再試');
+          throw new Error('伺服器錯誤，請稍後再試');
         default:
-          throw new Error(error || '未知錯誤');
+          throw new Error(typeof error === 'string' ? error : '未知錯誤');
       }
     }
 

@@ -13,7 +13,7 @@ vi.mock('@/lib/supabase', () => ({
   }
 }));
 
-describe('get_ItemDetailAPI', () => {
+describe.sequential('get_ItemDetailAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();

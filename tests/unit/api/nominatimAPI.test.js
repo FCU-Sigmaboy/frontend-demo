@@ -13,7 +13,7 @@ vi.mock('@/utils/openStreetMapLoader', () => ({
 
 import { nominatimSearch, nominatimReverse } from '@/utils/openStreetMapLoader'
 
-describe('nominatimAPI', () => {
+describe.sequential('nominatimAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -138,7 +138,7 @@ describe('nominatimAPI', () => {
 
       nominatimSearch.mockResolvedValueOnce(mockResults)
 
-      const result = await autocomplete('台北')
+      const result = await autocomplete('台北市')
 
       expect(result).toHaveLength(2)
       expect(result[0].label).toBe('台北市信義區')

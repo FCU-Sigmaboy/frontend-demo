@@ -12,7 +12,7 @@ vi.mock('@/lib/supabase', () => ({
   }
 }));
 
-describe('get_myProfileDetailsAPI', () => {
+describe.sequential('get_myProfileDetailsAPI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();
@@ -286,6 +286,96 @@ describe('get_myProfileDetailsAPI', () => {
       // Assert
       expect(result.following_count).toBe(0);
       expect(result.followers_count).toBe(5);
+    });
+
+    it('應該處理 followers count 查詢失敗', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      const mockProfileData = {
+        id: 'user-123',
+        nickname: '測試用戶',
+        profiles: [],
+        locations: []
+      };
+
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: mockProfileData, error: null })
+      };
+
+      supabase.auth.getUser.mockResolvedValueOnce({
+        data: { user: mockUser },
+        error: null
+      });
+
+      supabase.from.mockImplementation((table) => {
+        if (table === 'users') return mockQuery;
+        if (table === 'following') {
+          const query = {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis()
+          };
+          
+          if (supabase.from.mock.calls.filter(c => c[0] === 'following').length === 1) {
+            query.eq.mockResolvedValueOnce({ count: 5, error: null });
+          } else {
+            query.eq.mockResolvedValueOnce({ count: null, error: { message: 'Error' } });
+          }
+          
+          return query;
+        }
+        return mockQuery;
+      });
+
+      // Act
+      const result = await getMyProfileForEdit();
+
+      // Assert
+      expect(result.following_count).toBe(5);
+      expect(result.followers_count).toBe(0);
+    });
+
+    it('應該處理 profiles 資料缺失的情況', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      // data.profiles is missing/undefined/null
+      const mockProfileData = {
+        id: 'user-123',
+        nickname: '測試用戶',
+        // profiles: null (omitted)
+        locations: []
+      };
+
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: mockProfileData, error: null })
+      };
+
+      supabase.auth.getUser.mockResolvedValueOnce({
+        data: { user: mockUser },
+        error: null
+      });
+
+      supabase.from.mockImplementation((table) => {
+        if (table === 'users') return mockQuery;
+        if (table === 'following') {
+          return {
+             select: vi.fn().mockReturnThis(),
+             eq: vi.fn().mockResolvedValue({ count: 0, error: null })
+          };
+        }
+        return mockQuery;
+      });
+
+      // Act
+      const result = await getMyProfileForEdit();
+
+      // Assert
+      expect(result.profile_details).toBeNull();
     });
   });
 });
