@@ -166,7 +166,7 @@ if (!categoriesStore.isLoaded) {
 const categories = computed(() => categoriesStore.categories);
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const selectedCategory = ref(0); // 當前選中的主分類
 const selectedSubCategory = ref(0); // 當前選中的子分類
 const searchQuery = ref('');

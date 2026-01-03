@@ -492,7 +492,7 @@ const refreshUserPoints = async () => {
 };
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const activeTab = ref('confirming');
 const roleTab = ref('receiver'); // 'receiver' (買入), 'giver' (賣出)
 const filteredByRole = ref([]); // FilterTabs 篩選後的結果

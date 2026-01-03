@@ -327,7 +327,7 @@ const route = useRoute();
 const router = useRouter();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const activeTab = ref('listings');
 const isLoadingListings = ref(false);
 const isLoadingProfile = ref(false);

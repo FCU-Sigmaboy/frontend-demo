@@ -400,7 +400,7 @@ const route = useRoute();
 const router = useRouter();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const itemId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isEdit = computed(() => !!itemId.value);
 

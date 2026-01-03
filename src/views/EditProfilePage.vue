@@ -271,7 +271,7 @@ const breadcrumbItems = [
 ];
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const isSaving = ref(false);
 const isGettingLocation = ref(false);
 const isGettingOfficeLocation = ref(false);

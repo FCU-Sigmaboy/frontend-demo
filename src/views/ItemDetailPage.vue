@@ -242,7 +242,7 @@ const route = useRoute();
 const router = useRouter();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const currentImageIndex = ref(0);
 const loading = ref(true);
 const error = ref(null);

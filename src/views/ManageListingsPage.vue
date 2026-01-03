@@ -465,7 +465,7 @@ const breadcrumbItems = [
 ];
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const searchQuery = ref('');
 const activeFilter = ref('all');
 const listings = ref([]);

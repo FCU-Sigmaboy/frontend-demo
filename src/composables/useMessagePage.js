@@ -94,7 +94,7 @@ export function useMessagePage() {
   const authStore = useAuthStore();
   const transactionStore = useTransactionStore();
 
-  const userPoints = ref(500);
+  const userPoints = ref(0);
   const searchQuery = ref('');
   const messageInput = ref('');
   const messagesArea = ref(null);
