@@ -5,7 +5,8 @@
 % --- PACKAGES FOR MODERN WHITEPAPER STYLE ---
 % Load xcolor with table option FIRST to ensure rowcolor works
 % This MUST be the very first package loaded to avoid conflicts
-\usepackage[table]{xcolor} 
+% Load xcolor with necessary options for named colors
+\usepackage[table, dvipsnames, svgnames]{xcolor} 
 
 \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
 \usepackage{fontspec}
@@ -32,38 +33,26 @@
 % --- OTHER PACKAGES ---
 % --- OTHER PACKAGES ---
 % 在載入 tcolorbox 前完全禁用標籤輸出，以修復 TeX Live 2025 相容性問題
-\makeatletter
-% 保存原始命令
-\let\orig@Hy@raisedlink\Hy@raisedlink
-\let\orig@hyper@anchorstart\hyper@anchorstart
-\let\orig@hyper@anchorend\hyper@anchorend
-
-% 暫時禁用所有可能產生輸出的命令
-\def\Hy@raisedlink#1{}
-\def\hyper@anchorstart#1{}
-\def\hyper@anchorend{}
+\makeatother
 
 % 重定義 tcolorbox 的標籤命令為完全不產生輸出 (Fix Undefined Control Sequence)
-\def\NewStructureName#1{\@bsphack\@esphack}
-\def\AssignStructureRole#1#2{\@bsphack\@esphack}
-\def\NewTaggingSocket#1#2{\@bsphack\@esphack}
-\def\NewTaggingSocketPlug#1#2{\@bsphack\@esphack}
-\def\AssignTaggingSocketPlug#1#2{\@bsphack\@esphack}
-\def\UseStructureName#1{}
-\def\tagstructbegin#1{}
-\def\tagstructend{}
-\def\tagpdfparaOff#1{}
-
+% IMPORTANT: Must consume ALL arguments to prevent them from spilling into document body
+% IMPORTANT: Must be \long to allow \par in arguments (common in code blocks)
+\makeatletter
+\long\def\NewStructureName#1{\@bsphack\@esphack}
+\long\def\AssignStructureRole#1#2{\@bsphack\@esphack}
+\long\def\NewTaggingSocket#1#2{\@bsphack\@esphack}
+\long\def\NewTaggingSocketPlug#1#2#3{\@bsphack\@esphack} % Fix: Consumes 3 args & allows par
+\long\def\AssignTaggingSocketPlug#1#2{\@bsphack\@esphack}
+\long\def\UseStructureName#1{}
+\long\def\tagstructbegin#1{}
+\long\def\tagstructend{}
+\long\def\tagpdfparaOff#1{}
 \makeatother
 
 \usepackage{tcolorbox}
 
-% 恢復原始命令
-\makeatletter
-\let\Hy@raisedlink\orig@Hy@raisedlink
-\let\hyper@anchorstart\orig@hyper@anchorstart
-\let\hyper@anchorend\orig@hyper@anchorend
-\makeatother
+
 
 
 \usepackage{atbegshi} % 用於控制頁面輸出
@@ -209,17 +198,18 @@
 
   {\Huge \bfseries \sffamily \color{white} 軟體測試專題報告 \par}
   \vspace{1cm}
-  {\Large \sffamily \color{ElectricCyan} FCU Sigmaboy 物品交換平台 \par}
+  {\Large \sffamily \color{ElectricCyan} 台中易起來：在地二手物交易平台 \par}
   \vspace{0.5cm}
-  {\large \sffamily \color{white} 前端應用程式軟體測試技術白皮書 \par}
+  {\large \sffamily \color{white} 逢甲大學資訊工程學系學士後專班 \par}
 
   \vfill
 
   \begin{tcolorbox}[colback=white!10!NavyBlue, colframe=ElectricCyan, width=0.8\textwidth, arc=2mm]
     \centering \color{white}
-    \textbf{專題組員：} FCU Sigmaboy Team \\
-    \textbf{發布日期：} 2026-01-02 \\
-    \textbf{測試核心：} API 層單元測試 (Vitest)
+    \textbf{課程：} 軟體品質與測試 (指導教授：薛念林 博士) \\
+    \textbf{組別：} 第三組 \\
+    \textbf{成員：} 林政佑 / 陶子中 / 游程鈞 / 陳韋翰 \\
+    \textbf{發布日期：} 2026-01-02
   \end{tcolorbox}
 
   \vspace{2cm}
@@ -227,10 +217,7 @@
 
 % --- TABLE OF CONTENTS ---
 \newpage
-\begin{center}
-  {\Huge\bfseries\sffamily\color{NavyBlue} 目錄}
-  \vspace{1cm}
-\end{center}
+
 \tableofcontents
 \newpage
 
@@ -239,7 +226,7 @@
 \section{專題描述}
 
 \subsection{專題目標}
-本專案針對「FCU Sigmaboy 物品交換平台」前端應用程式進行完整的軟體測試。有鑑於現代前端應用邏輯的複雜性，本報告確立了**以 `src/api` 層為測試核心**的策略，確保資料互動的準確性與穩定性。
+本專案針對「台中易起來 - 在地二手物交易平台」進行單元測試。有鑑於現代前端應用邏輯的複雜性，本報告確立了**以 `src/api` 層為測試核心**的策略，確保資料互動的準確性與穩定性。
 
 \subsection{功能模組與 API 對照}
 本平台提供以下 8 個核心功能模組，均已納入測試範圍：
@@ -652,9 +639,9 @@ if (rating < 1 || rating > 5) { // 修正邊界條件
 \end{itemize}
 
 \subsection{心得總結}
-測試驅動開發 (TDD) 的實踐不僅提升了程式碼的穩定性，更充當了「活的文件」。透過高覆蓋率的 API 測試，我們成功建立了穩固的後端互動基礎，為未來的 E2E 測試與功能擴充鋪平了道路。
+本專案啟動時，並未協同測試並行開發，導致回頭進行測試工作時，膨脹的專案令複雜度大為提高，並且難以劃分開發者的責任歸屬。
 
-\begin{itemize}
+\begin{itemize}[label=\textcolor{ElectricCyan}{$\blacksquare$}]
   \item \textbf{TDD 的價值}：先寫測試再寫程式碼能確保功能正確性
   \item \textbf{覆蓋率迷思}：高覆蓋率不等於高品質，邊界值與錯誤處理更重要
   \item \textbf{Mock 策略}：統一的 Mock 設定能減少重複程式碼並隔離外部相依性
@@ -724,13 +711,12 @@ frontend/
   \renewcommand{\arraystretch}{1.4}
   \begin{tabular}{p{0.2\textwidth} p{0.45\textwidth} p{0.15\textwidth}}
     \toprule
-    \textbf{成員}                  & \textbf{負責項目} & \textbf{貢獻比例} \\
+    \textbf{成員}              & \textbf{負責項目} & \textbf{貢獻比例} \\
     \midrule
-    {[成員1]}                      & API 層測試開發     & 30\%          \\
-    \rowcolor{LightGray} {[成員2]} & 組件測試開發        & 25\%          \\
-    {[成員3]}                      & 測試設計與文件       & 20\%          \\
-    \rowcolor{LightGray} {[成員4]} & 程式碼度量與報告      & 15\%          \\
-    {[成員5]}                      & Bug 修復與整合     & 10\%          \\
+    林政佑                      & 測試架構與設計       & 30\%          \\
+    \rowcolor{LightGray} 陶子中 & 測試案例改善與文件撰寫   & 30\%          \\
+    游程鈞                      & 測試案例改善與簡報撰寫   & 30\%          \\
+    \rowcolor{LightGray} 陳韋翰 & 意見分享與現場演示     & 10\%          \\
     \bottomrule
   \end{tabular}
 \end{center}
@@ -742,20 +728,7 @@ frontend/
   \item \textbf{覆蓋率工具:} @vitest/coverage-v8 (JaCoCo 對應)
   \item \textbf{程式碼審查:} ESLint 9.x (PMD 對應)
   \item \textbf{程式碼度量:} code-metrics.js (MetricsReloaded 對應)
+  \item \textbf{AI 工具使用：} GitHub Copilot 測試程式碼與審查建議
 \end{itemize}
-
-\vspace{0.3cm}
-\textbf{AI 工具使用：}
-\begin{center}
-  \begin{tabular}{p{0.25\textwidth} p{0.35\textwidth} p{0.2\textwidth}}
-    \toprule
-    \textbf{AI 工具}                      & \textbf{使用項目} & \textbf{使用比例} \\
-    \midrule
-    GitHub Copilot                      & 測試程式碼生成       & 40\%          \\
-    \rowcolor{LightGray} GitHub Copilot & 文件撰寫          & 60\%          \\
-    GitHub Copilot                      & 程式碼審查建議       & 30\%          \\
-    \bottomrule
-  \end{tabular}
-\end{center}
 
 \end{document}
