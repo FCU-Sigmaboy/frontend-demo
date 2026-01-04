@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試設計方法展示 | FCU Sigma</title>
+    <style>
+        /* Neo-Brutalist Reset & Variables */
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --border: 3px solid #000000;
+            --shadow: 5px 5px 0px 0px #000000;
+            --primary: #8AB4F8;  /* Blue */
+            --secondary: #FBBC04; /* Yellow */
+            --accent: #FF708C;    /* Red/Pink */
+            --success: #34A853;   /* Green */
+            --font-main: 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f0f0f0;
+            color: var(--text);
+            font-family: var(--font-main);
+            line-height: 1.6;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Layout */
+        nav {
+            width: 280px;
+            background: var(--bg);
+            border-right: var(--border);
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        main {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+            max-width: 1200px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            background: var(--text);
+            color: var(--bg);
+            padding: 10px 20px;
+            display: inline-block;
+            box-shadow: 10px 10px 0px 0px var(--secondary);
+        }
+
+        h2 {
+            font-size: 2rem;
+            border-bottom: var(--border);
+            padding-bottom: 10px;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+            background: var(--secondary);
+            display: inline-block;
+            border: var(--border);
+            padding: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        h3::before {
+            content: "►";
+            margin-right: 10px;
+            color: var(--accent);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Navigation Links */
+        .nav-link {
+            display: block;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: bold;
+            padding: 15px;
+            border: var(--border);
+            margin-bottom: 15px;
+            background: var(--bg);
+            transition: all 0.1s;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-link:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 7px 7px 0px 0px #000;
+            background: var(--primary);
+        }
+
+        .nav-link:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #000;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg);
+            border: var(--border);
+            padding: 20px;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .tag {
+            background: var(--text);
+            color: var(--bg);
+            padding: 4px 8px;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        /* Tables */
+        .brutal-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: var(--border);
+            margin-bottom: 1.5rem;
+            font-family: var(--font-mono);
+            background: #fff;
+        }
+
+        .brutal-table th, .brutal-table td {
+            border: 2px solid #000;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .brutal-table th {
+            background: #000;
+            color: #fff;
+        }
+
+        .brutal-table tr:hover td {
+            background: #fdfdcb;
+        }
+
+        /* Buttons */
+        .btn {
+            background: var(--accent);
+            color: var(--text);
+            border: var(--border);
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.1s;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 7px 7px 0px 0px #000;
+            filter: brightness(1.1);
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #000;
+        }
+
+        .btn-code {
+            background: var(--primary);
+        }
+
+        /* Code Modal */
+        dialog {
+            border: var(--border);
+            box-shadow: 10px 10px 0px 0px #000;
+            padding: 0;
+            width: 80%;
+            max-width: 900px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-header {
+            background: var(--secondary);
+            padding: 15px 20px;
+            border-bottom: var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        .close-btn {
+            background: red;
+            color: white;
+            border: 2px solid black;
+            width: 30px;
+            height: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .code-content {
+            padding: 20px;
+            background: #2d2d2d;
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+
+        pre {
+            color: #ccc;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+        }
+
+        .code-keyword { color: #cc99cd; }
+        .code-string { color: #7ec699; }
+        .code-number { color: #f08d49; }
+        .code-comment { color: #999; }
+        .code-func { color: #f8c555; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: var(--border);
+                display: flex;
+                overflow-x: auto;
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            nav h1 {
+                display: none; /* Hide huge title in mobile nav */
+            }
+
+            .nav-link {
+                margin: 0;
+                white-space: nowrap;
+                padding: 10px;
+            }
+
+            main {
+                margin-left: 0;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div style="margin-bottom: 2rem; font-weight: 900; font-size: 1.5rem; border: 3px solid black; padding: 10px; text-align: center; background: #fff; box-shadow: 4px 4px 0 0 #000;">
+            TEST<br>DESIGN
+        </div>
+        <a href="#ep" class="nav-link">01 等價類別劃分</a>
+        <a href="#bva" class="nav-link">02 邊界值分析</a>
+        <a href="#state" class="nav-link">03 狀態轉換測試</a>
+        <a href="#error" class="nav-link">04 錯誤處理測試</a>
+        <a href="#positive" class="nav-link">05 正向測試 (Positive)</a>
+        <a href="#negative" class="nav-link">06 負向測試 (Negative)</a>
+    </nav>
+
+    <main>
+        <h1>測試設計案例展示</h1>
+        <p style="font-size: 1.2rem; border-left: 5px solid #000; padding-left: 15px; background: #fff; padding: 15px; border: 3px solid #000; box-shadow: 5px 5px 0 0 #ccc;">
+            本頁面展示專案中實際應用的測試設計方法。<br>
+            點擊 <strong>SHOW CODE</strong> 查看 Jest/Vitest 測試代碼。
+        </p>
+
+        <!-- 1. Equivalence Partitioning -->
+        <section id="ep">
+            <h2>01 等價類別劃分 (EP)</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>1.1 評分驗證測試</h3>
+                    <span class="tag">Create Review</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>等價類別</th><th>輸入範圍</th><th>測試值</th><th>預期</th></tr>
+                    <tr><td>有效</td><td>1-5</td><td>1, 4, 5</td><td>✅</td></tr>
+                    <tr><td>無效(過低)</td><td>&lt; 1</td><td>0</td><td>❌</td></tr>
+                    <tr><td>無效(過高)</td><td>&gt; 5</td><td>6</td><td>❌</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-ep-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>1.2 地點類型驗證</h3>
+                    <span class="tag">Location API</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>等價類別</th><th>輸入值</th><th>結果</th></tr>
+                    <tr><td>有效</td><td>"家", "公司"</td><td>✅</td></tr>
+                    <tr><td>無效</td><td>"學校", "其他"</td><td>❌</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-ep-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 2. Boundary Value Analysis -->
+        <section id="bva">
+            <h2>02 邊界值分析 (BVA)</h2>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.1 點數等級邊界</h3>
+                    <span class="tag">Points API</span>
+                </div>
+                <p>測試等級切換的臨界點。</p>
+                <br>
+                <table class="brutal-table">
+                    <tr><th>邊界描述</th><th>測試值</th><th>預期等級</th></tr>
+                    <tr><td>等級1最小</td><td>0</td><td>新手交易者</td></tr>
+                    <tr><td>等級2/3邊界</td><td>1500</td><td>中階交易者</td></tr>
+                    <tr><td>最高等級</td><td>25000</td><td>傳奇交易者</td></tr>
+                    <tr><td>異常負數</td><td>-100</td><td>新手交易者</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.2 過濾器與閾值</h3>
+                    <span class="tag">Filter Utils</span>
+                </div>
+                <p>測試搜尋過濾器的邊界條件 (Utilities)</p>
+                <table class="brutal-table">
+                    <tr><th>過濾條件</th><th>參數</th><th>測試值</th><th>結果</th></tr>
+                    <tr><td>距離過濾</td><td>max=5km</td><td>5km</td><td>✅ (保留)</td></tr>
+                    <tr><td>距離過濾</td><td>max=5km</td><td>6km</td><td>❌ (排除)</td></tr>
+                    <tr><td>價格區間</td><td>100-500</td><td>99, 501</td><td>❌ (排除)</td></tr>
+                    <tr><td>價格區間</td><td>100-500</td><td>100, 500</td><td>✅ (保留)</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-3')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.3 經緯度邊界</h3>
+                    <span class="tag">Location API</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>參數</th><th>邊界測試值</th><th>結果</th></tr>
+                    <tr><td>緯度 (-90~90)</td><td>-91, 91</td><td>Throws Error</td></tr>
+                    <tr><td>經度 (-180~180)</td><td>-181, 181</td><td>Throws Error</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 3. State Transition -->
+        <section id="state">
+            <h2>03 狀態轉換測試</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>3.1 交易狀態流轉</h3>
+                    <span class="tag">Transaction Workflow</span>
+                </div>
+                <div style="border: 3px solid #000; padding: 20px; margin-bottom: 20px; background: #fff; text-align: center; font-family: monospace;">
+                    [初始] ➔ Confirming ➔ Pending ➔ Completed<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⬇&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⬇<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cancelled&nbsp;&nbsp;&nbsp;&nbsp;Expired
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-state-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>3.2 徽章獲取狀態</h3>
+                    <span class="tag">Badges System</span>
+                </div>
+                <p>驗證徽章從「進行中」到「已獲得」的狀態判定。</p>
+                <div style="border: 3px solid #000; padding: 15px; margin-bottom: 15px; background: #eee; font-family: monospace;">
+                    User Progress: 50% ➔ 100% ➔ [Earned Badge]
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-state-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 4. Error Handling -->
+        <section id="error">
+            <h2>04 錯誤處理測試</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h3>4.1 ~ 4.4 常見錯誤模擬</h3>
+                    <span class="tag">System Wide</span>
+                </div>
+                <ul style="list-style: none; padding: 10px;">
+                    <li style="margin-bottom: 10px;">🔴 <strong>認證錯誤</strong>: 未登入呼叫保護 API</li>
+                    <li style="margin-bottom: 10px;">🔴 <strong>資料庫錯誤</strong>: RPC 呼叫失敗或連線中斷</li>
+                    <li style="margin-bottom: 10px;">🔴 <strong>網路異常</strong>: 模擬 fetch 拋出網路錯誤</li>
+                    <li style="margin-bottom: 10px;">🔴 <strong>權限拒絕</strong>: 地理位置權限被拒</li>
+                </ul>
+                <button class="btn btn-code" onclick="showCode('code-error-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>4.5 AI 服務錯誤處理</h3>
+                    <span class="tag">RAG QA API</span>
+                </div>
+                <p>模擬 RAG (Retrieved Augmented Generation) 服務的各種邊界與錯誤。</p>
+                <table class="brutal-table">
+                    <tr><th>情境</th><th>模擬狀態</th><th>預期結果</th></tr>
+                    <tr><td>Server Crash</td><td>HTTP 500</td><td>Handle Gracefully</td></tr>
+                    <tr><td>空的提問</td><td>Empty String</td><td>Reject Immediate</td></tr>
+                    <tr><td>未授權存取</td><td>No Session</td><td>Use Anon Key</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-error-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 5. Positive Testing -->
+        <section id="positive">
+            <h2>05 正向測試 (Positive Testing)</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>5.1 每日簽到成功</h3>
+                    <span class="tag">Badges API</span>
+                </div>
+                <p>驗證在正常登入且 RPC 成功的情況下，簽到功能正確回傳獎勵。</p>
+                <div style="border: 3px solid #000; padding: 10px; background: #e6ffe6; margin-bottom: 10px;">
+                    Input: Logged In User<br>
+                    Output: Success: true, Streak: 5, Points: 10
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-pos-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>5.2 AI 問答正常回覆</h3>
+                    <span class="tag">RAG QA API</span>
+                </div>
+                <p>驗證在 Session 有效且問題合法時，能夠取得 AI 回覆。</p>
+                <button class="btn btn-code" onclick="showCode('code-pos-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 6. Negative Testing -->
+        <section id="negative">
+            <h2>06 負向測試 (Negative Testing)</h2>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.1 缺少過濾參數</h3>
+                    <span class="tag">Filter Utils</span>
+                </div>
+                <p>驗證當輸入參數缺失 (null/undefined) 時，過濾器的預設行為。</p>
+                <table class="brutal-table">
+                    <tr><th>過濾器</th><th>輸入</th><th>結果</th></tr>
+                    <tr><td>ByPopularity</td><td>missing count</td><td>False (Safe Fail)</td></tr>
+                    <tr><td>ByStatus</td><td>missing status</td><td>False (Safe Fail)</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-neg-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.2 未登入操作徽章</h3>
+                    <span class="tag">Badges API</span>
+                </div>
+                <p>驗證在未登入狀態下呼叫保護的簽到介面，應被系統拒絕。</p>
+                <div style="border: 3px solid #000; padding: 10px; background: #ffe6e6; margin-bottom: 10px;">
+                    Input: No User Session<br>
+                    Output: Error: "使用者未登入"
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-neg-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Dialog for Code -->
+    <dialog id="code-modal">
+        <div class="modal-header">
+            <div class="modal-title">Code Snippet</div>
+            <button class="close-btn" onclick="document.getElementById('code-modal').close()">X</button>
+        </div>
+        <div class="code-content">
+            <pre id="code-display"></pre>
+        </div>
+    </dialog>
+
+    <script>
+        // Data Store (Hardcoded from Markdown)
+        const CODE_SNIPPETS = {
+            'code-ep-1': `// tests/unit/api/create_review.test.js
+
+// ✅ 有效等價類別測試
+it('should create review with valid data', async () => {
+  const reviewData = {
+    transaction_id: 123,
+    score: 5,  // 有效評分 (1-5)
+    comment: '非常好的賣家！'
+  }
+  const result = await createReview(reviewData)
+  expect(result.score).toBe(5)
+})
+
+// ❌ 無效等價類別測試 - 評分過低
+it('should throw error when score is below 1', async () => {
+  const reviewData = { transaction_id: 123, score: 0 }
+  await expect(createReview(reviewData))
+    .rejects.toThrow('評分必須在 1-5 之間')
+})`,
+            'code-ep-2': `// tests/unit/api/save_locationAPI.test.js
+
+// ❌ 無效等價類別測試 - 類型不在允許範圍內
+it('應該在類型無效時拋出錯誤', async () => {
+  await expect(
+    saveUserLocation({ latitude: 24.1817, longitude: 120.7344, type: '學校' })
+  ).rejects.toThrow('Invalid type: must be "家" or "公司"')
+})`,
+            'code-bva-1': `// tests/unit/api/pointsAPI.test.js
+
+describe('getLevelTier', () => {
+  it('should return correct tier for given points', async () => {
+    // 邊界值測試
+    expect(getLevelTier(0)).toEqual(LEVEL_TIERS[0])      // 最小邊界
+    expect(getLevelTier(1500)).toEqual(LEVEL_TIERS[2])   // 等級 2/3 邊界
+    expect(getLevelTier(25000)).toEqual(LEVEL_TIERS[6])  // 最高等級
+  })
+
+  it('should return first tier for invalid points', async () => {
+    // 負數邊界 (異常輸入)
+    expect(getLevelTier(-100)).toEqual(LEVEL_TIERS[0])
+  })
+})`,
+            'code-bva-2': `// tests/unit/api/save_locationAPI.test.js
+
+it('應該在緯度無效時拋出錯誤', async () => {
+  // 邊界值 -91 (低於下界 -90)
+  await expect(
+    saveUserLocation({ latitude: -91, longitude: 120.7344 })
+  ).rejects.toThrow('Invalid latitude: must be between -90 and 90')
+})
+
+it('應該在經度無效時拋出錯誤', async () => {
+  // 邊界值 181 (高於上界 180)
+  await expect(
+    saveUserLocation({ latitude: 24.1817, longitude: 181 })
+  ).rejects.toThrow('Invalid longitude: must be between -180 and 180')
+})`,
+            'code-state-1': `// tests/unit/api/transaction_before_meetAPI.test.js
+
+describe('交易狀態轉換測試', () => {
+  // 狀態轉換: (初始) → confirming
+  it('should initiate a transaction successfully', async () => {
+    const result = await initiateTransaction(456, 'buyer-uuid-123')
+    expect(result.status).toBe('confirming')
+  })
+
+  // 狀態轉換: confirming → pending
+  it('should confirm transaction successfully', async () => {
+    const result = await buyerConfirmTransaction(123, 'I will be there')
+    expect(result.new_status).toBe('pending')
+  })
+})
+
+// tests/unit/api/transaction_meetAPI.test.js
+it('should finalize transaction (pending -> completed)', async () => {
+    const result = await finalizeTransactionWithCode(456, 'ABC123')
+    expect(result.new_status).toBe('completed')
+})`,
+            'code-state-2': `// tests/unit/api/badgesAPI.test.js
+
+it('應該成功獲取當前用戶的徽章', async () => {
+  const mockBadgesData = {
+    user_id: 'user-123',
+    earned_badges: [
+      { badge_id: 1, name: '新手徽章', earned_at: '2025-01-01' }
+    ],
+    in_progress_badges: [
+      { badge_id: 2, name: '進階徽章', progress: 50 }
+    ]
+  };
+
+  supabase.rpc.mockResolvedValueOnce({
+    data: mockBadgesData,
+    error: null
+  });
+
+  const result = await getUserBadgesWithProgress();
+  expect(result).toEqual(mockBadgesData);
+})`,
+            'code-error-1': `// 認證錯誤
+it('should throw error when user is not authenticated', async () => {
+  supabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+  await expect(getUserPointsProfile()).rejects.toThrow('使用者未登入')
+})
+
+// 網絡/資料庫錯誤
+it('should throw error when RPC call fails', async () => {
+  supabase.rpc.mockResolvedValue({ data: null, error: { message: 'Database error' } })
+  await expect(getUserPointsProfile()).rejects.toThrow('Database error')
+})
+
+// 地理位置權限拒絕
+it('應該在使用者拒絕時拋出錯誤', async () => {
+  mockGeolocation.getCurrentPosition.mockImplementation((cb, error) => {
+    error({ code: 1, PERMISSION_DENIED: 1 })
+  })
+  await expect(getCurrentPosition()).rejects.toThrow('用戶拒絕提供位置權限')
+})`,
+            'code-error-2': `// tests/unit/api/ragQaAPI.test.js
+
+it('should handle API error response', async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: false,
+    status: 500,
+    json: async () => ({
+      success: false,
+      error: 'Internal server error'
+    })
+  })
+
+  const result = await askRagQA('測試問題')
+  expect(result.success).toBe(false)
+  expect(result.error).toContain('Internal server error')
+})
+
+it('should throw error when question is empty', async () => {
+  const result = await askRagQA('')
+  expect(result.success).toBe(false)
+  expect(result.error).toBe('問題不能為空')
+})`,
+            'code-pos-1': `// tests/unit/api/badgesAPI.test.js
+
+it('應該成功簽到', async () => {
+    // Arrange
+    const mockUser = { id: 'user-123' };
+    const mockSignInResult = {
+        success: true,
+        streak_days: 5,
+        points_awarded: 10,
+        new_badges: []
+    };
+
+    supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } });
+    supabase.rpc.mockResolvedValueOnce({ data: mockSignInResult, error: null });
+
+    // Act
+    const result = await dailySignIn();
+
+    // Assert
+    expect(result).toEqual(mockSignInResult);
+})`,
+            'code-pos-2': `// tests/unit/api/ragQaAPI.test.js
+
+it('should ask question successfully with session', async () => {
+    supabase.auth.getSession.mockResolvedValueOnce({ 
+        data: { session: { access_token: 'valid' } } 
+    })
+    
+    global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+            success: true,
+            answer: 'AI Answer'
+        })
+    })
+
+    const result = await askRagQA('測試問題')
+    expect(result.success).toBe(true)
+})`,
+            'code-neg-1': `// tests/unit/utils/filterFunctions.test.js
+
+it('should handle missing favorites_count as 0', () => {
+    const filter = filterByPopularity(50)
+    expect(filter({})).toBe(false)
+    expect(filter({ favorites_count: null })).toBe(false)
+})
+
+it('should handle missing status', () => {
+    const filter = filterByStatus('active')
+    expect(filter({})).toBe(false)
+})`,
+            'code-neg-2': `// tests/unit/api/badgesAPI.test.js
+
+it('應該在使用者未登入時拋出錯誤', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({
+        data: { user: null }
+    });
+
+    await expect(dailySignIn()).rejects.toThrow('使用者未登入');
+})`
+        };
+
+        function showCode(id) {
+            const code = CODE_SNIPPETS[id];
+            const display = document.getElementById('code-display');
+            display.textContent = code;
+            
+            // Simple Syntax Highlighting (Regex based)
+            let html = display.innerHTML;
+            html = html.replace(/(\/\/.*)/g, '<span class="code-comment">$1</span>');
+            html = html.replace(/('.*?')/g, '<span class="code-string">$1</span>');
+            html = html.replace(/\b(async|await|const|let|var|function|return|if|else|try|catch|import|from|export|default|class|extends)\b/g, '<span class="code-keyword">$1</span>');
+            html = html.replace(/\b(it|describe|expect|test|mockResolvedValue|toHaveBeenCalledWith)\b/g, '<span class="code-func">$1</span>');
+            html = html.replace(/\b(\d+)\b/g, '<span class="code-number">$1</span>');
+            
+            display.innerHTML = html;
+            
+            document.getElementById('code-modal').showModal();
+        }
+
+        // Close modal when clicking outside
+        const modal = document.getElementById('code-modal');
+        modal.addEventListener('click', (e) => {
+            const rect = modal.getBoundingClientRect();
+            if (e.clientX < rect.left || e.clientX > rect.right || 
+                e.clientY < rect.top || e.clientY > rect.bottom) {
+                modal.close();
+            }
+        });
+    </script>
+</body>
+</html>
