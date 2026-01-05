@@ -32,30 +32,33 @@
 
 % --- OTHER PACKAGES ---
 % --- OTHER PACKAGES ---
-% 在載入 tcolorbox 前完全禁用標籤輸出，以修復 TeX Live 2025 相容性問題
-\makeatother
-
-% 重定義 tcolorbox 的標籤命令為完全不產生輸出 (Fix Undefined Control Sequence)
-% IMPORTANT: Must consume ALL arguments to prevent them from spilling into document body
-% IMPORTANT: Must be \long to allow \par in arguments (common in code blocks)
+% --- COMPATIBILITY POLYFILL (SHOTGUN) ---
+% 1. Define missing structure commands as simple no-ops to preserve TOC content
 \makeatletter
-\long\def\NewStructureName#1{\@bsphack\@esphack}
-\long\def\AssignStructureRole#1#2{\@bsphack\@esphack}
-\long\def\NewTaggingSocket#1#2{\@bsphack\@esphack}
-\long\def\NewTaggingSocketPlug#1#2#3{\@bsphack\@esphack} % Fix: Consumes 3 args & allows par
-\long\def\AssignTaggingSocketPlug#1#2{\@bsphack\@esphack}
+\long\def\NewStructureName#1{}
+\long\def\AssignStructureRole#1#2{}
+\long\def\NewTaggingSocket#1#2{}
+\long\def\NewTaggingSocketPlug#1#2#3{}
+\long\def\AssignTaggingSocketPlug#1#2{}
 \long\def\UseStructureName#1{}
+% Use simple def for body commands to avoid spacing/swallowing issues of bsphack
 \long\def\tagstructbegin#1{}
 \long\def\tagstructend{}
 \long\def\tagpdfparaOff#1{}
+
+% 2. Pre-allocate missing integer variables to prevent tcolorbox crash
+% We define multiple naming variants because the exact mangling of '/' is uncertain
+\expandafter\newcount\csname g__tag_support_tcb/box/init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb_box_init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb/box_init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb/capture/init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb_capture_init_args_int\endcsname
 \makeatother
 
 \usepackage{tcolorbox}
 
-
-
-
-\usepackage{atbegshi} % 用於控制頁面輸出
+\usepackage{atbegshi}
+\usepackage{eso-pic}
 \usepackage{tikz}
 \usepackage{listings}
 \usepackage{booktabs}
@@ -81,16 +84,16 @@
 \renewcommand{\listfigurename}{圖目錄}
 \renewcommand{\listtablename}{表目錄}
 
-% 設定目錄格式
+% 設定目錄格式 - Adjusted for visibility
 \titlecontents{section}
-  [0em]
+  [2em] % Left indent
   {\addvspace{1em}\bfseries\sffamily\color{NavyBlue}}
   {\contentslabel{2em}}
   {}
   {\titlerule*[0.5pc]{.}\contentspage}
 
 \titlecontents{subsection}
-  [2em]
+  [4em] % Left indent
   {\addvspace{0.5em}\sffamily}
   {\contentslabel{2.5em}}
   {}
@@ -105,7 +108,12 @@
 \definecolor{SuccessGreen}{RGB}{46, 204, 64}
 
 % --- TCOLORBOX LIBRARIES ---
+% Load libraries while spoof is still active!
 \tcbuselibrary{skins, breakable, raster} 
+
+% Restore Kernel Check Function
+\let\IfFormatAtLeastTF\ORIGIfFormatAtLeastTF
+\makeatother 
 
 % --- STYLING DEFINITIONS ---
 
@@ -185,10 +193,11 @@
 
 % --- COVER PAGE ---
 \begin{titlepage}
+  \thispagestyle{empty}
+  \pagecolor{NavyBlue} % 使用 pagecolor 直接設定整頁背景色 (最穩定)
+  
+  % 裝飾圓圈
   \begin{tikzpicture}[remember picture, overlay]
-    % Background
-    \fill[NavyBlue] (current page.south west) rectangle (current page.north east);
-    % Decorative Circle
     \draw[ElectricCyan, opacity=0.3, line width=2pt] (current page.center) circle (10cm);
     \draw[CoralRed, opacity=0.3, line width=1pt] (current page.center) circle (8cm);
   \end{tikzpicture}
@@ -217,7 +226,9 @@
 
 % --- TABLE OF CONTENTS ---
 \newpage
+\pagecolor{white}
 
+\setcounter{tocdepth}{3}
 \tableofcontents
 \newpage
 
@@ -725,7 +736,7 @@ if (rating < 1 || rating > 5) { // 修正邊界條件
 
 \begin{itemize}[label=\textcolor{SuccessGreen}{$\checkmark$}]
   \item \textbf{功能數量：} 8 個 (目標 > 5)
-  \item \textbf{程式碼複雜度 (WMC)：} 2633 (目標 > 200)
+  \item \textbf{程式碼複雜度 (WMC)：} 342 (API層，目標 > 200)
   \item \textbf{單元測試數量：} 336 (API層) + 424 (其他) = 760
   \item \textbf{分支覆蓋率：} 96.16\% (目標 > 90\%)
   \item \textbf{Bug 修復數：} 12 (目標 $\ge$ 10)

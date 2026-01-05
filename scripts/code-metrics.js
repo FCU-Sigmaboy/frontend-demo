@@ -17,12 +17,32 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// 解析命令行參數
+function parseArgs() {
+  const args = process.argv.slice(2)
+  let targetDir = null
+  
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--dir' && args[i + 1]) {
+      targetDir = args[i + 1]
+      break
+    }
+  }
+  
+  return { targetDir }
+}
+
+const cliArgs = parseArgs()
+
 // 配置
 const config = {
-  srcDir: path.resolve(__dirname, '../src'),
+  srcDir: cliArgs.targetDir 
+    ? path.resolve(__dirname, '..', cliArgs.targetDir)
+    : path.resolve(__dirname, '../src'),
   reportsDir: path.resolve(__dirname, '../reports'),
   extensions: ['.js', '.vue'],
-  excludeDirs: ['node_modules', 'dist', 'coverage', '.git']
+  excludeDirs: ['node_modules', 'dist', 'coverage', '.git'],
+  targetDir: cliArgs.targetDir || 'src'
 }
 
 // 計算環路複雜度 v(G)
@@ -183,7 +203,7 @@ function getAllFiles(dir, fileList = []) {
 
 // 生成報告
 function generateReport() {
-  console.log('📊 開始分析程式碼複雜度...\n')
+  console.log(`📊 開始分析程式碼複雜度 [${config.targetDir}]...\n`)
 
   const files = getAllFiles(config.srcDir)
   const results = files.map(analyzeFile)
