@@ -7,6 +7,8 @@ import { useTransactionStore } from './stores/transaction'
 import { subscribeToUserPresence } from './api/conversationAPI'
 import { BToastOrchestrator } from 'bootstrap-vue-next'
 import { useTransactionToast } from './composables/useTransactionToast'
+import { getPointLogs } from './api/pointsAPI'
+import TransactionDetailModal from './components/TransactionDetailModal.vue'
 import CustomerServiceChat from './components/CustomerServiceChat.vue'
 
 const route = useRoute()
@@ -15,6 +17,17 @@ const messageStore = useMessageStore()
 const transactionStore = useTransactionStore()
 const presenceChannel = ref(null)
 const realtimeUserId = ref(null)
+const initialGiftTransaction = ref(null)
+const hasShownInitialGift = ref(false)
+const isCheckingInitialGift = ref(false)
+
+const INITIAL_GIFT_TYPE = 'initial_gift'
+const INITIAL_GIFT_WINDOW_MS = 60 * 1000
+const INITIAL_GIFT_FALLBACK = {
+  type: INITIAL_GIFT_TYPE,
+  amount: 500,
+  description: '歡迎加入！註冊禮 500 點已自動入帳'
+}
 
 // 計算是否顯示客服按鈕
 const showCustomerService = computed(() => {
@@ -100,6 +113,79 @@ function stopTransactionTracking() {
   transactionStore.clearAll()
 }
 
+function closeInitialGiftModal() {
+  initialGiftTransaction.value = null
+}
+
+function resetInitialGiftState() {
+  initialGiftTransaction.value = null
+  hasShownInitialGift.value = false
+  isCheckingInitialGift.value = false
+}
+
+function buildInitialGiftFallback() {
+  return {
+    id: 'initial-gift',
+    ...INITIAL_GIFT_FALLBACK,
+    created_at: new Date().toISOString(),
+    transaction_id: null
+  }
+}
+
+function getInitialGiftStorageKey() {
+  const userId = authStore.user?.id
+  return userId ? `initial-gift-shown:${userId}` : null
+}
+
+function hasShownInitialGiftInStorage() {
+  const key = getInitialGiftStorageKey()
+  if (!key || typeof localStorage === 'undefined') return false
+  return localStorage.getItem(key) === '1'
+}
+
+function markInitialGiftShown() {
+  const key = getInitialGiftStorageKey()
+  if (!key || typeof localStorage === 'undefined') return
+  localStorage.setItem(key, '1')
+}
+
+async function maybeShowInitialGift() {
+  if (hasShownInitialGift.value || isCheckingInitialGift.value) return
+  if (hasShownInitialGiftInStorage()) {
+    hasShownInitialGift.value = true
+    return
+  }
+
+  const createdAt = authStore.user?.created_at
+  if (!createdAt) return
+
+  const createdTime = new Date(createdAt).getTime()
+  if (Number.isNaN(createdTime)) {
+    hasShownInitialGift.value = true
+    return
+  }
+
+  if (Date.now() - createdTime > INITIAL_GIFT_WINDOW_MS) {
+    hasShownInitialGift.value = true
+    return
+  }
+
+  isCheckingInitialGift.value = true
+
+  try {
+    const result = await getPointLogs({ logType: INITIAL_GIFT_TYPE, page: 1, size: 1 })
+    const initialGift = result?.transactions?.[0]
+    initialGiftTransaction.value = initialGift || buildInitialGiftFallback()
+  } catch (error) {
+    console.error('[App] Failed to fetch initial gift log:', error)
+    initialGiftTransaction.value = buildInitialGiftFallback()
+  } finally {
+    isCheckingInitialGift.value = false
+    hasShownInitialGift.value = true
+    markInitialGiftShown()
+  }
+}
+
 // 監聽登入狀態
 watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
   console.log('[App] Auth state changed. Logged in:', isLoggedIn)
@@ -109,11 +195,13 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
     messageStore.startGlobalMessageListener()
     await startPresenceTracking()
     await startTransactionTracking(authStore.user?.id)
+    maybeShowInitialGift()
   } else {
     // 使用者登出，重置訊息 store
     messageStore.reset()
     stopPresenceTracking()
     stopTransactionTracking()
+    resetInitialGiftState()
   }
 })
 
@@ -147,6 +235,10 @@ onBeforeUnmount(() => {
 <template>
   <div id="app">
     <router-view />
+    <TransactionDetailModal
+      :transaction="initialGiftTransaction"
+      @close="closeInitialGiftModal"
+    />
     <BToastOrchestrator teleport-to="body" />
     <CustomerServiceChat v-if="showCustomerService" />
   </div>
