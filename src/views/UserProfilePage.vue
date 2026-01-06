@@ -509,7 +509,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { useReviewStore } from '../stores/review';
-import { getMyItems } from '../api/get_myItemsAPI';
+import { getMyItems } from '../api/itemsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';

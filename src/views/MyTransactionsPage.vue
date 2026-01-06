@@ -466,8 +466,7 @@ import ViewCodeModal from '../components/transaction/ViewCodeModal.vue';
 import RejectTransactionModal from '../components/transaction/RejectTransactionModal.vue';
 import CancelTransactionModal from '../components/transaction/CancelTransactionModal.vue';
 import CreateReviewModal from '../components/transaction/CreateReviewModal.vue';
-import { buyerConfirmTransaction, cancelTransaction } from '@/api/transaction_before_meetAPI';
-import { finalizeTransactionWithCode } from '@/api/transaction_meetAPI';
+import { buyerConfirmTransaction, cancelTransaction, finalizeTransactionWithCode } from '@/api/transactionAPI';
 import { formatPoints } from '@/utils/formatPoints';
 
 const router = useRouter();
@@ -493,7 +492,7 @@ const refreshUserPoints = async () => {
 };
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const activeTab = ref('confirming');
 const roleTab = ref('receiver'); // 'receiver' (買入), 'giver' (賣出)
 const filteredByRole = ref([]); // FilterTabs 篩選後的結果

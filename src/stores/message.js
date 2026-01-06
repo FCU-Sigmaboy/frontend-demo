@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import {
   getConversations,
   getMessages,
@@ -9,7 +9,7 @@ import {
   subscribeToAllMessages,
   subscribeToMessageUpdates,
   createConversationTypingChannel
-} from '@/api/conversation'
+} from '@/api/conversationAPI'
 
 export const useMessageStore = defineStore('message', () => {
   // ===== 狀態 =====

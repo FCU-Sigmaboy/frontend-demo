@@ -231,8 +231,8 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getItemDetails } from '@/api/get_ItemDetailAPI'
-import { createOrGetConversation } from '@/api/conversation.js'
+import { getItemDetails } from '@/api/itemsAPI'
+import { createOrGetConversation } from '@/api/conversationAPI.js'
 import { useAuthStore } from '@/stores/auth'
 import { useFavoritesStore } from '@/stores/favorites'
 import { followUser, unfollowUser, checkIsFollowing } from '@/api/followAPI'

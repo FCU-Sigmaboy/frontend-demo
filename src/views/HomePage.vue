@@ -142,17 +142,17 @@ import FilterTabs from '../components/FilterTabs.vue';
 import ProductCard from '../components/ProductCard.vue';
 
 import { supabase } from '@/lib/supabase';
-import { searchItems } from '@/api/get_searchItemsAPI';
+import { searchItems } from '@/api/itemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
-import { createOrGetConversation } from '@/api/conversation.js';
+import { createOrGetConversation } from '@/api/conversationAPI.js';
 import { useAuthStore } from '@/stores/auth';
-import { getMyLocations } from '@/api/get_userLocationAPI';
+import { getMyLocations } from '@/api/locationAPI';
 
 const router = useRouter();
 const authStore = useAuthStore();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const showScrollTop = ref(false);
 
 const authenticatedUser = ref(null);
@@ -589,7 +589,11 @@ onUnmounted(() => {
 .search-section {
   padding: 10px 0;
   margin-top: 10px;
-  position: sticky;
+  position: fixed;
+  width: 100%;
+  max-width: 1600px;
+  left: 50%;
+  transform: translateX(-50%);
   top: 60px;
   z-index: 100;
 }
@@ -919,27 +923,55 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: white;
-  border: none;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9998;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
 
   i {
-    font-size: 20px;
+    font-size: 24px;
     color: #1e1e1e;
+    text-shadow: 0 0 1px rgba(0, 0, 0, 0.45);
   }
 
   &:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px rgba(66, 128, 112, 0.28);
+    animation: gentle-shake 0.55s ease-in-out;
   }
 
   &:active {
     transform: scale(0.95);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(111, 184, 165, 0.3);
+    outline-offset: 3px;
+  }
+}
+
+@keyframes gentle-shake {
+  0% { transform: translateY(-3px) rotate(0deg); }
+  25% { transform: translateY(-5px) rotate(-2deg); }
+  50% { transform: translateY(-4px) rotate(2deg); }
+  75% { transform: translateY(-5px) rotate(-1deg); }
+  100% { transform: translateY(-3px) rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-top-btn {
+    transition: none;
+  }
+
+  .scroll-top-btn:hover {
+    animation: none;
+    transform: translateY(-3px);
   }
 }
 
@@ -1036,6 +1068,15 @@ onUnmounted(() => {
   }
 }
 
+@media (max-width: 650px) {
+  .search-section {
+    position: sticky;
+    top: 60px;
+    transform: none;
+    left: none;
+  }
+}
+
 @media (max-width: 575.98px) {
   .search-section-container {
     flex-direction: column;
@@ -1117,16 +1158,9 @@ onUnmounted(() => {
     gap: 12px;
   }
 
-  // Scroll to Top Button - Mobile: center bottom
+  // Scroll to Top Button - Mobile: hidden to leave space for chat CTA
   .scroll-top-btn {
-    bottom: 24px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-
-    &:active {
-      transform: translateX(-50%) scale(0.95);
-    }
+    display: none;
   }
 }
 </style>

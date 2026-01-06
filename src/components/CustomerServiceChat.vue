@@ -285,8 +285,8 @@ watch(() => messages.value.length, () => {
   pointer-events: none; /* allow scroll button interaction unless over chat */
 
   @media (max-width: 575.98px) {
-    bottom: 88px; /* align above mobile scroll button */
-    right: 30px;
+    bottom: 20px; /* park in bottom-right on mobile when scroll-to-top hides */
+    right: 20px;
   }
 }
 
@@ -312,6 +312,7 @@ watch(() => messages.value.length, () => {
 
 .chat-bubble:hover {
   box-shadow: 0 4px 12px rgba(111, 184, 165, 0.3);
+  animation: gentle-shake 0.55s ease-in-out;
 }
 
 .chat-bubble.bubble-hidden {
@@ -358,10 +359,10 @@ watch(() => messages.value.length, () => {
   pointer-events: auto;
 
   @media (max-width: 575.98px) {
-    bottom: 88px; /* align with mobile button */
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+    bottom: 20px; /* align with mobile chat bubble */
+    left: auto;
+    right: 20px;
+    transform: none;
     width: calc(100vw - 32px);
     max-width: 380px;
     height: calc(100vh - 180px);
@@ -635,6 +636,24 @@ watch(() => messages.value.length, () => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes gentle-shake {
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(-2deg); }
+  50% { transform: translateY(-1px) rotate(2deg); }
+  75% { transform: translateY(-2px) rotate(-1deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble {
+    transition: color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .chat-bubble:hover {
+    animation: none;
   }
 }
 

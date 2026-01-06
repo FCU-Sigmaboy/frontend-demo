@@ -49,7 +49,7 @@
           <p class="badge-description">{{ badge.description }}</p>
           <div class="badge-footer">
             <span class="badge-rarity">{{ getRarityLabel(badge.rarity) }}</span>
-            <span class="badge-points">+{{ badge.points_reward || badge.points_rewarded }}P</span>
+            <span class="badge-points">{{ Intl.NumberFormat('zh-TW', { signDisplay: 'always' }).format(badge.points_reward || badge.points_rewarded) }}P</span>
           </div>
         </div>
       </div>

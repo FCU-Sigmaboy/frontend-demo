@@ -114,7 +114,7 @@
           >
             <i class="bi bi-house-fill"></i>
             <span>家</span>
-            <span v-if="!state.savedLocations.home" class="not-set">(未設定)</span>
+            <span v-if="!state.savedLocations.home" class="not-set">{{ authStore.user ? "(未設定)" : "(未登入)" }}</span>
           </button>
           <button
             class="location-option"
@@ -124,7 +124,7 @@
           >
             <i class="bi bi-briefcase-fill"></i>
             <span>公司</span>
-            <span v-if="!state.savedLocations.work" class="not-set">(未設定)</span>
+            <span v-if="!state.savedLocations.work" class="not-set">{{ authStore.user ? "(未設定)" : "(未登入)" }}</span>
           </button>
         </div>
       </div>
@@ -149,11 +149,10 @@ import FilterTabs from '@/components/FilterTabs.vue'
 import MapContainer from '@/components/map/MapContainer.vue'
 import SearchResultsList from '@/components/map/SearchResultsList.vue'
 import ItemDetailModal from '@/components/map/ItemDetailModal.vue'
-import { searchItems } from '@/api/get_searchItemsAPI'
-import { getMyLocations } from '@/api/get_userLocationAPI'
+import { searchItems } from '@/api/itemsAPI'
+import { getMyLocations } from '@/api/locationAPI'
 import { useAuthStore } from '@/stores/auth'
 import { useCategoriesStore } from '@/stores/categories'
-import { supabase } from '@/lib/supabase'
 
 // Composables
 const router = useRouter()
@@ -252,25 +251,6 @@ const subCategoryFilters = computed(() => {
 
   return filters
 })
-
-// Check authentication
-async function checkAuth() {
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser()
-
-    if (error || !user) {
-      console.error('[MapSearchPage] User not authenticated')
-      router.push('/login')
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('[MapSearchPage] Auth check failed:', error)
-    router.push('/login')
-    return false
-  }
-}
 
 // Parse PostGIS WKB format to lat/lng
 function parseWKBPoint(wkbHex) {
@@ -697,9 +677,6 @@ async function initialize() {
   initialLoading.value = true
 
   try {
-    // Check authentication
-    const isAuthenticated = await checkAuth()
-    if (!isAuthenticated) return
 
     // Fetch categories
     await categoriesStore.fetchCategories()
@@ -1050,7 +1027,7 @@ onUnmounted(() => {
   position: fixed;
   top: 60px;
   right: 30px;
-  z-index: 1002;
+  z-index: 1000;
 
   .location-btn {
     display: flex;

@@ -232,9 +232,8 @@ import ProductCard from '../components/ProductCard.vue';
 
 import { useAuthStore } from '../stores/auth';
 import { useTransactionStore } from '../stores/transaction';
-import { getItemDetails } from '@/api/get_ItemDetailAPI.js';
-import { searchItems } from '@/api/get_searchItemsAPI.js';
-import { createOrGetConversation } from '@/api/conversation.js';
+import { getItemDetails, searchItems } from '@/api/itemsAPI';
+import { createOrGetConversation } from '@/api/conversationAPI.js';
 
 const authStore = useAuthStore();
 const transactionStore = useTransactionStore();
@@ -243,7 +242,7 @@ const route = useRoute();
 const router = useRouter();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const currentImageIndex = ref(0);
 const loading = ref(true);
 const error = ref(null);

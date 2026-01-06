@@ -388,9 +388,9 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '@/lib/supabase';
-import { getItemById } from '../api/get_itemByIdAPI';
-import { updateMyItem } from '../api/update_myItemAPI';
-import { compressImage, uploadItemImage, analyzeItemImage } from '@/api/image';
+import { getItemById } from '../api/itemsAPI';
+import { updateMyItem } from '../api/itemsAPI';
+import { compressImage, uploadItemImage, analyzeItemImage } from '@/api/imageAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -400,7 +400,7 @@ const route = useRoute();
 const router = useRouter();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const itemId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isEdit = computed(() => !!itemId.value);
 
@@ -890,7 +890,7 @@ const handleSubmit = async () => {
       // 檢查哪些圖片需要上傳 (有對應的 File 物件)
       const finalImageUrls = [];
       const { data: { user } } = await supabase.auth.getUser();
-      const { uploadItemImage } = await import('@/api/image');
+      const { uploadItemImage } = await import('@/api/imageAPI');
       
       for (let i = 0; i < formData.value.images.length; i++) {
         const imagePreview = formData.value.images[i];
@@ -941,7 +941,7 @@ const handleSubmit = async () => {
 
       // Use createItemWithImages to upload images and create item
       // 傳入 true 表示檔案已經在前端壓縮過，避免重複壓縮
-      const { createItemWithImages } = await import('../api/create_myItemAPI');
+      const { createItemWithImages } = await import('../api/itemsAPI');
       const result = await createItemWithImages(itemData, formData.value.imageFiles, true);
 
       console.log('✅ Listing created successfully:', result);

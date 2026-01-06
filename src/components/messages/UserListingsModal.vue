@@ -87,7 +87,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { searchItems } from '@/api/get_searchItemsAPI';
+import { searchItems } from '@/api/itemsAPI';
 
 const router = useRouter();
 

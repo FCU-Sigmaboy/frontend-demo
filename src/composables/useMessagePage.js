@@ -4,7 +4,7 @@ import { useMessageStore } from '@/stores/message';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionStore } from '@/stores/transaction';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems } from '@/api/conversation';
+import { getConversationItems } from '@/api/conversationAPI';
 import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
 import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
 
@@ -94,7 +94,7 @@ export function useMessagePage() {
   const authStore = useAuthStore();
   const transactionStore = useTransactionStore();
 
-  const userPoints = ref(500);
+  const userPoints = ref(0);
   const searchQuery = ref('');
   const messageInput = ref('');
   const messagesArea = ref(null);
@@ -957,7 +957,7 @@ export function useMessagePage() {
 
   async function enrichItemsWithOwnerInfo() {
     // 為聊天室中的商品補充擁有者信息和交易狀態
-    const { getItemById } = await import('@/api/get_itemByIdAPI');
+    const { getItemById } = await import('@/api/itemsAPI');
     try {
       await transactionStore.fetchAllTransactions();
     } catch (error) {
@@ -1006,7 +1006,7 @@ export function useMessagePage() {
       const receiverId = selectedConversation.value._raw.other_user.id;
 
       // 調用發起交易 API
-      const transactionApi = await import('@/api/transaction_before_meetAPI');
+      const transactionApi = await import('@/api/transactionAPI');
       const result = await transactionApi.initiateTransaction(item.id, receiverId);
 
       console.log('Transaction initiated:', result);
