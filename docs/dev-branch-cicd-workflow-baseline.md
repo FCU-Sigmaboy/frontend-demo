@@ -24,6 +24,7 @@
 - [Workflow 配置範例](#workflow-配置範例)
   - [建議的開發分支 Workflow](#建議的開發分支-workflow)
 - [驗證方式](#驗證方式)
+- [在 GitHub Desktop 中監控 CI/CD 進度](#在-github-desktop-中監控-cicd-進度)
 - [後續發展路線圖](#後續發展路線圖)
 
 ---
@@ -493,6 +494,52 @@ npm run build
 2. 選擇對應的 workflow run
 3. 下載 `coverage-report` artifact
 4. 開啟 `coverage/index.html` 查看詳細報告
+
+---
+
+## 在 GitHub Desktop 中監控 CI/CD 進度
+
+GitHub Desktop 提供直覺的界面，讓開發者直接在軟體內監控 GitHub Actions 的執行狀態（Checks），不需頻繁切換到瀏覽器。
+
+### 1. 分支列表中的 Check 狀態
+
+在 GitHub Desktop 的 **Branch** 下拉選單中，當前分支（Current Branch）或 Pull Request 分支旁邊會顯示一個圖示，反映 CI/CD 的狀態：
+
+- 🟡 **黃色圓圈**：表示 Actions 正在執行中。
+- ✅ **綠色勾號**：表示所有 Checks 均已通過。
+- ❌ **紅色叉號**：表示有至少一個 Job 失敗，需要開發者介入。
+
+### 2. 當前分支詳細資訊
+
+在主畫面的 **Current Branch** 區域下方，GitHub Desktop 會顯示當前最新提交（Commit）的 Actions 狀態：
+
+1. **查看詳情**：點擊旁邊的圖示或 **View Checks**，可開啟詳細對話框。
+2. **單個 Job 狀態**：對話框中會列出 `lint`、`test`、`build` 等所有 Job 的執行結果。
+3. **開啟日誌**：點擊特定 Job，可選擇直接開啟 GitHub 網頁查看詳細日誌。
+
+### 3. 在軟體中重新執行 Checks
+
+如果 CI 失敗且在本地修正完成並 push 後，或者因網路問題需要重跑：
+
+- 點擊 **Current Branch** 切換區域旁邊的狀態圖示。
+- 在彈出的 Check 列表中，點擊 **Re-run all checks** 或針對特定失敗的 Job 進行重新執行（如果 Actions 權限允許）。
+
+### 4. 設定失敗通知
+
+確保您能第一時間收到 CI 失敗的消息：
+
+- 進入 GitHub Desktop 設定 (**Settings**)。
+- 在 **Notifications** 分頁中，勾選 **GitHub Actions checks fail**。
+- 當 CI 失敗時，系統會彈出桌面通知提醒您修復。
+
+### 5. 結合開發建議
+
+建議的開發流程：
+1. 本地修改完成。
+2. **Push Origin** 推送分支。
+3. **直接在 GitHub Desktop 觀察** 分支名旁邊的圖示。
+4. 圖示變為 **✅ 綠勾** 即表示品質檢查通過。
+5. 若圖示為 **❌ 紅叉**，立即點擊查看哪個 Job 失敗並在本地修復。
 
 ---
 
