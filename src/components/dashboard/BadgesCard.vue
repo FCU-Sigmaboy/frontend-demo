@@ -49,7 +49,13 @@
           <p class="badge-description">{{ badge.description }}</p>
           <div class="badge-footer">
             <span class="badge-rarity">{{ getRarityLabel(badge.rarity) }}</span>
-            <span class="badge-points">{{ Intl.NumberFormat('zh-TW', { signDisplay: 'always' }).format(badge.points_reward || badge.points_rewarded) }}P</span>
+            <span class="badge-points"
+              >{{
+                Intl.NumberFormat('zh-TW', { signDisplay: 'always' }).format(
+                  badge.points_reward || badge.points_rewarded
+                )
+              }}P</span
+            >
           </div>
         </div>
       </div>
@@ -86,502 +92,503 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+  import { ref, computed } from 'vue'
 
-const props = defineProps({
-  badges: {
-    type: Array,
-    default: () => []
-  },
-  earnedCount: {
-    type: Number,
-    default: 0
-  }
-});
+  const props = defineProps({
+    badges: {
+      type: Array,
+      default: () => [],
+    },
+    earnedCount: {
+      type: Number,
+      default: 0,
+    },
+  })
 
-const activeTab = ref('all');
-const selectedBadge = ref(null);
+  const activeTab = ref('all')
+  const selectedBadge = ref(null)
 
-const tabs = [
-  { label: '全部', value: 'all' },
-  { label: '連續簽到', value: 'streak' },
-  { label: '交易成就', value: 'transaction' },
-  { label: '點數累積', value: 'points' },
-  { label: '環保足跡', value: 'carbon' }
-];
+  const tabs = [
+    { label: '全部', value: 'all' },
+    { label: '連續簽到', value: 'streak' },
+    { label: '交易成就', value: 'transaction' },
+    { label: '點數累積', value: 'points' },
+    { label: '環保足跡', value: 'carbon' },
+  ]
 
-const filteredBadges = computed(() => {
-  if (activeTab.value === 'all') return props.badges;
-  
-  const categoryMap = {
-    streak: ['daily_streak', 'streak'],
-    transaction: ['transaction', 'trade'],
-    points: ['points', 'accumulation'],
-    carbon: ['carbon', 'eco', 'environmental']
-  };
-  
-  const keywords = categoryMap[activeTab.value] || [];
-  return props.badges.filter(badge => 
-    keywords.some(keyword => 
-      badge.category?.toLowerCase().includes(keyword) ||
-      badge.name?.toLowerCase().includes(keyword) ||
-      badge.description?.toLowerCase().includes(keyword)
+  const filteredBadges = computed(() => {
+    if (activeTab.value === 'all') return props.badges
+
+    const categoryMap = {
+      streak: ['daily_streak', 'streak'],
+      transaction: ['transaction', 'trade'],
+      points: ['points', 'accumulation'],
+      carbon: ['carbon', 'eco', 'environmental'],
+    }
+
+    const keywords = categoryMap[activeTab.value] || []
+    return props.badges.filter((badge) =>
+      keywords.some(
+        (keyword) =>
+          badge.category?.toLowerCase().includes(keyword) ||
+          badge.name?.toLowerCase().includes(keyword) ||
+          badge.description?.toLowerCase().includes(keyword)
+      )
     )
-  );
-});
+  })
 
-function getRarityLabel(rarity) {
-  const labels = {
-    common: '普通',
-    uncommon: '稀有',
-    rare: '珍稀',
-    epic: '史詩',
-    legendary: '傳說'
-  };
-  return labels[rarity] || rarity;
-}
+  function getRarityLabel(rarity) {
+    const labels = {
+      common: '普通',
+      uncommon: '稀有',
+      rare: '珍稀',
+      epic: '史詩',
+      legendary: '傳說',
+    }
+    return labels[rarity] || rarity
+  }
 
-function selectBadge(badge) {
-  selectedBadge.value = badge;
-}
+  function selectBadge(badge) {
+    selectedBadge.value = badge
+  }
 
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
+  function formatDate(dateString) {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+  }
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.badges-card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  background: white;
-  transition: all 0.3s;
+  .badges-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    background: white;
+    transition: all 0.3s;
 
-  &:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-  }
-}
-
-.card-body {
-  padding: 30px;
-}
-
-.card-header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e1e1e;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  i {
-    font-size: 22px;
-    color: #e67e22;
-  }
-}
-
-.badge-count {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.count-value {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  color: #e67e22;
-}
-
-.count-label {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #555;
-}
-
-.category-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 5px;
-
-  &::-webkit-scrollbar {
-    height: 4px;
+    &:hover {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
   }
 
-  &::-webkit-scrollbar-thumb {
-    background: #ddd;
-    border-radius: 2px;
-  }
-}
-
-.tab-button {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13px;
-  padding: 8px 16px;
-  border: 1px solid #e0e0e0;
-  background: white;
-  color: #555;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &:hover {
-    border-color: #e67e22;
-    color: #e67e22;
+  .card-body {
+    padding: 30px;
   }
 
-  &.active {
-    background: #e67e22;
-    border-color: #e67e22;
-    color: white;
-    font-weight: 600;
-  }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #999;
-
-  i {
-    font-size: 60px;
-    margin-bottom: 15px;
-    opacity: 0.3;
+  .card-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
   }
 
-  p {
+  .card-title {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: 16px;
-    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    i {
+      font-size: 22px;
+      color: #e67e22;
+    }
   }
 
-  small {
+  .badge-count {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .count-value {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #e67e22;
+  }
+
+  .count-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #555;
+  }
+
+  .category-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #ddd;
+      border-radius: 2px;
+    }
+  }
+
+  .tab-button {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 13px;
-    color: #bbb;
-  }
-}
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #555;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
 
-.badges-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 15px;
-}
-
-.badge-item {
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 15px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
-
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  }
-
-  &.rarity-common {
-    border-color: #95a5a6;
-    .rarity-glow {
-      background: radial-gradient(circle, rgba(149, 165, 166, 0.2) 0%, transparent 70%);
+    &:hover {
+      border-color: #e67e22;
+      color: #e67e22;
     }
-    .badge-rarity {
-      color: #95a5a6;
+
+    &.active {
+      background: #e67e22;
+      border-color: #e67e22;
+      color: white;
+      font-weight: 600;
     }
   }
 
-  &.rarity-uncommon {
-    border-color: #27ae60;
-    .rarity-glow {
-      background: radial-gradient(circle, rgba(39, 174, 96, 0.2) 0%, transparent 70%);
-    }
-    .badge-rarity {
-      color: #27ae60;
-    }
-  }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
 
-  &.rarity-rare {
-    border-color: #3498db;
-    .rarity-glow {
-      background: radial-gradient(circle, rgba(52, 152, 219, 0.2) 0%, transparent 70%);
+    i {
+      font-size: 60px;
+      margin-bottom: 15px;
+      opacity: 0.3;
     }
-    .badge-rarity {
-      color: #3498db;
-    }
-  }
 
-  &.rarity-epic {
-    border-color: #9b59b6;
-    .rarity-glow {
-      background: radial-gradient(circle, rgba(155, 89, 182, 0.2) 0%, transparent 70%);
+    p {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 16px;
+      margin: 0 0 8px 0;
     }
-    .badge-rarity {
-      color: #9b59b6;
+
+    small {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 13px;
+      color: #bbb;
     }
   }
 
-  &.rarity-legendary {
-    border-color: #f39c12;
-    .rarity-glow {
-      background: radial-gradient(circle, rgba(243, 156, 18, 0.2) 0%, transparent 70%);
+  .badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 15px;
+  }
+
+  .badge-item {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     }
-    .badge-rarity {
-      color: #f39c12;
+
+    &.rarity-common {
+      border-color: #95a5a6;
+      .rarity-glow {
+        background: radial-gradient(circle, rgba(149, 165, 166, 0.2) 0%, transparent 70%);
+      }
+      .badge-rarity {
+        color: #95a5a6;
+      }
+    }
+
+    &.rarity-uncommon {
+      border-color: #27ae60;
+      .rarity-glow {
+        background: radial-gradient(circle, rgba(39, 174, 96, 0.2) 0%, transparent 70%);
+      }
+      .badge-rarity {
+        color: #27ae60;
+      }
+    }
+
+    &.rarity-rare {
+      border-color: #3498db;
+      .rarity-glow {
+        background: radial-gradient(circle, rgba(52, 152, 219, 0.2) 0%, transparent 70%);
+      }
+      .badge-rarity {
+        color: #3498db;
+      }
+    }
+
+    &.rarity-epic {
+      border-color: #9b59b6;
+      .rarity-glow {
+        background: radial-gradient(circle, rgba(155, 89, 182, 0.2) 0%, transparent 70%);
+      }
+      .badge-rarity {
+        color: #9b59b6;
+      }
+    }
+
+    &.rarity-legendary {
+      border-color: #f39c12;
+      .rarity-glow {
+        background: radial-gradient(circle, rgba(243, 156, 18, 0.2) 0%, transparent 70%);
+      }
+      .badge-rarity {
+        color: #f39c12;
+      }
     }
   }
-}
 
-.badge-icon-wrapper {
-  position: relative;
-  margin-bottom: 10px;
-}
-
-.badge-icon {
-  font-size: 40px;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
-}
-
-.rarity-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-}
-
-.badge-name {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e1e1e;
-  margin: 0 0 6px 0;
-}
-
-.badge-description {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 11px;
-  color: #777;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
-}
-
-.badge-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.badge-rarity {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.badge-points {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: $primary;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.2s;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+  .badge-icon-wrapper {
+    position: relative;
+    margin-bottom: 10px;
   }
-  to {
-    opacity: 1;
+
+  .badge-icon {
+    font-size: 40px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
   }
-}
 
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  padding: 40px;
-  max-width: 400px;
-  width: 90%;
-  position: relative;
-  animation: slideUp 0.3s;
-  text-align: center;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.modal-close {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #999;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  &:hover {
-    color: #1e1e1e;
-    transform: scale(1.1);
-  }
-}
-
-.modal-badge-icon {
-  font-size: 80px;
-  margin-bottom: 20px;
-  position: relative;
-
-  &::before {
-    content: '';
+  .rarity-glow {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    z-index: 0;
-  }
-
-  &.rarity-legendary::before {
-    background: radial-gradient(circle, rgba(243, 156, 18, 0.2) 0%, transparent 70%);
-  }
-}
-
-.modal-badge-name {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e1e1e;
-  margin: 0 0 10px 0;
-}
-
-.modal-badge-description {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 15px;
-  color: #555;
-  margin: 0 0 25px 0;
-  line-height: 1.5;
-}
-
-.modal-badge-details {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.detail-label {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #777;
-}
-
-.detail-value {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e1e1e;
-}
-
-@media (max-width: 991.98px) {
-  .badges-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-}
-
-@media (max-width: 575.98px) {
-  .card-body {
-    padding: 20px;
-  }
-
-  .badges-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 12px;
-  }
-
-  .badge-item {
-    padding: 12px;
-  }
-
-  .badge-icon {
-    font-size: 35px;
   }
 
   .badge-name {
-    font-size: 13px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0 0 6px 0;
+  }
+
+  .badge-description {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px;
+    color: #777;
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+  }
+
+  .badge-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .badge-rarity {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .badge-points {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: $primary;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .modal-content {
-    padding: 30px 20px;
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 400px;
+    width: 90%;
+    position: relative;
+    animation: slideUp 0.3s;
+    text-align: center;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:hover {
+      color: #1e1e1e;
+      transform: scale(1.1);
+    }
   }
 
   .modal-badge-icon {
-    font-size: 60px;
+    font-size: 80px;
+    margin-bottom: 20px;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      z-index: 0;
+    }
+
+    &.rarity-legendary::before {
+      background: radial-gradient(circle, rgba(243, 156, 18, 0.2) 0%, transparent 70%);
+    }
   }
 
-  .tab-button {
-    font-size: 12px;
-    padding: 6px 12px;
+  .modal-badge-name {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0 0 10px 0;
   }
-}
+
+  .modal-badge-description {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    color: #555;
+    margin: 0 0 25px 0;
+    line-height: 1.5;
+  }
+
+  .modal-badge-details {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .detail-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #777;
+  }
+
+  .detail-value {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e1e1e;
+  }
+
+  @media (max-width: 991.98px) {
+    .badges-grid {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .card-body {
+      padding: 20px;
+    }
+
+    .badges-grid {
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+    }
+
+    .badge-item {
+      padding: 12px;
+    }
+
+    .badge-icon {
+      font-size: 35px;
+    }
+
+    .badge-name {
+      font-size: 13px;
+    }
+
+    .modal-content {
+      padding: 30px 20px;
+    }
+
+    .modal-badge-icon {
+      font-size: 60px;
+    }
+
+    .tab-button {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+  }
 </style>

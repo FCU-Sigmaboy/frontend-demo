@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'
 
 // ===================================================================
 // ### 使用者 Profile API (User Profile APIs) - 整合版
@@ -22,10 +22,13 @@ import { supabase } from '@/lib/supabase';
  */
 export async function getMyProfileForEdit() {
   // 1. 獲取當前登入的使用者
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.log('getMyProfileForEdit: User not logged in.');
-    return null;
+    console.log('getMyProfileForEdit: User not logged in.')
+    return null
   }
 
   // 2. 定義查詢 DTO (巢狀結構)
@@ -49,7 +52,7 @@ export async function getMyProfileForEdit() {
       created_at,
       updated_at
     )
-  `;
+  `
 
   // 3. 建立查詢
   const { data, error } = await supabase
@@ -58,27 +61,29 @@ export async function getMyProfileForEdit() {
     .eq('id', user.id)
     .order('is_primary', { foreignTable: 'locations', ascending: false })
     .order('id', { foreignTable: 'locations', ascending: true })
-    .single();
+    .single()
 
   // 4. 錯誤處理
   if (error) {
     if (error.code === 'PGRST200') {
-      console.warn(`getMyProfileForEdit: Profile data not found for user ${user.id}. Need initial setup?`);
-      return { id: user.id, nickname: user.email };
+      console.warn(
+        `getMyProfileForEdit: Profile data not found for user ${user.id}. Need initial setup?`
+      )
+      return { id: user.id, nickname: user.email }
     }
-    console.error('Supabase 獲取 MyProfile 失敗:', error);
-    throw new Error(error.message);
+    console.error('Supabase 獲取 MyProfile 失敗:', error)
+    throw new Error(error.message)
   }
 
   // 5. 處理 profiles (1:1 關聯)
   if (data && data.profiles && Array.isArray(data.profiles)) {
-    data.profile_details = data.profiles[0] || null;
-    delete data.profiles;
+    data.profile_details = data.profiles[0] || null
+    delete data.profiles
   } else if (data && data.profiles && typeof data.profiles === 'object') {
-    data.profile_details = data.profiles;
-    delete data.profiles;
+    data.profile_details = data.profiles
+    delete data.profiles
   } else if (data) {
-    data.profile_details = null;
+    data.profile_details = null
   }
 
   // 6. 查詢追蹤數量
@@ -87,30 +92,30 @@ export async function getMyProfileForEdit() {
     const { count: followingCount, error: followingError } = await supabase
       .from('following')
       .select('*', { count: 'exact', head: true })
-      .eq('follower_id', user.id);
+      .eq('follower_id', user.id)
 
     if (followingError) {
-      console.error('查詢 following_count 失敗:', followingError);
-      data.following_count = 0;
+      console.error('查詢 following_count 失敗:', followingError)
+      data.following_count = 0
     } else {
-      data.following_count = followingCount || 0;
+      data.following_count = followingCount || 0
     }
 
     // 追蹤者數量 (誰追蹤了我)
     const { count: followersCount, error: followersError } = await supabase
       .from('following')
       .select('*', { count: 'exact', head: true })
-      .eq('following_id', user.id);
+      .eq('following_id', user.id)
 
     if (followersError) {
-      console.error('查詢 followers_count 失敗:', followersError);
-      data.followers_count = 0;
+      console.error('查詢 followers_count 失敗:', followersError)
+      data.followers_count = 0
     } else {
-      data.followers_count = followersCount || 0;
+      data.followers_count = followersCount || 0
     }
   }
 
-  return data;
+  return data
 }
 
 /**
@@ -122,102 +127,104 @@ export async function getMyProfileForEdit() {
  */
 export async function updateMyProfile(userData, profileData, locationsArray) {
   // 1. 獲取當前登入的使用者
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    throw new Error('請先登入');
+    throw new Error('請先登入')
   }
 
-  console.log('🔄 Starting profile update for user:', user.id);
+  console.log('🔄 Starting profile update for user:', user.id)
 
   try {
     // 2. 更新 users 表
     if (userData && Object.keys(userData).length > 0) {
-      console.log('📝 Updating users table:', userData);
+      console.log('📝 Updating users table:', userData)
       const { data: updatedUser, error: userError } = await supabase
         .from('users')
         .update(userData)
         .eq('id', user.id)
         .select()
-        .single();
+        .single()
 
       if (userError) {
-        console.error('Failed to update users:', userError);
-        throw new Error(`更新使用者資料失敗: ${userError.message}`);
+        console.error('Failed to update users:', userError)
+        throw new Error(`更新使用者資料失敗: ${userError.message}`)
       }
-      console.log('✅ Users table updated:', updatedUser);
+      console.log('✅ Users table updated:', updatedUser)
     }
 
     // 3. 更新 profiles 表
     if (profileData && Object.keys(profileData).length > 0) {
-      console.log('📝 Updating profiles table:', profileData);
+      console.log('📝 Updating profiles table:', profileData)
       const { error: profileError } = await supabase
         .from('profiles')
         .update(profileData)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
 
       if (profileError) {
-        console.error('Failed to update profiles:', profileError);
-        throw new Error(`更新 profile 失敗: ${profileError.message}`);
+        console.error('Failed to update profiles:', profileError)
+        throw new Error(`更新 profile 失敗: ${profileError.message}`)
       }
-      console.log('✅ Profiles table updated');
+      console.log('✅ Profiles table updated')
     }
 
     // 4. 處理 locations
     if (locationsArray && locationsArray.length > 0) {
-      console.log('📍 Processing locations:', locationsArray);
+      console.log('📍 Processing locations:', locationsArray)
 
       for (const loc of locationsArray) {
-        const longitude = loc.coordinates?.longitude || loc.coordinates?.coordinates?.[0];
-        const latitude = loc.coordinates?.latitude || loc.coordinates?.coordinates?.[1];
+        const longitude = loc.coordinates?.longitude || loc.coordinates?.coordinates?.[0]
+        const latitude = loc.coordinates?.latitude || loc.coordinates?.coordinates?.[1]
 
         if (!longitude || !latitude) {
-          console.error('Invalid coordinates:', loc.coordinates);
-          throw new Error('座標格式錯誤');
+          console.error('Invalid coordinates:', loc.coordinates)
+          throw new Error('座標格式錯誤')
         }
 
-        const wktPoint = `POINT(${longitude} ${latitude})`;
+        const wktPoint = `POINT(${longitude} ${latitude})`
 
         const locationData = {
           user_id: user.id,
           coordinates: wktPoint,
           type: loc.type,
           is_primary: loc.is_primary,
-          formatted_address: loc.formatted_address
-        };
+          formatted_address: loc.formatted_address,
+        }
 
         if (loc.id) {
           // 更新現有地點
-          console.log('📝 Updating location:', loc.id);
+          console.log('📝 Updating location:', loc.id)
           const { error: locError } = await supabase
             .from('locations')
             .update(locationData)
             .eq('id', loc.id)
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
 
           if (locError) {
-            console.error('Failed to update location:', locError);
-            throw new Error(`更新地點失敗: ${locError.message}`);
+            console.error('Failed to update location:', locError)
+            throw new Error(`更新地點失敗: ${locError.message}`)
           }
         } else {
           // 插入新地點
-          console.log('➕ Inserting new location');
-          const { error: locError } = await supabase
-            .from('locations')
-            .insert(locationData);
+          console.log('➕ Inserting new location')
+          const { error: locError } = await supabase.from('locations').insert(locationData)
 
           if (locError) {
-            console.error('Failed to insert location:', locError);
-            throw new Error(`新增地點失敗: ${locError.message}`);
+            console.error('Failed to insert location:', locError)
+            throw new Error(`新增地點失敗: ${locError.message}`)
           }
         }
       }
-      console.log('✅ Locations processed');
+      console.log('✅ Locations processed')
     }
 
     // 5. 回傳更新後的完整資料
     const { data: updatedProfile, error: fetchError } = await supabase
       .from('users')
-      .select(`
+      .select(
+        `
         id,
         nickname,
         profile_picture_url,
@@ -237,21 +244,21 @@ export async function updateMyProfile(userData, profileData, locationsArray) {
           created_at,
           updated_at
         )
-      `)
+      `
+      )
       .eq('id', user.id)
-      .single();
+      .single()
 
     if (fetchError) {
-      console.error('Failed to fetch updated profile:', fetchError);
-      throw new Error(`無法取得更新後的資料: ${fetchError.message}`);
+      console.error('Failed to fetch updated profile:', fetchError)
+      throw new Error(`無法取得更新後的資料: ${fetchError.message}`)
     }
 
-    console.log('✅ Profile update complete:', updatedProfile);
-    return updatedProfile;
-
+    console.log('✅ Profile update complete:', updatedProfile)
+    return updatedProfile
   } catch (error) {
-    console.error('❌ Profile update failed:', error);
-    throw error;
+    console.error('❌ Profile update failed:', error)
+    throw error
   }
 }
 
@@ -267,23 +274,21 @@ export async function updateMyProfile(userData, profileData, locationsArray) {
 export async function getPublicUserProfile(userId) {
   // 1. 準備 RPC 參數
   const rpcParams = {
-    p_user_id: userId
-  };
+    p_user_id: userId,
+  }
 
   // 2. 呼叫 RPC 函式
-  const { data, error } = await supabase
-    .rpc('get_public_user_profile', rpcParams)
-    .single();
+  const { data, error } = await supabase.rpc('get_public_user_profile', rpcParams).single()
 
   // 3. 錯誤處理
   if (error) {
     if (error.code === 'PGRST200') {
-      console.warn(`Profile for user #${userId} not found.`);
-      return null;
+      console.warn(`Profile for user #${userId} not found.`)
+      return null
     }
-    console.error(`Supabase 獲取 Profile #${userId} 失敗:`, error);
-    throw new Error(error.message);
+    console.error(`Supabase 獲取 Profile #${userId} 失敗:`, error)
+    throw new Error(error.message)
   }
 
-  return data;
+  return data
 }

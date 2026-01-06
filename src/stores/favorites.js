@@ -17,29 +17,35 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   async function addFavorite(item) {
     if (!isFavorite(item.item_id)) {
-      await addFavoriteItem(item.item_id).catch((error) => {
-        console.error('(store) Failed to add favorite:', error)
-      }).then(() => {
-        item.favorited_at = new Date().toISOString();
-        item.favorites_count += 1;
-        favoriteItems.value.push(item)
-      })
+      await addFavoriteItem(item.item_id)
+        .catch((error) => {
+          console.error('(store) Failed to add favorite:', error)
+        })
+        .then(() => {
+          item.favorited_at = new Date().toISOString()
+          item.favorites_count += 1
+          favoriteItems.value.push(item)
+        })
     }
   }
 
   async function removeFavorite(item) {
     if (isFavorite(item.item_id)) {
-      await removeFavoriteItem(item.item_id).catch((error) => {
-        console.error('(store) Failed to remove favorite:', error)
-      }).then(() => {
-        favoriteItems.value = favoriteItems.value.filter(favItem => favItem.item_id !== item.item_id)
-        favoriteItems.value.map(favItem => {
-          if (favItem.item_id === item.item_id) {
-            favItem.favorited_at = null;
-            favItem.favorites_count -= 1;
-          }
+      await removeFavoriteItem(item.item_id)
+        .catch((error) => {
+          console.error('(store) Failed to remove favorite:', error)
         })
-      })
+        .then(() => {
+          favoriteItems.value = favoriteItems.value.filter(
+            (favItem) => favItem.item_id !== item.item_id
+          )
+          favoriteItems.value.map((favItem) => {
+            if (favItem.item_id === item.item_id) {
+              favItem.favorited_at = null
+              favItem.favorites_count -= 1
+            }
+          })
+        })
     }
   }
 
@@ -53,8 +59,8 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   function isFavorite(itemId) {
     // Convert both to numbers for comparison to handle string vs number mismatch
-    const numericItemId = typeof itemId === 'string' ? parseInt(itemId, 10) : itemId;
-    return favoriteItems.value.some(item => item.item_id === numericItemId);
+    const numericItemId = typeof itemId === 'string' ? parseInt(itemId, 10) : itemId
+    return favoriteItems.value.some((item) => item.item_id === numericItemId)
   }
 
   function clearCache() {
@@ -69,6 +75,6 @@ export const useFavoritesStore = defineStore('favorites', () => {
     removeFavorite,
     toggleFavorite,
     isFavorite,
-    clearCache
+    clearCache,
   }
 })

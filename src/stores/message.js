@@ -8,7 +8,7 @@ import {
   markAsRead,
   subscribeToAllMessages,
   subscribeToMessageUpdates,
-  createConversationTypingChannel
+  createConversationTypingChannel,
 } from '@/api/conversationAPI'
 
 export const useMessageStore = defineStore('message', () => {
@@ -68,7 +68,7 @@ export const useMessageStore = defineStore('message', () => {
       messages: [...messages],
       loadedPages,
       hasMore,
-      lastFetch: Date.now()
+      lastFetch: Date.now(),
     })
   }
 
@@ -80,7 +80,7 @@ export const useMessageStore = defineStore('message', () => {
     messagesCache.value.set(conversationId, {
       ...cached,
       messages: updated,
-      lastFetch: Date.now()
+      lastFetch: Date.now(),
     })
   }
 
@@ -104,7 +104,7 @@ export const useMessageStore = defineStore('message', () => {
       }
 
       const sanitized = {}
-      Object.keys(parsed).forEach(key => {
+      Object.keys(parsed).forEach((key) => {
         const value = parsed[key]
         if (typeof value === 'string') {
           sanitized[key] = value
@@ -133,19 +133,14 @@ export const useMessageStore = defineStore('message', () => {
       id: reference.id ?? null,
       title: reference.title ?? '',
       image: reference.image ?? null,
-      price: reference.price ?? null
+      price: reference.price ?? null,
     }
   }
 
   function arePendingReferencesEqual(a, b) {
     if (!a && !b) return true
     if (!a || !b) return false
-    return (
-      a.id === b.id &&
-      a.title === b.title &&
-      a.image === b.image &&
-      a.price === b.price
-    )
+    return a.id === b.id && a.title === b.title && a.image === b.image && a.price === b.price
   }
 
   function cacheItemReferenceFromMessage(msg) {
@@ -173,7 +168,6 @@ export const useMessageStore = defineStore('message', () => {
     next.set(key, !!isRead)
     sentMessageReadReceipts.value = next
   }
-
 
   function ensureChronologicalOrder(messages) {
     if (!Array.isArray(messages) || messages.length < 2) {
@@ -214,10 +208,10 @@ export const useMessageStore = defineStore('message', () => {
       sender: {
         id: msg.sender_id,
         name: msg.sender_name,
-        avatar: msg.sender_avatar
+        avatar: msg.sender_avatar,
       },
       metadata: msg.metadata,
-      _clientId: id
+      _clientId: id,
     }
   }
 
@@ -246,7 +240,7 @@ export const useMessageStore = defineStore('message', () => {
 
     pendingItemReferenceByConversation.value = {
       ...pendingItemReferenceByConversation.value,
-      [conversationId]: sanitized
+      [conversationId]: sanitized,
     }
   }
 
@@ -276,7 +270,7 @@ export const useMessageStore = defineStore('message', () => {
 
       messageDraftByConversation.value = {
         ...messageDraftByConversation.value,
-        [conversationId]: trimmed
+        [conversationId]: trimmed,
       }
       return
     }
@@ -307,15 +301,13 @@ export const useMessageStore = defineStore('message', () => {
     const seen = new Set()
 
     if (presenceState && typeof presenceState === 'object') {
-      Object.values(presenceState).forEach(entries => {
+      Object.values(presenceState).forEach((entries) => {
         if (!Array.isArray(entries)) return
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
           if (!entry) return
           if (!entry.user_id || entry.user_id === currentUserId) return
 
-          const expiresAt = entry.typing_expires_at
-            ? Date.parse(entry.typing_expires_at)
-            : null
+          const expiresAt = entry.typing_expires_at ? Date.parse(entry.typing_expires_at) : null
           const isActive = entry.typing === true && (!expiresAt || expiresAt > now)
 
           if (!isActive) return
@@ -326,7 +318,7 @@ export const useMessageStore = defineStore('message', () => {
           nextUsers.push({
             userId: entry.user_id,
             nickname: entry.nickname || entry.name || '使用者',
-            expiresAt
+            expiresAt,
           })
         })
       })
@@ -343,7 +335,7 @@ export const useMessageStore = defineStore('message', () => {
 
     typingUsersByConversation.value = {
       ...typingUsersByConversation.value,
-      [conversationId]: nextUsers
+      [conversationId]: nextUsers,
     }
   }
 
@@ -385,9 +377,14 @@ export const useMessageStore = defineStore('message', () => {
     channel.on('presence', { event: 'join' }, handlePresenceChange)
     channel.on('presence', { event: 'leave' }, handlePresenceChange)
 
-    const subscribePromise = new Promise(resolve => {
-      channel.subscribe(status => {
-        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
+    const subscribePromise = new Promise((resolve) => {
+      channel.subscribe((status) => {
+        if (
+          status === 'SUBSCRIBED' ||
+          status === 'CHANNEL_ERROR' ||
+          status === 'CLOSED' ||
+          status === 'TIMED_OUT'
+        ) {
           resolve()
         }
       })
@@ -445,7 +442,7 @@ export const useMessageStore = defineStore('message', () => {
       nickname: identity.nickname || '',
       typing: !!isTyping,
       typing_expires_at: new Date(Date.now() + TYPING_EXPIRY_MS).toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }
 
     try {
@@ -462,14 +459,14 @@ export const useMessageStore = defineStore('message', () => {
 
   watch(
     messageDraftByConversation,
-    newDrafts => {
+    (newDrafts) => {
       saveMessageDraftsToStorage(newDrafts)
     },
     { deep: true }
   )
 
   function updateConversationUnreadCount(conversationId, unreadCount = 0) {
-    const conversation = conversations.value.find(c => c.id === conversationId)
+    const conversation = conversations.value.find((c) => c.id === conversationId)
     if (conversation) {
       conversation.unread_count = unreadCount
     }
@@ -485,13 +482,13 @@ export const useMessageStore = defineStore('message', () => {
   // 當前選中的對話
   const selectedConversation = computed(() => {
     if (!selectedConversationId.value) return null
-    return conversations.value.find(c => c.id === selectedConversationId.value)
+    return conversations.value.find((c) => c.id === selectedConversationId.value)
   })
 
   // 按角色分類的未讀數
   const unreadByRole = computed(() => {
     const counts = { buyer: 0, seller: 0 }
-    conversations.value.forEach(conv => {
+    conversations.value.forEach((conv) => {
       if (conv.unread_count > 0) {
         counts[conv.role] = (counts[conv.role] || 0) + conv.unread_count
       }
@@ -524,7 +521,9 @@ export const useMessageStore = defineStore('message', () => {
     if (!forceRefresh && conversationsLastFetch.value) {
       const cacheAge = Date.now() - conversationsLastFetch.value
       if (cacheAge < CONVERSATIONS_CACHE_EXPIRY_MS && conversations.value.length > 0) {
-        console.log(`📦 Using cached conversations (${conversations.value.length} items, age: ${Math.round(cacheAge / 1000)}s)`)
+        console.log(
+          `📦 Using cached conversations (${conversations.value.length} items, age: ${Math.round(cacheAge / 1000)}s)`
+        )
         return
       }
     }
@@ -537,19 +536,21 @@ export const useMessageStore = defineStore('message', () => {
 
       if (data) {
         // 獲取當前用戶資訊以判斷角色
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-        conversations.value = data.map(conv => ({
+        conversations.value = data.map((conv) => ({
           id: conv.conversation_id,
           item: {
             id: conv.initial_item_id,
             title: conv.initial_item_title || '未知商品',
-            cover_image_url: conv.initial_item_image || null
+            cover_image_url: conv.initial_item_image || null,
           },
           other_user: {
             id: conv.other_user_id,
             nickname: conv.other_user_name || '未知使用者',
-            profile_picture_url: conv.other_user_avatar || null
+            profile_picture_url: conv.other_user_avatar || null,
           },
           last_message: conv.last_message_content || '開始對話...',
           last_message_time: conv.last_message_at || conv.created_at,
@@ -557,11 +558,13 @@ export const useMessageStore = defineStore('message', () => {
           is_archived: conv.is_archived || false,
           created_at: conv.created_at,
           role: user ? (conv.other_user_id === user.id ? 'seller' : 'buyer') : 'buyer',
-          _raw: conv // 保存原始資料以供後續使用
+          _raw: conv, // 保存原始資料以供後續使用
         }))
 
         conversationsLastFetch.value = Date.now()
-        console.log(`✅ Loaded ${conversations.value.length} conversations, total unread: ${totalUnreadCount.value}`)
+        console.log(
+          `✅ Loaded ${conversations.value.length} conversations, total unread: ${totalUnreadCount.value}`
+        )
       }
     } catch (err) {
       console.error('Failed to load conversations:', err)
@@ -583,7 +586,9 @@ export const useMessageStore = defineStore('message', () => {
     if (!forceRefresh) {
       const cached = getCachedMessages(conversationId)
       if (cached) {
-        console.log(`📦 Using cached messages for conversation ${conversationId} (${cached.messages.length} messages)`)
+        console.log(
+          `📦 Using cached messages for conversation ${conversationId} (${cached.messages.length} messages)`
+        )
         currentMessages.value = cached.messages
         selectedConversationId.value = conversationId
 
@@ -622,7 +627,9 @@ export const useMessageStore = defineStore('message', () => {
         console.warn('Failed to mark as read:', err)
       }
 
-      console.log(`✅ Loaded ${currentMessages.value.length} messages for conversation ${conversationId}`)
+      console.log(
+        `✅ Loaded ${currentMessages.value.length} messages for conversation ${conversationId}`
+      )
     } catch (err) {
       console.error('Failed to load messages:', err)
       throw err
@@ -664,11 +671,13 @@ export const useMessageStore = defineStore('message', () => {
             messages: [...currentMessages.value],
             loadedPages: cached.loadedPages,
             hasMore,
-            lastFetch: Date.now()
+            lastFetch: Date.now(),
           })
         }
 
-        console.log(`✅ Loaded ${olderMessages.length} more messages (page ${page}) for conversation ${conversationId}`)
+        console.log(
+          `✅ Loaded ${olderMessages.length} more messages (page ${page}) for conversation ${conversationId}`
+        )
         return olderMessages
       }
 
@@ -677,7 +686,7 @@ export const useMessageStore = defineStore('message', () => {
         messagesCache.value.set(conversationId, {
           ...cached,
           hasMore: false,
-          lastFetch: Date.now()
+          lastFetch: Date.now(),
         })
       }
 
@@ -691,7 +700,12 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   // 發送訊息
-  async function sendMessage(content, messageType = 'text', relatedItemId = null, relatedItemTitle = null) {
+  async function sendMessage(
+    content,
+    messageType = 'text',
+    relatedItemId = null,
+    relatedItemTitle = null
+  ) {
     if (!selectedConversationId.value) {
       throw new Error('No conversation selected')
     }
@@ -713,11 +727,11 @@ export const useMessageStore = defineStore('message', () => {
       console.log('✅ Message sent:', newMessage)
 
       // 更新對話的最後訊息
-        const conversation = conversations.value.find(c => c.id === selectedConversationId.value)
-        if (conversation) {
-          conversation.last_message = content
-          conversation.last_message_time = newMessage.created_at
-        }
+      const conversation = conversations.value.find((c) => c.id === selectedConversationId.value)
+      if (conversation) {
+        conversation.last_message = content
+        conversation.last_message_time = newMessage.created_at
+      }
 
       return newMessage
     } catch (err) {
@@ -735,7 +749,9 @@ export const useMessageStore = defineStore('message', () => {
 
     // 後端使用去角色化設計: read_by_participant_1 / read_by_participant_2
     // 我們需要判斷當前用戶是發送者還是接收者，然後檢查對方是否已讀
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     const currentUserId = user?.id
     const senderId = updatedMessage.sender_id
 
@@ -746,7 +762,7 @@ export const useMessageStore = defineStore('message', () => {
       return
     }
 
-    const message = currentMessages.value.find(m => m.id === messageId)
+    const message = currentMessages.value.find((m) => m.id === messageId)
 
     // 判斷已讀狀態
     let isRead = false
@@ -757,7 +773,7 @@ export const useMessageStore = defineStore('message', () => {
       let participant1Id, participant2Id
 
       // 先嘗試從本地對話列表獲取
-      const conversation = conversations.value.find(c => c.id === conversationId)
+      const conversation = conversations.value.find((c) => c.id === conversationId)
       if (conversation?._raw?.participant_1_id && conversation?._raw?.participant_2_id) {
         participant1Id = conversation._raw.participant_1_id
         participant2Id = conversation._raw.participant_2_id
@@ -773,7 +789,9 @@ export const useMessageStore = defineStore('message', () => {
           if (!error && convData) {
             participant1Id = convData.participant_1_id
             participant2Id = convData.participant_2_id
-            console.log(`[Message] 從資料庫查詢到 participant 資訊: p1=${participant1Id}, p2=${participant2Id}`)
+            console.log(
+              `[Message] 從資料庫查詢到 participant 資訊: p1=${participant1Id}, p2=${participant2Id}`
+            )
           } else {
             console.error(`[Message] 查詢對話 participant 失敗:`, error)
             return
@@ -795,8 +813,12 @@ export const useMessageStore = defineStore('message', () => {
           isRead = updatedMessage.read_by_participant_1 === true
         }
 
-        console.log(`[Message] 我是發送者，我是 participant_${iAmParticipant1 ? '1' : '2'}，對方已讀: ${isRead}`)
-        console.log(`[Message] read_by_participant_1: ${updatedMessage.read_by_participant_1}, read_by_participant_2: ${updatedMessage.read_by_participant_2}`)
+        console.log(
+          `[Message] 我是發送者，我是 participant_${iAmParticipant1 ? '1' : '2'}，對方已讀: ${isRead}`
+        )
+        console.log(
+          `[Message] read_by_participant_1: ${updatedMessage.read_by_participant_1}, read_by_participant_2: ${updatedMessage.read_by_participant_2}`
+        )
       } else {
         console.log(`[Message] 無法取得 participant 資訊，不更新已讀狀態`)
         return
@@ -807,7 +829,9 @@ export const useMessageStore = defineStore('message', () => {
       return
     }
 
-    console.log(`[Message] 訊息 ID: ${messageId}, 對話 ID: ${conversationId}, 更新後 is_read: ${isRead}`)
+    console.log(
+      `[Message] 訊息 ID: ${messageId}, 對話 ID: ${conversationId}, 更新後 is_read: ${isRead}`
+    )
 
     setSentMessageReadReceipt(messageId, isRead)
 
@@ -830,7 +854,9 @@ export const useMessageStore = defineStore('message', () => {
     const conversationId = newMessage.conversation_id
 
     // 獲取當前用戶ID（用於判斷是否為自己發送的訊息）
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     const isMine = senderId === user?.id
 
     if (isMine && getSentMessageReadReceipt(messageId) === undefined) {
@@ -853,7 +879,7 @@ export const useMessageStore = defineStore('message', () => {
     }
 
     // 1. 更新對話列表
-    const conversation = conversations.value.find(c => c.id === conversationId)
+    const conversation = conversations.value.find((c) => c.id === conversationId)
     if (conversation) {
       conversation.last_message = content
       conversation.last_message_time = createdAt
@@ -867,16 +893,17 @@ export const useMessageStore = defineStore('message', () => {
     // 2. 如果是當前對話，更新訊息列表
     if (selectedConversationId.value === conversationId) {
       // 檢查是否已存在（檢查真實 ID 或臨時 ID）
-      const exists = currentMessages.value.some(m => m.id === messageId)
+      const exists = currentMessages.value.some((m) => m.id === messageId)
 
       // 如果是自己發送的訊息，還需要檢查是否有內容和時間相近的樂觀訊息
       let hasOptimisticVersion = false
       if (isMine) {
         const messageTime = new Date(createdAt).getTime()
-        hasOptimisticVersion = currentMessages.value.some(m =>
-          m.content === content &&
-          Math.abs(new Date(m.created_at).getTime() - messageTime) < 2000 && // 2秒內
-          m.id.toString().startsWith('temp-') // 是臨時訊息
+        hasOptimisticVersion = currentMessages.value.some(
+          (m) =>
+            m.content === content &&
+            Math.abs(new Date(m.created_at).getTime() - messageTime) < 2000 && // 2秒內
+            m.id.toString().startsWith('temp-') // 是臨時訊息
         )
       }
 
@@ -887,17 +914,19 @@ export const useMessageStore = defineStore('message', () => {
           content: content,
           created_at: createdAt,
           is_mine: isMine, // 正確判斷是否為自己發送的訊息
-          is_read: isMine ? (getSentMessageReadReceipt(messageId) || false) : (newMessage.is_read || false),
+          is_read: isMine
+            ? getSentMessageReadReceipt(messageId) || false
+            : newMessage.is_read || false,
           message_type: newMessage.message_type || 'text',
           related_item_id: relatedItemId,
           related_item_title: relatedItemTitle, // 使用處理後的標題
           sender: {
             id: senderId,
             name: newMessage.sender_name || '未知使用者',
-            avatar: newMessage.sender_avatar || null
+            avatar: newMessage.sender_avatar || null,
           },
           metadata: newMessage.metadata,
-          _clientId: messageId // 使用真實 ID 作為 clientId
+          _clientId: messageId, // 使用真實 ID 作為 clientId
         }
         currentMessages.value.push(newMessageObj)
 
@@ -908,11 +937,13 @@ export const useMessageStore = defineStore('message', () => {
         if (!isMine && isInMessagesPage.value && isAtMessagesBottom.value) {
           try {
             const updatedCount = await markAsRead(conversationId)
-            console.log(`[Message] 已標記對話 ${conversationId} 為已讀，更新了 ${updatedCount} 則訊息`)
+            console.log(
+              `[Message] 已標記對話 ${conversationId} 為已讀，更新了 ${updatedCount} 則訊息`
+            )
 
             // 手動更新當前對話中所有對方發送的訊息為已讀
             // 這樣可以立即反映在發送者的界面上，不需要等待 Realtime 事件
-            currentMessages.value.forEach(msg => {
+            currentMessages.value.forEach((msg) => {
               if (!msg.is_mine && msg.id <= messageId) {
                 msg.is_read = true
               }
@@ -930,7 +961,7 @@ export const useMessageStore = defineStore('message', () => {
       // 不是當前對話，但可能在快取中，也要更新快取
       const cached = getCachedMessages(conversationId)
       if (cached) {
-        const exists = cached.messages.some(m => m.id === messageId)
+        const exists = cached.messages.some((m) => m.id === messageId)
         if (!exists) {
           console.log('[Message] 更新非當前對話的快取:', conversationId)
           const newMessageObj = {
@@ -938,17 +969,19 @@ export const useMessageStore = defineStore('message', () => {
             content: content,
             created_at: createdAt,
             is_mine: isMine,
-            is_read: isMine ? (getSentMessageReadReceipt(messageId) || false) : (newMessage.is_read || false),
+            is_read: isMine
+              ? getSentMessageReadReceipt(messageId) || false
+              : newMessage.is_read || false,
             message_type: newMessage.message_type || 'text',
             related_item_id: relatedItemId,
             related_item_title: relatedItemTitle,
             sender: {
               id: senderId,
               name: newMessage.sender_name || '未知使用者',
-              avatar: newMessage.sender_avatar || null
+              avatar: newMessage.sender_avatar || null,
             },
             metadata: newMessage.metadata,
-            _clientId: messageId
+            _clientId: messageId,
           }
           updateCachedMessages(conversationId, (messages) => [...messages, newMessageObj])
         }
@@ -1008,10 +1041,10 @@ export const useMessageStore = defineStore('message', () => {
   function updateOnlineUsers(presenceState) {
     const newOnlineUsers = new Set()
 
-    Object.keys(presenceState).forEach(key => {
+    Object.keys(presenceState).forEach((key) => {
       const presences = presenceState[key]
       if (presences && Array.isArray(presences)) {
-        presences.forEach(presence => {
+        presences.forEach((presence) => {
           if (presence.user_id) {
             newOnlineUsers.add(presence.user_id)
           }
@@ -1033,7 +1066,7 @@ export const useMessageStore = defineStore('message', () => {
     pendingItemReferenceByConversation.value = {}
     messageDraftByConversation.value = {}
     typingUsersByConversation.value = {}
-    typingChannels.forEach(channel => {
+    typingChannels.forEach((channel) => {
       try {
         channel.untrack()
       } catch (err) {
@@ -1095,6 +1128,6 @@ export const useMessageStore = defineStore('message', () => {
     reset,
     // Cache management
     getCachedMessages,
-    clearMessageCache
+    clearMessageCache,
   }
 })

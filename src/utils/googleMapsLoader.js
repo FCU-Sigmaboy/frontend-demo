@@ -26,7 +26,9 @@ export async function loadGoogleMaps() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
   if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-    throw new Error('Google Maps API key not configured. Please add VITE_GOOGLE_MAPS_API_KEY to .env file')
+    throw new Error(
+      'Google Maps API key not configured. Please add VITE_GOOGLE_MAPS_API_KEY to .env file'
+    )
   }
 
   mapsLoadedPromise = (async () => {
@@ -34,7 +36,7 @@ export async function loadGoogleMaps() {
     if (!isInitialized) {
       setOptions({
         apiKey,
-        version: 'weekly'
+        version: 'weekly',
       })
       isInitialized = true
     }
@@ -44,7 +46,7 @@ export async function loadGoogleMaps() {
       importLibrary('maps'),
       importLibrary('marker'),
       importLibrary('places'),
-      importLibrary('geometry')
+      importLibrary('geometry'),
     ])
   })()
 

@@ -14,13 +14,12 @@
     <!-- Product Image with Favorite Button -->
     <div class="product-image-wrapper">
       <img :src="product.image_url" :alt="product.title" class="product-image" />
-      
     </div>
 
     <!-- Card Body -->
     <div class="product-body">
       <!-- Product Name and Favorite Button -->
-       <div class="name-and-favorite-button-wrapper">
+      <div class="name-and-favorite-button-wrapper">
         <h5 class="product-name">{{ product.title }}</h5>
 
         <!-- Favorite Button -->
@@ -45,7 +44,10 @@
       <div class="product-meta">
         <i class="bi bi-geo-alt-fill"></i>
         <span>{{ product.formatted_address }}</span>
-        <span v-if="authStore.user"><span class="separator">•</span>{{ Math.round(product.distance_km * 100) / 100 }} km</span>
+        <span v-if="authStore.user"
+          ><span class="separator">•</span
+          >{{ Math.round(product.distance_km * 100) / 100 }} km</span
+        >
       </div>
 
       <!-- Posted Time -->
@@ -58,249 +60,249 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useFavoritesStore } from '@/stores/favorites';
-import { useAuthStore } from '@/stores/auth';
-import { formatRelativeTime } from '@/utils/timeFormat';
-import { createOrGetConversation } from '@/api/conversationAPI';
+  import { computed, ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { useFavoritesStore } from '@/stores/favorites'
+  import { useAuthStore } from '@/stores/auth'
+  import { formatRelativeTime } from '@/utils/timeFormat'
+  import { createOrGetConversation } from '@/api/conversationAPI'
 
-const router = useRouter();
-const favoritesStore = useFavoritesStore();
-const authStore = useAuthStore();
+  const router = useRouter()
+  const favoritesStore = useFavoritesStore()
+  const authStore = useAuthStore()
 
-const props = defineProps({
-  product: {
-    type: Object,
-    required: true,
-    default: () => ({
-      item_id: 1,
-      title: '物品名稱',
-      image_url: 'https://placehold.co/600x400',
-      price: 700,
-      distance_km: '0.5',
-      formatted_address: '台中市西屯區',
-      created_at: '2024-06-01T12:00:00Z',
-      updated_at: '2024-06-01T12:00:00Z',
-      favorited_at: '2024-08-01T12:00:00Z',
-      favorites_count: 10,
-      user: {
-        id: "a1b2c3d4-e5f6-4a5b-8c9d-123456789abc",
-        nickname: '提供者名稱',
-        profile_picture_url: 'https://placehold.co/50x50'
-      }
-    })
-  }
-});
+  const props = defineProps({
+    product: {
+      type: Object,
+      required: true,
+      default: () => ({
+        item_id: 1,
+        title: '物品名稱',
+        image_url: 'https://placehold.co/600x400',
+        price: 700,
+        distance_km: '0.5',
+        formatted_address: '台中市西屯區',
+        created_at: '2024-06-01T12:00:00Z',
+        updated_at: '2024-06-01T12:00:00Z',
+        favorited_at: '2024-08-01T12:00:00Z',
+        favorites_count: 10,
+        user: {
+          id: 'a1b2c3d4-e5f6-4a5b-8c9d-123456789abc',
+          nickname: '提供者名稱',
+          profile_picture_url: 'https://placehold.co/50x50',
+        },
+      }),
+    },
+  })
 
-// Handle both data structures (with nested user or flat seller data)
-const sellerName = computed(() => {
-  return props.product.user?.nickname || props.product.sellerName || '使用者';
-});
+  // Handle both data structures (with nested user or flat seller data)
+  const sellerName = computed(() => {
+    return props.product.user?.nickname || props.product.sellerName || '使用者'
+  })
 
-const sellerAvatar = computed(() => {
-  return props.product.user?.profile_picture_url || props.product.sellerAvatar || 'https://placehold.co/50x50/6fb8a5/ffffff?text=User';
-});
+  const sellerAvatar = computed(() => {
+    return (
+      props.product.user?.profile_picture_url ||
+      props.product.sellerAvatar ||
+      'https://placehold.co/50x50/6fb8a5/ffffff?text=User'
+    )
+  })
 
-const sellerId = computed(() => {
-  return props.product.user?.id;
-});
+  const sellerId = computed(() => {
+    return props.product.user?.id
+  })
 
-const isOwner = computed(() => {
-  if (!authStore.user || !sellerId.value) return false;
-  return authStore.user.id === sellerId.value;
-});
+  const isOwner = computed(() => {
+    if (!authStore.user || !sellerId.value) return false
+    return authStore.user.id === sellerId.value
+  })
 
-// 收藏狀態 - 用於立即更新 UI
-const localFavoriteState = ref(props.product.favorited_at);
+  // 收藏狀態 - 用於立即更新 UI
+  const localFavoriteState = ref(props.product.favorited_at)
 
-// 已收藏狀態
-const isFavorite = computed(() => {
-  return localFavoriteState.value;
-});
+  // 已收藏狀態
+  const isFavorite = computed(() => {
+    return localFavoriteState.value
+  })
 
-// 格式化時間
-const formattedTime = computed(() => {
-  return formatRelativeTime(props.product.created_at);
-});
+  // 格式化時間
+  const formattedTime = computed(() => {
+    return formatRelativeTime(props.product.created_at)
+  })
 
-// 切換收藏狀態
-let timeoutId = null;
-const toggleFavorite = async () => {
-  if (!authStore.user) {
-    await authStore.signInWithGoogle();
-    return;
-  }
+  // 切換收藏狀態
+  let timeoutId = null
+  const toggleFavorite = async () => {
+    if (!authStore.user) {
+      await authStore.signInWithGoogle()
+      return
+    }
 
-  // 立即更新狀態,提供即時視覺回饋
-  localFavoriteState.value = !localFavoriteState.value;
-  
-  const func = localFavoriteState.value 
-    ? favoritesStore.addFavorite 
-    : favoritesStore.removeFavorite;
+    // 立即更新狀態,提供即時視覺回饋
+    localFavoriteState.value = !localFavoriteState.value
 
-  // 防抖處理 - 延遲實際的 API 呼叫
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-  }
-  timeoutId = setTimeout(() => {
-    func(props.product);
-  }, 500);
-};
+    const func = localFavoriteState.value
+      ? favoritesStore.addFavorite
+      : favoritesStore.removeFavorite
 
-const handleContact = async () => {
-  // 檢查是否登入
-  if (!authStore.user) {
-    await authStore.signInWithGoogle();
-    return;
+    // 防抖處理 - 延遲實際的 API 呼叫
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+    timeoutId = setTimeout(() => {
+      func(props.product)
+    }, 500)
   }
 
-  // 檢查是否為自己的商品
-  if (isOwner.value) {
-    alert('無法與自己的商品發起對話');
-    return;
+  const handleContact = async () => {
+    // 檢查是否登入
+    if (!authStore.user) {
+      await authStore.signInWithGoogle()
+      return
+    }
+
+    // 檢查是否為自己的商品
+    if (isOwner.value) {
+      alert('無法與自己的商品發起對話')
+      return
+    }
+
+    try {
+      // 使用 v2 API: createOrGetConversation(otherUserId, initialItemId)
+      const conversation = await createOrGetConversation(sellerId.value, props.product.item_id)
+
+      // 導航到訊息頁面，並傳遞物品資訊以便在輸入框上方顯示
+      router.push({
+        name: 'Messages',
+        query: {
+          conversationId: conversation.conversation_id,
+          itemId: props.product.item_id,
+          itemTitle: props.product.title,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to create conversation:', error)
+      alert('無法開啟對話，請稍後再試')
+    }
   }
 
-  try {
-    // 使用 v2 API: createOrGetConversation(otherUserId, initialItemId)
-    const conversation = await createOrGetConversation(
-      sellerId.value,
-      props.product.item_id
-    );
-
-    // 導航到訊息頁面，並傳遞物品資訊以便在輸入框上方顯示
-    router.push({
-      name: 'Messages',
-      query: {
-        conversationId: conversation.conversation_id,
-        itemId: props.product.item_id,
-        itemTitle: props.product.title
-      }
-    });
-  } catch (error) {
-    console.error('Failed to create conversation:', error);
-    alert('無法開啟對話，請稍後再試');
+  const goToSellerProfile = () => {
+    if (sellerId.value) {
+      router.push({ name: 'PublicUserProfile', params: { id: sellerId.value } })
+    }
   }
-};
-
-const goToSellerProfile = () => {
-  if (sellerId.value) {
-    router.push({ name: 'PublicUserProfile', params: { id: sellerId.value } });
-  }
-};
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.product-card {
-  background: white;
-  border: 0.1px solid $primary;
-  border-radius: 5px;
-  overflow: hidden;
-  transition: all 0.3s;
-  height: 100%;
-  width: 100%;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  .product-card {
+    background: white;
+    border: 0.1px solid $primary;
+    border-radius: 5px;
+    overflow: hidden;
+    transition: all 0.3s;
+    height: 100%;
+    width: 100%;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  }
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px;
-  border-bottom: 0.5px solid #e0e0e0;
-}
-
-.seller-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-  cursor: pointer;
-  transition: opacity 0.3s;
-
-  &:hover {
-    opacity: 0.7;
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
   }
 
-  .seller-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 0.5px solid #e0e0e0;
   }
 
-  .seller-name {
+  .seller-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    transition: opacity 0.3s;
+
+    &:hover {
+      opacity: 0.7;
+    }
+
+    .seller-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .seller-name {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #1e1e1e;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .contact-btn {
+    background-color: $primary;
+    border: none;
+    border-radius: 5px;
     font-family: 'Inter', 'Noto Sans TC', sans-serif;
     font-size: 14px;
-    color: #1e1e1e;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-weight: 500;
+    color: white;
+    padding: 4px 10px;
+    height: 32px;
+    cursor: pointer;
+    transition: all 0.3s;
     white-space: nowrap;
+    flex-shrink: 0;
+
+    &:hover {
+      background-color: #5fa795;
+      transform: translateY(-1px);
+    }
   }
-}
 
-.contact-btn {
-  background-color: $primary;
-  border: none;
-  border-radius: 5px;
-  font-family: 'Inter', 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: white;
-  padding: 4px 10px;
-  height: 32px;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &:hover {
-    background-color: #5fa795;
-    transform: translateY(-1px);
-  }
-}
-
-.product-image-wrapper {
-  position: relative;
-  width: 100%;
-  padding-top: 75.76%; // Maintain aspect ratio
-  overflow: hidden;
-  background: #f5f5f5;
-
-  .product-image {
-    position: absolute;
-    top: 0;
-    left: 0;
+  .product-image-wrapper {
+    position: relative;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    padding-top: 75.76%; // Maintain aspect ratio
+    overflow: hidden;
+    background: #f5f5f5;
+
+    .product-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
-}
 
-.product-body {
-  padding: 15px;
-  background-color: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
+  .product-body {
+    padding: 15px;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
 
-
-.name-and-favorite-button-wrapper {
+  .name-and-favorite-button-wrapper {
     display: flex;
     align-items: center;
     top: 10px;
@@ -341,172 +343,172 @@ const goToSellerProfile = () => {
         animation: scale-bounce 0.3s ease-in-out;
       }
     }
-}
-
-@keyframes scale-bounce {
-  0% {
-    transform: scale(0.9);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.product-name {
-  flex: 8;
-  font-family: 'Inter', 'Noto Sans TC', sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  color: #1e1e1e;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-// Price Section - Carousell-Inspired Minimal Design (Bootstrap 5 Compatible)
-// Using high specificity to override any existing styles
-.product-card .product-body .product-price {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  margin: 6px 0 !important;
-
-  // Leaf Icon - Prominent but clean
-  i.bi-leaf {
-    font-size: 18px !important;
-    color: $primary !important;
-    flex-shrink: 0 !important;
   }
 
-  // Price Amount - Clear and Bold (Bootstrap 5 sizing)
-  .price-amount,
-  span.price-amount {
-    font-family: 'Inter', 'Noto Sans TC', sans-serif !important;
-    font-size: 20px !important;
-    font-weight: 700 !important;
-    color: #1e1e1e !important;
-    line-height: 1.2 !important;
-  }
-}
-
-.product-meta {
-  display: flex;
-  align-items: center;
-  gap: 4.95px;
-  font-family: 'Inter', 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #555555;
-  line-height: 1.5;
-
-  i {
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .separator {
-    margin: 0 2px;
-  }
-}
-
-// Bootstrap 5 lg breakpoint
-@media (max-width: 991.98px) {
-  .product-name {
-    font-size: 14px;
-  }
-
-  .product-card .product-body .product-price {
-    gap: 7px !important;
-
-    i.bi-leaf {
-      font-size: 17px !important;
+  @keyframes scale-bounce {
+    0% {
+      transform: scale(0.9);
     }
-
-    .price-amount,
-    span.price-amount {
-      font-size: 19px !important;
+    50% {
+      transform: scale(1.2);
     }
-  }
-
-  .seller-name {
-    font-size: 13px;
-  }
-
-  .product-meta {
-    font-size: 13px;
-
-    i {
-      font-size: 15px;
+    100% {
+      transform: scale(1);
     }
-  }
-
-  .name-and-favorite-button-wrapper .favorite-btn {
-    width: 40px;
-    height: 40px;
-
-    i {
-      font-size: 22px;
-    }
-  }
-}
-
-// Bootstrap 5 sm breakpoint
-@media (max-width: 575.98px) {
-  .card-header {
-    padding: 8px;
-  }
-
-  .contact-btn {
-    font-size: 12px;
-    padding: 3px 8px;
-    height: 28px;
-  }
-
-  .product-body {
-    padding: 12px;
   }
 
   .product-name {
-    font-size: 13px;
+    flex: 8;
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1e1e1e;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
+  // Price Section - Carousell-Inspired Minimal Design (Bootstrap 5 Compatible)
+  // Using high specificity to override any existing styles
   .product-card .product-body .product-price {
-    gap: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin: 6px 0 !important;
 
+    // Leaf Icon - Prominent but clean
     i.bi-leaf {
-      font-size: 16px !important;
-    }
-
-    .price-amount,
-    span.price-amount {
       font-size: 18px !important;
+      color: $primary !important;
+      flex-shrink: 0 !important;
+    }
+
+    // Price Amount - Clear and Bold (Bootstrap 5 sizing)
+    .price-amount,
+    span.price-amount {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif !important;
+      font-size: 20px !important;
+      font-weight: 700 !important;
+      color: #1e1e1e !important;
+      line-height: 1.2 !important;
     }
   }
 
-  .seller-name {
-    font-size: 12px;
-  }
-
   .product-meta {
-    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4.95px;
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #555555;
+    line-height: 1.5;
 
     i {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .separator {
+      margin: 0 2px;
+    }
+  }
+
+  // Bootstrap 5 lg breakpoint
+  @media (max-width: 991.98px) {
+    .product-name {
       font-size: 14px;
     }
-  }
 
-  .name-and-favorite-button-wrapper .favorite-btn {
-    width: 44px;
-    height: 44px;
+    .product-card .product-body .product-price {
+      gap: 7px !important;
 
-    i {
-      font-size: 24px;
+      i.bi-leaf {
+        font-size: 17px !important;
+      }
+
+      .price-amount,
+      span.price-amount {
+        font-size: 19px !important;
+      }
+    }
+
+    .seller-name {
+      font-size: 13px;
+    }
+
+    .product-meta {
+      font-size: 13px;
+
+      i {
+        font-size: 15px;
+      }
+    }
+
+    .name-and-favorite-button-wrapper .favorite-btn {
+      width: 40px;
+      height: 40px;
+
+      i {
+        font-size: 22px;
+      }
     }
   }
-}
+
+  // Bootstrap 5 sm breakpoint
+  @media (max-width: 575.98px) {
+    .card-header {
+      padding: 8px;
+    }
+
+    .contact-btn {
+      font-size: 12px;
+      padding: 3px 8px;
+      height: 28px;
+    }
+
+    .product-body {
+      padding: 12px;
+    }
+
+    .product-name {
+      font-size: 13px;
+    }
+
+    .product-card .product-body .product-price {
+      gap: 6px !important;
+
+      i.bi-leaf {
+        font-size: 16px !important;
+      }
+
+      .price-amount,
+      span.price-amount {
+        font-size: 18px !important;
+      }
+    }
+
+    .seller-name {
+      font-size: 12px;
+    }
+
+    .product-meta {
+      font-size: 12px;
+
+      i {
+        font-size: 14px;
+      }
+    }
+
+    .name-and-favorite-button-wrapper .favorite-btn {
+      width: 44px;
+      height: 44px;
+
+      i {
+        font-size: 24px;
+      }
+    }
+  }
 </style>

@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { uploadItemImages } from '@/api/imageAPI';
+import { supabase } from '@/lib/supabase'
+import { uploadItemImages } from '@/api/imageAPI'
 
 // ===================================================================
 // ### 物品 API (Items API) - 整合版
@@ -24,11 +24,12 @@ import { uploadItemImages } from '@/api/imageAPI';
  */
 export async function getItemById(itemId) {
   try {
-    console.log(`🔍 Fetching item #${itemId}...`);
+    console.log(`🔍 Fetching item #${itemId}...`)
 
     const { data, error } = await supabase
       .from('items')
-      .select(`
+      .select(
+        `
         id,
         user_id,
         sub_category_id,
@@ -42,24 +43,25 @@ export async function getItemById(itemId) {
         tags,
         created_at,
         updated_at
-      `)
+      `
+      )
       .eq('id', itemId)
-      .single();
+      .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
-        console.warn(`Item #${itemId} not found`);
-        return null;
+        console.warn(`Item #${itemId} not found`)
+        return null
       }
-      console.error('Failed to fetch item:', error);
-      throw new Error(error.message);
+      console.error('Failed to fetch item:', error)
+      throw new Error(error.message)
     }
 
-    console.log('✅ Item loaded:', data);
-    return data;
+    console.log('✅ Item loaded:', data)
+    return data
   } catch (error) {
-    console.error('Error fetching item:', error);
-    throw error;
+    console.error('Error fetching item:', error)
+    throw error
   }
 }
 
@@ -83,49 +85,42 @@ export async function getItemDetails(itemId, options = {}) {
   try {
     // 1. 參數驗證
     if (!itemId || typeof itemId !== 'number') {
-      throw new Error('itemId 必須是有效的數字');
+      throw new Error('itemId 必須是有效的數字')
     }
 
     if (itemId <= 0) {
-      throw new Error('itemId 必須是正整數');
+      throw new Error('itemId 必須是正整數')
     }
 
     // 解構可選參數
-    const {
-      userLat = null,
-      userLng = null,
-      useSecondaryLocation = false,
-    } = options;
+    const { userLat = null, userLng = null, useSecondaryLocation = false } = options
 
     // 驗證經緯度參數
-    if (
-      (userLat !== null && userLng === null) ||
-      (userLat === null && userLng !== null)
-    ) {
-      throw new Error('經緯度參數必須同時提供或同時為空');
+    if ((userLat !== null && userLng === null) || (userLat === null && userLng !== null)) {
+      throw new Error('經緯度參數必須同時提供或同時為空')
     }
 
     if (userLat !== null) {
       if (userLat < -90 || userLat > 90) {
-        throw new Error('緯度必須在 -90 到 90 之間');
+        throw new Error('緯度必須在 -90 到 90 之間')
       }
       if (userLng < -180 || userLng > 180) {
-        throw new Error('經度必須在 -180 到 180 之間');
+        throw new Error('經度必須在 -180 到 180 之間')
       }
     }
 
-    console.log(`正在獲取物品 #${itemId} 的詳情...`);
+    console.log(`正在獲取物品 #${itemId} 的詳情...`)
     if (userLat !== null && userLng !== null) {
-      console.log(`使用當前位置: (${userLat}, ${userLng})`);
+      console.log(`使用當前位置: (${userLat}, ${userLng})`)
     } else if (useSecondaryLocation) {
-      console.log(`使用次要地點`);
+      console.log(`使用次要地點`)
     }
 
     // 2. 檢查登入狀態
-    const isLoggedIn = await checkUserAuthentication();
+    const isLoggedIn = await checkUserAuthentication()
 
     if (!isLoggedIn) {
-      console.log('提示：未登入用戶僅能查看物品基本資訊');
+      console.log('提示：未登入用戶僅能查看物品基本資訊')
     }
 
     // 3. 呼叫 RPC 函式
@@ -136,17 +131,17 @@ export async function getItemDetails(itemId, options = {}) {
         p_user_lng: userLng,
         p_use_secondary_location: useSecondaryLocation,
       })
-      .maybeSingle();
+      .maybeSingle()
 
     // 4. 錯誤處理
     if (error) {
-      console.error(`Supabase RPC 錯誤:`, error);
-      throw new Error(`資料庫查詢失敗: ${error.message}`);
+      console.error(`Supabase RPC 錯誤:`, error)
+      throw new Error(`資料庫查詢失敗: ${error.message}`)
     }
 
     // 5. 檢查是否有錯誤回應（RPC 內部錯誤）
     if (data && data.error) {
-      console.log(`物品查詢回應: ${data.message} (code: ${data.code})`);
+      console.log(`物品查詢回應: ${data.message} (code: ${data.code})`)
       return {
         success: false,
         error: true,
@@ -154,24 +149,24 @@ export async function getItemDetails(itemId, options = {}) {
         message: data.message,
         itemId: itemId,
         data: null,
-      };
+      }
     }
 
     // 6. 資料後處理
     if (data) {
       // 確保陣列欄位的完整性
-      data.image_urls = data.image_urls || [];
-      data.tags = data.tags || [];
+      data.image_urls = data.image_urls || []
+      data.tags = data.tags || []
 
       // 處理地理座標（JSONB 格式）
       if (data.location && data.location.coordinates) {
         try {
           if (typeof data.location.coordinates === 'string') {
-            data.location.coordinates = JSON.parse(data.location.coordinates);
+            data.location.coordinates = JSON.parse(data.location.coordinates)
           }
         } catch (e) {
-          console.warn('無法解析物品位置座標:', e);
-          data.location.coordinates = null;
+          console.warn('無法解析物品位置座標:', e)
+          data.location.coordinates = null
         }
       }
 
@@ -179,24 +174,18 @@ export async function getItemDetails(itemId, options = {}) {
       if (data.user_location && data.user_location.coordinates) {
         try {
           if (typeof data.user_location.coordinates === 'string') {
-            data.user_location.coordinates = JSON.parse(
-              data.user_location.coordinates,
-            );
+            data.user_location.coordinates = JSON.parse(data.user_location.coordinates)
           }
         } catch (e) {
-          console.warn('無法解析用戶位置座標:', e);
-          data.user_location.coordinates = null;
+          console.warn('無法解析用戶位置座標:', e)
+          data.user_location.coordinates = null
         }
       }
 
       // 記錄位置來源資訊
-      const locationSource = data.user_location?.source || 'none';
-      const distanceInfo = data.distance_km
-        ? `距離: ${data.distance_km} km`
-        : '距離: 未提供';
-      console.log(
-        `成功獲取物品 #${itemId} 詳情，位置來源: ${locationSource}，${distanceInfo}`,
-      );
+      const locationSource = data.user_location?.source || 'none'
+      const distanceInfo = data.distance_km ? `距離: ${data.distance_km} km` : '距離: 未提供'
+      console.log(`成功獲取物品 #${itemId} 詳情，位置來源: ${locationSource}，${distanceInfo}`)
 
       return {
         success: true,
@@ -208,7 +197,7 @@ export async function getItemDetails(itemId, options = {}) {
         hasDistance: data.distance_km !== null,
         isOwner: data.is_owner || false,
         data: data,
-      };
+      }
     }
 
     // 7. 沒有資料的情況
@@ -219,9 +208,9 @@ export async function getItemDetails(itemId, options = {}) {
       message: '物品不存在或已下架',
       itemId: itemId,
       data: null,
-    };
+    }
   } catch (error) {
-    console.error(`獲取物品詳情失敗 (itemId: ${itemId}):`, error.message);
+    console.error(`獲取物品詳情失敗 (itemId: ${itemId}):`, error.message)
 
     return {
       success: false,
@@ -230,7 +219,7 @@ export async function getItemDetails(itemId, options = {}) {
       message: error.message,
       itemId: itemId,
       data: null,
-    };
+    }
   }
 }
 
@@ -245,10 +234,13 @@ export async function getItemDetails(itemId, options = {}) {
  */
 export async function getMyItems(options = {}) {
   // 1. 獲取當前登入的使用者
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.warn('getMyItems: User not logged in.');
-    return null;
+    console.warn('getMyItems: User not logged in.')
+    return null
   }
 
   // 2. 準備 RPC 參數
@@ -256,21 +248,21 @@ export async function getMyItems(options = {}) {
     p_page: options.page || 1,
     p_size: options.size || 20,
     p_sort_by: options.sort_by || 'created_at',
-    p_sort_direction: options.sort_direction || 'desc'
-  };
+    p_sort_direction: options.sort_direction || 'desc',
+  }
 
-  console.log('Calling get_my_items RPC with params:', rpcParams);
+  console.log('Calling get_my_items RPC with params:', rpcParams)
 
   // 3. 呼叫 RPC 函式
-  const { data, error } = await supabase.rpc('get_my_items', rpcParams);
+  const { data, error } = await supabase.rpc('get_my_items', rpcParams)
 
   // 4. 錯誤處理
   if (error) {
-    console.error('Supabase 獲取 "我的物品" 失敗:', error);
-    throw new Error(error.message);
+    console.error('Supabase 獲取 "我的物品" 失敗:', error)
+    throw new Error(error.message)
   }
 
-  return data;
+  return data
 }
 
 /**
@@ -291,9 +283,12 @@ export async function getMyItems(options = {}) {
  */
 export async function searchItems(filters = {}) {
   // 1. 檢查使用者是否登入 (RPC 也會檢查)
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.warn('searchItems: User not logged in.');
+    console.warn('searchItems: User not logged in.')
   }
 
   // 2. 準備傳遞給 RPC 函式的參數
@@ -308,38 +303,43 @@ export async function searchItems(filters = {}) {
     p_page: filters.page || 1,
     p_size: filters.size || 20,
     p_sort_by: filters.sort_by || 'created_at',
-    p_sort_direction: filters.sort_direction || 'desc'
-  };
-  console.log(rpcParams);
+    p_sort_direction: filters.sort_direction || 'desc',
+  }
+  console.log(rpcParams)
 
   // 3. 呼叫 RPC 函式
-  const { data, error } = await supabase.rpc('search_items_tudever', rpcParams);
+  const { data, error } = await supabase.rpc('search_items_tudever', rpcParams)
 
   if (error) {
-    console.error('Supabase 搜尋物品失敗:', error);
-    throw new Error(error.message);
+    console.error('Supabase 搜尋物品失敗:', error)
+    throw new Error(error.message)
   }
 
   // 4. Parse approximate_location to extract latitude and longitude
-  const parsedData = data?.map(item => {
-    let latitude = null;
-    let longitude = null;
+  const parsedData = data?.map((item) => {
+    let latitude = null
+    let longitude = null
 
     if (item.approximate_location) {
-      latitude = item.approximate_location.latitude;
-      longitude = item.approximate_location.longitude;
+      latitude = item.approximate_location.latitude
+      longitude = item.approximate_location.longitude
     }
 
     return {
       ...item,
       latitude,
-      longitude
-    };
-  });
+      longitude,
+    }
+  })
 
-  console.log('[searchItems] Parsed items with coordinates:', parsedData?.filter(i => i.latitude).length, '/', parsedData?.length);
+  console.log(
+    '[searchItems] Parsed items with coordinates:',
+    parsedData?.filter((i) => i.latitude).length,
+    '/',
+    parsedData?.length
+  )
 
-  return parsedData || data;
+  return parsedData || data
 }
 
 // ===========================================
@@ -368,22 +368,20 @@ export async function createItem(itemData) {
     p_condition: itemData.condition,
     p_price: itemData.price,
     p_use_primary_location:
-      itemData.use_primary_location !== undefined
-        ? itemData.use_primary_location
-        : true,
+      itemData.use_primary_location !== undefined ? itemData.use_primary_location : true,
     p_carbon_value: itemData.carbon_value,
     p_image_urls: itemData.image_urls,
     p_tags: itemData.tags,
-  };
-
-  const { data, error } = await supabase.rpc('create_item', rpcParams);
-
-  if (error) {
-    console.error('Supabase 刊登物品失敗:', error);
-    throw new Error(error.message);
   }
 
-  return data;
+  const { data, error } = await supabase.rpc('create_item', rpcParams)
+
+  if (error) {
+    console.error('Supabase 刊登物品失敗:', error)
+    throw new Error(error.message)
+  }
+
+  return data
 }
 
 /**
@@ -393,33 +391,39 @@ export async function createItem(itemData) {
  * @param {boolean} filesAlreadyCompressed - 檔案是否已經壓縮過（預設 false）
  * @returns {Promise<object>} - 回傳新建的 item
  */
-export async function createItemWithImages(itemData, imageFiles = [], filesAlreadyCompressed = false) {
+export async function createItemWithImages(
+  itemData,
+  imageFiles = [],
+  filesAlreadyCompressed = false
+) {
   try {
     // 1. 獲取當前使用者 ID
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
-      throw new Error('使用者未登入');
+      throw new Error('使用者未登入')
     }
 
     // 2. 產生臨時 ID 用於圖片路徑
-    const tempItemId = `temp-${Date.now()}`;
+    const tempItemId = `temp-${Date.now()}`
 
     // 3. 上傳圖片 (若有提供)
-    let imageUrls = [];
+    let imageUrls = []
     if (imageFiles && imageFiles.length > 0) {
-      imageUrls = await uploadItemImages(imageFiles, user.id, tempItemId, !filesAlreadyCompressed);
+      imageUrls = await uploadItemImages(imageFiles, user.id, tempItemId, !filesAlreadyCompressed)
     }
 
     // 4. 建立物品 (傳入圖片 URL)
     const result = await createItem({
       ...itemData,
-      image_urls: imageUrls
-    });
+      image_urls: imageUrls,
+    })
 
-    return result;
+    return result
   } catch (error) {
-    console.error('刊登物品流程失敗:', error);
-    throw error;
+    console.error('刊登物品流程失敗:', error)
+    throw error
   }
 }
 
@@ -435,12 +439,15 @@ export async function createItemWithImages(itemData, imageFiles = [], filesAlrea
  */
 export async function updateMyItem(itemId, updateData) {
   // 1. 檢查使用者是否登入
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    throw new Error('使用者未登入，無法更新物品');
+    throw new Error('使用者未登入，無法更新物品')
   }
 
-  console.log(`📝 Updating item #${itemId}:`, updateData);
+  console.log(`📝 Updating item #${itemId}:`, updateData)
 
   try {
     // 2. 如果要更新 location_id，先驗證該地點屬於當前使用者
@@ -450,10 +457,10 @@ export async function updateMyItem(itemId, updateData) {
         .select('id')
         .eq('id', updateData.location_id)
         .eq('user_id', user.id)
-        .single();
+        .single()
 
       if (locationError || !locationCheck) {
-        throw new Error('無效的地點 ID，或該地點不屬於當前使用者。請先在個人資料中新增此地區。');
+        throw new Error('無效的地點 ID，或該地點不屬於當前使用者。請先在個人資料中新增此地區。')
       }
     }
 
@@ -464,18 +471,18 @@ export async function updateMyItem(itemId, updateData) {
       .eq('id', itemId)
       .eq('user_id', user.id)
       .select()
-      .single();
+      .single()
 
     if (error) {
-      console.error(`Failed to update item #${itemId}:`, error);
-      throw new Error(error.message);
+      console.error(`Failed to update item #${itemId}:`, error)
+      throw new Error(error.message)
     }
 
-    console.log(`✅ Item #${itemId} updated:`, data);
-    return data;
+    console.log(`✅ Item #${itemId} updated:`, data)
+    return data
   } catch (error) {
-    console.error('Error updating item:', error);
-    throw error;
+    console.error('Error updating item:', error)
+    throw error
   }
 }
 
@@ -487,11 +494,11 @@ export async function updateMyItem(itemId, updateData) {
  */
 export async function toggleItemStatus(itemId, newStatus) {
   if (newStatus === true) {
-    console.log(`正在嘗試重新上架物品 #${itemId}...`);
-    return await relistMyItem(itemId);
+    console.log(`正在嘗試重新上架物品 #${itemId}...`)
+    return await relistMyItem(itemId)
   } else {
-    console.log(`正在嘗試下架物品 #${itemId}...`);
-    return await unlistItem(itemId);
+    console.log(`正在嘗試下架物品 #${itemId}...`)
+    return await unlistItem(itemId)
   }
 }
 
@@ -501,18 +508,20 @@ export async function toggleItemStatus(itemId, newStatus) {
  * @returns {Promise<object>} - 回傳操作結果
  */
 export async function relistMyItem(itemId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const { data, error } = await supabase.rpc('relist_item', {
-    p_item_id: itemId
-  });
+    p_item_id: itemId,
+  })
 
   if (error) {
-    console.error(`Supabase 重新上架 #${itemId} 失敗:`, error);
-    throw new Error(error.message);
+    console.error(`Supabase 重新上架 #${itemId} 失敗:`, error)
+    throw new Error(error.message)
   }
-  return data;
+  return data
 }
 
 /**
@@ -521,18 +530,20 @@ export async function relistMyItem(itemId) {
  * @returns {Promise<object>} - 回傳操作結果
  */
 export async function unlistItem(itemId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const { data, error } = await supabase.rpc('unlist_item', {
-    p_item_id: itemId
-  });
+    p_item_id: itemId,
+  })
 
   if (error) {
-    console.error(`Supabase 下架 #${itemId} 失敗:`, error);
-    throw new Error(error.message);
+    console.error(`Supabase 下架 #${itemId} 失敗:`, error)
+    throw new Error(error.message)
   }
-  return data;
+  return data
 }
 
 /**
@@ -541,12 +552,15 @@ export async function unlistItem(itemId) {
  * @returns {Promise<object>} - 回傳刪除結果
  */
 export async function deleteMyItem(itemId) {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    throw new Error('使用者未登入，無法刪除物品');
+    throw new Error('使用者未登入，無法刪除物品')
   }
 
-  console.log(`🗑️ Deleting item #${itemId}`);
+  console.log(`🗑️ Deleting item #${itemId}`)
 
   try {
     const { data, error } = await supabase
@@ -555,18 +569,18 @@ export async function deleteMyItem(itemId) {
       .eq('id', itemId)
       .eq('user_id', user.id)
       .select()
-      .single();
+      .single()
 
     if (error) {
-      console.error(`Failed to delete item #${itemId}:`, error);
-      throw new Error(error.message);
+      console.error(`Failed to delete item #${itemId}:`, error)
+      throw new Error(error.message)
     }
 
-    console.log(`Item #${itemId} permanently deleted`);
-    return data;
+    console.log(`Item #${itemId} permanently deleted`)
+    return data
   } catch (error) {
-    console.error('Error deleting item:', error);
-    throw error;
+    console.error('Error deleting item:', error)
+    throw error
   }
 }
 
@@ -583,16 +597,16 @@ export async function checkUserAuthentication() {
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser()
 
     if (error) {
-      console.warn('檢查登入狀態時發生錯誤:', error.message);
-      return false;
+      console.warn('檢查登入狀態時發生錯誤:', error.message)
+      return false
     }
 
-    return user !== null;
+    return user !== null
   } catch (error) {
-    console.error('檢查登入狀態失敗:', error.message);
-    return false;
+    console.error('檢查登入狀態失敗:', error.message)
+    return false
   }
 }

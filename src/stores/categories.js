@@ -11,18 +11,18 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   // Getters
   const mainCategories = computed(() => {
-    return categories.value.map(cat => ({
+    return categories.value.map((cat) => ({
       id: cat.id,
       name: cat.name,
       icon: cat.icon,
-      color: cat.color
+      color: cat.color,
     }))
   })
 
   // 根據主分類 ID 取得子分類
   const getSubCategoriesByMainId = computed(() => {
     return (mainCategoryId) => {
-      const mainCat = categories.value.find(cat => cat.id === mainCategoryId)
+      const mainCat = categories.value.find((cat) => cat.id === mainCategoryId)
       return mainCat?.sub_categories || []
     }
   })
@@ -31,7 +31,7 @@ export const useCategoriesStore = defineStore('categories', () => {
   const getSubCategoryById = computed(() => {
     return (subCategoryId) => {
       for (const mainCat of categories.value) {
-        const subCat = mainCat.sub_categories?.find(sub => sub.id === subCategoryId)
+        const subCat = mainCat.sub_categories?.find((sub) => sub.id === subCategoryId)
         if (subCat) {
           return {
             ...subCat,
@@ -39,8 +39,8 @@ export const useCategoriesStore = defineStore('categories', () => {
               id: mainCat.id,
               name: mainCat.name,
               icon: mainCat.icon,
-              color: mainCat.color
-            }
+              color: mainCat.color,
+            },
           }
         }
       }
@@ -91,6 +91,6 @@ export const useCategoriesStore = defineStore('categories', () => {
     getSubCategoryById,
     // Actions
     fetchCategories,
-    clearCache
+    clearCache,
   }
 })

@@ -6,7 +6,7 @@ export function useTransactionToast() {
   const toastOptions = {
     pos: 'top-end',
     value: 0,
-    toasterClass: 'custom-toast-position'
+    toasterClass: 'custom-toast-position',
   }
 
   const getItemName = (transaction) => {
@@ -26,7 +26,7 @@ export function useTransactionToast() {
       title: '🔔 新交易請求',
       body: `${userName} 想要交易\n${itemName}`,
       variant: 'info',
-      ...toastOptions
+      ...toastOptions,
     })
   }
 
@@ -37,7 +37,7 @@ export function useTransactionToast() {
       title: '✅ 交易已接受',
       body: `${userName} 已接受交易\n${itemName}`,
       variant: 'success',
-      ...toastOptions
+      ...toastOptions,
     })
   }
 
@@ -47,7 +47,7 @@ export function useTransactionToast() {
       title: '🎉 交易已完成',
       body: `恭喜！${itemName} 交易成功`,
       variant: 'success',
-      ...toastOptions
+      ...toastOptions,
     })
   }
 
@@ -58,7 +58,7 @@ export function useTransactionToast() {
       title: '❌ 交易已拒絕',
       body: `${userName} 拒絕了交易\n${itemName}`,
       variant: 'warning',
-      ...toastOptions
+      ...toastOptions,
     })
   }
 
@@ -73,7 +73,7 @@ export function useTransactionToast() {
       title: '🚫 交易已取消',
       body: `${cancelledBy}\n${itemName}`,
       variant: 'secondary',
-      ...toastOptions
+      ...toastOptions,
     })
   }
 
@@ -82,6 +82,6 @@ export function useTransactionToast() {
     showTransactionAcceptedToast,
     showTransactionCompletedToast,
     showTransactionRejectedToast,
-    showTransactionCancelledToast
+    showTransactionCancelledToast,
   }
 }

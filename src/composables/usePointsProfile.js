@@ -14,8 +14,7 @@ const CACHE_DURATION_MS = 60 * 1000
  */
 export function usePointsProfile() {
   async function fetchPointsProfile(forceRefresh = false) {
-    const isCacheFresh =
-      lastFetchedAt.value && Date.now() - lastFetchedAt.value < CACHE_DURATION_MS
+    const isCacheFresh = lastFetchedAt.value && Date.now() - lastFetchedAt.value < CACHE_DURATION_MS
 
     if (!forceRefresh && profileState.value && isCacheFresh) {
       return profileState.value
@@ -46,11 +45,6 @@ export function usePointsProfile() {
     profile: profileState,
     isLoadingProfile: isLoadingState,
     profileError: errorState,
-    fetchPointsProfile
+    fetchPointsProfile,
   }
 }
-
-
-
-
-

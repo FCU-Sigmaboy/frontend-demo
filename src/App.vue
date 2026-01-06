@@ -1,334 +1,334 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useAuthStore } from './stores/auth'
-import { useMessageStore } from './stores/message'
-import { useTransactionStore } from './stores/transaction'
-import { subscribeToUserPresence } from './api/conversationAPI'
-import { BToastOrchestrator } from 'bootstrap-vue-next'
-import { useTransactionToast } from './composables/useTransactionToast'
-import { getPointLogs } from './api/pointsAPI'
-import TransactionDetailModal from './components/TransactionDetailModal.vue'
-import CustomerServiceChat from './components/CustomerServiceChat.vue'
+  import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+  import { useRoute } from 'vue-router'
+  import { useAuthStore } from './stores/auth'
+  import { useMessageStore } from './stores/message'
+  import { useTransactionStore } from './stores/transaction'
+  import { subscribeToUserPresence } from './api/conversationAPI'
+  import { BToastOrchestrator } from 'bootstrap-vue-next'
+  import { useTransactionToast } from './composables/useTransactionToast'
+  import { getPointLogs } from './api/pointsAPI'
+  import TransactionDetailModal from './components/TransactionDetailModal.vue'
+  import CustomerServiceChat from './components/CustomerServiceChat.vue'
 
-const route = useRoute()
-const authStore = useAuthStore()
-const messageStore = useMessageStore()
-const transactionStore = useTransactionStore()
-const presenceChannel = ref(null)
-const realtimeUserId = ref(null)
-const initialGiftTransaction = ref(null)
-const hasShownInitialGift = ref(false)
-const isCheckingInitialGift = ref(false)
+  const route = useRoute()
+  const authStore = useAuthStore()
+  const messageStore = useMessageStore()
+  const transactionStore = useTransactionStore()
+  const presenceChannel = ref(null)
+  const realtimeUserId = ref(null)
+  const initialGiftTransaction = ref(null)
+  const hasShownInitialGift = ref(false)
+  const isCheckingInitialGift = ref(false)
 
-const INITIAL_GIFT_TYPE = 'initial_gift'
-const INITIAL_GIFT_WINDOW_MS = 60 * 1000
-const INITIAL_GIFT_FALLBACK = {
-  type: INITIAL_GIFT_TYPE,
-  amount: 500,
-  description: '歡迎加入！註冊禮 500 點已自動入帳'
-}
+  const INITIAL_GIFT_TYPE = 'initial_gift'
+  const INITIAL_GIFT_WINDOW_MS = 60 * 1000
+  const INITIAL_GIFT_FALLBACK = {
+    type: INITIAL_GIFT_TYPE,
+    amount: 500,
+    description: '歡迎加入！註冊禮 500 點已自動入帳',
+  }
 
-// 計算是否顯示客服按鈕
-const showCustomerService = computed(() => {
-  return !(['MapSearch', 'Messages'].includes(route.name))
-})
-
-const {
-  showTransactionReceivedToast,
-  showTransactionAcceptedToast,
-  showTransactionCompletedToast,
-  showTransactionRejectedToast,
-  showTransactionCancelledToast
-} = useTransactionToast()
-
-async function startPresenceTracking() {
-  if (presenceChannel.value) return
-
-  console.log('[App] Starting presence tracking')
-  presenceChannel.value = subscribeToUserPresence((presenceState) => {
-    console.log('[App] Presence update received:', presenceState)
-    messageStore.updateOnlineUsers(presenceState)
+  // 計算是否顯示客服按鈕
+  const showCustomerService = computed(() => {
+    return !['MapSearch', 'Messages'].includes(route.name)
   })
 
-  await new Promise(resolve => setTimeout(resolve, 500))
+  const {
+    showTransactionReceivedToast,
+    showTransactionAcceptedToast,
+    showTransactionCompletedToast,
+    showTransactionRejectedToast,
+    showTransactionCancelledToast,
+  } = useTransactionToast()
 
-  if (authStore.user?.id) {
-    await presenceChannel.value.track({
-      user_id: authStore.user.id,
-      online_at: new Date().toISOString()
+  async function startPresenceTracking() {
+    if (presenceChannel.value) return
+
+    console.log('[App] Starting presence tracking')
+    presenceChannel.value = subscribeToUserPresence((presenceState) => {
+      console.log('[App] Presence update received:', presenceState)
+      messageStore.updateOnlineUsers(presenceState)
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    if (authStore.user?.id) {
+      await presenceChannel.value.track({
+        user_id: authStore.user.id,
+        online_at: new Date().toISOString(),
+      })
+    }
+
+    setTimeout(() => {
+      const currentState = presenceChannel.value.presenceState()
+      if (currentState) {
+        messageStore.updateOnlineUsers(currentState)
+      }
+    }, 1500)
+  }
+
+  function stopPresenceTracking() {
+    if (presenceChannel.value) {
+      console.log('[App] Stopping presence tracking')
+      presenceChannel.value.unsubscribe()
+      presenceChannel.value = null
+    }
+  }
+
+  function setupTransactionCallbacks() {
+    transactionStore.setRealtimeCallbacks({
+      onTransactionReceived: showTransactionReceivedToast,
+      onTransactionAccepted: showTransactionAcceptedToast,
+      onTransactionCompleted: showTransactionCompletedToast,
+      onTransactionRejected: showTransactionRejectedToast,
+      onTransactionCancelled: showTransactionCancelledToast,
     })
   }
 
-  setTimeout(() => {
-    const currentState = presenceChannel.value.presenceState()
-    if (currentState) {
-      messageStore.updateOnlineUsers(currentState)
+  async function startTransactionTracking(userId) {
+    if (!userId) return
+
+    if (realtimeUserId.value === userId && transactionStore.isRealtimeActive) {
+      console.log('[App] Transaction tracking already active for user:', userId)
+      return
     }
-  }, 1500)
-}
 
-function stopPresenceTracking() {
-  if (presenceChannel.value) {
-    console.log('[App] Stopping presence tracking')
-    presenceChannel.value.unsubscribe()
-    presenceChannel.value = null
-  }
-}
+    realtimeUserId.value = userId
 
-function setupTransactionCallbacks() {
-  transactionStore.setRealtimeCallbacks({
-    onTransactionReceived: showTransactionReceivedToast,
-    onTransactionAccepted: showTransactionAcceptedToast,
-    onTransactionCompleted: showTransactionCompletedToast,
-    onTransactionRejected: showTransactionRejectedToast,
-    onTransactionCancelled: showTransactionCancelledToast
-  })
-}
-
-async function startTransactionTracking(userId) {
-  if (!userId) return
-
-  if (realtimeUserId.value === userId && transactionStore.isRealtimeActive) {
-    console.log('[App] Transaction tracking already active for user:', userId)
-    return
+    try {
+      console.log('[App] Fetching transactions & starting realtime for user:', userId)
+      setupTransactionCallbacks()
+      await transactionStore.fetchAllTransactions(false) // 使用快取，不強制重新載入
+      transactionStore.startRealtime(userId)
+    } catch (error) {
+      console.error('[App] Failed to start transaction tracking', error)
+    }
   }
 
-  realtimeUserId.value = userId
-
-  try {
-    console.log('[App] Fetching transactions & starting realtime for user:', userId)
-    setupTransactionCallbacks()
-    await transactionStore.fetchAllTransactions(false) // 使用快取，不強制重新載入
-    transactionStore.startRealtime(userId)
-  } catch (error) {
-    console.error('[App] Failed to start transaction tracking', error)
-  }
-}
-
-function stopTransactionTracking() {
-  realtimeUserId.value = null
-  console.log('[App] Stopping transaction tracking')
-  transactionStore.stopRealtime()
-  transactionStore.clearAll()
-}
-
-function closeInitialGiftModal() {
-  initialGiftTransaction.value = null
-}
-
-function resetInitialGiftState() {
-  initialGiftTransaction.value = null
-  hasShownInitialGift.value = false
-  isCheckingInitialGift.value = false
-}
-
-function buildInitialGiftFallback() {
-  return {
-    id: 'initial-gift',
-    ...INITIAL_GIFT_FALLBACK,
-    created_at: new Date().toISOString(),
-    transaction_id: null
-  }
-}
-
-function getInitialGiftStorageKey() {
-  const userId = authStore.user?.id
-  return userId ? `initial-gift-shown:${userId}` : null
-}
-
-function hasShownInitialGiftInStorage() {
-  const key = getInitialGiftStorageKey()
-  if (!key || typeof localStorage === 'undefined') return false
-  return localStorage.getItem(key) === '1'
-}
-
-function markInitialGiftShown() {
-  const key = getInitialGiftStorageKey()
-  if (!key || typeof localStorage === 'undefined') return
-  localStorage.setItem(key, '1')
-}
-
-async function maybeShowInitialGift() {
-  if (hasShownInitialGift.value || isCheckingInitialGift.value) return
-  if (hasShownInitialGiftInStorage()) {
-    hasShownInitialGift.value = true
-    return
+  function stopTransactionTracking() {
+    realtimeUserId.value = null
+    console.log('[App] Stopping transaction tracking')
+    transactionStore.stopRealtime()
+    transactionStore.clearAll()
   }
 
-  const createdAt = authStore.user?.created_at
-  if (!createdAt) return
-
-  const createdTime = new Date(createdAt).getTime()
-  if (Number.isNaN(createdTime)) {
-    hasShownInitialGift.value = true
-    return
+  function closeInitialGiftModal() {
+    initialGiftTransaction.value = null
   }
 
-  if (Date.now() - createdTime > INITIAL_GIFT_WINDOW_MS) {
-    hasShownInitialGift.value = true
-    return
-  }
-
-  isCheckingInitialGift.value = true
-
-  try {
-    const result = await getPointLogs({ logType: INITIAL_GIFT_TYPE, page: 1, size: 1 })
-    const initialGift = result?.transactions?.[0]
-    initialGiftTransaction.value = initialGift || buildInitialGiftFallback()
-  } catch (error) {
-    console.error('[App] Failed to fetch initial gift log:', error)
-    initialGiftTransaction.value = buildInitialGiftFallback()
-  } finally {
+  function resetInitialGiftState() {
+    initialGiftTransaction.value = null
+    hasShownInitialGift.value = false
     isCheckingInitialGift.value = false
-    hasShownInitialGift.value = true
-    markInitialGiftShown()
   }
-}
 
-// 監聽登入狀態
-watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
-  console.log('[App] Auth state changed. Logged in:', isLoggedIn)
-  if (isLoggedIn) {
-    // 使用者登入後，載入對話並啟動監聽
-    await messageStore.loadConversations()
-    messageStore.startGlobalMessageListener()
-    await startPresenceTracking()
-    await startTransactionTracking(authStore.user?.id)
-    maybeShowInitialGift()
-  } else {
-    // 使用者登出，重置訊息 store
-    messageStore.reset()
+  function buildInitialGiftFallback() {
+    return {
+      id: 'initial-gift',
+      ...INITIAL_GIFT_FALLBACK,
+      created_at: new Date().toISOString(),
+      transaction_id: null,
+    }
+  }
+
+  function getInitialGiftStorageKey() {
+    const userId = authStore.user?.id
+    return userId ? `initial-gift-shown:${userId}` : null
+  }
+
+  function hasShownInitialGiftInStorage() {
+    const key = getInitialGiftStorageKey()
+    if (!key || typeof localStorage === 'undefined') return false
+    return localStorage.getItem(key) === '1'
+  }
+
+  function markInitialGiftShown() {
+    const key = getInitialGiftStorageKey()
+    if (!key || typeof localStorage === 'undefined') return
+    localStorage.setItem(key, '1')
+  }
+
+  async function maybeShowInitialGift() {
+    if (hasShownInitialGift.value || isCheckingInitialGift.value) return
+    if (hasShownInitialGiftInStorage()) {
+      hasShownInitialGift.value = true
+      return
+    }
+
+    const createdAt = authStore.user?.created_at
+    if (!createdAt) return
+
+    const createdTime = new Date(createdAt).getTime()
+    if (Number.isNaN(createdTime)) {
+      hasShownInitialGift.value = true
+      return
+    }
+
+    if (Date.now() - createdTime > INITIAL_GIFT_WINDOW_MS) {
+      hasShownInitialGift.value = true
+      return
+    }
+
+    isCheckingInitialGift.value = true
+
+    try {
+      const result = await getPointLogs({ logType: INITIAL_GIFT_TYPE, page: 1, size: 1 })
+      const initialGift = result?.transactions?.[0]
+      initialGiftTransaction.value = initialGift || buildInitialGiftFallback()
+    } catch (error) {
+      console.error('[App] Failed to fetch initial gift log:', error)
+      initialGiftTransaction.value = buildInitialGiftFallback()
+    } finally {
+      isCheckingInitialGift.value = false
+      hasShownInitialGift.value = true
+      markInitialGiftShown()
+    }
+  }
+
+  // 監聽登入狀態
+  watch(
+    () => authStore.isLoggedIn,
+    async (isLoggedIn) => {
+      console.log('[App] Auth state changed. Logged in:', isLoggedIn)
+      if (isLoggedIn) {
+        // 使用者登入後，載入對話並啟動監聽
+        await messageStore.loadConversations()
+        messageStore.startGlobalMessageListener()
+        await startPresenceTracking()
+        await startTransactionTracking(authStore.user?.id)
+        maybeShowInitialGift()
+      } else {
+        // 使用者登出，重置訊息 store
+        messageStore.reset()
+        stopPresenceTracking()
+        stopTransactionTracking()
+        resetInitialGiftState()
+      }
+    }
+  )
+
+  // watch(() => authStore.user?.id, async (userId) => {
+  //   console.log('[App] User ID watcher triggered. userId:', userId)
+  //   if (userId) {
+  //     await startTransactionTracking(userId)
+  //   } else {
+  //     stopTransactionTracking()
+  //   }
+  // }, { immediate: true })
+
+  onMounted(async () => {
+    await authStore.initAuth()
+
+    // 如果使用者已登入，初始化訊息功能
+    if (authStore.isLoggedIn) {
+      await messageStore.loadConversations()
+      messageStore.startGlobalMessageListener()
+      await startPresenceTracking()
+    }
+  })
+
+  onBeforeUnmount(() => {
+    messageStore.stopGlobalMessageListener()
     stopPresenceTracking()
     stopTransactionTracking()
-    resetInitialGiftState()
-  }
-})
-
-// watch(() => authStore.user?.id, async (userId) => {
-//   console.log('[App] User ID watcher triggered. userId:', userId)
-//   if (userId) {
-//     await startTransactionTracking(userId)
-//   } else {
-//     stopTransactionTracking()
-//   }
-// }, { immediate: true })
-
-onMounted(async () => {
-  await authStore.initAuth()
-
-  // 如果使用者已登入，初始化訊息功能
-  if (authStore.isLoggedIn) {
-    await messageStore.loadConversations()
-    messageStore.startGlobalMessageListener()
-    await startPresenceTracking()
-  }
-})
-
-onBeforeUnmount(() => {
-  messageStore.stopGlobalMessageListener()
-  stopPresenceTracking()
-  stopTransactionTracking()
-})
+  })
 </script>
 
 <template>
   <div id="app">
     <router-view />
-    <TransactionDetailModal
-      :transaction="initialGiftTransaction"
-      @close="closeInitialGiftModal"
-    />
+    <TransactionDetailModal :transaction="initialGiftTransaction" @close="closeInitialGiftModal" />
     <BToastOrchestrator teleport-to="body" />
     <CustomerServiceChat v-if="showCustomerService" />
   </div>
 </template>
 
 <style>
-/* Global Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+  /* Global Styles */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-body {
-  font-family: 'Noto Sans TC', 'Inter', 'Noto Sans JP', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f9f9f9;
-  min-width: 360px;
-}
+  body {
+    font-family: 'Noto Sans TC', 'Inter', 'Noto Sans JP', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f9f9f9;
+    min-width: 360px;
+  }
 
-#app {
-  min-height: 100vh;
-  min-width: 360px;
-}
+  #app {
+    min-height: 100vh;
+    min-width: 360px;
+  }
 
-/* Toast positioning - avoid header overlap */
-.custom-toast-position {
-  top: 100px !important;
-  margin-top: 20px !important;
-  z-index: 9999 !important;
-}
+  /* Toast positioning - avoid header overlap */
+  .custom-toast-position {
+    top: 100px !important;
+    margin-top: 20px !important;
+    z-index: 9999 !important;
+  }
 
-/* Fallback for all toast containers */
-.b-toast-container,
-.b-toaster,
-.b-toaster-top-right,
-.b-toaster-top-end,
-[class*="b-toast"],
-[class*="b-toaster"] {
-  top: 100px !important;
-  z-index: 9999 !important;
-}
+  /* Fallback for all toast containers */
+  .b-toast-container,
+  .b-toaster,
+  .b-toaster-top-right,
+  .b-toaster-top-end,
+  [class*='b-toast'],
+  [class*='b-toaster'] {
+    top: 100px !important;
+    z-index: 9999 !important;
+  }
 
-/* More specific selectors */
-div[class*="toast"][class*="top"],
-.toast-container {
-  top: 100px !important;
-  z-index: 9999 !important;
-}
+  /* More specific selectors */
+  div[class*='toast'][class*='top'],
+  .toast-container {
+    top: 100px !important;
+    z-index: 9999 !important;
+  }
 
-/* Toast styling - clean white background */
-.toast {
-  background-color: #ffffff !important;
-  border: 1px solid #e0e0e0 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-}
+  /* Toast styling - clean white background */
+  .toast {
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  }
 
-.toast-header {
-  background-color: #ffffff !important;
-  border-bottom: none !important;
-  color: #333333 !important;
-  padding-bottom: 0.25rem !important;
-}
+  .toast-header {
+    background-color: #ffffff !important;
+    border-bottom: none !important;
+    color: #333333 !important;
+    padding-bottom: 0.25rem !important;
+  }
 
-.toast-body {
-  background-color: #ffffff !important;
-  color: #666666 !important;
-  padding-top: 0.25rem !important;
-  white-space: pre-line !important;
-}
+  .toast-body {
+    background-color: #ffffff !important;
+    color: #666666 !important;
+    padding-top: 0.25rem !important;
+    white-space: pre-line !important;
+  }
 
-/* Remove variant background colors */
-.toast.bg-info,
-.toast.bg-success,
-.toast.bg-warning,
-.toast.bg-secondary,
-.toast.bg-danger {
-  background-color: #ffffff !important;
-}
+  /* Remove variant background colors */
+  .toast.bg-info,
+  .toast.bg-success,
+  .toast.bg-warning,
+  .toast.bg-secondary,
+  .toast.bg-danger {
+    background-color: #ffffff !important;
+  }
 
-.toast.bg-info .toast-header,
-.toast.bg-success .toast-header,
-.toast.bg-warning .toast-header,
-.toast.bg-secondary .toast-header,
-.toast.bg-danger .toast-header {
-  background-color: #ffffff !important;
-  color: #333333 !important;
-}
+  .toast.bg-info .toast-header,
+  .toast.bg-success .toast-header,
+  .toast.bg-warning .toast-header,
+  .toast.bg-secondary .toast-header,
+  .toast.bg-danger .toast-header {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+  }
 
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100;300;400;500;700;900&family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@100;300;400;500;700;900&display=swap');
+  /* Import Google Fonts */
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100;300;400;500;700;900&family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@100;300;400;500;700;900&display=swap');
 </style>

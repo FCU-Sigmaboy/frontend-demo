@@ -33,13 +33,13 @@ export function isLeafletLoaded() {
 /**
  * Nominatim API 基礎 URL
  */
-const NOMINATIM_BASE_URL = import.meta.env.VITE_NOMINATIM_BASE_URL ||
-                           'https://nominatim.openstreetmap.org'
+const NOMINATIM_BASE_URL =
+  import.meta.env.VITE_NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org'
 
 /**
  * 延遲函數（用於遵守 Nominatim 請求限制）
  */
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 let lastRequestTime = 0
 
@@ -56,7 +56,7 @@ export async function nominatimSearch(query, options = {}) {
     format: 'json',
     addressdetails: '1',
     limit: options.limit || '5',
-    ...options
+    ...options,
   })
 
   try {
@@ -70,8 +70,8 @@ export async function nominatimSearch(query, options = {}) {
 
     const response = await fetch(`${NOMINATIM_BASE_URL}/search?${params}`, {
       headers: {
-        'User-Agent': 'MapSearchApp/1.0 (https://github.com/yourusername/map-search)' // Nominatim 要求設置 User-Agent
-      }
+        'User-Agent': 'MapSearchApp/1.0 (https://github.com/yourusername/map-search)', // Nominatim 要求設置 User-Agent
+      },
     })
 
     if (!response.ok) {
@@ -97,7 +97,7 @@ export async function nominatimReverse(lat, lon) {
     lat: lat.toString(),
     lon: lon.toString(),
     format: 'json',
-    addressdetails: '1'
+    addressdetails: '1',
   })
 
   try {
@@ -111,8 +111,8 @@ export async function nominatimReverse(lat, lon) {
 
     const response = await fetch(`${NOMINATIM_BASE_URL}/reverse?${params}`, {
       headers: {
-        'User-Agent': 'MapSearchApp/1.0 (https://github.com/yourusername/map-search)'
-      }
+        'User-Agent': 'MapSearchApp/1.0 (https://github.com/yourusername/map-search)',
+      },
     })
 
     if (!response.ok) {

@@ -13,12 +13,12 @@ export function useTransactionRealtime() {
 
   // Event callbacks
   const callbacks = {
-    onTransactionReceived: null,    // 收到新交易請求
-    onTransactionAccepted: null,    // 交易被接受
-    onTransactionCompleted: null,   // 交易完成
-    onTransactionRejected: null,    // 交易被拒絕
-    onTransactionCancelled: null,   // 交易被取消
-    onError: null                   // 錯誤處理
+    onTransactionReceived: null, // 收到新交易請求
+    onTransactionAccepted: null, // 交易被接受
+    onTransactionCompleted: null, // 交易完成
+    onTransactionRejected: null, // 交易被拒絕
+    onTransactionCancelled: null, // 交易被取消
+    onError: null, // 錯誤處理
   }
 
   /**
@@ -26,7 +26,12 @@ export function useTransactionRealtime() {
    */
   const startListening = () => {
     if (!authStore.isLoggedIn || isListening.value) {
-      console.log('[TransactionRealtime] Not starting - logged in:', authStore.isLoggedIn, 'already listening:', isListening.value)
+      console.log(
+        '[TransactionRealtime] Not starting - logged in:',
+        authStore.isLoggedIn,
+        'already listening:',
+        isListening.value
+      )
       return
     }
 
@@ -44,7 +49,7 @@ export function useTransactionRealtime() {
           schema: 'public',
           table: 'transactions',
           // Filter for transactions where user is buyer or seller
-          filter: `buyer_id=eq.${userId},seller_id=eq.${userId}`
+          filter: `buyer_id=eq.${userId},seller_id=eq.${userId}`,
         },
         async (payload) => {
           console.log('[TransactionRealtime] Received payload:', payload)
@@ -86,7 +91,7 @@ export function useTransactionRealtime() {
         console.log('[TransactionRealtime] 交易狀態變更:', {
           transactionId: transaction.transaction_id,
           oldStatus,
-          newStatus
+          newStatus,
         })
 
         // Transaction accepted
@@ -198,6 +203,6 @@ export function useTransactionRealtime() {
     onTransactionCompleted,
     onTransactionRejected,
     onTransactionCancelled,
-    onError
+    onError,
   }
 }
