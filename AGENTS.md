@@ -7,26 +7,15 @@
 
 ## Current Session
 
-- **Goal**: Convert `docs/軟體測試專題報告_Sigmaboy.tex` to `docs/軟體測試專題報告_Sigmaboy.html`.
-- **Requirements**:
-  - A4 PDF print layout.
-  - Academic page numbering.
-  - Print button in web view.
-  - High-fidelity visual matching (Colors, Components, Diagrams).
+- **Goal**: Add usage documentation and standard header to `merge_branch.sh`.
+- **Status**: Completed.
 
 ## Active Tasks
 
 - [x] Create `AGENTS.md` (Self-Correction).
-- [x] Plan HTML structure and CSS variables.
-- [x] Convert LaTeX content to HTML:
-  - [x] Cover Page (with CSS graphics)
-  - [x] TOC (Table of Contents)
-  - [x] Sections & Text
-  - [x] Code Blocks (`codebox`, `lstlisting`)
-  - [x] Tables (`longtable`)
-  - [x] KPI Cards
-  - [x] Diagrams (Pyramid, State Transition) - using SVG
-- [x] Verify A4 layout and Print functionality.
+- [x] Convert LaTeX content to HTML (`軟體測試專題報告_Sigmaboy.html`).
+- [x] Add AI-Optimized Header and Usage Instructions to `merge_branch.sh`.
+- [ ] Maintain consistent documentation across project.
 
 ## Context & Notes
 

@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# File: merge_branch.sh
+# Purpose: Automate branch sync (Fetch -> Merge -> Push)
+# Architecture: Shell script (bash)
+# AI Context: Input-driven, requires git environment
+
+# Usage:
+# 1. Make the script executable: chmod +x merge_branch.sh
+# 2. Run the script: ./merge_branch.sh
+# 3. Enter the target branch name when prompted.
+#
+# Description:
+# This script automates the process of pulling a target branch from remote,
+# merging it into your current branch, and pushing the results back to remote.
+
+
 # 顏色定義
 RED='\033[0;31m'
 GREEN='\033[0;32m'
