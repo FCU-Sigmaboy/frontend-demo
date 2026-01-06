@@ -30,6 +30,9 @@ on:
       - master
       - vibe
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build
