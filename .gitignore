@@ -25,3 +25,6 @@ dist-ssr
 *.sw?
 
 .env
+
+# 測試覆蓋率
+coverage/
