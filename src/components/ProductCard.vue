@@ -63,7 +63,7 @@ import { useRouter } from 'vue-router';
 import { useFavoritesStore } from '@/stores/favorites';
 import { useAuthStore } from '@/stores/auth';
 import { formatRelativeTime } from '@/utils/timeFormat';
-import { createOrGetConversation } from '@/api/conversation';
+import { createOrGetConversation } from '@/api/conversationAPI';
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();

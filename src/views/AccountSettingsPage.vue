@@ -302,7 +302,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 
 const settings = ref({
   profilePublic: true,

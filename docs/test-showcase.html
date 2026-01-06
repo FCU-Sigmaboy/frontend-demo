@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試設計方法展示 | FCU Sigma</title>
+    <style>
+        /* Neo-Brutalist Reset & Variables */
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --border: 3px solid #000000;
+            --shadow: 5px 5px 0px 0px #000000;
+            --primary: #8AB4F8;  /* Blue */
+            --secondary: #FBBC04; /* Yellow */
+            --accent: #FF708C;    /* Red/Pink */
+            --success: #34A853;   /* Green */
+            --font-main: 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f0f0f0;
+            color: var(--text);
+            font-family: var(--font-main);
+            line-height: 1.6;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Layout */
+        nav {
+            width: 280px;
+            background: var(--bg);
+            border-right: var(--border);
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        main {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+            max-width: 1200px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            background: var(--text);
+            color: var(--bg);
+            padding: 10px 20px;
+            display: inline-block;
+            box-shadow: 10px 10px 0px 0px var(--secondary);
+        }
+
+        h2 {
+            font-size: 2rem;
+            border-bottom: var(--border);
+            padding-bottom: 10px;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+            background: var(--secondary);
+            display: inline-block;
+            border: var(--border);
+            padding: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        h3::before {
+            content: "►";
+            margin-right: 10px;
+            color: var(--accent);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Navigation Links */
+        .nav-link {
+            display: block;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: bold;
+            padding: 15px;
+            border: var(--border);
+            margin-bottom: 15px;
+            background: var(--bg);
+            transition: all 0.1s;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-link:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 7px 7px 0px 0px #000;
+            background: var(--primary);
+        }
+
+        .nav-link:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #000;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg);
+            border: var(--border);
+            padding: 20px;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .tag {
+            background: var(--text);
+            color: var(--bg);
+            padding: 4px 8px;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        /* Tables */
+        .brutal-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: var(--border);
+            margin-bottom: 1.5rem;
+            font-family: var(--font-mono);
+            background: #fff;
+        }
+
+        .brutal-table th, .brutal-table td {
+            border: 2px solid #000;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .brutal-table th {
+            background: #000;
+            color: #fff;
+        }
+
+        .brutal-table tr:hover td {
+            background: #fdfdcb;
+        }
+
+        /* Buttons */
+        .btn {
+            background: var(--accent);
+            color: var(--text);
+            border: var(--border);
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.1s;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 7px 7px 0px 0px #000;
+            filter: brightness(1.1);
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #000;
+        }
+
+        .btn-code {
+            background: var(--primary);
+        }
+
+        /* Code Modal */
+        dialog {
+            border: var(--border);
+            box-shadow: 10px 10px 0px 0px #000;
+            padding: 0;
+            width: 80%;
+            max-width: 900px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-header {
+            background: var(--secondary);
+            padding: 15px 20px;
+            border-bottom: var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        .close-btn {
+            background: red;
+            color: white;
+            border: 2px solid black;
+            width: 30px;
+            height: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .code-content {
+            padding: 20px;
+            background: #2d2d2d;
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+
+        pre {
+            color: #ccc;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+        }
+
+        .code-keyword { color: #cc99cd; }
+        .code-string { color: #7ec699; }
+        .code-number { color: #f08d49; }
+        .code-comment { color: #999; }
+        .code-func { color: #f8c555; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: var(--border);
+                display: flex;
+                overflow-x: auto;
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            nav h1 {
+                display: none; /* Hide huge title in mobile nav */
+            }
+
+            .nav-link {
+                margin: 0;
+                white-space: nowrap;
+                padding: 10px;
+            }
+
+            main {
+                margin-left: 0;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div style="margin-bottom: 2rem; font-weight: 900; font-size: 1.5rem; border: 3px solid black; padding: 10px; text-align: center; background: #fff; box-shadow: 4px 4px 0 0 #000;">
+            TEST<br>DESIGN
+        </div>
+        <a href="#ep" class="nav-link">01 等價類別劃分</a>
+        <a href="#bva" class="nav-link">02 邊界值分析</a>
+        <a href="#state" class="nav-link">03 狀態轉換測試</a>
+        <a href="#error" class="nav-link">04 錯誤處理測試</a>
+        <a href="#positive" class="nav-link">05 正向測試 (Positive)</a>
+        <a href="#negative" class="nav-link">06 負向測試 (Negative)</a>
+    </nav>
+
+    <main>
+        <h1>測試設計案例展示</h1>
+        <p style="font-size: 1.2rem; border-left: 5px solid #000; padding-left: 15px; background: #fff; padding: 15px; border: 3px solid #000; box-shadow: 5px 5px 0 0 #ccc;">
+            本頁面展示專案中實際應用的測試設計方法，依 <strong>API 重要性 (★)</strong> 排序。<br>
+            點擊 <strong>SHOW CODE</strong> 查看 Jest/Vitest 測試代碼。
+        </p>
+
+        <!-- API Importance Legend -->
+        <div style="background: #fff; border: 3px solid #000; padding: 15px; margin: 20px 0; box-shadow: 5px 5px 0 0 #000;">
+            <h3 style="margin-top: 0;">API 重要性說明</h3>
+            <ul style="list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 15px;">
+                <li><span style="background: #ff708c; padding: 3px 8px; border: 2px solid #000;">★★★★★</span> 核心交易/點數邏輯</li>
+                <li><span style="background: #fbbc04; padding: 3px 8px; border: 2px solid #000;">★★★★☆</span> 使用者互動功能</li>
+                <li><span style="background: #8ab4f8; padding: 3px 8px; border: 2px solid #000;">★★★☆☆</span> 輔助功能</li>
+                <li><span style="background: #ccc; padding: 3px 8px; border: 2px solid #000;">★★☆☆☆</span> 邊緣功能</li>
+            </ul>
+        </div>
+
+        <!-- 1. Equivalence Partitioning -->
+        <section id="ep">
+            <h2>01 等價類別劃分 (EP)</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>1.1 交易評分驗證 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">transactionsAPI / create_review</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>等價類別</th><th>輸入範圍</th><th>測試值</th><th>預期</th></tr>
+                    <tr><td>有效</td><td>1-5</td><td>1, 4, 5</td><td>✅</td></tr>
+                    <tr><td>無效(過低)</td><td>&lt; 1</td><td>0</td><td>❌</td></tr>
+                    <tr><td>無效(過高)</td><td>&gt; 5</td><td>6</td><td>❌</td></tr>
+                    <tr><td>無效(缺失)</td><td>undefined</td><td>缺少 score</td><td>❌</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-ep-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>1.2 使用者認證狀態 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">pointsAPI</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>等價類別</th><th>使用者狀態</th><th>結果</th></tr>
+                    <tr><td>有效</td><td>已登入 (user 物件存在)</td><td>✅ 允許操作</td></tr>
+                    <tr><td>無效</td><td>未登入 (user 為 null)</td><td>❌ 拒絕操作</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-ep-auth')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>1.3 議價回應類型 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">transactionsAPI</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>等價類別</th><th>回應動作</th><th>結果狀態</th></tr>
+                    <tr><td>有效</td><td>accept</td><td>accepted ✅</td></tr>
+                    <tr><td>有效</td><td>decline</td><td>declined ✅</td></tr>
+                    <tr><td>有效</td><td>counter + 金額</td><td>countered ✅</td></tr>
+                    <tr><td>無效</td><td>未登入操作</td><td>❌ Error</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-ep-offer')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>1.4 地點類型驗證 <span style="background: #8ab4f8; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★☆☆</span></h3>
+                    <span class="tag">save_locationAPI</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>等價類別</th><th>輸入值</th><th>結果</th></tr>
+                    <tr><td>有效</td><td>"家", "公司"</td><td>✅</td></tr>
+                    <tr><td>無效</td><td>"學校", "其他"</td><td>❌</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-ep-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 2. Boundary Value Analysis -->
+        <section id="bva">
+            <h2>02 邊界值分析 (BVA)</h2>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.1 點數等級邊界 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">pointsAPI - getLevelTier</span>
+                </div>
+                <p>測試等級切換的臨界點 (7 個等級)。</p>
+                <table class="brutal-table">
+                    <tr><th>邊界描述</th><th>測試值</th><th>預期等級</th></tr>
+                    <tr><td>等級1最小</td><td>0</td><td>新手交易者</td></tr>
+                    <tr><td>等級1/2邊界</td><td>750</td><td>初階交易者</td></tr>
+                    <tr><td>等級2/3邊界</td><td>1500</td><td>中階交易者</td></tr>
+                    <tr><td>等級3/4邊界</td><td>3000</td><td>進階交易者</td></tr>
+                    <tr><td>最高等級</td><td>25000</td><td>傳奇交易者</td></tr>
+                    <tr><td>異常負數</td><td>-100</td><td>新手交易者 (防禦)</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.2 信任等級邊界 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">pointsAPI - getTrustTier</span>
+                </div>
+                <p>測試賣家信任等級與上架金額限制。</p>
+                <table class="brutal-table">
+                    <tr><th>信任等級</th><th>銷售點數門檻</th><th>最大上架金額</th></tr>
+                    <tr><td>等級 1</td><td>0</td><td>500 元</td></tr>
+                    <tr><td>等級 2</td><td>500</td><td>1000 元</td></tr>
+                    <tr><td>等級 3</td><td>2000</td><td>3000 元</td></tr>
+                    <tr><td>等級 4</td><td>5000</td><td>10000 元</td></tr>
+                    <tr><td>等級 5</td><td>15000</td><td>無限制</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-trust')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.3 連續簽到獎勵邊界 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">pointsAPI - calculateStreakReward</span>
+                </div>
+                <p>測試特殊獎勵日的邊界。</p>
+                <table class="brutal-table">
+                    <tr><th>連續天數</th><th>獎勵點數</th><th>類型</th></tr>
+                    <tr><td>1-2 天</td><td>5 點</td><td>基礎獎勵</td></tr>
+                    <tr><td>3 天</td><td>10 點</td><td>首次里程碑</td></tr>
+                    <tr><td>7 天</td><td>20 點</td><td>週獎勵</td></tr>
+                    <tr><td>14 天</td><td>30 點</td><td>雙週獎勵</td></tr>
+                    <tr><td>30 天</td><td>50 點</td><td>月獎勵</td></tr>
+                    <tr><td>100 天</td><td>200 點</td><td>傳奇里程碑</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-streak')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.4 分頁邊界 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">pointsAPI - getPointLogs</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>情境</th><th>資料筆數</th><th>hasMore</th></tr>
+                    <tr><td>資料 < page size</td><td>15 筆 (size=20)</td><td>false</td></tr>
+                    <tr><td>資料 = page size</td><td>20 筆 (size=20)</td><td>true</td></tr>
+                    <tr><td>空結果</td><td>0 筆</td><td>false</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-page')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>2.5 經緯度邊界 <span style="background: #8ab4f8; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★☆☆</span></h3>
+                    <span class="tag">save_locationAPI</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>參數</th><th>邊界測試值</th><th>結果</th></tr>
+                    <tr><td>緯度 (-90~90)</td><td>-91, 91</td><td>Throws Error</td></tr>
+                    <tr><td>經度 (-180~180)</td><td>-181, 181</td><td>Throws Error</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-bva-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 3. State Transition -->
+        <section id="state">
+            <h2>03 狀態轉換測試</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>3.1 交易狀態流轉 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">Transaction Workflow</span>
+                </div>
+                <div style="border: 3px solid #000; padding: 20px; margin-bottom: 20px; background: #fff; text-align: center; font-family: monospace; font-size: 0.9rem;">
+                    <pre style="color: #000; text-align: left; margin: 0;">
+┌──────────┐   initiateTransaction   ┌────────────┐
+│  (初始)  │ ───────────────────────► │ confirming │
+└──────────┘                          └────────────┘
+                                            │
+                    ┌───────────────────────┼───────────────────────┐
+                    │                       │                       │
+            buyerConfirm              cancelTransaction        (超時)
+                    │                       │                       │
+                    ▼                       ▼                       ▼
+             ┌───────────┐           ┌────────────┐          ┌────────────┐
+             │  pending  │           │ cancelled  │          │  expired   │
+             └───────────┘           └────────────┘          └────────────┘
+                    │
+        finalizeWithCode
+                    │
+                    ▼
+             ┌───────────┐
+             │ completed │
+             └───────────┘
+                    </pre>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>狀態轉換</th><th>觸發函式</th><th>測試檔案</th></tr>
+                    <tr><td>初始 → confirming</td><td>initiateTransaction()</td><td>transaction_before_meetAPI.test.js</td></tr>
+                    <tr><td>confirming → pending</td><td>buyerConfirmTransaction()</td><td>transaction_before_meetAPI.test.js</td></tr>
+                    <tr><td>confirming → cancelled</td><td>cancelTransaction()</td><td>transaction_before_meetAPI.test.js</td></tr>
+                    <tr><td>pending → completed</td><td>finalizeTransactionWithCode()</td><td>transaction_meetAPI.test.js</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-state-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>3.2 議價狀態轉換 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">transactionsAPI - respondToOffer</span>
+                </div>
+                <div style="border: 3px solid #000; padding: 15px; margin-bottom: 15px; background: #eee; font-family: monospace;">
+                    pending → accepted | declined | countered
+                </div>
+                <table class="brutal-table">
+                    <tr><th>動作</th><th>結果狀態</th><th>附加資料</th></tr>
+                    <tr><td>accept</td><td>accepted</td><td>responded_at</td></tr>
+                    <tr><td>decline</td><td>declined</td><td>responded_at</td></tr>
+                    <tr><td>counter</td><td>countered</td><td>counter_offer.amount</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-state-offer')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>3.3 徽章獲取狀態 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">badgesAPI</span>
+                </div>
+                <p>驗證徽章從「進行中」到「已獲得」的狀態判定。</p>
+                <div style="border: 3px solid #000; padding: 15px; margin-bottom: 15px; background: #eee; font-family: monospace;">
+                    in_progress (50%) → in_progress (99%) → earned (100%)
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-state-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 4. Error Handling -->
+        <section id="error">
+            <h2>04 錯誤處理測試</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h3>4.1 認證錯誤 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">所有需認證 API</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>API 模組</th><th>錯誤訊息</th><th>測試檔案</th></tr>
+                    <tr><td>pointsAPI</td><td>使用者未登入</td><td>pointsAPI.test.js</td></tr>
+                    <tr><td>transactionsAPI</td><td>使用者未登入</td><td>transactionsAPI.test.js</td></tr>
+                    <tr><td>badgesAPI</td><td>使用者未登入</td><td>badgesAPI.test.js</td></tr>
+                    <tr><td>favorite</td><td>使用者未登入，無法新增收藏</td><td>favorite.test.js</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-error-auth')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>4.2 資料庫錯誤 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">RPC 呼叫</span>
+                </div>
+                <ul style="list-style: none; padding: 10px;">
+                    <li style="margin-bottom: 10px;">🔴 <strong>RPC 失敗</strong>: error.message 拋出</li>
+                    <li style="margin-bottom: 10px;">🔴 <strong>無訊息錯誤</strong>: 預設錯誤訊息</li>
+                    <li style="margin-bottom: 10px;">🔴 <strong>資料為 null</strong>: 防禦性處理</li>
+                </ul>
+                <button class="btn btn-code" onclick="showCode('code-error-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>4.3 地理位置錯誤 <span style="background: #8ab4f8; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★☆☆</span></h3>
+                    <span class="tag">location.test.js</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>錯誤碼</th><th>情境</th><th>錯誤訊息</th></tr>
+                    <tr><td>N/A</td><td>瀏覽器不支援</td><td>瀏覽器不支援地理定位功能</td></tr>
+                    <tr><td>1</td><td>用戶拒絕</td><td>用戶拒絕提供位置權限</td></tr>
+                    <tr><td>2</td><td>無法取得</td><td>無法取得位置資訊</td></tr>
+                    <tr><td>3</td><td>超時</td><td>取得位置逾時,請稍後再試</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-error-geo')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>4.4 AI 服務錯誤處理 <span style="background: #8ab4f8; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★☆☆</span></h3>
+                    <span class="tag">ragQaAPI</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>情境</th><th>模擬狀態</th><th>預期結果</th></tr>
+                    <tr><td>Server Crash</td><td>HTTP 500</td><td>Handle Gracefully</td></tr>
+                    <tr><td>空的提問</td><td>Empty String</td><td>Reject Immediate</td></tr>
+                    <tr><td>未授權存取</td><td>No Session</td><td>Use Anon Key</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-error-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 5. Positive Testing -->
+        <section id="positive">
+            <h2>05 正向測試 (Positive Testing)</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>5.1 交易完成流程 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">transactionsAPI</span>
+                </div>
+                <p>驗證完整交易流程的正向路徑。</p>
+                <div style="border: 3px solid #000; padding: 10px; background: #e6ffe6; margin-bottom: 10px;">
+                    Input: 已登入用戶 + 有效交易 ID<br>
+                    Output: success: true, status: 'completed', buyer/seller_new_balance
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-pos-trans')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>5.2 每日簽到成功 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">badgesAPI / pointsAPI</span>
+                </div>
+                <p>驗證在正常登入且 RPC 成功的情況下，簽到功能正確回傳獎勵。</p>
+                <div style="border: 3px solid #000; padding: 10px; background: #e6ffe6; margin-bottom: 10px;">
+                    Input: Logged In User<br>
+                    Output: success: true, streak_days: 5, points_awarded: 10
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-pos-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>5.3 收藏操作 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">favorite.test.js</span>
+                </div>
+                <p>驗證收藏 CRUD 的正向測試。</p>
+                <ul style="list-style: none; padding: 10px;">
+                    <li style="margin-bottom: 8px;">✅ 新增收藏: { success: true, message: '已加入收藏' }</li>
+                    <li style="margin-bottom: 8px;">✅ 移除收藏: returns true</li>
+                    <li style="margin-bottom: 8px;">✅ 查詢收藏: returns mockFavoriteItems</li>
+                </ul>
+                <button class="btn btn-code" onclick="showCode('code-pos-fav')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>5.4 AI 問答正常回覆 <span style="background: #8ab4f8; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★☆☆</span></h3>
+                    <span class="tag">ragQaAPI</span>
+                </div>
+                <p>驗證在 Session 有效且問題合法時，能夠取得 AI 回覆。</p>
+                <button class="btn btn-code" onclick="showCode('code-pos-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+        <!-- 6. Negative Testing -->
+        <section id="negative">
+            <h2>06 負向測試 (Negative Testing)</h2>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.1 缺少必填欄位 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">create_review.test.js</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>缺少欄位</th><th>錯誤訊息</th></tr>
+                    <tr><td>transaction_id</td><td>缺少必填欄位：transaction_id</td></tr>
+                    <tr><td>score</td><td>缺少必填欄位：score</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-neg-required')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.2 業務規則違反 <span style="background: #ff708c; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★★</span></h3>
+                    <span class="tag">favorite.test.js</span>
+                </div>
+                <p>測試違反業務邏輯時的錯誤處理。</p>
+                <div style="border: 3px solid #000; padding: 10px; background: #ffe6e6; margin-bottom: 10px;">
+                    情境: 嘗試收藏自己的物品<br>
+                    Output: Error: "無法收藏自己的物品"
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-neg-business')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.3 權限驗證失敗 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">create_review.test.js</span>
+                </div>
+                <table class="brutal-table">
+                    <tr><th>情境</th><th>canReview</th><th>reason</th></tr>
+                    <tr><td>未登入</td><td>false</td><td>使用者未登入</td></tr>
+                    <tr><td>交易不存在</td><td>false</td><td>交易不存在</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-neg-perm')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.4 未登入操作徽章 <span style="background: #fbbc04; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★★☆</span></h3>
+                    <span class="tag">badgesAPI</span>
+                </div>
+                <p>驗證在未登入狀態下呼叫保護的簽到介面，應被系統拒絕。</p>
+                <div style="border: 3px solid #000; padding: 10px; background: #ffe6e6; margin-bottom: 10px;">
+                    Input: No User Session<br>
+                    Output: Error: "使用者未登入"
+                </div>
+                <button class="btn btn-code" onclick="showCode('code-neg-2')">&lt;/&gt; SHOW CODE</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>6.5 缺少過濾參數 <span style="background: #8ab4f8; padding: 2px 6px; border: 2px solid #000; font-size: 0.8rem;">★★★☆☆</span></h3>
+                    <span class="tag">filterFunctions.test.js</span>
+                </div>
+                <p>驗證當輸入參數缺失 (null/undefined) 時，過濾器的預設行為。</p>
+                <table class="brutal-table">
+                    <tr><th>過濾器</th><th>輸入</th><th>結果</th></tr>
+                    <tr><td>filterByPopularity</td><td>missing count</td><td>False (Safe Fail)</td></tr>
+                    <tr><td>filterByStatus</td><td>missing status</td><td>False (Safe Fail)</td></tr>
+                </table>
+                <button class="btn btn-code" onclick="showCode('code-neg-1')">&lt;/&gt; SHOW CODE</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Dialog for Code -->
+    <dialog id="code-modal">
+        <div class="modal-header">
+            <div class="modal-title">Code Snippet</div>
+            <button class="close-btn" onclick="document.getElementById('code-modal').close()">X</button>
+        </div>
+        <div class="code-content">
+            <pre id="code-display"></pre>
+        </div>
+    </dialog>
+
+    <script>
+        // Data Store (Hardcoded from Markdown)
+        const CODE_SNIPPETS = {
+            'code-ep-1': `// tests/unit/api/create_review.test.js
+
+// ✅ 有效等價類別測試
+it('should create review with valid data', async () => {
+  const reviewData = {
+    transaction_id: 123,
+    score: 5,  // 有效評分 (1-5)
+    comment: '非常好的賣家！'
+  }
+  const result = await createReview(reviewData)
+  expect(result.score).toBe(5)
+})
+
+// ❌ 無效等價類別測試 - 評分過低
+it('should throw error when score is below 1', async () => {
+  const reviewData = { transaction_id: 123, score: 0 }
+  await expect(createReview(reviewData))
+    .rejects.toThrow('評分必須在 1-5 之間')
+})`,
+            'code-ep-auth': `// tests/unit/api/pointsAPI.test.js
+
+// ✅ 有效等價類別 - 已登入使用者
+it('should return user points profile when user is authenticated', async () => {
+  const mockUser = { id: 'test-user-123' }
+  const mockProfile = { user_id: 'test-user-123', current_balance: 1500 }
+
+  supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
+  supabase.rpc.mockResolvedValue({ data: mockProfile, error: null })
+
+  const result = await getUserPointsProfile()
+  expect(result).toEqual(mockProfile)
+})
+
+// ❌ 無效等價類別 - 未登入使用者
+it('should throw error when user is not authenticated', async () => {
+  supabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+  await expect(getUserPointsProfile()).rejects.toThrow('使用者未登入')
+})`,
+            'code-ep-offer': `// tests/unit/api/transactionsAPI.test.js
+
+describe('respondToOffer', () => {
+  it('should accept offer successfully', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({ 
+      data: { user: mockUser }, error: null 
+    })
+    const result = await respondToOffer('offer_123', 'accept')
+    expect(result.status).toBe('accepted')
+  })
+
+  it('should decline offer successfully', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({ 
+      data: { user: mockUser }, error: null 
+    })
+    const result = await respondToOffer('offer_123', 'decline')
+    expect(result.status).toBe('declineed')
+  })
+
+  it('should counter offer with amount', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({ 
+      data: { user: mockUser }, error: null 
+    })
+    const result = await respondToOffer('offer_123', 'counter', 500)
+    expect(result.status).toBe('countered')
+    expect(result.counter_offer.amount).toBe(500)
+  })
+})`,
+            'code-ep-2': `// tests/unit/api/save_locationAPI.test.js
+
+// ❌ 無效等價類別測試 - 類型不在允許範圍內
+it('應該在類型無效時拋出錯誤', async () => {
+  await expect(
+    saveUserLocation({ latitude: 24.1817, longitude: 120.7344, type: '學校' })
+  ).rejects.toThrow('Invalid type: must be "家" or "公司"')
+})`,
+            'code-bva-1': `// tests/unit/api/pointsAPI.test.js
+
+describe('getLevelTier', () => {
+  it('should return correct tier for given points', async () => {
+    // 邊界值測試
+    expect(getLevelTier(0)).toEqual(LEVEL_TIERS[0])      // 新手交易者
+    expect(getLevelTier(750)).toEqual(LEVEL_TIERS[1])    // 初階交易者
+    expect(getLevelTier(1500)).toEqual(LEVEL_TIERS[2])   // 中階交易者
+    expect(getLevelTier(3000)).toEqual(LEVEL_TIERS[3])   // 進階交易者
+    expect(getLevelTier(25000)).toEqual(LEVEL_TIERS[6])  // 傳奇交易者
+  })
+
+  it('should return first tier for invalid points', async () => {
+    // 負數邊界 (異常輸入)
+    expect(getLevelTier(-100)).toEqual(LEVEL_TIERS[0])
+  })
+})`,
+            'code-bva-trust': `// tests/unit/api/pointsAPI.test.js
+
+describe('getTrustTier', () => {
+  it('should return correct trust tier for given sales points', async () => {
+    // 賣家信任等級邊界測試
+    expect(getTrustTier(0)).toEqual(TRUST_TIERS[0])      // 等級 1: 最大上架 500
+    expect(getTrustTier(600)).toEqual(TRUST_TIERS[1])    // 等級 2: 最大上架 1000
+    expect(getTrustTier(2500)).toEqual(TRUST_TIERS[2])   // 等級 3: 最大上架 3000
+    expect(getTrustTier(6000)).toEqual(TRUST_TIERS[3])   // 等級 4: 最大上架 10000
+    expect(getTrustTier(20000)).toEqual(TRUST_TIERS[4])  // 等級 5: 無限制
+  })
+})
+
+describe('checkListingPermission', () => {
+  it('should deny listing when price exceeds trust level limit', async () => {
+    // 信任等級 1，嘗試上架超過 500 元的物品
+    const mockProfile = { trust_level_tier: 1, total_sales_points: 100 }
+    // ...
+    const result = await checkListingPermission(1500)
+    expect(result.allowed).toBe(false)
+    expect(result.required_trust_level).toEqual(TRUST_TIERS[2])
+  })
+})`,
+            'code-bva-streak': `// tests/unit/api/pointsAPI.test.js
+
+describe('calculateStreakReward', () => {
+  it('should return correct rewards for specific streak days', async () => {
+    // 特殊獎勵日邊界測試
+    expect(calculateStreakReward(1)).toBe(5)    // 基礎獎勵
+    expect(calculateStreakReward(2)).toBe(5)    // 基礎獎勵
+    expect(calculateStreakReward(3)).toBe(10)   // 第 3 天里程碑
+    expect(calculateStreakReward(7)).toBe(20)   // 第 7 天週獎勵
+    expect(calculateStreakReward(14)).toBe(30)  // 第 14 天雙週獎勵
+    expect(calculateStreakReward(30)).toBe(50)  // 第 30 天月獎勵
+    expect(calculateStreakReward(100)).toBe(200) // 第 100 天傳奇獎勵
+  })
+
+  it('should return default reward for other days', async () => {
+    // 非特殊日預設獎勵
+    expect(calculateStreakReward(5)).toBe(5)
+    expect(calculateStreakReward(15)).toBe(5)
+  })
+})`,
+            'code-bva-page': `// tests/unit/api/pointsAPI.test.js
+
+it('should indicate hasMore when results equal page size', async () => {
+  const mockUser = { id: 'test-user-123' }
+  // 建立剛好等於 page size 的資料 (邊界情況)
+  const mockLogs = new Array(20).fill(0).map((_, i) => ({
+    point_log_id: \`log-\${i}\`,
+    type: 'DAILY_SIGNIN',
+    amount: 50,
+    description: '每日簽到',
+    created_at: '2024-12-11T10:00:00Z'
+  }))
+
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+  supabase.rpc.mockResolvedValueOnce({ data: mockLogs, error: null })
+
+  const result = await getPointLogs({ size: 20 })
+  expect(result.hasMore).toBe(true)  // 資料 = page size，可能還有更多
+})
+
+it('should handle empty results', async () => {
+  supabase.rpc.mockResolvedValueOnce({ data: [], error: null })
+  const result = await getPointLogs()
+  expect(result.transactions).toEqual([])
+  expect(result.hasMore).toBe(false)  // 空結果邊界
+})`,
+            'code-bva-2': `// tests/unit/api/save_locationAPI.test.js
+
+it('應該在緯度無效時拋出錯誤', async () => {
+  // 邊界值 -91 (低於下界 -90)
+  await expect(
+    saveUserLocation({ latitude: -91, longitude: 120.7344 })
+  ).rejects.toThrow('Invalid latitude: must be between -90 and 90')
+})
+
+it('應該在經度無效時拋出錯誤', async () => {
+  // 邊界值 181 (高於上界 180)
+  await expect(
+    saveUserLocation({ latitude: 24.1817, longitude: 181 })
+  ).rejects.toThrow('Invalid longitude: must be between -180 and 180')
+})`,
+            'code-state-1': `// tests/unit/api/transaction_before_meetAPI.test.js
+
+describe('交易狀態轉換測試', () => {
+  // 狀態轉換: (初始) → confirming
+  it('should initiate a transaction successfully', async () => {
+    const result = await initiateTransaction(456, 'buyer-uuid-123')
+    expect(result.status).toBe('confirming')
+  })
+
+  // 狀態轉換: confirming → pending
+  it('should confirm transaction successfully', async () => {
+    const result = await buyerConfirmTransaction(123, 'I will be there')
+    expect(result.new_status).toBe('pending')
+  })
+
+  // 狀態轉換: confirming → cancelled
+  it('should cancel transaction successfully', async () => {
+    const result = await cancelTransaction(123)
+    expect(result.success).toBe(true)
+  })
+})
+
+// tests/unit/api/transaction_meetAPI.test.js
+it('should finalize transaction (pending -> completed)', async () => {
+    const result = await finalizeTransactionWithCode(456, 'ABC123')
+    expect(result.new_status).toBe('completed')
+})`,
+            'code-state-offer': `// tests/unit/api/transactionsAPI.test.js
+
+describe('respondToOffer - 議價狀態轉換', () => {
+  it('should accept offer: pending → accepted', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({ 
+      data: { user: mockUser }, error: null 
+    })
+    const result = await respondToOffer('offer_123', 'accept')
+    expect(result.id).toBe('offer_123')
+    expect(result.status).toBe('accepted')
+    expect(result).toHaveProperty('responded_at')
+  })
+
+  it('should decline offer: pending → declined', async () => {
+    const result = await respondToOffer('offer_123', 'decline')
+    expect(result.status).toBe('declineed')
+  })
+
+  it('should counter offer: pending → countered', async () => {
+    const result = await respondToOffer('offer_123', 'counter', 500)
+    expect(result.status).toBe('countered')
+    expect(result.counter_offer).toBeDefined()
+    expect(result.counter_offer.amount).toBe(500)
+  })
+})`,
+            'code-state-2': `// tests/unit/api/badgesAPI.test.js
+
+it('應該成功獲取當前用戶的徽章', async () => {
+  const mockBadgesData = {
+    user_id: 'user-123',
+    earned_badges: [
+      { badge_id: 1, name: '新手徽章', earned_at: '2025-01-01' }
+    ],
+    in_progress_badges: [
+      { badge_id: 2, name: '進階徽章', progress: 50 }
+    ]
+  };
+
+  supabase.rpc.mockResolvedValueOnce({
+    data: mockBadgesData,
+    error: null
+  });
+
+  const result = await getUserBadgesWithProgress();
+  expect(result).toEqual(mockBadgesData);
+})`,
+            'code-error-auth': `// 多個 API 的認證錯誤測試
+
+// tests/unit/api/pointsAPI.test.js
+it('should throw error when user is not authenticated', async () => {
+  supabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+  await expect(getUserPointsProfile()).rejects.toThrow('使用者未登入')
+})
+
+// tests/unit/api/transactionsAPI.test.js
+it('should throw error when user is not logged in', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
+  await expect(createOffer({ conversation_id: 'conv_123' }))
+    .rejects.toThrow('使用者未登入')
+})
+
+// tests/unit/api/favorite.test.js
+it('should throw error when user is not logged in', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
+  await expect(addFavoriteItem(1))
+    .rejects.toThrow('使用者未登入，無法新增收藏')
+})`,
+            'code-error-1': `// 資料庫/RPC 錯誤測試
+
+// 錯誤有訊息時
+it('should throw error when RPC call fails', async () => {
+  const mockUser = { id: 'test-user-123' }
+  supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
+  supabase.rpc.mockResolvedValue({ 
+    data: null, 
+    error: { message: 'Database error' } 
+  })
+  await expect(getUserPointsProfile()).rejects.toThrow('Database error')
+})
+
+// 錯誤無訊息時 → 使用預設訊息
+it('should throw default error when RPC error has no message', async () => {
+  const mockUser = { id: 'test-user-123' }
+  supabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
+  supabase.rpc.mockResolvedValue({ data: null, error: {} })
+  await expect(getUserPointsProfile()).rejects.toThrow('獲取使用者資料失敗')
+})`,
+            'code-error-geo': `// tests/unit/api/location.test.js
+
+it('應該在瀏覽器不支援時拋出錯誤', async () => {
+  global.navigator = {}
+  await expect(getCurrentPosition())
+    .rejects.toThrow('瀏覽器不支援地理定位功能')
+})
+
+it('應該在使用者拒絕時拋出錯誤', async () => {
+  mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
+    error({ code: 1, PERMISSION_DENIED: 1 })
+  })
+  await expect(getCurrentPosition())
+    .rejects.toThrow('用戶拒絕提供位置權限')
+})
+
+it('應該在無法取得位置時拋出錯誤', async () => {
+  mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
+    error({ code: 2, POSITION_UNAVAILABLE: 2 })
+  })
+  await expect(getCurrentPosition())
+    .rejects.toThrow('無法取得位置資訊')
+})
+
+it('應該在超時時拋出錯誤', async () => {
+  mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
+    error({ code: 3, TIMEOUT: 3 })
+  })
+  await expect(getCurrentPosition())
+    .rejects.toThrow('取得位置逾時,請稍後再試')
+})`,
+            'code-error-2': `// tests/unit/api/ragQaAPI.test.js
+
+it('should handle API error response', async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: false,
+    status: 500,
+    json: async () => ({
+      success: false,
+      error: 'Internal server error'
+    })
+  })
+
+  const result = await askRagQA('測試問題')
+  expect(result.success).toBe(false)
+  expect(result.error).toContain('Internal server error')
+})
+
+it('should throw error when question is empty', async () => {
+  const result = await askRagQA('')
+  expect(result.success).toBe(false)
+  expect(result.error).toBe('問題不能為空')
+})`,
+            'code-pos-trans': `// tests/unit/api/transactionsAPI.test.js
+
+describe('completeTransaction', () => {
+  it('should complete transaction successfully', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({ 
+      data: { user: mockUser }, error: null 
+    })
+
+    const result = await completeTransaction('trans_123')
+
+    expect(result.success).toBe(true)
+    expect(result.transaction_id).toBe('trans_123')
+    expect(result.status).toBe('completed')
+    expect(result).toHaveProperty('buyer_new_balance')
+    expect(result).toHaveProperty('seller_new_balance')
+  })
+})`,
+            'code-pos-1': `// tests/unit/api/badgesAPI.test.js
+
+it('應該成功簽到', async () => {
+    // Arrange
+    const mockUser = { id: 'user-123' };
+    const mockSignInResult = {
+        success: true,
+        streak_days: 5,
+        points_awarded: 10,
+        new_badges: []
+    };
+
+    supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } });
+    supabase.rpc.mockResolvedValueOnce({ data: mockSignInResult, error: null });
+
+    // Act
+    const result = await dailySignIn();
+
+    // Assert
+    expect(result).toEqual(mockSignInResult);
+})`,
+            'code-pos-fav': `// tests/unit/api/favorite.test.js
+
+// 新增收藏 - 正向測試
+it('should add item to favorites successfully', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+  const mockResult = { success: true, message: '已加入收藏' }
+  supabase.rpc.mockResolvedValueOnce({ data: mockResult, error: null })
+
+  const result = await addFavoriteItem(1)
+
+  expect(result).toEqual(mockResult)
+  expect(supabase.rpc).toHaveBeenCalledWith('add_favorite_item', { p_item_id: 1 })
+})
+
+// 移除收藏 - 正向測試
+it('should remove item from favorites successfully', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+  // ...mock setup
+  const result = await removeFavoriteItem(1)
+  expect(result).toBe(true)
+})
+
+// 查詢收藏 - 正向測試
+it('should fetch favorite items with default options', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+  supabase.rpc.mockResolvedValueOnce({ data: mockFavoriteItems, error: null })
+
+  const result = await getMyFavoriteItems()
+  expect(result).toEqual(mockFavoriteItems)
+})`,
+            'code-pos-2': `// tests/unit/api/ragQaAPI.test.js
+
+it('should ask question successfully with session', async () => {
+    supabase.auth.getSession.mockResolvedValueOnce({ 
+        data: { session: { access_token: 'valid' } } 
+    })
+    
+    global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+            success: true,
+            answer: 'AI Answer'
+        })
+    })
+
+    const result = await askRagQA('測試問題')
+    expect(result.success).toBe(true)
+})`,
+            'code-neg-required': `// tests/unit/api/create_review.test.js
+
+it('should throw error when transaction_id is missing', async () => {
+  const reviewData = { score: 5, comment: '很好' }
+  await expect(createReview(reviewData))
+    .rejects.toThrow('缺少必填欄位：transaction_id')
+})
+
+it('should throw error when score is missing', async () => {
+  const reviewData = { transaction_id: 123, comment: '很好' }
+  await expect(createReview(reviewData))
+    .rejects.toThrow('缺少必填欄位：score')
+})`,
+            'code-neg-business': `// tests/unit/api/favorite.test.js
+
+it('should throw error when trying to favorite own item', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+  supabase.rpc.mockResolvedValueOnce({ 
+    data: null, 
+    error: { message: '無法收藏自己的物品' }
+  })
+
+  await expect(addFavoriteItem(1))
+    .rejects.toThrow('無法收藏自己的物品')
+})`,
+            'code-neg-perm': `// tests/unit/api/create_review.test.js
+
+it('should return false when user is not logged in', async () => {
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
+
+  const result = await canCreateReview(1)
+
+  expect(result.canReview).toBe(false)
+  expect(result.reason).toBe('使用者未登入')
+})
+
+it('should return false when transaction does not exist', async () => {
+  const mockUser = { id: 'user-123' }
+  supabase.auth.getUser.mockResolvedValueOnce({ data: { user: mockUser } })
+  
+  const mockFrom = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValueOnce({ 
+      data: null, 
+      error: { message: 'Not found' } 
+    })
+  }
+  supabase.from.mockReturnValue(mockFrom)
+
+  const result = await canCreateReview(999)
+
+  expect(result.canReview).toBe(false)
+  expect(result.reason).toBe('交易不存在')
+})`,
+            'code-neg-1': `// tests/unit/utils/filterFunctions.test.js
+
+it('should handle missing favorites_count as 0', () => {
+    const filter = filterByPopularity(50)
+    expect(filter({})).toBe(false)
+    expect(filter({ favorites_count: null })).toBe(false)
+})
+
+it('should handle missing status', () => {
+    const filter = filterByStatus('active')
+    expect(filter({})).toBe(false)
+})`,
+            'code-neg-2': `// tests/unit/api/badgesAPI.test.js
+
+it('應該在使用者未登入時拋出錯誤', async () => {
+    supabase.auth.getUser.mockResolvedValueOnce({
+        data: { user: null }
+    });
+
+    await expect(dailySignIn()).rejects.toThrow('使用者未登入');
+})`
+        };
+
+        function showCode(id) {
+            const code = CODE_SNIPPETS[id];
+            const display = document.getElementById('code-display');
+            display.textContent = code;
+            
+            // Simple Syntax Highlighting (Regex based)
+            let html = display.innerHTML;
+            html = html.replace(/(\/\/.*)/g, '<span class="code-comment">$1</span>');
+            html = html.replace(/('.*?')/g, '<span class="code-string">$1</span>');
+            html = html.replace(/\b(async|await|const|let|var|function|return|if|else|try|catch|import|from|export|default|class|extends)\b/g, '<span class="code-keyword">$1</span>');
+            html = html.replace(/\b(it|describe|expect|test|mockResolvedValue|toHaveBeenCalledWith)\b/g, '<span class="code-func">$1</span>');
+            html = html.replace(/\b(\d+)\b/g, '<span class="code-number">$1</span>');
+            
+            display.innerHTML = html;
+            
+            document.getElementById('code-modal').showModal();
+        }
+
+        // Close modal when clicking outside
+        const modal = document.getElementById('code-modal');
+        modal.addEventListener('click', (e) => {
+            const rect = modal.getBoundingClientRect();
+            if (e.clientX < rect.left || e.clientX > rect.right || 
+                e.clientY < rect.top || e.clientY > rect.bottom) {
+                modal.close();
+            }
+        });
+    </script>
+</body>
+</html>

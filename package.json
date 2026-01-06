@@ -15,13 +15,20 @@
     "test:coverage:check": "npm run test:coverage && node scripts/coverage-check.js",
     "test:coverage:html": "npm run test:coverage && node scripts/coverage-check.js --format=html",
     "test:coverage:ci": "npm run test:coverage && node scripts/coverage-check.js --ci",
+    "test:api": "vitest --run tests/unit/api/",
+    "test:api:coverage": "vitest --run --coverage tests/unit/api/",
     "test:ui": "vitest --ui",
     "test:dev": "cross-env NODE_ENV=development vitest --run --reporter=verbose",
     "test:debug": "cross-env DEBUG_TESTS=true vitest --run --reporter=verbose",
     "test:failed": "vitest --run --reporter=verbose --changed",
     "test:perf": "vitest --run --reporter=verbose --logHeapUsage",
     "test:perf:analyze": "node scripts/test-performance.js",
-    "test:perf:trend": "node scripts/test-performance.js --trend"
+    "test:perf:trend": "node scripts/test-performance.js --trend",
+    "lint": "eslint src tests --ext .js,.vue",
+    "lint:report": "mkdir -p reports && eslint src tests --ext .js,.vue --format json --output-file reports/eslint-report.json || true",
+    "lint:html": "mkdir -p reports && eslint src tests --ext .js,.vue --format html --output-file reports/eslint-report.html || true",
+    "metrics": "node scripts/code-metrics.js",
+    "report:all": "npm run lint:report && npm run test:coverage:html && npm run metrics"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
@@ -38,11 +45,15 @@
     "vue-router": "^4.6.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/coverage-v8": "^4.0.15",
     "@vue/test-utils": "^2.4.6",
     "chalk": "^5.6.2",
     "cross-env": "^10.1.0",
+    "eslint": "^9.39.2",
+    "eslint-formatter-html": "^2.7.3",
+    "eslint-plugin-vue": "^9.33.0",
     "fast-check": "^4.4.0",
     "js-yaml": "^4.1.1",
     "jsdom": "^27.3.0",

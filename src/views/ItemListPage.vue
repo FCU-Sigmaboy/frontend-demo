@@ -148,9 +148,9 @@ import CategoryTabs from '../components/CategoryTabs.vue';
 import FilterTabs from '../components/FilterTabs.vue';
 
 import { useCategoriesStore } from '@/stores/categories.js';
-import { searchItems } from '@/api/get_searchItemsAPI';
+import { searchItems } from '@/api/itemsAPI';
 import { sortByRecommendation } from '@/utils/sortFunctions.js';
-import { getMyLocations } from '@/api/get_userLocationAPI';
+import { getMyLocations } from '@/api/locationAPI';
 
 const route = useRoute();
 const router = useRouter();
@@ -166,7 +166,7 @@ if (!categoriesStore.isLoaded) {
 const categories = computed(() => categoriesStore.categories);
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const selectedCategory = ref(0); // 當前選中的主分類
 const selectedSubCategory = ref(0); // 當前選中的子分類
 const searchQuery = ref('');

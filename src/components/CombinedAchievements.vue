@@ -105,7 +105,34 @@
               </div>
               <span class="achievement-label">{{ badge.name }}</span>
               <span class="achievement-description">{{ badge.description }}</span>
-              <span v-if="badge.points_reward" class="achievement-points">+{{ badge.points_reward }}P</span>
+              
+              <!-- 已解鎖徽章：顯示點數獎勵和獲得時間 -->
+              <template v-if="badge.unlocked">
+                <span v-if="badge.points_reward" class="achievement-points">+{{ badge.points_reward }}P</span>
+                <span v-if="badge.earned_at" class="achievement-earned-date">
+                  <i class="bi bi-check-circle-fill"></i>
+                  {{ formatDate(badge.earned_at) }}
+                </span>
+              </template>
+              
+              <!-- 進行中徽章：顯示進度條 -->
+              <template v-else>
+                <div class="achievement-progress-wrapper">
+                  <div class="progress-text">
+                    <span class="progress-percentage">{{ Math.round(badge.percentage || 0) }}%</span>
+                    <span v-if="badge.current_value !== undefined && badge.target_value !== undefined" class="progress-values">
+                      {{ badge.current_value }}/{{ badge.target_value }}
+                    </span>
+                  </div>
+                  <div class="progress-bar-container">
+                    <div 
+                      class="progress-bar-fill" 
+                      :style="{ width: (badge.percentage || 0) + '%' }"
+                    ></div>
+                  </div>
+                  <span v-if="badge.points_reward" class="achievement-points locked">解鎖可得 +{{ badge.points_reward }}P</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -221,7 +248,30 @@ const displayedBadges = computed(() => {
 })
 
 function onBadgeClick(badge) {
-  emit('achievement-click', badge)
+  // 轉換資料格式以符合 modal 期望的結構
+  const transformedBadge = {
+    ...badge,
+    label: badge.name,
+    points: badge.points_reward,
+    progress: badge.percentage || 0,
+    type: 'badge',
+    ...(badge.current_value !== undefined && badge.target_value !== undefined && {
+      threshold: `${badge.current_value}/${badge.target_value}`,
+      remainingKg: badge.category === 'carbon' ? (badge.target_value - badge.current_value) : undefined
+    })
+  }
+  
+  emit('achievement-click', transformedBadge)
+}
+
+// 格式化日期顯示
+function formatDate(dateString) {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}/${month}/${day}`
 }
 </script>
 
@@ -570,7 +620,6 @@ function onBadgeClick(badge) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
   padding: 12px;
   border: 2px solid #e0e0e0;
   border-radius: 12px;
@@ -638,6 +687,69 @@ function onBadgeClick(badge) {
     font-weight: 600;
     color: $primary;
     text-align: center;
+    margin-top: 4px;
+
+    &.locked {
+      color: #999;
+      font-size: 10px;
+    }
+  }
+
+  .achievement-earned-date {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 10px;
+    color: #27ae60;
+    text-align: center;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    i {
+      font-size: 10px;
+    }
+  }
+
+  .achievement-progress-wrapper {
+    width: 100%;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 11px;
+
+      .progress-percentage {
+        font-weight: 600;
+        color: $primary;
+      }
+
+      .progress-values {
+        color: #999;
+        font-size: 10px;
+      }
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background-color: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+
+      .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, $primary 0%, darken($primary, 10%) 100%);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+    }
   }
 
   &.unlocked {
@@ -662,11 +774,6 @@ function onBadgeClick(badge) {
   &.rarity-rare.unlocked { border-color: #3498db; }
   &.rarity-epic.unlocked { border-color: #9b59b6; }
   &.rarity-legendary.unlocked { border-color: #f39c12; }
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
 }
 
 .modal-footer {

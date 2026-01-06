@@ -141,6 +141,44 @@ describe('ragQaAPI', () => {
       expect(result.error).toContain('Internal server error')
     })
 
+    it('should handle API error response without error message (HTTP 404)', async () => {
+      supabase.auth.getSession.mockResolvedValueOnce({ 
+        data: { session: mockSession }, 
+        error: null 
+      })
+
+      global.fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({})
+      })
+
+      const result = await askRagQA('測試問題')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('HTTP error! status: 404')
+    })
+
+    it('should handle API success false response (HTTP 200)', async () => {
+      supabase.auth.getSession.mockResolvedValueOnce({ 
+        data: { session: mockSession }, 
+        error: null 
+      })
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: false,
+          error: 'Application error'
+        })
+      })
+
+      const result = await askRagQA('測試問題')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Application error')
+    })
+
     it('should handle network error', async () => {
       supabase.auth.getSession.mockResolvedValueOnce({ 
         data: { session: mockSession }, 

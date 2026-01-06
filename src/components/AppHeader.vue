@@ -10,7 +10,7 @@
               <img :src="iconImage" alt="台中易起來" class="header-logo mobile-logo" />
             </div>
 
-            <BNav class="category-nav d-none d-lg-flex">
+            <BNav class="category-nav d-none d-md-flex">
               <BNavItem
                 v-for="category in categories.slice(0, 4)"
                 :key="category.id"
@@ -26,7 +26,7 @@
             <BButton
               id="all-categories-btn"
               variant="link"
-              class="all-categories-btn d-none d-lg-flex"
+              class="all-categories-btn d-none d-md-flex"
               @click="toggleAllCategories"
             >
               <i class="bi bi-grid-3x3-gap"></i>
@@ -46,7 +46,7 @@
               <BButton
                 id="favorites-btn"
                 variant="link"
-                class="icon-button d-none d-lg-flex"
+                class="icon-button d-none d-md-flex"
                 @click="router.push({ name: 'Favorites' })"
               >
                 <i class="bi bi-heart"></i>
@@ -56,7 +56,7 @@
               <BButton
                 id="transactions-btn"
                 variant="link"
-                class="icon-button transaction-button d-none d-lg-flex"
+                class="icon-button transaction-button d-none d-md-flex"
                 @click="router.push({ name: 'TransactionRecords' })"
               >
                 <i class="bi bi-receipt"></i>
@@ -87,7 +87,7 @@
               <BButton
                 id="messages-btn"
                 variant="link"
-                class="icon-button message-button d-none d-lg-flex"
+                class="icon-button message-button d-none d-md-flex"
                 @click="router.push({ name: 'Messages' })"
               >
                 <i class="bi bi-chat-left"></i>
@@ -100,7 +100,7 @@
               <!-- User Profile (Desktop) -->
               <div
                 id="user-profile-info"
-                class="user-info d-none d-lg-flex"
+                class="user-info d-none d-md-flex"
                 @click="router.push({ name: 'UserProfile' })"
                 style="cursor: pointer;"
               >
@@ -119,7 +119,7 @@
               <!-- Points Display (Desktop) -->
               <div
                 id="points-display"
-                class="points-display d-none d-lg-flex"
+                class="points-display d-none d-md-flex"
                 @click="router.push({ name: 'Dashboard' })"
                 style="cursor: pointer;"
               >
@@ -132,7 +132,7 @@
               <!-- Post Button (Desktop Only) -->
              <BButton
                id="post-btn"
-               class="post-button d-none d-lg-flex"
+               class="post-button d-none d-md-flex"
                @click="router.push({ name: 'CreateListing' })"
              >
                刊登
@@ -143,7 +143,7 @@
               <BButton
                 id="logout-btn"
                 variant="outline"
-                class="logout-button d-none d-lg-flex"
+                class="logout-button d-none d-md-flex"
                 @click="handleLogout"
               >
                 登出
@@ -151,7 +151,7 @@
               <BTooltip target="logout-btn" placement="bottom">登出帳號</BTooltip>
 
               <!-- Mobile: Post Button + Points + Avatar (Always Visible) -->
-              <div class="mobile-user-section d-lg-none">
+              <div class="mobile-user-section d-md-none">
                 <BButton
                   class="post-button mobile-post-button"
                   @click="router.push({ name: 'CreateListing' })"
@@ -178,13 +178,13 @@
 
             <!-- 未登入：顯示 Google 登入按鈕 -->
             <template v-else>
-              <BButton class="google-login-button d-none d-lg-flex" @click="handleGoogleLogin">
+              <BButton class="google-login-button d-none d-md-flex" @click="handleGoogleLogin">
                 <i class="bi bi-google"></i>
                 <span>使用 Google 登入</span>
               </BButton>
 
               <!-- Mobile: Login Button -->
-              <BButton class="mobile-login-btn d-lg-none" @click="handleGoogleLogin">
+              <BButton class="mobile-login-btn d-md-none" @click="handleGoogleLogin">
                 登入
               </BButton>
             </template>
@@ -192,7 +192,7 @@
             <!-- Hamburger Menu (Mobile) -->
             <BButton
               variant="link"
-              class="hamburger-button d-lg-none"
+              class="hamburger-button d-md-none"
               @click="toggleUnifiedMenu"
             >
               <i class="bi bi-list"></i>

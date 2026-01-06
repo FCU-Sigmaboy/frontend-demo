@@ -182,7 +182,7 @@ const router = useRouter();
 const reviewStore = useReviewStore();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 
 // Computed - 從 store 獲取資料
 const reviews = computed(() => {

@@ -1,12 +1,8 @@
 name: 自動化測試
 
 on:
-  # 推送到主要分支時觸發
+  # 推送到主要分支時觸發（PR 檢查由 pr-check.yml 處理）
   push:
-    branches: [ main, master, vibe ]
-  
-  # Pull Request 時觸發
-  pull_request:
     branches: [ main, master, vibe ]
   
   # 手動觸發
@@ -59,7 +55,7 @@ jobs:
             test-results.xml
           retention-days: 7
 
-  # 覆蓋率分析作業
+  # 覆蓋率分析作業（使用 test job 產出的結果）
   coverage:
     name: 測試覆蓋率分析
     runs-on: ubuntu-latest
@@ -77,6 +73,13 @@ jobs:
           
       - name: 安裝依賴
         run: npm ci
+        
+      - name: 下載測試結果
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-node-20.x
+          path: ./
+        continue-on-error: true
         
       - name: 執行覆蓋率測試
         run: npm run test:coverage:ci
@@ -133,6 +136,7 @@ jobs:
     runs-on: ubuntu-latest
     
     strategy:
+      fail-fast: false
       matrix:
         test-group: 
           - api
@@ -140,6 +144,7 @@ jobs:
           - stores
           - composables
           - utils
+          - helpers
           
     steps:
       - name: 檢出代碼

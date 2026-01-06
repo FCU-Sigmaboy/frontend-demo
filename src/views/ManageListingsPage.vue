@@ -446,8 +446,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useTransactionStore } from '@/stores/transaction';
-import { getMyItems } from '../api/get_myItemsAPI';
-import { toggleItemStatus, deleteMyItem } from '../api/update_myItemAPI';
+import { getMyItems } from '../api/itemsAPI';
+import { toggleItemStatus, deleteMyItem } from '../api/itemsAPI';
 import AppHeader from '../components/AppHeader.vue';
 import AppFooter from '../components/AppFooter.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
@@ -465,7 +465,7 @@ const breadcrumbItems = [
 ];
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const searchQuery = ref('');
 const activeFilter = ref('all');
 const listings = ref([]);

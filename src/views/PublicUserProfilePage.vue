@@ -136,7 +136,8 @@
               <div class="stat-card">
                 <i class="bi bi-star stat-icon"></i>
                 <div class="stat-info">
-                  <span class="stat-value">{{ averageRating.toFixed(1) }}</span>
+                  <span v-if="reviews.length > 0" class="stat-value">{{ averageRating.toFixed(1) }}</span>
+                  <span v-else class="stat-value">無評分</span>
                   <span class="stat-name">平均評分</span>
                 </div>
               </div>
@@ -317,16 +318,16 @@ import AppFooter from '../components/AppFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 import CombinedAchievements from '../components/CombinedAchievements.vue';
 import FollowersFollowingModal from '../components/FollowersFollowingModal.vue';
-import { searchItems } from '../api/get_searchItemsAPI';
-import { getPublicUserProfile } from '../api/get_userProfileAPI';
+import { searchItems } from '../api/itemsAPI';
+import { getPublicUserProfile } from '../api/profileAPI';
 import { followUser, unfollowUser } from '../api/followAPI';
-import { getOthersReviews } from '../api/get_others_reviews';
+import { getOthersReviews } from '../api/reviewAPI';
 
 const route = useRoute();
 const router = useRouter();
 
 // State
-const userPoints = ref(500);
+const userPoints = ref(0);
 const activeTab = ref('listings');
 const isLoadingListings = ref(false);
 const isLoadingProfile = ref(false);

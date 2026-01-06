@@ -1,0 +1,838 @@
+% !TEX program = xelatex
+% --- UNIVERSAL PREAMBLE BLOCK ---
+\documentclass[11pt, a4paper]{article}
+
+% --- PACKAGES FOR MODERN WHITEPAPER STYLE ---
+% Load xcolor with table option FIRST to ensure rowcolor works
+% This MUST be the very first package loaded to avoid conflicts
+% Load xcolor with necessary options for named colors
+\usepackage[table, dvipsnames, svgnames]{xcolor} 
+
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{fontspec}
+
+% Language Setting - Fixed for Traditional Chinese (Taiwan)
+\usepackage{xeCJK}
+\usepackage[provide=*]{babel}
+\babelprovide[import, main]{chinese-traditional}
+\babelprovide[import]{english}
+
+% 設定英文字體
+\setmainfont{Arial}[
+  BoldFont=Arial Bold,
+  ItalicFont=Arial Italic
+]
+\setsansfont{Arial}
+\setmonofont{Menlo}
+
+% 設定中文字體（使用 xeCJK）
+\setCJKmainfont{PingFang TC}
+\setCJKsansfont{PingFang TC}
+\setCJKmonofont{PingFang TC}
+
+% --- OTHER PACKAGES ---
+% --- OTHER PACKAGES ---
+% --- COMPATIBILITY POLYFILL (SHOTGUN) ---
+% 1. Define missing structure commands as simple no-ops to preserve TOC content
+\makeatletter
+\long\def\NewStructureName#1{}
+\long\def\AssignStructureRole#1#2{}
+\long\def\NewTaggingSocket#1#2{}
+\long\def\NewTaggingSocketPlug#1#2#3{}
+\long\def\AssignTaggingSocketPlug#1#2{}
+\long\def\UseStructureName#1{}
+% Use simple def for body commands to avoid spacing/swallowing issues of bsphack
+\long\def\tagstructbegin#1{}
+\long\def\tagstructend{}
+\long\def\tagpdfparaOff#1{}
+
+% 2. Pre-allocate missing integer variables to prevent tcolorbox crash
+% We define multiple naming variants because the exact mangling of '/' is uncertain
+\expandafter\newcount\csname g__tag_support_tcb/box/init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb_box_init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb/box_init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb/capture/init_args_int\endcsname
+\expandafter\newcount\csname g__tag_support_tcb_capture_init_args_int\endcsname
+\makeatother
+
+\usepackage{tcolorbox}
+
+\usepackage{atbegshi}
+\usepackage{eso-pic}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{longtable}
+
+% 設定 hyperref 不顯示連結邊框
+\hypersetup{
+    colorlinks=false,        % 不使用彩色文字
+    hidelinks,               % 完全隱藏連結（無邊框、無顏色）
+    pdfborder={0 0 0},      % 設定邊框寬度為 0
+}
+
+% --- 目錄中文化設定 ---
+\usepackage{titletoc}
+
+% 設定目錄標題
+\renewcommand{\contentsname}{目錄}
+\renewcommand{\listfigurename}{圖目錄}
+\renewcommand{\listtablename}{表目錄}
+
+% 設定目錄格式 - Adjusted for visibility
+\titlecontents{section}
+  [2em] % Left indent
+  {\addvspace{1em}\bfseries\sffamily\color{NavyBlue}}
+  {\contentslabel{2em}}
+  {}
+  {\titlerule*[0.5pc]{.}\contentspage}
+
+\titlecontents{subsection}
+  [4em] % Left indent
+  {\addvspace{0.5em}\sffamily}
+  {\contentslabel{2.5em}}
+  {}
+  {\titlerule*[0.5pc]{.}\contentspage}
+
+% --- COLOR PALETTE ---
+\definecolor{NavyBlue}{RGB}{0, 31, 63}
+\definecolor{ElectricCyan}{RGB}{57, 204, 204}
+\definecolor{CoralRed}{RGB}{255, 65, 54}
+\definecolor{LightGray}{RGB}{245, 245, 245}
+\definecolor{CodeBg}{RGB}{40, 44, 52}
+\definecolor{SuccessGreen}{RGB}{46, 204, 64}
+
+% --- TCOLORBOX LIBRARIES ---
+% Load libraries while spoof is still active!
+\tcbuselibrary{skins, breakable, raster} 
+
+% Restore Kernel Check Function
+\let\IfFormatAtLeastTF\ORIGIfFormatAtLeastTF
+\makeatother 
+
+% --- STYLING DEFINITIONS ---
+
+% 1. Code Block Style (Dark Mode IDE)
+\lstset{
+    language=Java, 
+    basicstyle=\ttfamily\small\color{white},
+    keywordstyle=\color{ElectricCyan}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{CoralRed},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    stepnumber=1,
+    frame=none,
+    breaklines=true,
+    backgroundcolor=\color{CodeBg},
+    tabsize=2,
+    captionpos=b,
+    morekeywords={async, await, const, let, var, function, return, import, from, export, default, describe, it, expect}
+}
+
+\newtcolorbox{codebox}[2][]{
+    enhanced,
+    colback=CodeBg,
+    colframe=NavyBlue,
+    arc=4pt,
+    boxrule=0.5pt,
+    title={#2},
+    coltitle=white,
+    fonttitle=\bfseries\sffamily,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={colback=NavyBlue},
+    #1
+}
+
+% 2. Callout Block (For Definitions)
+\newtcolorbox{calloutbox}[2][]{
+    enhanced,
+    colback=ElectricCyan!10!white,
+    colframe=ElectricCyan,
+    leftrule=4pt,
+    rightrule=0pt,
+    toprule=0pt,
+    bottomrule=0pt,
+    arc=0pt,
+    fonttitle=\bfseries\sffamily,
+    coltitle=NavyBlue,
+    title={#2},
+    #1
+}
+
+% 3. KPI Card (For Coverage Stats)
+\newtcolorbox{kpicard}[2][]{
+    enhanced,
+    colback=white,
+    colframe=LightGray,
+    coltitle=NavyBlue,
+    fonttitle=\bfseries\large\centering,
+    title={#2},
+    halign=center,
+    valign=center,
+    drop shadow,
+    #1
+}
+
+% 4. Section Styling
+\usepackage{titlesec}
+\titleformat{\section}
+  {\color{NavyBlue}\normalfont\Large\bfseries\sffamily}
+  {\thesection}{1em}{}[{\titlerule[1.5pt]}]
+\titleformat{\subsection}
+  {\color{NavyBlue}\normalfont\large\bfseries\sffamily}
+  {\thesubsection}{1em}{}
+
+% --- DOCUMENT BEGINS ---
+\begin{document}
+
+% --- COVER PAGE ---
+\begin{titlepage}
+  \thispagestyle{empty}
+  \pagecolor{NavyBlue} % 使用 pagecolor 直接設定整頁背景色 (最穩定)
+  
+  % 裝飾圓圈
+  \begin{tikzpicture}[remember picture, overlay]
+    \draw[ElectricCyan, opacity=0.3, line width=2pt] (current page.center) circle (10cm);
+    \draw[CoralRed, opacity=0.3, line width=1pt] (current page.center) circle (8cm);
+  \end{tikzpicture}
+
+  \centering
+  \vspace*{4cm}
+
+  {\Huge \bfseries \sffamily \color{white} 軟體測試專題報告 \par}
+  \vspace{1cm}
+  {\Large \sffamily \color{ElectricCyan} 台中易起來：在地二手物交易平台 \par}
+  \vspace{0.5cm}
+  {\large \sffamily \color{white} 逢甲大學資訊工程學系學士後專班 \par}
+
+  \vfill
+
+  \begin{tcolorbox}[colback=white!10!NavyBlue, colframe=ElectricCyan, width=0.8\textwidth, arc=2mm]
+    \centering \color{white}
+    \textbf{課程：} 軟體品質與測試 (指導教授：薛念林 博士) \\
+    \textbf{組別：} 第三組 \\
+    \textbf{成員：} 林政佑 / 陶子中 / 游程鈞 / 陳韋翰 \\
+    \textbf{發布日期：} 2026-01-02
+  \end{tcolorbox}
+
+  \vspace{2cm}
+\end{titlepage}
+
+% --- TABLE OF CONTENTS ---
+\newpage
+\pagecolor{white}
+
+\setcounter{tocdepth}{3}
+\tableofcontents
+\newpage
+
+% --- CONTENT ---
+
+\section{專題描述}
+
+\subsection{專題目標}
+本專案針對「台中易起來 - 在地二手物交易平台」進行單元測試。有鑑於現代前端應用邏輯的複雜性，本報告確立了**以 `src/api` 層為測試核心**的策略，確保資料互動的準確性與穩定性。
+
+\subsection{功能模組與 API 對照}
+本平台提供以下 8 個核心功能模組，均已納入測試範圍：
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.5}
+  \begin{longtable}{p{0.05\textwidth} p{0.25\textwidth} p{0.35\textwidth} p{0.25\textwidth}}
+    \rowcolor{NavyBlue} \color{white}\textbf{\#} & \color{white}\textbf{功能模組} & \color{white}\textbf{功能說明} & \color{white}\textbf{對應 API} \\
+    1                                            & 使用者認證系統                    & 登入、登出、個人資料管理               & get\_userProfileAPI.js       \\
+    \rowcolor{LightGray} 2                       & 物品刊登管理                     & 物品建立、編輯、刪除、搜尋              & create\_myItemAPI.js         \\
+    3                                            & 交易管理系統                     & 發起、確認、取消交易                 & transactionsAPI.js           \\
+    \rowcolor{LightGray} 4                       & 即時訊息系統                     & 對話管理、即時訊息                  & conversation.js              \\
+    5                                            & 點數與獎勵系統                    & 每日簽到、等級、徽章                 & pointsAPI.js                 \\
+    \rowcolor{LightGray} 6                       & 評價系統                       & 交易評價、評分                    & create\_review.js            \\
+    7                                            & 地圖搜尋功能                     & 地圖定位、附近搜尋                  & location.js                  \\
+    \rowcolor{LightGray} 8                       & 追蹤與收藏                      & 追蹤使用者、收藏物品                 & followAPI.js                 \\
+  \end{longtable}
+\end{center}
+
+\subsection{技術架構}
+\begin{itemize}[label=\textcolor{ElectricCyan}{$\blacksquare$}]
+  \item \textbf{前端框架:} Vue.js 3.5.22
+  \item \textbf{測試框架:} Vitest 4.0.15 + @vitest/coverage-v8
+  \item \textbf{狀態管理:} Pinia 3.0.3
+  \item \textbf{後端服務:} Supabase (BaaS)
+\end{itemize}
+
+\newpage
+\section{測試規劃與策略}
+
+\subsection{測試金字塔架構}
+本專案依據測試金字塔原則，將資源集中於執行速度快、定位問題精準的 API 單元測試。
+
+\begin{center}
+  \begin{tikzpicture}
+    % Pyramid Base (Unit Test)
+    \fill[NavyBlue] (-4,0) -- (4,0) -- (2.5,2) -- (-2.5,2) -- cycle;
+    \node[white, font=\bfseries] at (0,1) {API 層單元測試 (Unit Tests)};
+    \node[white, font=\small] at (0,0.5) {src/api (27 模組) - 測試重點};
+
+    % Pyramid Middle (Integration)
+    \fill[ElectricCyan] (-2.5,2) -- (2.5,2) -- (1.5,3.5) -- (-1.5,3.5) -- cycle;
+    \node[black, font=\bfseries] at (0,2.75) {整合測試 (Integration)};
+
+    % Pyramid Top (E2E)
+    \fill[LightGray] (-1.5,3.5) -- (1.5,3.5) -- (0,5) -- cycle;
+    \node[gray, font=\bfseries] at (0,4) {E2E 測試 (未來規劃)};
+
+    % Annotations
+    \draw[->, thick, CoralRed] (4.5, 1) -- (3.5, 1);
+    \node[right, CoralRed] at (4.5, 1) {\textbf{主要測試覆蓋區}};
+  \end{tikzpicture}
+\end{center}
+
+\subsection{測試重點數據 (KPIs)}
+截至目前，API 層測試覆蓋率表現優異：
+
+\begin{tcbraster}[raster columns=4, raster equal height]
+  \begin{kpicard}{Statements}
+    \textcolor{SuccessGreen}{\Huge 99.25\%} \\
+    \small 目標 $\ge$ 90\%
+  \end{kpicard}
+  \begin{kpicard}{Branches}
+    \textcolor{SuccessGreen}{\Huge 96.16\%} \\
+    \small 目標 $\ge$ 90\%
+  \end{kpicard}
+  \begin{kpicard}{Functions}
+    \textcolor{SuccessGreen}{\Huge 100\%} \\
+    \small 目標 $\ge$ 90\%
+  \end{kpicard}
+  \begin{kpicard}{Lines}
+    \textcolor{SuccessGreen}{\Huge 99.55\%} \\
+    \small 目標 $\ge$ 90\%
+  \end{kpicard}
+\end{tcbraster}
+
+\subsection{API 層測試涵蓋範圍}
+
+\textbf{共 27 個 API 模組，336+ 個測試案例}
+
+\begin{center}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{longtable}{p{0.32\textwidth} p{0.15\textwidth} p{0.12\textwidth} p{0.12\textwidth} p{0.12\textwidth}}
+    \rowcolor{NavyBlue} \color{white}\textbf{API 檔案}     & \color{white}\textbf{功能} & \color{white}\textbf{案例數} & \color{white}\textbf{Stmts} & \color{white}\textbf{Branch} \\
+    transactionsAPI.js                                   & 交易管理                     & 30+                       & 100\%                       & 100\%                        \\
+    \rowcolor{LightGray} transaction\_before\_meetAPI.js & 交易前置                     & 25+                       & 95\%                        & 90\%                         \\
+    transaction\_meetAPI.js                              & 交易碰面                     & 15+                       & 100\%                       & 100\%                        \\
+    \rowcolor{LightGray} pointsAPI.js                    & 點數系統                     & 30+                       & 97.64\%                     & 91.56\%                      \\
+    create\_review.js                                    & 評價系統                     & 20+                       & 82.85\%                     & 82.35\%                      \\
+    \rowcolor{LightGray} create\_myItemAPI.js            & 物品刊登                     & 15+                       & 100\%                       & 91.66\%                      \\
+    get\_searchItemsAPI.js                               & 物品搜尋                     & 20+                       & 100\%                       & 96.96\%                      \\
+    \rowcolor{LightGray} get\_ItemDetailAPI.js           & 物品詳情                     & 15+                       & 94.82\%                     & 95.45\%                      \\
+    conversation.js                                      & 即時訊息                     & 55+                       & 100\%                       & 94.73\%                      \\
+    \rowcolor{LightGray} followAPI.js                    & 追蹤功能                     & 15+                       & 100\%                       & 93.93\%                      \\
+    favorite.js                                          & 收藏功能                     & 10+                       & 100\%                       & 100\%                        \\
+    \rowcolor{LightGray} badgesAPI.js                    & 徽章系統                     & 10+                       & 100\%                       & 100\%                        \\
+    image.js                                             & 圖片處理                     & 15+                       & 100\%                       & 93.93\%                      \\
+    \rowcolor{LightGray} location.js                     & 地點服務                     & 15+                       & 100\%                       & 97.36\%                      \\
+    ragQaAPI.js                                          & 智能問答                     & 10+                       & 100\%                       & 94.11\%                      \\
+  \end{longtable}
+\end{center}
+
+\section{測試設計技術}
+
+\subsection{等價類別劃分 (Equivalence Partitioning)}
+
+\begin{calloutbox}{ISTQB 定義}
+  將輸入資料劃分為群組，同一分區內的所有元素預期會以相同方式被系統處理。若分區內某測試案例有效，則該分區內所有測試案例都應有效。
+\end{calloutbox}
+
+\textbf{實作範例：評分驗證測試}
+\begin{itemize}
+  \item 有效等價類別：1-5 分
+  \item 無效等價類別：< 1 或 > 5 分
+\end{itemize}
+
+\begin{codebox}{tests/unit/api/create\_review.test.js}
+  \begin{lstlisting}
+describe('評分等價類別測試', () => {
+  // 無效等價類別
+  describe('無效評分範圍', () => {
+    it('評分 0 應該被拒絕', async () => {
+      const result = await createReview({ rating: 0 })
+      expect(result.error).toBeDefined()
+    })
+    it('評分 6 應該被拒絕', async () => {
+      const result = await createReview({ rating: 6 })
+      expect(result.error).toBeDefined()
+    })
+  })
+})
+\end{lstlisting}
+\end{codebox}
+
+\subsection{邊界值分析 (Boundary Value Analysis)}
+
+\begin{calloutbox}{ISTQB 定義}
+  邊界值分析是一種基於等價分區邊界進行測試的技術。ISTQB 定義兩種變體：\\
+  \textbf{2-value BVA}：測試邊界值及其最接近的鄰居。\\
+  \textbf{3-value BVA}：測試邊界值及其兩側的鄰居（更嚴謹）。\\
+  \textit{--- ISTQB® CTFL Syllabus v4.0, Section 4.2.2}
+\end{calloutbox}
+
+\textbf{本專案採用 3-value BVA 策略}
+
+\vspace{0.3cm}
+\begin{center}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{p{0.12\textwidth} p{0.18\textwidth} p{0.55\textwidth}}
+    \toprule
+    \textbf{等級}                   & \textbf{點數範圍} & \textbf{邊界測試值 (3-value BVA)}                                      \\
+    \midrule
+    Bronze                        & 0-999         & 0, \textbf{998}, \textbf{999}, \textbf{1000}, 1001                \\
+    \rowcolor{LightGray} Silver   & 1000-4999     & \textbf{999}, \textbf{1000}, 4998, \textbf{4999}, \textbf{5000}   \\
+    Gold                          & 5000-9999     & \textbf{4999}, \textbf{5000}, 9998, \textbf{9999}, \textbf{10000} \\
+    \rowcolor{LightGray} Platinum & 10000+        & \textbf{9999}, \textbf{10000}, 10001                              \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\begin{codebox}{tests/unit/api/pointsAPI.test.js}
+  \begin{lstlisting}
+describe("等級邊界值測試", () => {
+  describe("Bronze/Silver 邊界", () => {
+    it("999 點應該是 Bronze", () => {
+      expect(getLevelTier(999)).toBe("bronze");
+    });
+    it("1000 點應該是 Silver (邊界跨越)", () => {
+      expect(getLevelTier(1000)).toBe("silver");
+    });
+  });
+
+  describe("Silver/Gold 邊界", () => {
+    it("4999 點應該是 Silver", () => {
+      expect(getLevelTier(4999)).toBe("silver");
+    });
+    it("5000 點應該是 Gold (邊界跨越)", () => {
+      expect(getLevelTier(5000)).toBe("gold");
+    });
+  });
+});
+\end{lstlisting}
+\end{codebox}
+
+\subsection{狀態轉換測試 (State Transition Testing)}
+
+系統中「交易流程」涉及複雜的狀態變更，我們採用狀態轉換測試來驗證流程的正確性。
+
+\vspace{0.5cm}
+\begin{center}
+  \begin{tikzpicture}[node distance=3cm, auto, >=stealth,
+      state/.style={rectangle, draw=NavyBlue, rounded corners, fill=white, text=NavyBlue, font=\bfseries, minimum height=1cm, minimum width=2.5cm, line width=1pt}]
+
+    % Nodes
+    \node[state] (none) {初始 (None)};
+    \node[state, right of=none, node distance=4cm] (pending) {Pending (待確認)};
+    \node[state, right of=pending, node distance=4cm] (confirming) {Confirming (確認中)};
+    \node[state, below of=confirming, node distance=2.5cm] (completed) {Completed (完成)};
+    \node[state, below of=pending, node distance=2.5cm] (cancelled) {Cancelled (取消)};
+
+    % Arrows
+    \draw[->, thick, NavyBlue] (none) -- node[above, font=\footnotesize] {發起交易} (pending);
+    \draw[->, thick, NavyBlue] (pending) -- node[above, font=\footnotesize] {買家確認} (confirming);
+    \draw[->, thick, NavyBlue] (confirming) -- node[right, font=\footnotesize] {驗證碼通過} (completed);
+    \draw[->, thick, CoralRed] (pending) -- node[left, font=\footnotesize] {取消} (cancelled);
+    \draw[->, thick, CoralRed] (confirming) -- node[below, font=\footnotesize] {取消} (cancelled);
+
+  \end{tikzpicture}
+\end{center}
+
+\begin{codebox}{tests/unit/api/transactionsAPI.test.js}
+  \begin{lstlisting}
+describe("狀態轉換測試", () => {
+    it("pending -> confirming (買家確認)", async () => {
+      const transaction = { status: "pending" };
+      const result = await buyerConfirmTransaction(transaction.id);
+      expect(result.data.status).toBe("confirming");
+    });
+    
+    it("cancelled -> confirming 應該失敗", async () => {
+      const transaction = { status: "cancelled" };
+      const result = await buyerConfirmTransaction(transaction.id);
+      expect(result.error).toBeDefined();
+    });
+});
+\end{lstlisting}
+\end{codebox}
+
+\subsection{錯誤猜測 (Error Guessing)}
+
+\begin{calloutbox}{ISTQB 定義}
+  錯誤猜測是一種依賴測試人員知識、經驗和直覺來識別可能包含缺陷區域的技術。
+  常見的錯誤來源包括：空值、零值、網路失敗、權限不足等。\\
+  \textit{--- ISTQB® CTFL Syllabus v4.0, Section 4.4.2}
+\end{calloutbox}
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{p{0.18\textwidth} p{0.32\textwidth} p{0.32\textwidth}}
+    \toprule
+    \textbf{錯誤場景}                    & \textbf{模擬方法}                        & \textbf{預期行為}    \\
+    \midrule
+    網路斷線                             & \texttt{vi.mock} 返回 Network Error    & 拋出「網路連線失敗」錯誤     \\
+    \rowcolor{LightGray} 未授權 (401)   & \texttt{vi.mock} 返回 \{ code: 401 \}  & 拋出「授權失敗」錯誤       \\
+    資料庫錯誤 (500)                      & \texttt{vi.mock} 返回 \{ code: 500 \}  & 拋出「伺服器錯誤」提示      \\
+    \rowcolor{LightGray} RPC 返回 null & \texttt{vi.mock} 返回 \{ data: null \} & 正確處理 Fallback 邏輯 \\
+    空字串輸入                            & 傳入 "", null, undefined               & 輸入驗證並拒絕          \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\subsection{錯誤處理測試 (Error Handling Testing)}
+
+\begin{codebox}{tests/unit/api/transactionsAPI.test.js}
+  \begin{lstlisting}
+describe("錯誤處理測試", () => {
+  it("應該處理網路錯誤", async () => {
+    vi.mocked(supabase.rpc).mockRejectedValue(
+      new Error("Network error")
+    );
+    const result = await getTransactions();
+    expect(result.error).toBeDefined();
+    expect(result.error.message).toContain("Network");
+  });
+
+  it("應該處理未授權錯誤", async () => {
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: null }, error: null
+    });
+    const result = await getMyTransactions();
+    expect(result.error.message).toContain("未登入");
+  });
+
+  it("應該處理資料不存在錯誤", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: null, error: { message: "Not found" }
+    });
+    const result = await getTransactionById("non-existent");
+    expect(result.error).toBeDefined();
+  });
+});
+\end{lstlisting}
+\end{codebox}
+
+
+\newpage
+\section{成果展示與測試報告}
+
+\subsection{完成的功能說明}
+本專案已完成 8 大核心功能模組，並通過完整的 API 測試驗證。以下為功能自我檢查與狀態一覽：
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.3}
+  \begin{longtable}{p{0.05\textwidth} p{0.35\textwidth} p{0.15\textwidth} p{0.25\textwidth}}
+    \rowcolor{NavyBlue} \color{white}\textbf{\#} & \color{white}\textbf{功能模組} & \color{white}\textbf{狀態}                & \color{white}\textbf{備註} \\
+    1                                            & 交易管理 API (Transactions)    & \textcolor{SuccessGreen}{\textbf{Pass}} & 狀態機測試完整                  \\
+    \rowcolor{LightGray} 2                       & 點數系統 API (Points)          & \textcolor{SuccessGreen}{\textbf{Pass}} & BVA 邊界值驗證                \\
+    3                                            & 評價系統 API (Reviews)         & \textcolor{SuccessGreen}{\textbf{Pass}} & 等價類別驗證                   \\
+    \rowcolor{LightGray} 4                       & 訊息系統 API (Conversation)    & \textcolor{SuccessGreen}{\textbf{Pass}} & 即時通訊測試                   \\
+    5                                            & 物品管理 API (Items)           & \textcolor{SuccessGreen}{\textbf{Pass}} & CRUD 完整覆蓋                \\
+    \rowcolor{LightGray} 6                       & 追蹤收藏 API (Follow/Fav)      & \textcolor{SuccessGreen}{\textbf{Pass}} & 關聯性測試                    \\
+    7                                            & 徽章系統 API (Badges)          & \textcolor{SuccessGreen}{\textbf{Pass}} & 規則觸發測試                   \\
+    \rowcolor{LightGray} 8                       & 地點服務 API (Location)        & \textcolor{SuccessGreen}{\textbf{Pass}} & 地理座標驗證                   \\
+  \end{longtable}
+\end{center}
+
+\subsection{執行畫面截圖}
+
+\subsubsection{系統操作畫面 (System Operation)}
+以下展示本平台實際運行之核心功能畫面，包含首頁、地圖、交易流程與個人中心等。
+
+\begin{figure}[H]
+  \centering
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/home.png}
+    \caption{首頁 (Home)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/map.png}
+    \caption{物品地圖搜尋 (Map Search)}
+  \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/item_search.png}
+    \caption{物品列表與搜尋 (Item Search)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/item_detail.png}
+    \caption{物品詳細資訊 (Item Detail)}
+  \end{minipage}
+  \vspace{0.5cm}
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/item_create.png}
+    \caption{物品刊登 (Create Item)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/item_manage.png}
+    \caption{物品管理 (Manage Items)}
+  \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{minipage}{0.31\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/item_transaction.png}
+    \caption{交易流程 (Transaction)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.31\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/chat.png}
+    \caption{即時通訊 (Chat)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.31\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/user_review.png}
+    \caption{用戶評價 (Reviews)}
+  \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/user_profile.png}
+    \caption{個人檔案 (Profile)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/item_favorite.png}
+    \caption{收藏物品 (Favorites)}
+  \end{minipage}
+  \vspace{0.5cm}
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/points_center.png}
+    \caption{點數中心 (Points)}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/screenshot/badges.png}
+    \caption{徽章獎勵 (Badges)}
+  \end{minipage}
+\end{figure}
+
+\subsubsection{測試執行結果 (Test Execution)}
+下圖顯示執行 \texttt{npm run test:api} 指令後的終端機輸出畫面，證明所有測試案例皆順利通過 (Passed)。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/custom/test_exec.png}
+  \caption{API 單元測試執行結果 (All Tests Passed)}
+  \label{fig:test-exec}
+\end{figure}
+
+\subsection{測試與分析報告說明}
+
+\subsubsection{覆蓋率報告 (Jacoco 對應)}
+本專案使用 Vitest Coverage v8 產生與 Jacoco 等效的覆蓋率報告，Branch Coverage 達到 96.16\%，遠超課程要求的 90\%。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/custom/coverage_report.png}
+  \caption{測試覆蓋率報告 (Branch Coverage > 96\%)}
+  \label{fig:coverage-report}
+\end{figure}
+
+\subsubsection{PMD 程式碼審查報告 (ESLint)}
+透郭 ESLint 進行靜態程式碼分析 (Static Code Analysis)，檢測潛在錯誤與風格問題，對應 PMD 的功能。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/custom/eslint_report.png}
+  \caption{ESLint 程式碼審查報告 (Code Quality)}
+  \label{fig:eslint-report}
+\end{figure}
+
+\subsubsection{其他測試報告 (Metrics \& Details)}
+針對複雜邏輯模組（如 \texttt{pointsAPI.js}）的詳細覆蓋情形，或程式碼複雜度 (Metrics) 分析報告。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/custom/metrics_report.png}
+  \caption{程式碼度量/詳細測試分析報告}
+  \label{fig:metrics-report}
+\end{figure}
+
+專案過程中，我們透過測試共發現並修復了 12 個關鍵 Bug。以下為 Bug 類型與修復範例。
+
+\subsection{Bug 修復清單 (完整 12 項)}
+
+\begin{center}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{longtable}{p{0.03\textwidth} p{0.28\textwidth} p{0.16\textwidth} p{0.25\textwidth} p{0.1\textwidth}}
+    \toprule
+    \textbf{\#}             & \textbf{Bug 描述}   & \textbf{發現方法} & \textbf{影響範圍}                   & \textbf{狀態}                   \\
+    \midrule
+    1                       & 點數格式化負數顯示錯誤       & 邊界值測試         & formatPoints.js                 & \textcolor{SuccessGreen}{已修復} \\
+    \rowcolor{LightGray} 2  & 交易狀態更新競爭條件        & 並發測試          & transactionsAPI.js              & \textcolor{SuccessGreen}{已修復} \\
+    3                       & 評分驗證範圍錯誤 (允許 0 分) & 等價類別測試        & create\_review.js               & \textcolor{SuccessGreen}{已修復} \\
+    \rowcolor{LightGray} 4  & 時間格式化時區問題         & 國際化測試         & timeFormat.js                   & \textcolor{SuccessGreen}{已修復} \\
+    5                       & 空字串備註處理異常         & 邊界值測試         & transaction\_before\_meetAPI.js & \textcolor{SuccessGreen}{已修復} \\
+    \rowcolor{LightGray} 6  & 未登入用戶權限檢查缺失       & 安全測試          & 多個 API 模組                       & \textcolor{SuccessGreen}{已修復} \\
+    7                       & 交易取消重複呼叫問題        & 整合測試          & transactionsAPI.js              & \textcolor{SuccessGreen}{已修復} \\
+    \rowcolor{LightGray} 8  & 點數計算浮點數精度         & 數值測試          & pointsAPI.js                    & \textcolor{SuccessGreen}{已修復} \\
+    9                       & 組件 props 類型驗證     & 類型測試          & Vue 組件                          & \textcolor{SuccessGreen}{已修復} \\
+    \rowcolor{LightGray} 10 & API 錯誤訊息未正確傳遞     & 錯誤處理測試        & 多個 API 模組                       & \textcolor{SuccessGreen}{已修復} \\
+    11                      & 訊息已讀狀態同步延遲        & 即時測試          & conversation.js                 & \textcolor{SuccessGreen}{已修復} \\
+    \rowcolor{LightGray} 12 & 搜尋結果分頁錯誤          & 邊界測試          & get\_searchItemsAPI.js          & \textcolor{SuccessGreen}{已修復} \\
+    \bottomrule
+  \end{longtable}
+\end{center}
+
+\subsection{修復案例：評分驗證錯誤}
+
+\textbf{問題描述：} 系統錯誤地允許了「0分」的評價，這違反了 1-5 星的設計原則。
+
+\begin{tcolorbox}[colback=CoralRed!10!white, colframe=CoralRed, title=Before (Bug Code)]
+  \begin{lstlisting}[numbers=none]
+if (rating < 0 || rating > 5) {
+  return { error: "評分必須在 0-5 之間" };
+}
+\end{lstlisting}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=SuccessGreen!10!white, colframe=SuccessGreen, title=After (Fixed Code)]
+  \begin{lstlisting}[numbers=none]
+if (rating < 1 || rating > 5) { // 修正邊界條件
+  return { error: "評分必須在 1-5 之間" };
+}
+\end{lstlisting}
+\end{tcolorbox}
+
+\section{結論與系統驗證}
+
+\subsection{系統要求達成度}
+經過完整的測試與驗證，本專案已達成所有設定的品質指標：
+
+\begin{itemize}[label=\textcolor{SuccessGreen}{$\checkmark$}]
+  \item \textbf{功能數量：} 8 個 (目標 > 5)
+  \item \textbf{程式碼複雜度 (WMC)：} 342 (API層，目標 > 200)
+  \item \textbf{單元測試數量：} 336 (API層) + 424 (其他) = 760
+  \item \textbf{分支覆蓋率：} 96.16\% (目標 > 90\%)
+  \item \textbf{Bug 修復數：} 12 (目標 $\ge$ 10)
+\end{itemize}
+
+\subsection{心得總結}
+本專案啟動時，並未協同測試並行開發，導致回頭進行測試工作時，膨脹的專案令複雜度大為提高，並且難以劃分開發者的責任歸屬。
+
+\begin{itemize}[label=\textcolor{ElectricCyan}{$\blacksquare$}]
+  \item \textbf{TDD 的價值}：先寫測試再寫程式碼能確保功能正確性
+  \item \textbf{覆蓋率迷思}：高覆蓋率不等於高品質，邊界值與錯誤處理更重要
+  \item \textbf{Mock 策略}：統一的 Mock 設定能減少重複程式碼並隔離外部相依性
+  \item \textbf{API 測試價值}：API 是業務邏輯核心，完整測試確保系統穩定
+\end{itemize}
+
+\newpage
+\section{系統說明}
+
+\subsection{專案目錄結構}
+
+\begin{codebox}{專案結構}
+  \begin{lstlisting}[language={}]
+frontend/
+|-- src/
+|   |-- api/           <- 測試重點 (27 模組)
+|   |-- components/    <- Vue 組件
+|   |-- composables/   <- 可重用邏輯
+|   |-- stores/        <- Pinia 狀態管理
+|   '-- views/         <- 頁面組件
+|-- tests/
+|   '-- unit/
+|       '-- api/       <- API 層測試 (336+ 案例)
+|-- reports/           <- 產生的報告
+'-- coverage/          <- 覆蓋率報告
+\end{lstlisting}
+\end{codebox}
+
+\subsection{測試執行指令}
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{p{0.38\textwidth} p{0.5\textwidth}}
+    \toprule
+    \textbf{指令}                                             & \textbf{說明}                    \\
+    \midrule
+    \texttt{npm run test:api}                               & 執行 API 層測試                     \\
+    \rowcolor{LightGray} \texttt{npm run test:api:coverage} & 產生 API 層覆蓋率報告                  \\
+    \texttt{npm run lint:report}                            & 產生 ESLint 程式碼審查報告 (類似 PMD)     \\
+    \rowcolor{LightGray} \texttt{npm run metrics}           & 產生程式碼度量報告 (類似 MetricsReloaded) \\
+    \texttt{npm run report:all}                             & 一次產生所有報告                       \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\subsection{測試報告類型}
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{p{0.18\textwidth} p{0.35\textwidth} p{0.35\textwidth}}
+    \toprule
+    \textbf{報告類型}                   & \textbf{檔案位置}                       & \textbf{說明}        \\
+    \midrule
+    覆蓋率 (HTML)                      & \texttt{coverage/index.html}        & 類似 JaCoCo 報告       \\
+    \rowcolor{LightGray} 覆蓋率 (LCOV) & \texttt{coverage/lcov.info}         & CI/CD 整合用          \\
+    程式碼審查                           & \texttt{reports/eslint-report.html} & 類似 PMD 報告          \\
+    \rowcolor{LightGray} 程式碼度量      & \texttt{reports/code-metrics.html}  & 類似 MetricsReloaded \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\section{其他}
+
+\subsection{團隊分工}
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{p{0.2\textwidth} p{0.45\textwidth} p{0.15\textwidth}}
+    \toprule
+    \textbf{成員}              & \textbf{負責項目} & \textbf{貢獻比例} \\
+    \midrule
+    林政佑                      & 測試架構與設計       & 30\%          \\
+    \rowcolor{LightGray} 陶子中 & 測試案例改善與文件撰寫   & 30\%          \\
+    游程鈞                      & 測試案例改善與簡報撰寫   & 30\%          \\
+    \rowcolor{LightGray} 陳韋翰 & 意見分享與現場演示     & 10\%          \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\subsection{使用工具與 AI 輔助}
+
+\begin{itemize}[label=\textcolor{ElectricCyan}{$\blacksquare$}]
+  \item \textbf{測試框架:} Vitest 4.0.15 (JUnit 對應)
+  \item \textbf{覆蓋率工具:} @vitest/coverage-v8 (JaCoCo 對應)
+  \item \textbf{程式碼審查:} ESLint 9.x (PMD 對應)
+  \item \textbf{程式碼度量:} code-metrics.js (MetricsReloaded 對應)
+  \item \textbf{AI 工具使用：} GitHub Copilot 測試程式碼與審查建議
+\end{itemize}
+
+\end{document}
