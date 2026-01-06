@@ -662,6 +662,35 @@ const ensureProfileLoaded = async () => {
   }
 };
 
+const fetchAllMyItems = async () => {
+  const size = 100;
+  let page = 1;
+  const allItems = [];
+
+  while (true) {
+    const pageItems = await getMyItems({
+      page,
+      size,
+      sort_by: 'created_at',
+      sort_direction: 'asc'
+    });
+
+    if (!pageItems || pageItems.length === 0) {
+      break;
+    }
+
+    allItems.push(...pageItems);
+
+    if (pageItems.length < size) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return allItems;
+};
+
 // Define fetchMyListings FIRST before using it
 const fetchMyListings = async () => {
   if (!authStore.isLoggedIn) {
@@ -674,12 +703,7 @@ const fetchMyListings = async () => {
 
     console.log('🔍 Fetching my items for user:', authStore.user?.id || 'unknown');
 
-    const items = await getMyItems({
-      page: 1,
-      size: 20,
-      sort_by: 'created_at',
-      sort_direction: 'asc'
-    });
+    const items = await fetchAllMyItems();
 
     console.log('📦 Raw API response:', items);
 
