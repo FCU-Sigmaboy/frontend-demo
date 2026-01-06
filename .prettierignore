@@ -1,0 +1,20 @@
+# 建置輸出
+dist/
+build/
+
+# 依賴
+node_modules/
+
+# 套件鎖定檔案
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# 自動產生的檔案
+coverage/
+*.min.js
+*.min.css
+
+# 其他
+.git/
+public/
