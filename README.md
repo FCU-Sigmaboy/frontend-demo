@@ -324,7 +324,8 @@ src/
 frontend-demo/
 ├── .github/                          # GitHub 配置
 │   └── workflows/
-│       └── deploy.yml               # CI/CD 自動部署
+│       ├── ci.yml                   # CI 持續整合（建置驗證）
+│       └── deploy.yml               # CD 自動部署
 ├── .vscode/                         # VS Code 配置
 │   └── extensions.json
 ├── public/                          # 靜態資源
@@ -484,16 +485,43 @@ npm run preview
 
 ## 📦 部署方式
 
-### GitHub Pages 部署
+### CI/CD 配置
 
-本專案使用 GitHub Actions 自動部署到 GitHub Pages。
+本專案使用 GitHub Actions 進行持續整合與部署。
 
-#### 部署流程
+#### Workflow 檔案
+
+- **`ci.yml`** - 持續整合 (CI)：在每次 push 和 pull request 時執行建置驗證
+- **`deploy.yml`** - 持續部署 (CD)：自動部署到 GitHub Pages
+
+#### CI 流程（`ci.yml`）
+
+1. **Checkout** - 取得程式碼
+2. **Setup Node.js** - 設置 Node.js 20 環境
+3. **Install dependencies** - 安裝專案依賴
+4. **Build** - 建置專案驗證程式碼正確性
+
+#### CD 部署流程（`deploy.yml`）
 
 1. **推送程式碼**到 `main`、`master` 或 `vibe` 分支
 2. **GitHub Actions** 自動觸發
 3. **建構專案**（`npm run build`）
 4. **部署到 GitHub Pages**
+
+#### 進階 CI/CD 方案建議
+
+未來可逐步加入以下功能來強化 CI/CD 流程：
+
+| 方案 | 說明 | 安裝指令 |
+|------|------|----------|
+| **ESLint** | 程式碼風格檢查 | `npm install -D eslint @eslint/js eslint-plugin-vue` |
+| **Prettier** | 程式碼格式化 | `npm install -D prettier` |
+| **Vitest** | 單元測試框架 | `npm install -D vitest @vue/test-utils happy-dom` |
+| **Playwright** | E2E 測試 | `npm install -D @playwright/test` |
+| **Codecov** | 程式碼覆蓋率報告 | 在 workflow 中整合 `codecov/codecov-action` |
+| **npm audit** | 安全性掃描 | 內建於 npm，無需額外安裝 |
+
+詳細的進階配置範例請參閱 `.github/workflows/ci.yml` 中的註解。
 
 #### 環境變數設定
 
