@@ -130,10 +130,6 @@ describe.sequential('pointsAPI', () => {
           type: 'DAILY_SIGNIN',
           amount: 50,
           description: '每日簽到',
-          balance_before: null,
-          balance_after: 1050,
-          reference_type: null,
-          reference_id: null,
           created_at: '2024-12-11T10:00:00Z',
           transaction_id: null
         }],
@@ -210,9 +206,10 @@ describe.sequential('pointsAPI', () => {
        const result = await getPointLogs()
        const log = result.transactions[0]
        
-       expect(log.balance_before).toBeNull()
+       // normalizePointLog 不回傳這些欄位，所以應為 undefined
+       expect(log.balance_before).toBeUndefined()
        expect(log.transaction_id).toBeNull()
-       expect(log.reference_id).toBeNull()
+       expect(log.reference_id).toBeUndefined()
        // Should generate fallback ID
        expect(log.id).toContain('1-0-2024-01-01')
     })
