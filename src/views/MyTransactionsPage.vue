@@ -54,6 +54,7 @@
           <FilterTabs
             :filters="roleFilters"
             :items="currentTransactions"
+            :active-filter-id="activeRoleFilterId"
             @update:filteredItems="handleRoleFilterChange"
           />
         </div>
@@ -535,6 +536,11 @@ const roleFilters = computed(() => [
   }
 ]);
 
+const activeRoleFilterId = computed(() => {
+  const match = roleFilters.value.find(filter => filter.filterValue === roleTab.value);
+  return match?.id ?? roleFilters.value[0]?.id ?? 0;
+});
+
 // Computed
 const confirmingTransactions = computed(() => {
   const transactions = transactionStore.allConfirmingTransactions || [];
@@ -575,10 +581,13 @@ const giverTransactions = computed(() => {
 // 顯示的交易列表（使用 FilterTabs 篩選結果）
 const displayTransactions = computed(() => {
   // 如果 FilterTabs 有篩選結果，使用它；否則使用 roleTab 的邏輯
-  if (filteredByRole.value.length > 0 || currentTransactions.value.length > 0) {
-    return filteredByRole.value.length > 0 ? filteredByRole.value : receiverTransactions.value;
+  if (filteredByRole.value.length > 0) {
+    return filteredByRole.value;
   }
-  return [];
+  if (currentTransactions.value.length === 0) {
+    return [];
+  }
+  return roleTab.value === 'giver' ? giverTransactions.value : receiverTransactions.value;
 });
 
 // 分頁相關計算
@@ -632,10 +641,12 @@ const visiblePages = computed(() => {
 // (AppHeader expects numeric userPoints prop; keep userPoints as Number)
 
 // Methods
-const handleRoleFilterChange = (filteredItems) => {
+const handleRoleFilterChange = (filteredItems, activeFilter) => {
   filteredByRole.value = filteredItems;
   // 同步更新 roleTab 以保持狀態一致
-  if (filteredItems.length > 0) {
+  if (activeFilter?.filterValue) {
+    roleTab.value = activeFilter.filterValue;
+  } else if (filteredItems.length > 0) {
     const firstRole = filteredItems[0].role;
     roleTab.value = firstRole;
   }

@@ -46,10 +46,31 @@ const props = defineProps({
     //   sortable?: boolean,             // 是否可切換排序方向，預設 true
     //   color?: string                  // 自訂顏色（支援 hex, rgb, rgba 等）
     // }
+  },
+  activeFilterId: {
+    type: Number,
+    default: null
   }
 });
 
 const emit = defineEmits(['update:sortedItems', 'update:filteredItems']);
+
+const syncActiveFilter = (filters) => {
+  const hasPreferred = props.activeFilterId !== null && props.activeFilterId !== undefined;
+  if (hasPreferred) {
+    const preferredId = props.activeFilterId;
+    if (filters.find(f => f.id === preferredId)) {
+      if (activeFilter.value !== preferredId) {
+        activeFilter.value = preferredId;
+      }
+      return;
+    }
+  }
+
+  if (!filters.find(f => f.id === activeFilter.value)) {
+    activeFilter.value = filters[0]?.id ?? 0;
+  }
+};
 
 // 初始化排序方向
 const initSortOrder = () => {
@@ -61,16 +82,21 @@ const initSortOrder = () => {
 };
 
 // 內部狀態
-const activeFilter = ref(props.filters[0]?.id ?? 0);
+const activeFilter = ref(
+  props.activeFilterId !== null && props.activeFilterId !== undefined
+    ? props.activeFilterId
+    : (props.filters[0]?.id ?? 0)
+);
 const sortOrder = ref(initSortOrder());
 
 // Watch for filters changes and ensure activeFilter is valid
 watch(() => props.filters, (newFilters) => {
-  // If current activeFilter doesn't exist in new filters, reset to first filter
-  if (!newFilters.find(f => f.id === activeFilter.value)) {
-    activeFilter.value = newFilters[0]?.id ?? 0;
-  }
+  syncActiveFilter(newFilters);
 }, { immediate: true });
+
+watch(() => props.activeFilterId, () => {
+  syncActiveFilter(props.filters);
+});
 
 // 處理後的項目（篩選 + 排序）
 const sortedItems = computed(() => {
@@ -179,8 +205,8 @@ const handleClick = (id) => {
   }
 
   // 發送處理後的結果
-  emit('update:sortedItems', sortedItems.value);
-  emit('update:filteredItems', sortedItems.value);
+  emit('update:sortedItems', sortedItems.value, filter);
+  emit('update:filteredItems', sortedItems.value, filter);
 };
 
 const getFilterLabel = (filter) => {
