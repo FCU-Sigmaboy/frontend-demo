@@ -778,7 +778,7 @@ Sprint 1 結束時，預期整體覆蓋率約 0-5%（因為只有 1 個測試檔
 
 Sprint 1 完成後，請繼續：
 
-- **Sprint 2：核心工具函數**（文檔待建立：`ci-cd-plan-2-2.md`）
+- **Sprint 2：核心工具函數**（文檔：[ci-cd-plan-2-2.md](./ci-cd-plan-2-2.md)）
   - 為 `utils/` 目錄撰寫更多測試
   - 目標：utils/ 覆蓋率達 70%+
 
