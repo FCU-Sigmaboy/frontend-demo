@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { nominatimSearch, nominatimReverse } from '@/utils/openStreetMapLoader';
+import { supabase } from '@/lib/supabase'
+import { nominatimSearch, nominatimReverse } from '@/utils/openStreetMapLoader'
 
 // ===================================================================
 // ### 地點 API (Location APIs) - 整合版
@@ -46,17 +46,17 @@ export function getCurrentPosition(options = {}) {
   return new Promise((resolve, reject) => {
     // 檢查瀏覽器是否支援 Geolocation API
     if (!navigator.geolocation) {
-      reject(new Error('瀏覽器不支援地理定位功能'));
-      return;
+      reject(new Error('瀏覽器不支援地理定位功能'))
+      return
     }
 
     const defaultOptions = {
-      enableHighAccuracy: true,  // 使用 GPS 等高精度定位
-      timeout: 10000,            // 10 秒超時
-      maximumAge: 0              // 不使用快取位置
-    };
+      enableHighAccuracy: true, // 使用 GPS 等高精度定位
+      timeout: 10000, // 10 秒超時
+      maximumAge: 0, // 不使用快取位置
+    }
 
-    const geolocationOptions = { ...defaultOptions, ...options };
+    const geolocationOptions = { ...defaultOptions, ...options }
 
     navigator.geolocation.getCurrentPosition(
       // 成功回調
@@ -64,28 +64,28 @@ export function getCurrentPosition(options = {}) {
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        });
+          accuracy: position.coords.accuracy,
+        })
       },
       // 錯誤回調
       (error) => {
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            reject(new Error('用戶拒絕提供位置權限'));
-            break;
+            reject(new Error('用戶拒絕提供位置權限'))
+            break
           case error.POSITION_UNAVAILABLE:
-            reject(new Error('無法取得位置資訊'));
-            break;
+            reject(new Error('無法取得位置資訊'))
+            break
           case error.TIMEOUT:
-            reject(new Error('取得位置逾時，請稍後再試'));
-            break;
+            reject(new Error('取得位置逾時，請稍後再試'))
+            break
           default:
-            reject(new Error('取得位置時發生未知錯誤'));
+            reject(new Error('取得位置時發生未知錯誤'))
         }
       },
       geolocationOptions
-    );
-  });
+    )
+  })
 }
 
 // ===========================================
@@ -108,52 +108,53 @@ export function getCurrentPosition(options = {}) {
 export async function saveLocation({ latitude, longitude, type, is_primary }, userToken) {
   // 參數基本驗證
   if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-    throw new Error('緯度與經度必須為數字');
+    throw new Error('緯度與經度必須為數字')
   }
   if (type !== '家' && type !== '公司') {
-    throw new Error('地點類型僅支援「家」和「公司」');
+    throw new Error('地點類型僅支援「家」和「公司」')
   }
   if (!userToken || typeof userToken !== 'string') {
-    throw new Error('缺少使用者授權 Token');
+    throw new Error('缺少使用者授權 Token')
   }
 
-  const body = { latitude, longitude, type };
-  if (typeof is_primary === 'boolean') body.is_primary = is_primary;
+  const body = { latitude, longitude, type }
+  if (typeof is_primary === 'boolean') body.is_primary = is_primary
 
   try {
     const { data, error } = await supabase.functions.invoke('save-location', {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body)
-    });
+      body: JSON.stringify(body),
+    })
 
     if (error) {
       switch (error) {
         case 400:
-          throw new Error(error || '請求錯誤');
+          throw new Error(error || '請求錯誤')
         case 401:
-          throw new Error(error || '未授權，請重新登入');
+          throw new Error(error || '未授權，請重新登入')
         case 500:
-          throw new Error(error || '伺服器錯誤，請稍後再試');
+          throw new Error(error || '伺服器錯誤，請稍後再試')
         default:
-          throw new Error(error || '未知錯誤');
+          throw new Error(error || '未知錯誤')
       }
     }
 
-    return data;
+    return data
   } catch (error) {
-    if (error.message && (
-      error.message.includes('請求錯誤') ||
-      error.message.includes('未授權') ||
-      error.message.includes('伺服器錯誤') ||
-      error.message.includes('緯度') ||
-      error.message.includes('地點類型') ||
-      error.message.includes('授權 Token')
-    )) {
-      throw error;
+    if (
+      error.message &&
+      (error.message.includes('請求錯誤') ||
+        error.message.includes('未授權') ||
+        error.message.includes('伺服器錯誤') ||
+        error.message.includes('緯度') ||
+        error.message.includes('地點類型') ||
+        error.message.includes('授權 Token'))
+    ) {
+      throw error
     }
-    throw new Error('網路連線失敗，請檢查您的網路');
+    throw new Error('網路連線失敗，請檢查您的網路')
   }
 }
 
@@ -174,21 +175,21 @@ export async function saveUserLocation({
   longitude,
   type = '家',
   is_primary = false,
-  formatted_address = null
+  formatted_address = null,
 }) {
   try {
     // Validate coordinates
     if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-      throw new Error('Invalid latitude: must be between -90 and 90');
+      throw new Error('Invalid latitude: must be between -90 and 90')
     }
 
     if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-      throw new Error('Invalid longitude: must be between -180 and 180');
+      throw new Error('Invalid longitude: must be between -180 and 180')
     }
 
     // Validate type
     if (!['家', '公司'].includes(type)) {
-      throw new Error('Invalid type: must be "家" or "公司"');
+      throw new Error('Invalid type: must be "家" or "公司"')
     }
 
     // Call Edge Function
@@ -198,25 +199,24 @@ export async function saveUserLocation({
         longitude,
         type,
         is_primary,
-        formatted_address
-      }
-    });
+        formatted_address,
+      },
+    })
 
     if (error) {
-      console.error('[saveUserLocation] Edge Function error:', error);
-      throw new Error(error.message || 'Failed to save location');
+      console.error('[saveUserLocation] Edge Function error:', error)
+      throw new Error(error.message || 'Failed to save location')
     }
 
     if (!data || !data.success) {
-      throw new Error(data?.error || 'Failed to save location');
+      throw new Error(data?.error || 'Failed to save location')
     }
 
-    console.log('[saveUserLocation] Location saved successfully:', data.data);
-    return data.data;
-
+    console.log('[saveUserLocation] Location saved successfully:', data.data)
+    return data.data
   } catch (error) {
-    console.error('[saveUserLocation] Error:', error);
-    throw error;
+    console.error('[saveUserLocation] Error:', error)
+    throw error
   }
 }
 
@@ -231,49 +231,49 @@ export async function saveUserLocation({
 export async function saveCurrentLocation(type = '家', isPrimary = false) {
   // Check if geolocation is supported
   if (!navigator.geolocation) {
-    throw new Error('您的瀏覽器不支援定位功能');
+    throw new Error('您的瀏覽器不支援定位功能')
   }
 
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { latitude, longitude } = position.coords;
+          const { latitude, longitude } = position.coords
 
           const location = await saveUserLocation({
             latitude,
             longitude,
             type,
-            is_primary: isPrimary
-          });
+            is_primary: isPrimary,
+          })
 
-          resolve(location);
+          resolve(location)
         } catch (error) {
-          reject(error);
+          reject(error)
         }
       },
       (error) => {
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            reject(new Error('使用者拒絕提供位置'));
-            break;
+            reject(new Error('使用者拒絕提供位置'))
+            break
           case error.POSITION_UNAVAILABLE:
-            reject(new Error('無法取得位置資訊'));
-            break;
+            reject(new Error('無法取得位置資訊'))
+            break
           case error.TIMEOUT:
-            reject(new Error('取得位置逾時'));
-            break;
+            reject(new Error('取得位置逾時'))
+            break
           default:
-            reject(new Error('發生未知錯誤'));
+            reject(new Error('發生未知錯誤'))
         }
       },
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0
+        maximumAge: 0,
       }
-    );
-  });
+    )
+  })
 }
 
 /**
@@ -285,28 +285,30 @@ export async function saveCurrentLocation(type = '家', isPrimary = false) {
  */
 export async function setPrimaryLocation(locationId) {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      throw new Error('User not authenticated');
+      throw new Error('User not authenticated')
     }
 
     const { error } = await supabase
       .from('locations')
       .update({ is_primary: true })
       .eq('id', locationId)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
 
     if (error) {
-      console.error('[setPrimaryLocation] Update failed:', error);
-      throw new Error('Failed to set primary location');
+      console.error('[setPrimaryLocation] Update failed:', error)
+      throw new Error('Failed to set primary location')
     }
 
-    return true;
-
+    return true
   } catch (error) {
-    console.error('[setPrimaryLocation] Error:', error);
-    throw error;
+    console.error('[setPrimaryLocation] Error:', error)
+    throw error
   }
 }
 
@@ -319,28 +321,30 @@ export async function setPrimaryLocation(locationId) {
  */
 export async function deleteUserLocation(locationId) {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      throw new Error('User not authenticated');
+      throw new Error('User not authenticated')
     }
 
     const { error } = await supabase
       .from('locations')
       .delete()
       .eq('id', locationId)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
 
     if (error) {
-      console.error('[deleteUserLocation] Delete failed:', error);
-      throw new Error('Failed to delete location');
+      console.error('[deleteUserLocation] Delete failed:', error)
+      throw new Error('Failed to delete location')
     }
 
-    return true;
-
+    return true
   } catch (error) {
-    console.error('[deleteUserLocation] Error:', error);
-    throw error;
+    console.error('[deleteUserLocation] Error:', error)
+    throw error
   }
 }
 
@@ -356,27 +360,29 @@ export async function deleteUserLocation(locationId) {
  */
 export async function getUserPrimaryLocation() {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      console.error('[getUserPrimaryLocation] User not authenticated:', authError);
-      return null;
+      console.error('[getUserPrimaryLocation] User not authenticated:', authError)
+      return null
     }
 
     const { data, error } = await supabase.rpc('get_user_primary_location', {
-      p_user_id: user.id
-    });
+      p_user_id: user.id,
+    })
 
     if (error) {
-      console.error('[getUserPrimaryLocation] RPC call failed:', error);
-      return null;
+      console.error('[getUserPrimaryLocation] RPC call failed:', error)
+      return null
     }
 
-    return data && data.length > 0 ? data[0] : null;
-
+    return data && data.length > 0 ? data[0] : null
   } catch (error) {
-    console.error('[getUserPrimaryLocation] Unexpected error:', error);
-    return null;
+    console.error('[getUserPrimaryLocation] Unexpected error:', error)
+    return null
   }
 }
 
@@ -386,10 +392,13 @@ export async function getUserPrimaryLocation() {
  * @returns {Promise<Array|null>} 回傳 location 陣列，未登入回傳 null
  */
 export async function getMyLocations() {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.warn('getMyLocations: User not logged in.');
-    return null;
+    console.warn('getMyLocations: User not logged in.')
+    return null
   }
 
   const selectQuery = `
@@ -397,21 +406,21 @@ export async function getMyLocations() {
     coordinates,
     type,
     is_primary
-  `;
+  `
 
   const { data, error } = await supabase
     .from('locations')
     .select(selectQuery)
     .eq('user_id', user.id)
     .order('is_primary', { ascending: false })
-    .order('id', { ascending: true });
+    .order('id', { ascending: true })
 
   if (error) {
-    console.error('Supabase 獲取 "我的地點" 失敗:', error);
-    throw new Error(error.message);
+    console.error('Supabase 獲取 "我的地點" 失敗:', error)
+    throw new Error(error.message)
   }
 
-  return data;
+  return data
 }
 
 // ===========================================
@@ -429,20 +438,20 @@ export async function geocodeAddress(address) {
     const results = await nominatimSearch(address, {
       limit: 10,
       countrycodes: 'tw',
-      'accept-language': 'zh-TW'
-    });
+      'accept-language': 'zh-TW',
+    })
 
-    return results.map(result => ({
+    return results.map((result) => ({
       latitude: parseFloat(result.lat),
       longitude: parseFloat(result.lon),
       formatted_address: result.display_name,
       place_id: result.place_id,
       type: result.type,
-      address_components: result.address
-    }));
+      address_components: result.address,
+    }))
   } catch (error) {
-    console.error('[NominatimAPI] Geocoding failed:', error);
-    throw new Error('地址搜索失敗');
+    console.error('[NominatimAPI] Geocoding failed:', error)
+    throw new Error('地址搜索失敗')
   }
 }
 
@@ -455,18 +464,18 @@ export async function geocodeAddress(address) {
  */
 export async function reverseGeocode(latitude, longitude) {
   try {
-    const result = await nominatimReverse(latitude, longitude);
+    const result = await nominatimReverse(latitude, longitude)
 
     return {
       latitude,
       longitude,
       formatted_address: result.display_name,
       place_id: result.place_id,
-      address_components: result.address
-    };
+      address_components: result.address,
+    }
   } catch (error) {
-    console.error('[NominatimAPI] Reverse geocoding failed:', error);
-    throw new Error('位置查詢失敗');
+    console.error('[NominatimAPI] Reverse geocoding failed:', error)
+    throw new Error('位置查詢失敗')
   }
 }
 
@@ -478,24 +487,24 @@ export async function reverseGeocode(latitude, longitude) {
  */
 export async function autocomplete(query) {
   if (!query || query.length < 3) {
-    return [];
+    return []
   }
 
   try {
     const results = await nominatimSearch(query, {
       limit: 5,
       countrycodes: 'tw',
-      'accept-language': 'zh-TW'
-    });
+      'accept-language': 'zh-TW',
+    })
 
-    return results.map(result => ({
+    return results.map((result) => ({
       label: result.display_name,
       value: result.place_id,
       latitude: parseFloat(result.lat),
-      longitude: parseFloat(result.lon)
-    }));
+      longitude: parseFloat(result.lon),
+    }))
   } catch (error) {
-    console.error('[NominatimAPI] Autocomplete failed:', error);
-    return [];
+    console.error('[NominatimAPI] Autocomplete failed:', error)
+    return []
   }
 }

@@ -5,114 +5,116 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
-import { useTransactionStore } from '@/stores/transaction'
-import { useAuthStore } from '@/stores/auth'
+  import { onMounted, onUnmounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { useTransactionStore } from '@/stores/transaction'
+  import { useAuthStore } from '@/stores/auth'
 
-const transactionStore = useTransactionStore()
-const authStore = useAuthStore()
+  const router = useRouter()
+  const transactionStore = useTransactionStore()
+  const authStore = useAuthStore()
 
-// 设置实时更新的回调函数
-onMounted(() => {
-  // 确保用户已登录后启动实时监听
-  if (authStore.isLoggedIn && authStore.userId) {
-    // 设置事件回调
-    transactionStore.setRealtimeCallbacks({
-      // 收到新交易请求（作为卖家）
-      onTransactionReceived: (transaction) => {
-        console.log('收到新交易请求！', transaction)
+  // 设置实时更新的回调函数
+  onMounted(() => {
+    // 确保用户已登录后启动实时监听
+    if (authStore.isLoggedIn && authStore.userId) {
+      // 设置事件回调
+      transactionStore.setRealtimeCallbacks({
+        // 收到新交易请求（作为卖家）
+        onTransactionReceived: (transaction) => {
+          console.log('收到新交易请求！', transaction)
 
-        // 可以显示通知
-        showNotification({
-          title: '新交易请求',
-          message: `有人想购买您的商品：${transaction.item?.title || '商品'}`,
-          type: 'info',
-          action: {
-            label: '查看',
-            onClick: () => {
-              // 跳转到交易页面
-              router.push({ name: 'TransactionRecords' })
-            }
-          }
-        })
-      },
+          // 可以显示通知
+          showNotification({
+            title: '新交易请求',
+            message: `有人想购买您的商品：${transaction.item?.title || '商品'}`,
+            type: 'info',
+            action: {
+              label: '查看',
+              onClick: () => {
+                // 跳转到交易页面
+                router.push({ name: 'TransactionRecords' })
+              },
+            },
+          })
+        },
 
-      // 交易被接受（作为买家）
-      onTransactionAccepted: (transaction) => {
-        console.log('交易被接受！', transaction)
+        // 交易被接受（作为买家）
+        onTransactionAccepted: (transaction) => {
+          console.log('交易被接受！', transaction)
 
-        showNotification({
-          title: '交易已接受',
-          message: '卖家已接受您的交易请求，请前往完成交易',
-          type: 'success',
-          action: {
-            label: '查看详情',
-            onClick: () => {
-              router.push({
-                name: 'TransactionRecords'
-              })
-            }
-          }
-        })
-      },
+          showNotification({
+            title: '交易已接受',
+            message: '卖家已接受您的交易请求，请前往完成交易',
+            type: 'success',
+            action: {
+              label: '查看详情',
+              onClick: () => {
+                router.push({
+                  name: 'TransactionRecords',
+                })
+              },
+            },
+          })
+        },
 
-      // 交易完成
-      onTransactionCompleted: (transaction) => {
-        console.log('交易完成！', transaction)
+        // 交易完成
+        onTransactionCompleted: (transaction) => {
+          console.log('交易完成！', transaction)
 
-        showNotification({
-          title: '交易完成',
-          message: '恭喜！交易已成功完成',
-          type: 'success'
-        })
-      },
+          showNotification({
+            title: '交易完成',
+            message: '恭喜！交易已成功完成',
+            type: 'success',
+          })
+        },
 
-      // 交易被拒绝（作为买家）
-      onTransactionRejected: (transaction) => {
-        console.log('交易被拒绝', transaction)
+        // 交易被拒绝（作为买家）
+        onTransactionRejected: (transaction) => {
+          console.log('交易被拒绝', transaction)
 
-        showNotification({
-          title: '交易被拒绝',
-          message: '很抱歉，卖家拒绝了您的交易请求',
-          type: 'warning'
-        })
-      },
+          showNotification({
+            title: '交易被拒绝',
+            message: '很抱歉，卖家拒绝了您的交易请求',
+            type: 'warning',
+          })
+        },
 
-      // 交易被取消
-      onTransactionCancelled: (transaction) => {
-        console.log('交易被取消', transaction)
+        // 交易被取消
+        onTransactionCancelled: (transaction) => {
+          console.log('交易被取消', transaction)
 
-        showNotification({
-          title: '交易已取消',
-          message: '交易已被取消',
-          type: 'info'
-        })
-      }
-    })
+          showNotification({
+            title: '交易已取消',
+            message: '交易已被取消',
+            type: 'info',
+          })
+        },
+      })
 
-    // 启动实时监听
-    transactionStore.startRealtime(authStore.userId)
+      // 启动实时监听
+      transactionStore.startRealtime(authStore.userId)
+    }
+  })
+
+  // 组件卸载时停止监听
+  onUnmounted(() => {
+    transactionStore.stopRealtime()
+  })
+
+  // 示例通知函数（需要根据实际通知系统实现）
+  function showNotification(options) {
+    // 可以使用 toast 库、浏览器通知 API 等
+    console.log('Notification:', options)
+
+    // 示例：使用浏览器通知 API
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(options.title, {
+        body: options.message,
+        icon: '/logo.png',
+      })
+    }
   }
-})
-
-// 组件卸载时停止监听
-onUnmounted(() => {
-  transactionStore.stopRealtime()
-})
-
-// 示例通知函数（需要根据实际通知系统实现）
-function showNotification(options) {
-  // 可以使用 toast 库、浏览器通知 API 等
-  console.log('Notification:', options)
-
-  // 示例：使用浏览器通知 API
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(options.title, {
-      body: options.message,
-      icon: '/logo.png'
-    })
-  }
-}
 </script>
 
 <!--

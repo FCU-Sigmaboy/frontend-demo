@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'; // 假設您已在 @/lib/supabase.js 初始化
+import { supabase } from '@/lib/supabase' // 假設您已在 @/lib/supabase.js 初始化
 
 // ===================================================================
 // ### 獲取分類 API (Category APIs)
@@ -11,11 +11,10 @@ import { supabase } from '@/lib/supabase'; // 假設您已在 @/lib/supabase.js 
  * @returns {Promise<Array>}
  */
 export async function getAllCategories() {
-
-    // 1. 這是您的 DTO。
-    //    我們查詢 'main_categories'，並要求它同時抓取
-    //    所有關聯的 'sub_categories' (欄位名稱必須與資料表名稱匹配)
-    const selectQuery = `
+  // 1. 這是您的 DTO。
+  //    我們查詢 'main_categories'，並要求它同時抓取
+  //    所有關聯的 'sub_categories' (欄位名稱必須與資料表名稱匹配)
+  const selectQuery = `
     id,
     name,
     icon,
@@ -25,26 +24,26 @@ export async function getAllCategories() {
       name,
       default_carbon_value
     )
-  `;
+  `
 
-    // 2. 建立查詢
-    const { data, error } = await supabase
-        .from('main_categories')
-        .select(selectQuery)
-        .order('id', { ascending: true }) // 排序主分類
-        .order('id', { foreignTable: 'sub_categories', ascending: true }); // 排序子分類
+  // 2. 建立查詢
+  const { data, error } = await supabase
+    .from('main_categories')
+    .select(selectQuery)
+    .order('id', { ascending: true }) // 排序主分類
+    .order('id', { foreignTable: 'sub_categories', ascending: true }) // 排序子分類
 
-    // 3. 錯誤處理
-    if (error) {
-        console.error('Supabase 獲取分類失敗:', error);
-        throw new Error(error.message);
-    }
-    
-    // 4. data 本身就是您需要的巢狀 JSON 陣列，直接回傳
-    return data;
+  // 3. 錯誤處理
+  if (error) {
+    console.error('Supabase 獲取分類失敗:', error)
+    throw new Error(error.message)
+  }
+
+  // 4. data 本身就是您需要的巢狀 JSON 陣列，直接回傳
+  return data
 }
 
-// data 範例 
+// data 範例
 
 // [
 //   {

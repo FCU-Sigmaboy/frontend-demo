@@ -292,411 +292,411 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import AppHeader from '../components/AppHeader.vue';
-import AppFooter from '../components/AppFooter.vue';
+  import { ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { useAuthStore } from '../stores/auth'
+  import AppHeader from '../components/AppHeader.vue'
+  import AppFooter from '../components/AppFooter.vue'
 
-const router = useRouter();
-const authStore = useAuthStore();
+  const router = useRouter()
+  const authStore = useAuthStore()
 
-// State
-const userPoints = ref(0);
+  // State
+  const userPoints = ref(0)
 
-const settings = ref({
-  profilePublic: true,
-  showLocation: true,
-  showOnlineStatus: true,
-  pushNotifications: true,
-  emailNotifications: true,
-  messageNotifications: true,
-  promotionNotifications: false
-});
+  const settings = ref({
+    profilePublic: true,
+    showLocation: true,
+    showOnlineStatus: true,
+    pushNotifications: true,
+    emailNotifications: true,
+    messageNotifications: true,
+    promotionNotifications: false,
+  })
 
-// Methods
-const goBack = () => {
-  router.back();
-};
-
-const goToEditProfile = () => {
-  router.push({ name: 'EditProfile' });
-};
-
-const goToHelp = () => {
-  router.push({ name: 'FAQ' });
-};
-
-const goToAbout = () => {
-  router.push({ name: 'About' });
-};
-
-const goToTerms = () => {
-  router.push({ name: 'Terms' });
-};
-
-const handleLogout = async () => {
-  if (confirm('確定要登出嗎？')) {
-    await authStore.signOut();
-    router.push({ name: 'Home' });
+  // Methods
+  const goBack = () => {
+    router.back()
   }
-};
 
-const handleDeleteAccount = () => {
-  if (confirm('警告：刪除帳號後將無法復原，確定要刪除嗎？')) {
-    if (confirm('再次確認：這將永久刪除你的所有資料')) {
-      // Implement account deletion
-      console.log('Delete account');
+  const goToEditProfile = () => {
+    router.push({ name: 'EditProfile' })
+  }
+
+  const goToHelp = () => {
+    router.push({ name: 'FAQ' })
+  }
+
+  const goToAbout = () => {
+    router.push({ name: 'About' })
+  }
+
+  const goToTerms = () => {
+    router.push({ name: 'Terms' })
+  }
+
+  const handleLogout = async () => {
+    if (confirm('確定要登出嗎？')) {
+      await authStore.signOut()
+      router.push({ name: 'Home' })
     }
   }
-};
+
+  const handleDeleteAccount = () => {
+    if (confirm('警告：刪除帳號後將無法復原，確定要刪除嗎？')) {
+      if (confirm('再次確認：這將永久刪除你的所有資料')) {
+        // Implement account deletion
+        console.log('Delete account')
+      }
+    }
+  }
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.account-settings-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f9f9f9;
-}
-
-.main-content {
-  flex: 1;
-  padding: 30px 0 60px;
-}
-
-.settings-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-// Page Header
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 30px;
-
-  .back-btn {
+  .account-settings-page {
+    min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: white;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-
-    i {
-      font-size: 20px;
-      color: #1e1e1e;
-    }
-
-    &:hover {
-      background: #f5f5f5;
-      transform: translateX(-3px);
-    }
+    flex-direction: column;
+    background-color: #f9f9f9;
   }
 
-  .page-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: #1e1e1e;
-    margin: 0;
-  }
-
-  .spacer {
-    width: 40px;
-  }
-}
-
-// Settings Content
-.settings-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-// Settings Section
-.settings-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-
-  &.danger-section {
-    border: 1px solid #ffebee;
-  }
-
-  .section-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0 0 16px 0;
-  }
-}
-
-// Settings List
-.settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: left;
-  width: 100%;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:not(.disabled):hover {
-    background: #f9f9f9;
-    padding-left: 12px;
-    padding-right: 12px;
-    margin-left: -12px;
-    margin-right: -12px;
-    border-radius: 8px;
-  }
-
-  &.disabled {
-    cursor: default;
-    opacity: 0.8;
-  }
-
-  &.danger-item {
-    .item-left {
-      i,
-      .item-label {
-        color: #dc3545;
-      }
-    }
-
-    &:hover {
-      background: #fff5f5;
-    }
-  }
-
-  .item-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex: 1;
-
-    i {
-      font-size: 22px;
-      color: $primary;
-      width: 24px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-
-    .item-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-
-      .item-label {
-        font-family: 'Noto Sans TC', sans-serif;
-        font-size: 15px;
-        font-weight: 500;
-        color: #1e1e1e;
-      }
-
-      .item-desc {
-        font-family: 'Noto Sans TC', sans-serif;
-        font-size: 13px;
-        color: #999;
-      }
-    }
-  }
-
-  > i.bi-chevron-right {
-    font-size: 16px;
-    color: #d0d0d0;
-    flex-shrink: 0;
-  }
-}
-
-// Badge Verified
-.badge-verified {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: #e8f5f3;
-  border-radius: 6px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: $primary;
-
-  i {
-    font-size: 14px;
-  }
-}
-
-// Toggle Switch
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 26px;
-  flex-shrink: 0;
-
-  input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-
-    &:checked + .slider {
-      background-color: $primary;
-
-      &:before {
-        transform: translateX(22px);
-      }
-    }
-  }
-
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #d0d0d0;
-    transition: all 0.3s;
-    border-radius: 13px;
-
-    &:before {
-      position: absolute;
-      content: '';
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: all 0.3s;
-      border-radius: 50%;
-    }
-  }
-}
-
-// App Version
-.app-version {
-  padding: 20px;
-  text-align: center;
-
-  p {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 13px;
-    color: #999;
-    margin: 0;
-  }
-}
-
-// Responsive
-@media (max-width: 767.98px) {
   .main-content {
-    padding: 20px 0 50px;
+    flex: 1;
+    padding: 30px 0 60px;
   }
 
   .settings-container {
-    padding: 0 15px;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 20px;
   }
 
+  // Page Header
   .page-header {
-    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 30px;
 
-    .page-title {
-      font-size: 24px;
-    }
-  }
-
-  .settings-section {
-    padding: 20px;
-
-    .section-title {
-      font-size: 16px;
-    }
-  }
-
-  .setting-item {
-    .item-left {
-      gap: 12px;
+    .back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 
       i {
         font-size: 20px;
+        color: #1e1e1e;
       }
 
-      .item-info {
-        .item-label {
-          font-size: 14px;
-        }
-
-        .item-desc {
-          font-size: 12px;
-        }
+      &:hover {
+        background: #f5f5f5;
+        transform: translateX(-3px);
       }
     }
-  }
-}
-
-@media (max-width: 575.98px) {
-  .main-content {
-    padding: 15px 0 40px;
-  }
-
-  .settings-container {
-    padding: 0 10px;
-  }
-
-  .page-header {
-    margin-bottom: 16px;
 
     .page-title {
-      font-size: 20px;
-    }
-
-    .back-btn {
-      width: 36px;
-      height: 36px;
-
-      i {
-        font-size: 18px;
-      }
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e1e1e;
+      margin: 0;
     }
 
     .spacer {
-      width: 36px;
+      width: 40px;
     }
   }
 
+  // Settings Content
   .settings-content {
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
   }
 
+  // Settings Section
   .settings-section {
-    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    &.danger-section {
+      border: 1px solid #ffebee;
+    }
+
+    .section-title {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin: 0 0 16px 0;
+    }
   }
-}
+
+  // Settings List
+  .settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+    width: 100%;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:not(.disabled):hover {
+      background: #f9f9f9;
+      padding-left: 12px;
+      padding-right: 12px;
+      margin-left: -12px;
+      margin-right: -12px;
+      border-radius: 8px;
+    }
+
+    &.disabled {
+      cursor: default;
+      opacity: 0.8;
+    }
+
+    &.danger-item {
+      .item-left {
+        i,
+        .item-label {
+          color: #dc3545;
+        }
+      }
+
+      &:hover {
+        background: #fff5f5;
+      }
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+
+      i {
+        font-size: 22px;
+        color: $primary;
+        width: 24px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .item-label {
+          font-family: 'Noto Sans TC', sans-serif;
+          font-size: 15px;
+          font-weight: 500;
+          color: #1e1e1e;
+        }
+
+        .item-desc {
+          font-family: 'Noto Sans TC', sans-serif;
+          font-size: 13px;
+          color: #999;
+        }
+      }
+    }
+
+    > i.bi-chevron-right {
+      font-size: 16px;
+      color: #d0d0d0;
+      flex-shrink: 0;
+    }
+  }
+
+  // Badge Verified
+  .badge-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #e8f5f3;
+    border-radius: 6px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: $primary;
+
+    i {
+      font-size: 14px;
+    }
+  }
+
+  // Toggle Switch
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+
+      &:checked + .slider {
+        background-color: $primary;
+
+        &:before {
+          transform: translateX(22px);
+        }
+      }
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #d0d0d0;
+      transition: all 0.3s;
+      border-radius: 13px;
+
+      &:before {
+        position: absolute;
+        content: '';
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: all 0.3s;
+        border-radius: 50%;
+      }
+    }
+  }
+
+  // App Version
+  .app-version {
+    padding: 20px;
+    text-align: center;
+
+    p {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 13px;
+      color: #999;
+      margin: 0;
+    }
+  }
+
+  // Responsive
+  @media (max-width: 767.98px) {
+    .main-content {
+      padding: 20px 0 50px;
+    }
+
+    .settings-container {
+      padding: 0 15px;
+    }
+
+    .page-header {
+      margin-bottom: 20px;
+
+      .page-title {
+        font-size: 24px;
+      }
+    }
+
+    .settings-section {
+      padding: 20px;
+
+      .section-title {
+        font-size: 16px;
+      }
+    }
+
+    .setting-item {
+      .item-left {
+        gap: 12px;
+
+        i {
+          font-size: 20px;
+        }
+
+        .item-info {
+          .item-label {
+            font-size: 14px;
+          }
+
+          .item-desc {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .main-content {
+      padding: 15px 0 40px;
+    }
+
+    .settings-container {
+      padding: 0 10px;
+    }
+
+    .page-header {
+      margin-bottom: 16px;
+
+      .page-title {
+        font-size: 20px;
+      }
+
+      .back-btn {
+        width: 36px;
+        height: 36px;
+
+        i {
+          font-size: 18px;
+        }
+      }
+
+      .spacer {
+        width: 36px;
+      }
+    }
+
+    .settings-content {
+      gap: 16px;
+    }
+
+    .settings-section {
+      padding: 16px;
+    }
+  }
 </style>

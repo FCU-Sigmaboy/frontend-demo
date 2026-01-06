@@ -60,7 +60,7 @@ export const useReviewStore = defineStore('review', () => {
     console.log('[ReviewStore] fetchReviews called', {
       forceRefresh,
       hasFreshData: hasFreshData.value,
-      lastFetch: lastFetchTime.value
+      lastFetch: lastFetchTime.value,
     })
 
     // Use cache if available and fresh
@@ -82,13 +82,13 @@ export const useReviewStore = defineStore('review', () => {
       page: 1,
       pageSize: 100,
       sortBy: 'created_at',
-      sortDirection: 'desc'
+      sortDirection: 'desc',
     })
       .then((data) => {
         console.log('[ReviewStore] Reviews fetched', { count: data.length })
 
         // Transform API data to UI format
-        reviews.value = data.map(review => ({
+        reviews.value = data.map((review) => ({
           id: review.review_id,
           review_id: review.review_id,
           reviewer_id: review.reviewer_id,
@@ -101,7 +101,7 @@ export const useReviewStore = defineStore('review', () => {
           transaction_id: review.transaction_id,
           item_id: review.item_id,
           item_title: review.item_title,
-          item_image: review.item_image || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
+          item_image: review.item_image || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item',
         }))
 
         lastFetchTime.value = Date.now()
@@ -158,7 +158,7 @@ export const useReviewStore = defineStore('review', () => {
       console.error('[ReviewStore] Failed to check review permission:', err)
       return {
         canReview: false,
-        reason: '系統錯誤'
+        reason: '系統錯誤',
       }
     }
   }
@@ -167,21 +167,21 @@ export const useReviewStore = defineStore('review', () => {
    * Get review by ID
    */
   function getReviewById(reviewId) {
-    return reviews.value.find(r => r.review_id === reviewId) || null
+    return reviews.value.find((r) => r.review_id === reviewId) || null
   }
 
   /**
    * Get reviews for a specific transaction
    */
   function getReviewsByTransaction(transactionId) {
-    return reviews.value.filter(r => r.transaction_id === transactionId)
+    return reviews.value.filter((r) => r.transaction_id === transactionId)
   }
 
   /**
    * Get reviews by reviewer
    */
   function getReviewsByReviewer(reviewerId) {
-    return reviews.value.filter(r => r.reviewer_id === reviewerId)
+    return reviews.value.filter((r) => r.reviewer_id === reviewerId)
   }
 
   /**
@@ -203,10 +203,10 @@ export const useReviewStore = defineStore('review', () => {
       4: [],
       3: [],
       2: [],
-      1: []
+      1: [],
     }
 
-    reviews.value.forEach(review => {
+    reviews.value.forEach((review) => {
       if (grouped[review.score]) {
         grouped[review.score].push(review)
       }
@@ -221,7 +221,7 @@ export const useReviewStore = defineStore('review', () => {
   const ratingDistribution = computed(() => {
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
 
-    reviews.value.forEach(review => {
+    reviews.value.forEach((review) => {
       if (distribution[review.score] !== undefined) {
         distribution[review.score]++
       }
@@ -251,6 +251,6 @@ export const useReviewStore = defineStore('review', () => {
     getReviewById,
     getReviewsByTransaction,
     getReviewsByReviewer,
-    clearAll
+    clearAll,
   }
 })

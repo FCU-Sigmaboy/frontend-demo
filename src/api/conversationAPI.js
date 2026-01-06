@@ -3,7 +3,7 @@
  * 支援去角色化設計和多商品對話
  */
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from '@/lib/supabase'
 
 /**
  * 建立或取得對話
@@ -22,17 +22,14 @@ import { supabase } from "@/lib/supabase";
  * //   current_user_is_participant_1: false
  * // }
  */
-export async function createOrGetConversation(
-  otherUserId,
-  initialItemId = null,
-) {
-  const { data, error } = await supabase.rpc("create_or_get_conversation_v2", {
+export async function createOrGetConversation(otherUserId, initialItemId = null) {
+  const { data, error } = await supabase.rpc('create_or_get_conversation_v2', {
     p_other_user_id: otherUserId,
     p_initial_item_id: initialItemId,
-  });
+  })
 
-  if (error) throw error;
-  return data[0];
+  if (error) throw error
+  return data[0]
 }
 
 /**
@@ -58,18 +55,18 @@ export async function createOrGetConversation(
 export async function sendMessage(
   conversationId,
   content,
-  messageType = "text",
-  relatedItemId = null,
+  messageType = 'text',
+  relatedItemId = null
 ) {
-  const { data, error } = await supabase.rpc("send_message_v2", {
+  const { data, error } = await supabase.rpc('send_message_v2', {
     p_conversation_id: conversationId,
     p_content: content,
     p_message_type: messageType,
     p_related_item_id: relatedItemId,
-  });
+  })
 
-  if (error) throw error;
-  return data[0];
+  if (error) throw error
+  return data[0]
 }
 
 /**
@@ -97,19 +94,15 @@ export async function sendMessage(
  * //   }
  * // ]
  */
-export async function getConversations(
-  page = 1,
-  size = 20,
-  includeArchived = false,
-) {
-  const { data, error } = await supabase.rpc("get_user_conversations_v2", {
+export async function getConversations(page = 1, size = 20, includeArchived = false) {
+  const { data, error } = await supabase.rpc('get_user_conversations_v2', {
     p_page: page,
     p_size: size,
     p_include_archived: includeArchived,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -139,15 +132,15 @@ export async function getConversations(
  * // ]
  */
 export async function getMessages(conversationId, page = 1, size = 50) {
-  const { data, error } = await supabase.rpc("get_conversation_messages_v2", {
+  const { data, error } = await supabase.rpc('get_conversation_messages_v2', {
     p_conversation_id: conversationId,
     p_page: page,
     p_size: size,
     p_include_deleted: false,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -161,13 +154,13 @@ export async function getMessages(conversationId, page = 1, size = 50) {
  * // 5 (更新了 5 則訊息)
  */
 export async function markAsRead(conversationId, upToMessageId = null) {
-  const { data, error } = await supabase.rpc("mark_messages_as_read_v2", {
+  const { data, error } = await supabase.rpc('mark_messages_as_read_v2', {
     p_conversation_id: conversationId,
     p_up_to_message_id: upToMessageId,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -192,12 +185,12 @@ export async function markAsRead(conversationId, upToMessageId = null) {
  * // ]
  */
 export async function getConversationItems(conversationId) {
-  const { data, error } = await supabase.rpc("get_conversation_items_v2", {
+  const { data, error } = await supabase.rpc('get_conversation_items_v2', {
     p_conversation_id: conversationId,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -211,13 +204,13 @@ export async function getConversationItems(conversationId) {
  * await archiveConversation(456, false); // 取消歸檔
  */
 export async function archiveConversation(conversationId, archived = true) {
-  const { data, error } = await supabase.rpc("toggle_conversation_archive_v2", {
+  const { data, error } = await supabase.rpc('toggle_conversation_archive_v2', {
     p_conversation_id: conversationId,
     p_archived: archived,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -239,39 +232,43 @@ export async function archiveConversation(conversationId, archived = true) {
  * 如果你的資料庫使用舊表名，可以指定：
  * subscribeToMessages(456, callback, 'conversation_messages')
  */
-export function subscribeToMessages(conversationId, callback, tableName = 'conversation_messages_v2') {
-  const channelName = `conversation_v2_${conversationId}`;
+export function subscribeToMessages(
+  conversationId,
+  callback,
+  tableName = 'conversation_messages_v2'
+) {
+  const channelName = `conversation_v2_${conversationId}`
 
-  const channel = supabase.channel(channelName);
+  const channel = supabase.channel(channelName)
 
   channel.on(
-    "postgres_changes",
+    'postgres_changes',
     {
-      event: "INSERT",
-      schema: "public",
+      event: 'INSERT',
+      schema: 'public',
       table: tableName,
       filter: `conversation_id=eq.${conversationId}`,
     },
     (payload) => {
-      console.log(`[Realtime] 收到新訊息 (對話 #${conversationId}):`, payload.new);
-      callback(payload.new);
+      console.log(`[Realtime] 收到新訊息 (對話 #${conversationId}):`, payload.new)
+      callback(payload.new)
     }
-  );
+  )
 
   // 開始訂閱並加入狀態監聽
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
-      console.log(`[Realtime] 已訂閱對話 #${conversationId} 的訊息更新 (表: ${tableName})`);
+      console.log(`[Realtime] 已訂閱對話 #${conversationId} 的訊息更新 (表: ${tableName})`)
     } else if (status === 'CHANNEL_ERROR') {
-      console.error(`[Realtime] 訂閱對話 #${conversationId} 失敗 (表: ${tableName})`);
+      console.error(`[Realtime] 訂閱對話 #${conversationId} 失敗 (表: ${tableName})`)
     } else if (status === 'TIMED_OUT') {
-      console.warn(`[Realtime] 訂閱對話 #${conversationId} 逾時`);
+      console.warn(`[Realtime] 訂閱對話 #${conversationId} 逾時`)
     } else if (status === 'CLOSED') {
-      console.log(`[Realtime] 對話 #${conversationId} 訂閱已關閉`);
+      console.log(`[Realtime] 對話 #${conversationId} 訂閱已關閉`)
     }
-  });
+  })
 
-  return channel;
+  return channel
 }
 
 /**
@@ -290,44 +287,44 @@ export function subscribeToMessages(conversationId, callback, tableName = 'conve
  * subscription.unsubscribe();
  */
 export function subscribeToMessageUpdates(onUpdate, tableName = 'conversation_messages_v2') {
-  const channelName = `message_updates`;
+  const channelName = `message_updates`
 
   const channel = supabase.channel(channelName, {
     config: {
       broadcast: { self: true },
-      presence: { key: '' }
-    }
-  });
+      presence: { key: '' },
+    },
+  })
 
   channel.on(
-    "postgres_changes",
+    'postgres_changes',
     {
-      event: "UPDATE",
-      schema: "public",
+      event: 'UPDATE',
+      schema: 'public',
       table: tableName,
     },
     (payload) => {
-      console.log(`[Realtime] 訊息更新 (完整數據):`, payload);
-      console.log(`[Realtime] payload.new:`, payload.new);
-      console.log(`[Realtime] payload.old:`, payload.old);
-      onUpdate(payload.new);
+      console.log(`[Realtime] 訊息更新 (完整數據):`, payload)
+      console.log(`[Realtime] payload.new:`, payload.new)
+      console.log(`[Realtime] payload.old:`, payload.old)
+      onUpdate(payload.new)
     }
-  );
+  )
 
   // 開始訂閱並加入狀態監聽
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
-      console.log(`[Realtime] 已訂閱訊息更新 (表: ${tableName})`);
+      console.log(`[Realtime] 已訂閱訊息更新 (表: ${tableName})`)
     } else if (status === 'CHANNEL_ERROR') {
-      console.error(`[Realtime] 訂閱訊息更新失敗 (表: ${tableName})`);
+      console.error(`[Realtime] 訂閱訊息更新失敗 (表: ${tableName})`)
     } else if (status === 'TIMED_OUT') {
-      console.warn(`[Realtime] 訂閱訊息更新逾時`);
+      console.warn(`[Realtime] 訂閱訊息更新逾時`)
     } else if (status === 'CLOSED') {
-      console.log(`[Realtime] 訊息更新訂閱已關閉`);
+      console.log(`[Realtime] 訊息更新訂閱已關閉`)
     }
-  });
+  })
 
-  return channel;
+  return channel
 }
 
 /**
@@ -345,37 +342,37 @@ export function subscribeToMessageUpdates(onUpdate, tableName = 'conversation_me
  * subscription.unsubscribe();
  */
 export function subscribeToAllMessages(callback, tableName = 'conversation_messages_v2') {
-  const channelName = `all_conversations`;
+  const channelName = `all_conversations`
 
-  const channel = supabase.channel(channelName);
+  const channel = supabase.channel(channelName)
 
   channel.on(
-    "postgres_changes",
+    'postgres_changes',
     {
-      event: "INSERT",
-      schema: "public",
+      event: 'INSERT',
+      schema: 'public',
       table: tableName,
     },
     (payload) => {
-      console.log(`[Realtime] 收到新訊息 (對話 #${payload.new.conversation_id}):`, payload.new);
-      callback(payload.new);
+      console.log(`[Realtime] 收到新訊息 (對話 #${payload.new.conversation_id}):`, payload.new)
+      callback(payload.new)
     }
-  );
+  )
 
   // 開始訂閱並加入狀態監聽
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
-      console.log(`[Realtime] 已訂閱所有對話的訊息更新 (表: ${tableName})`);
+      console.log(`[Realtime] 已訂閱所有對話的訊息更新 (表: ${tableName})`)
     } else if (status === 'CHANNEL_ERROR') {
-      console.error(`[Realtime] 訂閱所有對話失敗 (表: ${tableName})`);
+      console.error(`[Realtime] 訂閱所有對話失敗 (表: ${tableName})`)
     } else if (status === 'TIMED_OUT') {
-      console.warn(`[Realtime] 訂閱逾時`);
+      console.warn(`[Realtime] 訂閱逾時`)
     } else if (status === 'CLOSED') {
-      console.log(`[Realtime] 全域訂閱已關閉`);
+      console.log(`[Realtime] 全域訂閱已關閉`)
     }
-  });
+  })
 
-  return channel;
+  return channel
 }
 
 /**
@@ -387,8 +384,8 @@ export function subscribeToAllMessages(callback, tableName = 'conversation_messa
  * // 12
  */
 export async function getTotalUnreadCount() {
-  const conversations = await getConversations(1, 100, false);
-  return conversations.reduce((total, conv) => total + conv.unread_count, 0);
+  const conversations = await getConversations(1, 100, false)
+  return conversations.reduce((total, conv) => total + conv.unread_count, 0)
 }
 
 /**
@@ -401,12 +398,12 @@ export async function getTotalUnreadCount() {
  * // true
  */
 export async function deleteMessage(messageId) {
-  const { data, error } = await supabase.rpc("soft_delete_message_v2", {
+  const { data, error } = await supabase.rpc('soft_delete_message_v2', {
     p_message_id: messageId,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -419,12 +416,12 @@ export async function deleteMessage(messageId) {
  * // true
  */
 export async function restoreMessage(messageId) {
-  const { data, error } = await supabase.rpc("restore_message_v2", {
+  const { data, error } = await supabase.rpc('restore_message_v2', {
     p_message_id: messageId,
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -445,22 +442,22 @@ export async function restoreMessage(messageId) {
  * presenceChannel.unsubscribe();
  */
 export function subscribeToUserPresence(onPresenceUpdate) {
-  const channelName = 'online-users';
+  const channelName = 'online-users'
 
-  const channel = supabase.channel(channelName);
+  const channel = supabase.channel(channelName)
 
   channel.on('presence', { event: 'sync' }, () => {
-    const presenceState = channel.presenceState();
-    onPresenceUpdate(presenceState);
-  });
+    const presenceState = channel.presenceState()
+    onPresenceUpdate(presenceState)
+  })
 
-  channel.on('presence', { event: 'join' }, () => {});
+  channel.on('presence', { event: 'join' }, () => {})
 
-  channel.on('presence', { event: 'leave' }, () => {});
+  channel.on('presence', { event: 'leave' }, () => {})
 
-  channel.subscribe(() => {});
+  channel.subscribe(() => {})
 
-  return channel;
+  return channel
 }
 
 /**
@@ -470,14 +467,14 @@ export function subscribeToUserPresence(onPresenceUpdate) {
  * @returns {Object} Supabase Realtime channel
  */
 export function createConversationTypingChannel(conversationId, presenceKey) {
-  const channelName = `conversation-typing-${conversationId}`;
+  const channelName = `conversation-typing-${conversationId}`
 
-  const key = presenceKey || `anon-${Math.random().toString(36).slice(2)}`;
+  const key = presenceKey || `anon-${Math.random().toString(36).slice(2)}`
 
   return supabase.channel(channelName, {
     config: {
       presence: { key },
-      broadcast: { self: true }
-    }
-  });
+      broadcast: { self: true },
+    },
+  })
 }

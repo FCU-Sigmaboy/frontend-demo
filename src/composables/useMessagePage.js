@@ -1,75 +1,74 @@
-import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { useMessageStore } from '@/stores/message';
-import { useAuthStore } from '@/stores/auth';
-import { useTransactionStore } from '@/stores/transaction';
-import { formatRelativeTime } from '@/utils/timeFormat';
-import { getConversationItems } from '@/api/conversationAPI';
-import { useTypingCoordinator } from '@/composables/useTypingCoordinator';
-import { useScrollCoordinator } from '@/composables/useScrollCoordinator';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useMessageStore } from '@/stores/message'
+import { useAuthStore } from '@/stores/auth'
+import { useTransactionStore } from '@/stores/transaction'
+import { formatRelativeTime } from '@/utils/timeFormat'
+import { getConversationItems } from '@/api/conversationAPI'
+import { useTypingCoordinator } from '@/composables/useTypingCoordinator'
+import { useScrollCoordinator } from '@/composables/useScrollCoordinator'
 
-const UNREAD_DIVIDER_CLEAR_THRESHOLD = 200;
-const TYPING_BROADCAST_INTERVAL = 1200;
-const TYPING_STOP_DELAY = 3500;
+const UNREAD_DIVIDER_CLEAR_THRESHOLD = 200
+const TYPING_BROADCAST_INTERVAL = 1200
+const TYPING_STOP_DELAY = 3500
 
 function toItemKey(id) {
-  if (id === undefined || id === null) return null;
+  if (id === undefined || id === null) return null
   if (typeof id === 'string') {
-    const trimmed = id.trim();
-    if (!trimmed) return null;
-    const numeric = Number(trimmed);
-    return Number.isNaN(numeric) ? trimmed : numeric;
+    const trimmed = id.trim()
+    if (!trimmed) return null
+    const numeric = Number(trimmed)
+    return Number.isNaN(numeric) ? trimmed : numeric
   }
   if (typeof id === 'number') {
-    if (!Number.isFinite(id)) return null;
-    return id;
+    if (!Number.isFinite(id)) return null
+    return id
   }
-  const numeric = Number(id);
-  return Number.isNaN(numeric) ? id : numeric;
+  const numeric = Number(id)
+  return Number.isNaN(numeric) ? id : numeric
 }
 
 function formatDateDivider(timestamp) {
-  const date = new Date(timestamp);
-  const now = new Date();
+  const date = new Date(timestamp)
+  const now = new Date()
 
-  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-  const daysDiff = Math.floor((todayOnly - dateOnly) / (24 * 60 * 60 * 1000));
+  const daysDiff = Math.floor((todayOnly - dateOnly) / (24 * 60 * 60 * 1000))
 
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const period = hours < 12 ? '上午' : '下午';
-  const displayHours = hours % 12 || 12;
-  const timeStr = `${period} ${displayHours}:${minutes.toString().padStart(2, '0')}`;
+  const hours = date.getHours()
+  const minutes = date.getMinutes()
+  const period = hours < 12 ? '上午' : '下午'
+  const displayHours = hours % 12 || 12
+  const timeStr = `${period} ${displayHours}:${minutes.toString().padStart(2, '0')}`
 
   if (daysDiff === 0) {
-    return '今天';
+    return '今天'
   }
 
   if (daysDiff > 0 && daysDiff < 7) {
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    const weekday = weekdays[date.getDay()];
-    return `${weekday} ${timeStr}`;
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    const weekday = weekdays[date.getDay()]
+    return `${weekday} ${timeStr}`
   }
 
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${month}月${day}日 ${timeStr}`;
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}月${day}日 ${timeStr}`
 }
 
 function normalizeConversationItem(apiItem) {
-  if (!apiItem) return null;
+  if (!apiItem) return null
 
-  const id = toItemKey(apiItem.item_id ?? apiItem.itemId ?? null);
+  const id = toItemKey(apiItem.item_id ?? apiItem.itemId ?? null)
   if (id === null) {
-    return null;
+    return null
   }
 
-  const titleSource = apiItem.item_title ?? apiItem.itemTitle;
-  const title = titleSource && String(titleSource).trim()
-    ? String(titleSource).trim()
-    : `物品 #${id}`;
+  const titleSource = apiItem.item_title ?? apiItem.itemTitle
+  const title =
+    titleSource && String(titleSource).trim() ? String(titleSource).trim() : `物品 #${id}`
 
   return {
     id,
@@ -78,107 +77,104 @@ function normalizeConversationItem(apiItem) {
     image: apiItem.item_image_url ?? apiItem.itemImageUrl ?? null,
     status: apiItem.item_status ?? apiItem.itemStatus ?? null,
     addedAt: apiItem.added_at ?? apiItem.addedAt ?? null,
-    addedBy: (apiItem.added_by_user_id || apiItem.added_by_user_name)
-      ? {
-          id: apiItem.added_by_user_id ?? null,
-          name: apiItem.added_by_user_name ?? ''
-        }
-      : null,
-    messageCount: apiItem.message_count ?? apiItem.messageCount ?? 0
-  };
+    addedBy:
+      apiItem.added_by_user_id || apiItem.added_by_user_name
+        ? {
+            id: apiItem.added_by_user_id ?? null,
+            name: apiItem.added_by_user_name ?? '',
+          }
+        : null,
+    messageCount: apiItem.message_count ?? apiItem.messageCount ?? 0,
+  }
 }
 
 export function useMessagePage() {
-  const router = useRouter();
-  const messageStore = useMessageStore();
-  const authStore = useAuthStore();
-  const transactionStore = useTransactionStore();
+  const router = useRouter()
+  const messageStore = useMessageStore()
+  const authStore = useAuthStore()
+  const transactionStore = useTransactionStore()
 
-  const userPoints = ref(0);
-  const searchQuery = ref('');
-  const messageInput = ref('');
-  const messagesArea = ref(null);
-  let registeredMessagesArea = null;
-  const messagesLoading = ref(false);
-  const pendingItemReference = ref(null);
-  const itemReferenceCache = ref(new Map());
-  const showScrollToBottomBtn = ref(false);
-  const isLoadingMoreMessages = ref(false);
-  const currentPage = ref(1);
-  const hasMoreMessages = ref(true);
-  const newMessageCount = ref(0);
-  const firstUnreadMessageId = ref(null);
-  const suppressUnreadDivider = ref(false);
-  const hasReachedBottomAfterUnread = ref(false);
+  const userPoints = ref(0)
+  const searchQuery = ref('')
+  const messageInput = ref('')
+  const messagesArea = ref(null)
+  let registeredMessagesArea = null
+  const messagesLoading = ref(false)
+  const pendingItemReference = ref(null)
+  const itemReferenceCache = ref(new Map())
+  const showScrollToBottomBtn = ref(false)
+  const isLoadingMoreMessages = ref(false)
+  const currentPage = ref(1)
+  const hasMoreMessages = ref(true)
+  const newMessageCount = ref(0)
+  const firstUnreadMessageId = ref(null)
+  const suppressUnreadDivider = ref(false)
+  const hasReachedBottomAfterUnread = ref(false)
 
   // Transaction Modal
-  const showTransactionModal = ref(false);
-  const isLoadingTransactionItems = ref(false);
+  const showTransactionModal = ref(false)
+  const isLoadingTransactionItems = ref(false)
 
-  let suppressTypingBroadcast = false;
+  let suppressTypingBroadcast = false
 
-  const conversationItems = ref([]);
-  const isLoadingConversationItems = ref(false);
-  let conversationItemsRequestId = 0;
+  const conversationItems = ref([])
+  const isLoadingConversationItems = ref(false)
+  let conversationItemsRequestId = 0
 
   const conversationItemMap = computed(() => {
-    const map = new Map();
-    conversationItems.value.forEach(item => {
-      if (!item || item.id === undefined || item.id === null) return;
-      map.set(item.id, item);
-    });
-    return map;
-  });
+    const map = new Map()
+    conversationItems.value.forEach((item) => {
+      if (!item || item.id === undefined || item.id === null) return
+      map.set(item.id, item)
+    })
+    return map
+  })
 
   const currencyFormatter = new Intl.NumberFormat('zh-TW', {
     currency: 'TWD',
-    maximumFractionDigits: 0
-  });
+    maximumFractionDigits: 0,
+  })
 
-  const pendingItemPrice = computed(() => formatItemPrice(pendingItemReference.value?.price));
+  const pendingItemPrice = computed(() => formatItemPrice(pendingItemReference.value?.price))
 
   function formatItemPrice(value) {
-    if (value === undefined || value === null || value === '') return null;
-    const numeric = Number(value);
-    if (Number.isNaN(numeric)) return null;
-    return currencyFormatter.format(numeric);
+    if (value === undefined || value === null || value === '') return null
+    const numeric = Number(value)
+    if (Number.isNaN(numeric)) return null
+    return currencyFormatter.format(numeric)
   }
 
   function tryParseJsonContent(content) {
-    if (typeof content !== 'string') return null;
-    const trimmed = content.trim();
-    if (!trimmed.startsWith('{') || trimmed.length < 2) return null;
+    if (typeof content !== 'string') return null
+    const trimmed = content.trim()
+    if (!trimmed.startsWith('{') || trimmed.length < 2) return null
     try {
-      return JSON.parse(trimmed);
+      return JSON.parse(trimmed)
     } catch (err) {
-      return null;
+      return null
     }
   }
 
   function parseStructuredMessageContent(content) {
-    const parsed = tryParseJsonContent(content);
-    if (!parsed || typeof parsed !== 'object') return null;
+    const parsed = tryParseJsonContent(content)
+    if (!parsed || typeof parsed !== 'object') return null
 
-    const normalizedType = parsed.type || null;
-    const transactionId = parsed.transaction_id ?? parsed.transactionId ?? null;
-    const replyText = parsed['你的訊息內容'] ?? parsed.replyText ?? null;
-    const quotedText = parsed['回覆的訊息內容'] ?? parsed.quotedText ?? null;
-    const replyToMessageId = parsed['reply_to_message_id'] ?? parsed.replyToMessageId ?? null;
+    const normalizedType = parsed.type || null
+    const transactionId = parsed.transaction_id ?? parsed.transactionId ?? null
+    const replyText = parsed['你的訊息內容'] ?? parsed.replyText ?? null
+    const quotedText = parsed['回覆的訊息內容'] ?? parsed.quotedText ?? null
+    const replyToMessageId = parsed['reply_to_message_id'] ?? parsed.replyToMessageId ?? null
 
     const isTransactionLink =
-      normalizedType === 'transaction_link' ||
-      (transactionId !== null && !replyText && !quotedText);
+      normalizedType === 'transaction_link' || (transactionId !== null && !replyText && !quotedText)
 
-    const isReply =
-      normalizedType === 'reply' ||
-      replyText !== null ||
-      quotedText !== null;
+    const isReply = normalizedType === 'reply' || replyText !== null || quotedText !== null
 
     if (isTransactionLink) {
       return {
         type: 'transaction_link',
-        transactionId
-      };
+        transactionId,
+      }
     }
 
     if (isReply) {
@@ -186,230 +182,242 @@ export function useMessagePage() {
         type: 'reply',
         replyText,
         quotedText,
-        replyToMessageId
-      };
+        replyToMessageId,
+      }
     }
 
-    return null;
+    return null
   }
 
   function formatConversationPreview(content) {
-    if (!content) return '開始對話...';
-    const structured = parseStructuredMessageContent(content);
+    if (!content) return '開始對話...'
+    const structured = parseStructuredMessageContent(content)
     if (structured?.type === 'transaction_link') {
-      return '查看交易詳情';
+      return '查看交易詳情'
     }
     if (structured?.type === 'reply') {
-      return structured.replyText || '回覆了一則訊息';
+      return structured.replyText || '回覆了一則訊息'
     }
-    return content;
+    return content
   }
 
   function clearUnreadDivider({ suppress = false } = {}) {
-    firstUnreadMessageId.value = null;
-    suppressUnreadDivider.value = suppress;
-    hasReachedBottomAfterUnread.value = false;
+    firstUnreadMessageId.value = null
+    suppressUnreadDivider.value = suppress
+    hasReachedBottomAfterUnread.value = false
   }
 
   function allowUnreadDivider() {
-    suppressUnreadDivider.value = false;
+    suppressUnreadDivider.value = false
   }
 
   async function waitForTicks(count = 1) {
     for (let i = 0; i < count; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      await nextTick();
+      await nextTick()
     }
   }
 
   function resolveItemFromMap(itemId) {
-    if (itemId === undefined || itemId === null) return null;
+    if (itemId === undefined || itemId === null) return null
 
-    const normalizedKey = toItemKey(itemId);
+    const normalizedKey = toItemKey(itemId)
     if (normalizedKey !== null && conversationItemMap.value.has(normalizedKey)) {
-      return conversationItemMap.value.get(normalizedKey);
+      return conversationItemMap.value.get(normalizedKey)
     }
 
-    return null;
+    return null
   }
 
   function refreshPendingItemReferenceFromCache() {
-    if (!pendingItemReference.value || pendingItemReference.value.id === undefined || pendingItemReference.value.id === null) {
-      return;
+    if (
+      !pendingItemReference.value ||
+      pendingItemReference.value.id === undefined ||
+      pendingItemReference.value.id === null
+    ) {
+      return
     }
 
-    const matchedItem = resolveItemFromMap(pendingItemReference.value.id);
-    if (!matchedItem) return;
+    const matchedItem = resolveItemFromMap(pendingItemReference.value.id)
+    if (!matchedItem) return
 
     pendingItemReference.value = {
       ...pendingItemReference.value,
       ...matchedItem,
       id: matchedItem.id,
-      title: matchedItem.title
-    };
+      title: matchedItem.title,
+    }
   }
 
   function applyItemMetadataToMessages() {
-    const nextCache = new Map(itemReferenceCache.value);
+    const nextCache = new Map(itemReferenceCache.value)
 
-    messageStore.currentMessages.forEach(msg => {
-      const itemKey = toItemKey(msg.related_item_id);
+    messageStore.currentMessages.forEach((msg) => {
+      const itemKey = toItemKey(msg.related_item_id)
       if (itemKey === null) {
-        return;
+        return
       }
 
-      const matchedItem = resolveItemFromMap(itemKey);
+      const matchedItem = resolveItemFromMap(itemKey)
       if (matchedItem) {
         if (matchedItem.title) {
-          msg.related_item_title = matchedItem.title;
+          msg.related_item_title = matchedItem.title
         }
         if (matchedItem.image) {
-          msg._related_item_image = matchedItem.image;
+          msg._related_item_image = matchedItem.image
         }
         if (matchedItem.price !== undefined && matchedItem.price !== null) {
-          msg._related_item_price = matchedItem.price;
+          msg._related_item_price = matchedItem.price
         }
       }
 
-      const title = msg.related_item_title || matchedItem?.title;
+      const title = msg.related_item_title || matchedItem?.title
       if (title) {
-        nextCache.set(itemKey, title);
+        nextCache.set(itemKey, title)
       }
-    });
+    })
 
-    itemReferenceCache.value = nextCache;
-    refreshPendingItemReferenceFromCache();
+    itemReferenceCache.value = nextCache
+    refreshPendingItemReferenceFromCache()
   }
 
   async function loadConversationItems(conversationId) {
-    const activeConversationId = conversationId ?? selectedConversation.value?.id;
-    if (!activeConversationId) return;
+    const activeConversationId = conversationId ?? selectedConversation.value?.id
+    if (!activeConversationId) return
 
-    const requestId = ++conversationItemsRequestId;
-    isLoadingConversationItems.value = true;
+    const requestId = ++conversationItemsRequestId
+    isLoadingConversationItems.value = true
 
     try {
-      const data = await getConversationItems(activeConversationId);
+      const data = await getConversationItems(activeConversationId)
       if (requestId !== conversationItemsRequestId) {
-        return;
+        return
       }
 
       if (selectedConversation.value?.id !== activeConversationId) {
-        return;
+        return
       }
 
       const normalizedItems = Array.isArray(data)
         ? data.map(normalizeConversationItem).filter(Boolean)
-        : [];
+        : []
 
-      conversationItems.value = normalizedItems;
+      conversationItems.value = normalizedItems
 
-      const nextCache = new Map(itemReferenceCache.value);
-      normalizedItems.forEach(item => {
+      const nextCache = new Map(itemReferenceCache.value)
+      normalizedItems.forEach((item) => {
         if (item.id !== null && item.title) {
-          nextCache.set(item.id, item.title);
+          nextCache.set(item.id, item.title)
         }
-      });
-      itemReferenceCache.value = nextCache;
+      })
+      itemReferenceCache.value = nextCache
 
-      applyItemMetadataToMessages();
+      applyItemMetadataToMessages()
     } catch (err) {
       if (requestId === conversationItemsRequestId) {
-        console.error('Failed to load conversation items:', err);
+        console.error('Failed to load conversation items:', err)
       }
     } finally {
       if (requestId === conversationItemsRequestId) {
-        isLoadingConversationItems.value = false;
+        isLoadingConversationItems.value = false
       }
     }
   }
 
-  const loading = computed(() => messageStore.isLoadingConversations);
-  const currentUser = computed(() => authStore.user);
+  const loading = computed(() => messageStore.isLoadingConversations)
+  const currentUser = computed(() => authStore.user)
 
   const currentUserIdentity = computed(() => {
-    const user = currentUser.value;
-    if (!user) return null;
+    const user = currentUser.value
+    if (!user) return null
 
-    const metadata = user.user_metadata || {};
-    const profileNickname = authStore.profileData?.nickname;
+    const metadata = user.user_metadata || {}
+    const profileNickname = authStore.profileData?.nickname
     const fallbackNickname =
       profileNickname ||
       metadata.nickname ||
       metadata.full_name ||
       metadata.name ||
       (user.email ? user.email.split('@')[0] : null) ||
-      '我';
+      '我'
 
     return {
       id: user.id,
-      nickname: fallbackNickname
-    };
-  });
+      nickname: fallbackNickname,
+    }
+  })
 
   const filteredConversations = computed(() => {
-    let filtered = messageStore.conversations;
+    let filtered = messageStore.conversations
 
     if (searchQuery.value) {
-      filtered = filtered.filter(c =>
+      filtered = filtered.filter((c) =>
         c.other_user.nickname.toLowerCase().includes(searchQuery.value.toLowerCase())
-      );
+      )
     }
 
-    return filtered;
-  });
+    return filtered
+  })
 
   const displayConversations = computed(() => {
     return filteredConversations.value
-      .map(convo => {
-        const otherUserId = convo.other_user.id;
-        const isOnline = messageStore.onlineUsers.has(otherUserId);
-        const previewText = formatConversationPreview(convo.last_message);
+      .map((convo) => {
+        const otherUserId = convo.other_user.id
+        const isOnline = messageStore.onlineUsers.has(otherUserId)
+        const previewText = formatConversationPreview(convo.last_message)
 
         return {
           id: convo.id,
           user: {
             name: convo.other_user.nickname,
-            avatar: convo.other_user.profile_picture_url || `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
-            online: isOnline
+            avatar:
+              convo.other_user.profile_picture_url ||
+              `https://placehold.co/48/6fb8a5/ffffff?text=${convo.other_user.nickname?.charAt(0) || 'U'}`,
+            online: isOnline,
           },
-          product: convo.item.id ? {
-            id: convo.item.id,
-            name: convo.item.title,
-            price: 0,
-            image: convo.item.cover_image_url || 'https://placehold.co/60x60/6fb8a5/ffffff?text=Item'
-          } : null,
+          product: convo.item.id
+            ? {
+                id: convo.item.id,
+                name: convo.item.title,
+                price: 0,
+                image:
+                  convo.item.cover_image_url ||
+                  'https://placehold.co/60x60/6fb8a5/ffffff?text=Item',
+              }
+            : null,
           lastMessage: {
             text: previewText,
-            time: formatRelativeTime(convo.last_message_time)
+            time: formatRelativeTime(convo.last_message_time),
           },
           unreadCount: convo.unread_count || 0,
           type: convo.role,
-          _raw: convo
-        };
+          _raw: convo,
+        }
       })
       .sort((a, b) => {
-        if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
-        if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+        if (a.unreadCount > 0 && b.unreadCount === 0) return -1
+        if (a.unreadCount === 0 && b.unreadCount > 0) return 1
 
-        const timeA = new Date(a._raw.last_message_time || 0).getTime();
-        const timeB = new Date(b._raw.last_message_time || 0).getTime();
-        return timeB - timeA;
-      });
-  });
+        const timeA = new Date(a._raw.last_message_time || 0).getTime()
+        const timeB = new Date(b._raw.last_message_time || 0).getTime()
+        return timeB - timeA
+      })
+  })
 
   const selectedConversation = computed(() => {
-    if (!messageStore.selectedConversationId) return null;
-    return displayConversations.value.find(c => c.id === messageStore.selectedConversationId) || null;
-  });
+    if (!messageStore.selectedConversationId) return null
+    return (
+      displayConversations.value.find((c) => c.id === messageStore.selectedConversationId) || null
+    )
+  })
 
   const typingCoordinator = useTypingCoordinator({
     messageStore,
     getIdentity: () => currentUserIdentity.value,
     getSelectedConversationId: () => selectedConversation.value?.id ?? null,
     typingStopDelay: TYPING_STOP_DELAY,
-    typingBroadcastInterval: TYPING_BROADCAST_INTERVAL
-  });
+    typingBroadcastInterval: TYPING_BROADCAST_INTERVAL,
+  })
 
   const scrollCoordinator = useScrollCoordinator({
     messagesArea,
@@ -425,413 +433,432 @@ export function useMessagePage() {
     allowUnreadDivider,
     loadMoreMessages,
     scrollToBottom,
-    unreadDividerClearThreshold: UNREAD_DIVIDER_CLEAR_THRESHOLD
-  });
+    unreadDividerClearThreshold: UNREAD_DIVIDER_CLEAR_THRESHOLD,
+  })
 
   const typingUsers = computed(() => {
-    const conversationId = selectedConversation.value?.id;
-    if (!conversationId) return [];
-    return messageStore.getTypingUsers(conversationId);
-  });
+    const conversationId = selectedConversation.value?.id
+    if (!conversationId) return []
+    return messageStore.getTypingUsers(conversationId)
+  })
 
   const typingIndicatorBaseText = computed(() => {
-    if (!typingUsers.value.length) return '';
+    if (!typingUsers.value.length) return ''
 
     if (typingUsers.value.length === 1) {
-      const name = typingUsers.value[0].nickname || '對方';
-      return `${name} 正在輸入`;
+      const name = typingUsers.value[0].nickname || '對方'
+      return `${name} 正在輸入`
     }
 
     if (typingUsers.value.length === 2) {
-      const first = typingUsers.value[0].nickname || '對方';
-      const second = typingUsers.value[1].nickname || '其他使用者';
-      return `${first}、${second} 正在輸入`;
+      const first = typingUsers.value[0].nickname || '對方'
+      const second = typingUsers.value[1].nickname || '其他使用者'
+      return `${first}、${second} 正在輸入`
     }
 
-    return '多人正在輸入';
-  });
+    return '多人正在輸入'
+  })
 
   const typingIndicatorText = computed(() => {
-    return typingIndicatorBaseText.value ? `${typingIndicatorBaseText.value}...` : '';
-  });
+    return typingIndicatorBaseText.value ? `${typingIndicatorBaseText.value}...` : ''
+  })
 
   const scrollButtonLabel = computed(() => {
-    const showNewMessages = newMessageCount.value > 0;
-    const showTyping = !!typingIndicatorBaseText.value;
+    const showNewMessages = newMessageCount.value > 0
+    const showTyping = !!typingIndicatorBaseText.value
 
     if (!showNewMessages && !showTyping) {
-      return '回到最新';
+      return '回到最新'
     }
 
     if (showNewMessages && showTyping) {
       return {
         newMessages: `${newMessageCount.value}則新訊息`,
-        typing: typingIndicatorBaseText.value
-      };
+        typing: typingIndicatorBaseText.value,
+      }
     }
 
     if (showNewMessages) {
       return {
         newMessages: `${newMessageCount.value}則新訊息`,
-        typing: null
-      };
+        typing: null,
+      }
     }
 
     return {
       newMessages: null,
-      typing: typingIndicatorBaseText.value
-    };
-  });
+      typing: typingIndicatorBaseText.value,
+    }
+  })
 
   const showBottomTypingIndicator = computed(() => {
-    if (!typingIndicatorText.value) return false;
+    if (!typingIndicatorText.value) return false
 
     if (showScrollToBottomBtn.value) {
-      const buttonLabel = scrollButtonLabel.value;
+      const buttonLabel = scrollButtonLabel.value
       if (buttonLabel && typeof buttonLabel === 'object' && buttonLabel.typing) {
-        return false;
+        return false
       }
       if (typeof buttonLabel === 'string' && buttonLabel.includes('正在輸入')) {
-        return false;
+        return false
       }
     }
 
-    return true;
-  });
+    return true
+  })
 
   watch(
     () => selectedConversation.value?.id,
     async (newId, oldId) => {
       if (oldId && oldId !== newId) {
-        messageStore.setPendingItemReference(oldId, pendingItemReference.value);
-        messageStore.setMessageDraft(oldId, messageInput.value);
-        await scrollCoordinator.emitReset({ conversationId: oldId || null });
+        messageStore.setPendingItemReference(oldId, pendingItemReference.value)
+        messageStore.setMessageDraft(oldId, messageInput.value)
+        await scrollCoordinator.emitReset({ conversationId: oldId || null })
       }
 
       if (newId === oldId) {
-        return;
+        return
       }
 
       if (!newId) {
-        pendingItemReference.value = null;
-        suppressTypingBroadcast = true;
-        messageInput.value = '';
-        await nextTick();
-        suppressTypingBroadcast = false;
+        pendingItemReference.value = null
+        suppressTypingBroadcast = true
+        messageInput.value = ''
+        await nextTick()
+        suppressTypingBroadcast = false
 
         await typingCoordinator.emitConversationChanged({
           prevConversationId: oldId || null,
           nextConversationId: null,
-          identity: currentUserIdentity.value || null
-        });
-        await scrollCoordinator.emitConversationChanged({ conversationId: null });
-        return;
+          identity: currentUserIdentity.value || null,
+        })
+        await scrollCoordinator.emitConversationChanged({ conversationId: null })
+        return
       } else {
-        pendingItemReference.value = messageStore.getPendingItemReference(newId);
-        suppressTypingBroadcast = true;
-        messageInput.value = messageStore.getMessageDraft(newId);
-        await nextTick();
-        suppressTypingBroadcast = false;
+        pendingItemReference.value = messageStore.getPendingItemReference(newId)
+        suppressTypingBroadcast = true
+        messageInput.value = messageStore.getMessageDraft(newId)
+        await nextTick()
+        suppressTypingBroadcast = false
       }
 
       await typingCoordinator.emitConversationChanged({
         prevConversationId: oldId || null,
         nextConversationId: newId || null,
-        identity: currentUserIdentity.value || null
-      });
-      await scrollCoordinator.emitConversationChanged({ conversationId: newId || null });
+        identity: currentUserIdentity.value || null,
+      })
+      await scrollCoordinator.emitConversationChanged({ conversationId: newId || null })
     }
-  );
+  )
 
   watch(
     pendingItemReference,
-    newValue => {
-      const conversationId = selectedConversation.value?.id;
-      if (!conversationId) return;
-      messageStore.setPendingItemReference(conversationId, newValue);
+    (newValue) => {
+      const conversationId = selectedConversation.value?.id
+      if (!conversationId) return
+      messageStore.setPendingItemReference(conversationId, newValue)
     },
     { deep: true }
-  );
+  )
 
-  watch(
-    messageInput,
-    newValue => {
-      const conversationId = selectedConversation.value?.id;
-      if (!conversationId) return;
+  watch(messageInput, (newValue) => {
+    const conversationId = selectedConversation.value?.id
+    if (!conversationId) return
 
-      messageStore.setMessageDraft(conversationId, newValue);
+    messageStore.setMessageDraft(conversationId, newValue)
 
-      if (suppressTypingBroadcast) return;
-      void typingCoordinator.emitInputChanged({
-        conversationId,
-        content: newValue
-      });
-    }
-  );
+    if (suppressTypingBroadcast) return
+    void typingCoordinator.emitInputChanged({
+      conversationId,
+      content: newValue,
+    })
+  })
 
   const messages = computed(() => {
-    const itemMap = conversationItemMap.value;
-    return messageStore.currentMessages.map((msg, index) => {
-      const msgDateObj = new Date(msg.created_at);
-      const msgDateOnly = new Date(msgDateObj.getFullYear(), msgDateObj.getMonth(), msgDateObj.getDate());
+    const itemMap = conversationItemMap.value
+    return messageStore.currentMessages
+      .map((msg, index) => {
+        const msgDateObj = new Date(msg.created_at)
+        const msgDateOnly = new Date(
+          msgDateObj.getFullYear(),
+          msgDateObj.getMonth(),
+          msgDateObj.getDate()
+        )
 
-      const prevMsg = index > 0 ? messageStore.currentMessages[index - 1] : null;
-      let showDate = false;
+        const prevMsg = index > 0 ? messageStore.currentMessages[index - 1] : null
+        let showDate = false
 
-      if (prevMsg) {
-        const prevDateObj = new Date(prevMsg.created_at);
-        const prevDateOnly = new Date(prevDateObj.getFullYear(), prevDateObj.getMonth(), prevDateObj.getDate());
-        showDate = msgDateOnly.getTime() !== prevDateOnly.getTime();
-      } else {
-        showDate = true;
-      }
-
-      let isGrouped = false;
-      let isFirstInGroup = false;
-      let isLastInGroup = false;
-      let hasGroupWithPrev = false;
-      let hasGroupWithNext = false;
-
-      if (prevMsg) {
-        const timeDiff = new Date(msg.created_at) - new Date(prevMsg.created_at);
-        const isSameSender = msg.is_mine === prevMsg.is_mine;
-        const isWithinMinute = timeDiff < 60000;
-
-        hasGroupWithPrev = isSameSender && isWithinMinute && !showDate;
-      }
-
-      const nextMsg = index < messageStore.currentMessages.length - 1
-        ? messageStore.currentMessages[index + 1]
-        : null;
-
-      if (nextMsg) {
-        const nextTimeDiff = new Date(nextMsg.created_at) - new Date(msg.created_at);
-        const isSameSenderAsNext = msg.is_mine === nextMsg.is_mine;
-        const isWithinMinuteFromNext = nextTimeDiff < 60000;
-
-        const nextMsgDateObj = new Date(nextMsg.created_at);
-        const nextMsgDateOnly = new Date(nextMsgDateObj.getFullYear(), nextMsgDateObj.getMonth(), nextMsgDateObj.getDate());
-        const hasDateDividerAfter = msgDateOnly.getTime() !== nextMsgDateOnly.getTime();
-
-        hasGroupWithNext = isSameSenderAsNext && isWithinMinuteFromNext && !hasDateDividerAfter;
-      }
-
-      isGrouped = hasGroupWithPrev;
-      isFirstInGroup = !hasGroupWithPrev;
-      isLastInGroup = !hasGroupWithNext;
-
-      const itemKey = toItemKey(msg.related_item_id);
-      const matchedItem = itemKey !== null ? itemMap.get(itemKey) : null;
-
-      let relatedItemTitle = msg.related_item_title || matchedItem?.title || null;
-
-      if (!relatedItemTitle && itemKey !== null) {
-        const cachedTitle = itemReferenceCache.value.get(itemKey);
-        if (cachedTitle) {
-          relatedItemTitle = cachedTitle;
+        if (prevMsg) {
+          const prevDateObj = new Date(prevMsg.created_at)
+          const prevDateOnly = new Date(
+            prevDateObj.getFullYear(),
+            prevDateObj.getMonth(),
+            prevDateObj.getDate()
+          )
+          showDate = msgDateOnly.getTime() !== prevDateOnly.getTime()
+        } else {
+          showDate = true
         }
-      }
 
-      if (!relatedItemTitle && itemKey !== null) {
-        relatedItemTitle = `物品 #${itemKey}`;
-      }
+        let isGrouped = false
+        let isFirstInGroup = false
+        let isLastInGroup = false
+        let hasGroupWithPrev = false
+        let hasGroupWithNext = false
 
-      const relatedItemImage = matchedItem?.image ?? msg._related_item_image ?? null;
-      const relatedItemPriceRaw = matchedItem?.price ?? msg._related_item_price ?? null;
-      const relatedItemPrice = relatedItemPriceRaw !== null && relatedItemPriceRaw !== undefined
-        ? formatItemPrice(relatedItemPriceRaw)
-        : null;
+        if (prevMsg) {
+          const timeDiff = new Date(msg.created_at) - new Date(prevMsg.created_at)
+          const isSameSender = msg.is_mine === prevMsg.is_mine
+          const isWithinMinute = timeDiff < 60000
 
-      const relatedItem = matchedItem || (relatedItemImage || relatedItemPrice !== null
-        ? {
-            id: itemKey,
-            title: relatedItemTitle,
-            image: relatedItemImage,
-            price: relatedItemPriceRaw
-          }
-        : null);
+          hasGroupWithPrev = isSameSender && isWithinMinute && !showDate
+        }
 
-      // Parse reply and transaction_link message types
-      let replyContext = null;
-      let transactionLinkData = null;
-      let parsedText = msg.content;
-      let effectiveMessageType = msg.message_type;
-      const structuredContent = parseStructuredMessageContent(msg.content);
+        const nextMsg =
+          index < messageStore.currentMessages.length - 1
+            ? messageStore.currentMessages[index + 1]
+            : null
 
-      if (msg.message_type === 'reply') {
-        effectiveMessageType = 'reply';
-        replyContext = {
-          quotedText: structuredContent?.quotedText || '',
-          replyText: structuredContent?.replyText || msg.content || '',
-          replyToMessageId: structuredContent?.replyToMessageId || null
-        };
-        parsedText = replyContext.replyText;
-      } else if (msg.message_type === 'transaction_link') {
-        effectiveMessageType = 'transaction_link';
-        transactionLinkData = {
-          transaction_id: structuredContent?.transactionId || null
-        };
-        parsedText = '詳情請點擊下方按鈕';
-      }
+        if (nextMsg) {
+          const nextTimeDiff = new Date(nextMsg.created_at) - new Date(msg.created_at)
+          const isSameSenderAsNext = msg.is_mine === nextMsg.is_mine
+          const isWithinMinuteFromNext = nextTimeDiff < 60000
 
-      return {
-        id: msg.id,
-        text: parsedText,
-        time: formatRelativeTime(msg.created_at),
-        created_at: msg.created_at,
-        isSent: msg.is_mine,
-        showDate,
-        date: showDate ? formatDateDivider(msg.created_at) : '',
-        message_type: effectiveMessageType,
-        related_item_id: msg.related_item_id,
-        related_item_title: relatedItemTitle,
-        relatedItem,
-        relatedItemPrice,
-        replyContext,
-        transactionLinkData,
-        metadata: msg.metadata,
-        sender: msg.sender,
-        _clientId: msg._clientId || msg.id,
-        _sending: msg._sending,
-        _failed: msg._failed,
-        _failedContent: msg._failedContent,
-        _failedRelatedItemId: msg._failedRelatedItemId,
-        _failedRelatedItemTitle: msg._failedRelatedItemTitle,
-        is_read: msg.is_read || false,
-        isGrouped,
-        isFirstInGroup,
-        isLastInGroup
-      };
-    }).map((msg, index, arr) => {
-      const isLatestSentMessage = msg.isSent && !msg._sending && !msg._failed &&
-        !arr.slice(index + 1).some(m => m.isSent && !m._sending && !m._failed);
+          const nextMsgDateObj = new Date(nextMsg.created_at)
+          const nextMsgDateOnly = new Date(
+            nextMsgDateObj.getFullYear(),
+            nextMsgDateObj.getMonth(),
+            nextMsgDateObj.getDate()
+          )
+          const hasDateDividerAfter = msgDateOnly.getTime() !== nextMsgDateOnly.getTime()
 
-      let isFirstUnreadMessage = false;
+          hasGroupWithNext = isSameSenderAsNext && isWithinMinuteFromNext && !hasDateDividerAfter
+        }
 
-      if (!suppressUnreadDivider.value) {
-        if (firstUnreadMessageId.value) {
-          isFirstUnreadMessage = msg.id === firstUnreadMessageId.value;
-        } else if (!msg.isSent && !msg.is_read) {
-          const hasUnreadBefore = arr.slice(0, index).some(m => !m.isSent && !m.is_read);
-          const hasSentMessageAfter = arr.slice(index + 1).some(m => m.isSent);
-          isFirstUnreadMessage = !hasUnreadBefore && !hasSentMessageAfter;
+        isGrouped = hasGroupWithPrev
+        isFirstInGroup = !hasGroupWithPrev
+        isLastInGroup = !hasGroupWithNext
 
-          if (isFirstUnreadMessage) {
-            firstUnreadMessageId.value = msg.id;
-            hasReachedBottomAfterUnread.value = false;
+        const itemKey = toItemKey(msg.related_item_id)
+        const matchedItem = itemKey !== null ? itemMap.get(itemKey) : null
+
+        let relatedItemTitle = msg.related_item_title || matchedItem?.title || null
+
+        if (!relatedItemTitle && itemKey !== null) {
+          const cachedTitle = itemReferenceCache.value.get(itemKey)
+          if (cachedTitle) {
+            relatedItemTitle = cachedTitle
           }
         }
-      } else {
-        isFirstUnreadMessage = false;
-      }
 
-      return {
-        ...msg,
-        isLatestSentMessage,
-        isFirstUnreadMessage
-      };
-    });
-  });
+        if (!relatedItemTitle && itemKey !== null) {
+          relatedItemTitle = `物品 #${itemKey}`
+        }
+
+        const relatedItemImage = matchedItem?.image ?? msg._related_item_image ?? null
+        const relatedItemPriceRaw = matchedItem?.price ?? msg._related_item_price ?? null
+        const relatedItemPrice =
+          relatedItemPriceRaw !== null && relatedItemPriceRaw !== undefined
+            ? formatItemPrice(relatedItemPriceRaw)
+            : null
+
+        const relatedItem =
+          matchedItem ||
+          (relatedItemImage || relatedItemPrice !== null
+            ? {
+                id: itemKey,
+                title: relatedItemTitle,
+                image: relatedItemImage,
+                price: relatedItemPriceRaw,
+              }
+            : null)
+
+        // Parse reply and transaction_link message types
+        let replyContext = null
+        let transactionLinkData = null
+        let parsedText = msg.content
+        let effectiveMessageType = msg.message_type
+        const structuredContent = parseStructuredMessageContent(msg.content)
+
+        if (msg.message_type === 'reply') {
+          effectiveMessageType = 'reply'
+          replyContext = {
+            quotedText: structuredContent?.quotedText || '',
+            replyText: structuredContent?.replyText || msg.content || '',
+            replyToMessageId: structuredContent?.replyToMessageId || null,
+          }
+          parsedText = replyContext.replyText
+        } else if (msg.message_type === 'transaction_link') {
+          effectiveMessageType = 'transaction_link'
+          transactionLinkData = {
+            transaction_id: structuredContent?.transactionId || null,
+          }
+          parsedText = '詳情請點擊下方按鈕'
+        }
+
+        return {
+          id: msg.id,
+          text: parsedText,
+          time: formatRelativeTime(msg.created_at),
+          created_at: msg.created_at,
+          isSent: msg.is_mine,
+          showDate,
+          date: showDate ? formatDateDivider(msg.created_at) : '',
+          message_type: effectiveMessageType,
+          related_item_id: msg.related_item_id,
+          related_item_title: relatedItemTitle,
+          relatedItem,
+          relatedItemPrice,
+          replyContext,
+          transactionLinkData,
+          metadata: msg.metadata,
+          sender: msg.sender,
+          _clientId: msg._clientId || msg.id,
+          _sending: msg._sending,
+          _failed: msg._failed,
+          _failedContent: msg._failedContent,
+          _failedRelatedItemId: msg._failedRelatedItemId,
+          _failedRelatedItemTitle: msg._failedRelatedItemTitle,
+          is_read: msg.is_read || false,
+          isGrouped,
+          isFirstInGroup,
+          isLastInGroup,
+        }
+      })
+      .map((msg, index, arr) => {
+        const isLatestSentMessage =
+          msg.isSent &&
+          !msg._sending &&
+          !msg._failed &&
+          !arr.slice(index + 1).some((m) => m.isSent && !m._sending && !m._failed)
+
+        let isFirstUnreadMessage = false
+
+        if (!suppressUnreadDivider.value) {
+          if (firstUnreadMessageId.value) {
+            isFirstUnreadMessage = msg.id === firstUnreadMessageId.value
+          } else if (!msg.isSent && !msg.is_read) {
+            const hasUnreadBefore = arr.slice(0, index).some((m) => !m.isSent && !m.is_read)
+            const hasSentMessageAfter = arr.slice(index + 1).some((m) => m.isSent)
+            isFirstUnreadMessage = !hasUnreadBefore && !hasSentMessageAfter
+
+            if (isFirstUnreadMessage) {
+              firstUnreadMessageId.value = msg.id
+              hasReachedBottomAfterUnread.value = false
+            }
+          }
+        } else {
+          isFirstUnreadMessage = false
+        }
+
+        return {
+          ...msg,
+          isLatestSentMessage,
+          isFirstUnreadMessage,
+        }
+      })
+  })
 
   const groupedMessages = computed(() => {
-    const groups = [];
-    let currentGroup = null;
+    const groups = []
+    let currentGroup = null
 
     messages.value.forEach((message) => {
       if (message.showDate) {
         currentGroup = {
           date: message.date,
           dateKey: new Date(message.created_at).toLocaleDateString('zh-TW'),
-          messages: [message]
-        };
-        groups.push(currentGroup);
+          messages: [message],
+        }
+        groups.push(currentGroup)
       } else if (currentGroup) {
-        currentGroup.messages.push(message);
+        currentGroup.messages.push(message)
       }
-    });
+    })
 
-    return groups;
-  });
+    return groups
+  })
 
   async function selectConversation(conversation) {
-    const previousConversationId = selectedConversation.value?.id || messageStore.selectedConversationId || null;
+    const previousConversationId =
+      selectedConversation.value?.id || messageStore.selectedConversationId || null
     if (previousConversationId && previousConversationId !== conversation.id) {
-      messageStore.setPendingItemReference(previousConversationId, pendingItemReference.value);
-      messageStore.setMessageDraft(previousConversationId, messageInput.value);
+      messageStore.setPendingItemReference(previousConversationId, pendingItemReference.value)
+      messageStore.setMessageDraft(previousConversationId, messageInput.value)
     }
 
     if (messageStore.selectedConversationId !== conversation.id) {
-      messageStore.selectedConversationId = conversation.id;
+      messageStore.selectedConversationId = conversation.id
     }
 
     // 總是顯示載入中狀態，即使有快取
     // 這樣可以確保 UI 流程正確，特別是對於空對話
-    messagesLoading.value = true;
+    messagesLoading.value = true
 
-    currentPage.value = 1;
-    hasMoreMessages.value = true;
-    isLoadingMoreMessages.value = false;
-    newMessageCount.value = 0;
-    clearUnreadDivider();
+    currentPage.value = 1
+    hasMoreMessages.value = true
+    isLoadingMoreMessages.value = false
+    newMessageCount.value = 0
+    clearUnreadDivider()
 
-    conversationItems.value = [];
-    itemReferenceCache.value = new Map();
+    conversationItems.value = []
+    itemReferenceCache.value = new Map()
 
     try {
-      await messageStore.loadMessages(conversation.id);
+      await messageStore.loadMessages(conversation.id)
 
-      applyItemMetadataToMessages();
+      applyItemMetadataToMessages()
 
       // 從快取中取得 hasMore 資訊
-      const updatedCache = messageStore.getCachedMessages(conversation.id);
+      const updatedCache = messageStore.getCachedMessages(conversation.id)
       if (updatedCache) {
-        hasMoreMessages.value = updatedCache.hasMore;
-        currentPage.value = Math.max(...Array.from(updatedCache.loadedPages));
+        hasMoreMessages.value = updatedCache.hasMore
+        currentPage.value = Math.max(...Array.from(updatedCache.loadedPages))
       } else if (messageStore.currentMessages.length < 50) {
-        hasMoreMessages.value = false;
+        hasMoreMessages.value = false
       }
 
-      messagesLoading.value = false;
+      messagesLoading.value = false
 
-      loadConversationItems(conversation.id).catch(err => {
-        console.error('Failed to refresh conversation items after select:', err);
-      });
+      loadConversationItems(conversation.id).catch((err) => {
+        console.error('Failed to refresh conversation items after select:', err)
+      })
 
-      await waitForTicks(3);
+      await waitForTicks(3)
 
-      scrollToBottom(false);
+      scrollToBottom(false)
     } catch (err) {
-      messagesLoading.value = false;
-      throw err;
+      messagesLoading.value = false
+      throw err
     }
   }
 
   function deselectConversation() {
-    const conversationId = selectedConversation.value?.id;
+    const conversationId = selectedConversation.value?.id
     if (conversationId) {
-      messageStore.setPendingItemReference(conversationId, pendingItemReference.value);
-      messageStore.setMessageDraft(conversationId, messageInput.value);
+      messageStore.setPendingItemReference(conversationId, pendingItemReference.value)
+      messageStore.setMessageDraft(conversationId, messageInput.value)
     }
-    pendingItemReference.value = null;
-    messageStore.clearSelectedConversation();
-    void scrollCoordinator.emitReset({ conversationId: conversationId || null });
+    pendingItemReference.value = null
+    messageStore.clearSelectedConversation()
+    void scrollCoordinator.emitReset({ conversationId: conversationId || null })
   }
 
   async function sendMessage() {
-    if (!messageInput.value.trim() || !selectedConversation.value) return;
+    if (!messageInput.value.trim() || !selectedConversation.value) return
 
-    const content = messageInput.value.trim();
-    const relatedItemId = pendingItemReference.value ? pendingItemReference.value.id : null;
-    const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null;
+    const content = messageInput.value.trim()
+    const relatedItemId = pendingItemReference.value ? pendingItemReference.value.id : null
+    const relatedItemTitle = pendingItemReference.value ? pendingItemReference.value.title : null
 
-    messageInput.value = '';
+    messageInput.value = ''
     if (selectedConversation.value?.id) {
-      void typingCoordinator.emitSendMessage({ conversationId: selectedConversation.value.id });
+      void typingCoordinator.emitSendMessage({ conversationId: selectedConversation.value.id })
     }
 
-    clearUnreadDivider({ suppress: true });
+    clearUnreadDivider({ suppress: true })
 
-    const tempMessageId = `temp-${Date.now()}`;
+    const tempMessageId = `temp-${Date.now()}`
 
     const optimisticMessage = {
       id: tempMessageId,
@@ -845,132 +872,137 @@ export function useMessagePage() {
       sender: {
         id: currentUser.value?.id,
         name: currentUser.value?.user_metadata?.nickname || '我',
-        avatar: currentUser.value?.user_metadata?.profile_picture_url || null
+        avatar: currentUser.value?.user_metadata?.profile_picture_url || null,
       },
       metadata: null,
       _sending: true,
-      _clientId: tempMessageId
-    };
+      _clientId: tempMessageId,
+    }
 
-    messageStore.currentMessages.push(optimisticMessage);
+    messageStore.currentMessages.push(optimisticMessage)
 
-    await waitForTicks(2);
-    scrollToBottom(false);
+    await waitForTicks(2)
+    scrollToBottom(false)
 
-    const shouldClearItemReference = !!pendingItemReference.value;
+    const shouldClearItemReference = !!pendingItemReference.value
     if (shouldClearItemReference) {
-      const activeConversationId = selectedConversation.value?.id || null;
-      pendingItemReference.value = null;
+      const activeConversationId = selectedConversation.value?.id || null
+      pendingItemReference.value = null
       if (activeConversationId) {
-        messageStore.clearPendingItemReference(activeConversationId);
+        messageStore.clearPendingItemReference(activeConversationId)
       }
 
-      const currentQuery = { ...router.currentRoute.value.query };
+      const currentQuery = { ...router.currentRoute.value.query }
       if (currentQuery.itemId || currentQuery.itemTitle) {
-        delete currentQuery.itemId;
-        delete currentQuery.itemTitle;
-        router.replace({ query: currentQuery });
+        delete currentQuery.itemId
+        delete currentQuery.itemTitle
+        router.replace({ query: currentQuery })
       }
     }
 
     try {
-      const newMessage = await messageStore.sendMessage(content, 'text', relatedItemId, relatedItemTitle);
+      const newMessage = await messageStore.sendMessage(
+        content,
+        'text',
+        relatedItemId,
+        relatedItemTitle
+      )
 
-      applyItemMetadataToMessages();
+      applyItemMetadataToMessages()
 
       if (relatedItemId && selectedConversation.value) {
-        const itemKey = toItemKey(relatedItemId);
-        const hasCachedItem = itemKey !== null ? resolveItemFromMap(itemKey) : null;
+        const itemKey = toItemKey(relatedItemId)
+        const hasCachedItem = itemKey !== null ? resolveItemFromMap(itemKey) : null
         if (!hasCachedItem) {
-          loadConversationItems(selectedConversation.value.id).catch(err => {
-            console.error('Failed to refresh conversation items after sending message:', err);
-          });
+          loadConversationItems(selectedConversation.value.id).catch((err) => {
+            console.error('Failed to refresh conversation items after sending message:', err)
+          })
         }
       }
 
-      const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+      const index = messageStore.currentMessages.findIndex((m) => m.id === tempMessageId)
       if (index !== -1) {
-        const message = messageStore.currentMessages[index];
-        const realMessageId = newMessage.message_id || newMessage.id;
+        const message = messageStore.currentMessages[index]
+        const realMessageId = newMessage.message_id || newMessage.id
 
         const realMessageExists = messageStore.currentMessages.some(
           (m, i) => i !== index && m.id === realMessageId
-        );
+        )
 
         if (realMessageExists) {
-          messageStore.currentMessages.splice(index, 1);
+          messageStore.currentMessages.splice(index, 1)
         } else {
-          message.id = realMessageId;
-          message.created_at = newMessage.created_at;
-          message.metadata = newMessage.metadata;
-          message._sending = false;
+          message.id = realMessageId
+          message.created_at = newMessage.created_at
+          message.metadata = newMessage.metadata
+          message._sending = false
 
           if (newMessage.sender_id) {
-            message.sender.id = newMessage.sender_id;
+            message.sender.id = newMessage.sender_id
           }
         }
       }
     } catch (err) {
-      console.error('Failed to send message:', err);
+      console.error('Failed to send message:', err)
 
-      const index = messageStore.currentMessages.findIndex(m => m.id === tempMessageId);
+      const index = messageStore.currentMessages.findIndex((m) => m.id === tempMessageId)
       if (index !== -1) {
-        const message = messageStore.currentMessages[index];
-        message._sending = false;
-        message._failed = true;
-        message._failedContent = content;
-        message._failedRelatedItemId = relatedItemId;
-        message._failedRelatedItemTitle = relatedItemTitle;
-        message._failedMessageType = message.message_type || 'text';
+        const message = messageStore.currentMessages[index]
+        message._sending = false
+        message._failed = true
+        message._failedContent = content
+        message._failedRelatedItemId = relatedItemId
+        message._failedRelatedItemTitle = relatedItemTitle
+        message._failedMessageType = message.message_type || 'text'
       }
     }
   }
 
   function handleAttachment() {
-    console.log('Handle attachment');
-    alert('檔案附件功能尚未實作');
+    console.log('Handle attachment')
+    alert('檔案附件功能尚未實作')
   }
 
   async function handleOpenTransactionModal() {
     if (!selectedConversation.value) {
-      alert('請先選擇一個對話');
-      return;
+      alert('請先選擇一個對話')
+      return
     }
 
-    showTransactionModal.value = true;
+    showTransactionModal.value = true
 
     // 載入聊天室商品列表（每次都重新載入以確保數據最新）
-    isLoadingTransactionItems.value = true;
+    isLoadingTransactionItems.value = true
     try {
-      await loadConversationItems(selectedConversation.value.id);
+      await loadConversationItems(selectedConversation.value.id)
 
       // 需要為每個商品補充擁有者信息
       // 因為 getConversationItems 返回的 added_by_user_id 是提及者，不是商品擁有者
       // 我們需要調用額外的 API 來獲取商品詳情
-      await enrichItemsWithOwnerInfo();
+      await enrichItemsWithOwnerInfo()
     } catch (error) {
-      console.error('Failed to load conversation items for transaction:', error);
+      console.error('Failed to load conversation items for transaction:', error)
     } finally {
-      isLoadingTransactionItems.value = false;
+      isLoadingTransactionItems.value = false
     }
   }
 
   async function enrichItemsWithOwnerInfo() {
     // 為聊天室中的商品補充擁有者信息和交易狀態
-    const { getItemById } = await import('@/api/itemsAPI');
+    const { getItemById } = await import('@/api/itemsAPI')
     try {
-      await transactionStore.fetchAllTransactions();
+      await transactionStore.fetchAllTransactions()
     } catch (error) {
-      console.error('Failed to refresh transaction cache for conversation items:', error);
+      console.error('Failed to refresh transaction cache for conversation items:', error)
     }
 
-    const itemTransactionMap = transactionStore.itemToTransactionMap?.value ?? new Map();
+    const itemTransactionMap = transactionStore.itemToTransactionMap?.value ?? new Map()
 
     const enrichedItems = await Promise.all(
       conversationItems.value.map(async (item) => {
         try {
-          const itemDetail = await getItemById(item.id);
-          const transactionInfo = itemTransactionMap.get(item.id);
+          const itemDetail = await getItemById(item.id)
+          const transactionInfo = itemTransactionMap.get(item.id)
 
           return {
             ...item,
@@ -978,486 +1010,491 @@ export function useMessagePage() {
             inTransaction: transactionInfo ? transactionInfo.status !== 'sold' : false,
             transactionStatus: transactionInfo?.status || null,
             transactionRole: transactionInfo?.role || null,
-            transactionId: transactionInfo?.transactionId || null
-          };
+            transactionId: transactionInfo?.transactionId || null,
+          }
         } catch (error) {
-          console.error(`Failed to fetch owner info for item ${item.id}:`, error);
-          return item;
+          console.error(`Failed to fetch owner info for item ${item.id}:`, error)
+          return item
         }
       })
-    );
+    )
 
-    conversationItems.value = enrichedItems;
+    conversationItems.value = enrichedItems
   }
 
   async function handleTransactionConfirm(payload) {
-    const { item, note } = payload;
+    const { item, note } = payload
 
-    console.log('Transaction confirmed for item:', item);
-    console.log('Seller note:', note);
+    console.log('Transaction confirmed for item:', item)
+    console.log('Seller note:', note)
 
     if (!selectedConversation.value) {
-      alert('對話資訊錯誤');
-      return;
+      alert('對話資訊錯誤')
+      return
     }
 
     try {
       // 獲取對方用戶 ID（買家）
-      const receiverId = selectedConversation.value._raw.other_user.id;
+      const receiverId = selectedConversation.value._raw.other_user.id
 
       // 調用發起交易 API
-      const transactionApi = await import('@/api/transactionAPI');
-      const result = await transactionApi.initiateTransaction(item.id, receiverId);
+      const transactionApi = await import('@/api/transactionAPI')
+      const result = await transactionApi.initiateTransaction(item.id, receiverId)
 
-      console.log('Transaction initiated:', result);
+      console.log('Transaction initiated:', result)
 
       // 如果有備註，更新備註
       if (note) {
-        await transactionApi.updateGiverNote(result.transaction_id, note);
+        await transactionApi.updateGiverNote(result.transaction_id, note)
       }
 
       // 自動發送訊息給買家（先發送，這樣交易連結會成為最後一則訊息）
-      const autoMessage = '我已發起交易，再麻煩您確認這筆交易';
-      
+      const autoMessage = '我已發起交易，再麻煩您確認這筆交易'
+
       try {
-        await messageStore.sendMessage(
-          autoMessage,
-          'text',
-          null,
-          null
-        );
-        console.log('Auto message sent');
+        await messageStore.sendMessage(autoMessage, 'text', null, null)
+        console.log('Auto message sent')
       } catch (msgErr) {
-        console.error('Failed to send auto message:', msgErr);
+        console.error('Failed to send auto message:', msgErr)
         // Continue even if auto message fails
       }
 
       // 等待一下確保第一則訊息已保存
-      await waitForTicks(2);
+      await waitForTicks(2)
 
       // Send transaction link message（最後發送，這樣預覽會顯示交易連結）
       const transactionLinkContent = JSON.stringify({
-        transaction_id: result.transaction_id
-      });
+        transaction_id: result.transaction_id,
+      })
 
       try {
-        await messageStore.sendMessage(
-          transactionLinkContent,
-          'transaction_link',
-          null,
-          null
-        );
-        console.log('Transaction link message sent');
-        
+        await messageStore.sendMessage(transactionLinkContent, 'transaction_link', null, null)
+        console.log('Transaction link message sent')
+
         // 等待一下確保交易連結訊息已保存並更新對話列表
-        await waitForTicks(2);
+        await waitForTicks(2)
       } catch (msgErr) {
-        console.error('Failed to send transaction link message:', msgErr);
+        console.error('Failed to send transaction link message:', msgErr)
         // Don't fail the whole transaction if message fails
       }
 
       // 立即刷新交易資料，避免等待 realtime 才更新
-      transactionStore.fetchAllTransactions(true).catch(err => {
-        console.error('Failed to refresh transactions after initiation:', err);
-      });
+      transactionStore.fetchAllTransactions(true).catch((err) => {
+        console.error('Failed to refresh transactions after initiation:', err)
+      })
 
       // 關閉交易視窗
-      showTransactionModal.value = false;
+      showTransactionModal.value = false
 
       // TODO: 可以導航到交易詳情頁面
       // router.push({
       //   name: 'TransactionDetail',
       //   params: { id: result.transaction_id }
       // });
-
     } catch (error) {
-      console.error('Failed to initiate transaction:', error);
-      alert(`發起交易失敗：${error.message}`);
+      console.error('Failed to initiate transaction:', error)
+      alert(`發起交易失敗：${error.message}`)
     }
   }
 
   function openItemPage(itemId) {
-    const itemUrl = router.resolve({ name: 'ItemDetail', params: { id: itemId } }).href;
-    window.open(itemUrl, '_blank');
+    const itemUrl = router.resolve({ name: 'ItemDetail', params: { id: itemId } }).href
+    window.open(itemUrl, '_blank')
   }
 
   function removePendingItemReference() {
-    pendingItemReference.value = null;
+    pendingItemReference.value = null
 
     if (selectedConversation.value?.id) {
-      messageStore.clearPendingItemReference(selectedConversation.value.id);
+      messageStore.clearPendingItemReference(selectedConversation.value.id)
     }
 
-    const currentQuery = { ...router.currentRoute.value.query };
+    const currentQuery = { ...router.currentRoute.value.query }
     if (currentQuery.itemId || currentQuery.itemTitle) {
-      delete currentQuery.itemId;
-      delete currentQuery.itemTitle;
-      router.replace({ query: currentQuery });
+      delete currentQuery.itemId
+      delete currentQuery.itemTitle
+      router.replace({ query: currentQuery })
     }
   }
 
   async function retryMessage(failedMessage) {
-    if (!failedMessage._failed) return;
+    if (!failedMessage._failed) return
 
-    const content = failedMessage._failedContent || failedMessage.content;
-    const relatedItemId = failedMessage._failedRelatedItemId || failedMessage.related_item_id;
-    const relatedItemTitle = failedMessage._failedRelatedItemTitle || failedMessage.related_item_title;
-    const retryMessageType = failedMessage._failedMessageType || failedMessage.message_type || 'text';
+    const content = failedMessage._failedContent || failedMessage.content
+    const relatedItemId = failedMessage._failedRelatedItemId || failedMessage.related_item_id
+    const relatedItemTitle =
+      failedMessage._failedRelatedItemTitle || failedMessage.related_item_title
+    const retryMessageType =
+      failedMessage._failedMessageType || failedMessage.message_type || 'text'
 
-    failedMessage._sending = true;
-    failedMessage._failed = false;
+    failedMessage._sending = true
+    failedMessage._failed = false
 
     try {
-      const newMessage = await messageStore.sendMessage(content, retryMessageType, relatedItemId, relatedItemTitle);
+      const newMessage = await messageStore.sendMessage(
+        content,
+        retryMessageType,
+        relatedItemId,
+        relatedItemTitle
+      )
 
-      applyItemMetadataToMessages();
+      applyItemMetadataToMessages()
 
       if (relatedItemId && selectedConversation.value) {
-        const itemKey = toItemKey(relatedItemId);
-        const hasCachedItem = itemKey !== null ? resolveItemFromMap(itemKey) : null;
+        const itemKey = toItemKey(relatedItemId)
+        const hasCachedItem = itemKey !== null ? resolveItemFromMap(itemKey) : null
         if (!hasCachedItem) {
-          loadConversationItems(selectedConversation.value.id).catch(err => {
-            console.error('Failed to refresh conversation items after retrying message:', err);
-          });
+          loadConversationItems(selectedConversation.value.id).catch((err) => {
+            console.error('Failed to refresh conversation items after retrying message:', err)
+          })
         }
       }
 
-      const index = messageStore.currentMessages.findIndex(m => m._clientId === failedMessage._clientId);
+      const index = messageStore.currentMessages.findIndex(
+        (m) => m._clientId === failedMessage._clientId
+      )
       if (index !== -1) {
-        const message = messageStore.currentMessages[index];
-        const realMessageId = newMessage.message_id || newMessage.id;
+        const message = messageStore.currentMessages[index]
+        const realMessageId = newMessage.message_id || newMessage.id
 
         const realMessageExists = messageStore.currentMessages.some(
           (m, i) => i !== index && m.id === realMessageId
-        );
+        )
 
         if (realMessageExists) {
-          messageStore.currentMessages.splice(index, 1);
+          messageStore.currentMessages.splice(index, 1)
         } else {
-          message.id = realMessageId;
-          message.created_at = newMessage.created_at;
-          message.metadata = newMessage.metadata;
-          message._sending = false;
+          message.id = realMessageId
+          message.created_at = newMessage.created_at
+          message.metadata = newMessage.metadata
+          message._sending = false
 
-          delete message._failed;
-          delete message._failedContent;
-          delete message._failedRelatedItemId;
-          delete message._failedRelatedItemTitle;
-          delete message._failedMessageType;
+          delete message._failed
+          delete message._failedContent
+          delete message._failedRelatedItemId
+          delete message._failedRelatedItemTitle
+          delete message._failedMessageType
 
           if (newMessage.sender_id) {
-            message.sender.id = newMessage.sender_id;
+            message.sender.id = newMessage.sender_id
           }
         }
       }
     } catch (err) {
-      console.error('Failed to retry message:', err);
+      console.error('Failed to retry message:', err)
 
-      failedMessage._sending = false;
-      failedMessage._failed = true;
+      failedMessage._sending = false
+      failedMessage._failed = true
     }
   }
 
   async function handleMessagesScroll(event) {
-    const target = event?.target instanceof HTMLElement
-      ? event.target
-      : messagesArea.value;
+    const target = event?.target instanceof HTMLElement ? event.target : messagesArea.value
 
-    if (!target) return;
+    if (!target) return
 
-    const { scrollTop, scrollHeight, clientHeight } = target;
+    const { scrollTop, scrollHeight, clientHeight } = target
 
     void scrollCoordinator.emitScrollMetrics({
       scrollTop,
       scrollHeight,
-      clientHeight
-    });
+      clientHeight,
+    })
   }
 
   function registerMessagesArea(element) {
     if (registeredMessagesArea === element) {
-      messagesArea.value = element;
-      return;
+      messagesArea.value = element
+      return
     }
 
     if (registeredMessagesArea) {
-      registeredMessagesArea.removeEventListener('scroll', handleMessagesScroll);
+      registeredMessagesArea.removeEventListener('scroll', handleMessagesScroll)
     }
 
-    registeredMessagesArea = element || null;
-    messagesArea.value = registeredMessagesArea;
+    registeredMessagesArea = element || null
+    messagesArea.value = registeredMessagesArea
 
     if (registeredMessagesArea) {
-      registeredMessagesArea.addEventListener('scroll', handleMessagesScroll, { passive: true });
+      registeredMessagesArea.addEventListener('scroll', handleMessagesScroll, { passive: true })
 
       void scrollCoordinator.emitScrollMetrics({
         scrollTop: registeredMessagesArea.scrollTop,
         scrollHeight: registeredMessagesArea.scrollHeight,
-        clientHeight: registeredMessagesArea.clientHeight
-      });
+        clientHeight: registeredMessagesArea.clientHeight,
+      })
     }
   }
 
   function scrollToBottom(arg) {
-    const defaultOptions = { smooth: false, preferUnread: true };
-    let options = { ...defaultOptions };
+    const defaultOptions = { smooth: false, preferUnread: true }
+    let options = { ...defaultOptions }
 
     if (typeof arg === 'boolean') {
-      options.smooth = arg;
+      options.smooth = arg
     } else if (arg && typeof arg === 'object') {
-      const isEvent = typeof arg.preventDefault === 'function';
+      const isEvent = typeof arg.preventDefault === 'function'
       if (isEvent) {
-        arg.preventDefault();
-        arg.stopPropagation?.();
+        arg.preventDefault()
+        arg.stopPropagation?.()
       } else {
-        options = { ...options, ...arg };
+        options = { ...options, ...arg }
       }
     }
 
-    newMessageCount.value = 0;
+    newMessageCount.value = 0
 
     nextTick(() => {
-      const container = messagesArea.value;
-      if (!container) return;
+      const container = messagesArea.value
+      if (!container) return
 
-      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints;
-      const behavior = options.smooth && !isMobile ? 'smooth' : 'auto';
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints
+      const behavior = options.smooth && !isMobile ? 'smooth' : 'auto'
 
       if (options.preferUnread && firstUnreadMessageId.value) {
-        scrollToMessage(firstUnreadMessageId.value, { behavior, highlight: false });
-        return;
+        scrollToMessage(firstUnreadMessageId.value, { behavior, highlight: false })
+        return
       }
 
-      const scrollTop = container.scrollHeight;
+      const scrollTop = container.scrollHeight
 
       if (isMobile) {
-        container.scrollTop = scrollTop;
+        container.scrollTop = scrollTop
 
         setTimeout(() => {
           if (messagesArea.value) {
-            messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+            messagesArea.value.scrollTop = messagesArea.value.scrollHeight
           }
-        }, 50);
+        }, 50)
 
         if (window.matchMedia('(max-width: 575.98px)').matches) {
           setTimeout(() => {
             if (messagesArea.value) {
-              messagesArea.value.scrollTop = messagesArea.value.scrollHeight;
+              messagesArea.value.scrollTop = messagesArea.value.scrollHeight
             }
-          }, 150);
+          }, 150)
         }
       } else {
-        container.scrollTo({ top: scrollTop, behavior });
+        container.scrollTo({ top: scrollTop, behavior })
       }
 
       if (firstUnreadMessageId.value) {
-        hasReachedBottomAfterUnread.value = true;
+        hasReachedBottomAfterUnread.value = true
       }
-    });
+    })
   }
 
   function scrollToMessage(messageId, options = {}) {
-    const { behavior = 'smooth', highlight = true } = options;
-    const container = messagesArea.value;
-    if (!container || !messageId) return;
+    const { behavior = 'smooth', highlight = true } = options
+    const container = messagesArea.value
+    if (!container || !messageId) return
 
-    const selector = `[data-message-id="${String(messageId)}"]`;
-    const target = container.querySelector(selector);
+    const selector = `[data-message-id="${String(messageId)}"]`
+    const target = container.querySelector(selector)
 
     if (target) {
-      target.scrollIntoView({ behavior, block: 'center' });
+      target.scrollIntoView({ behavior, block: 'center' })
       if (highlight) {
         // Optional: Add a highlight class temporarily
-        target.classList.add('message-highlight');
+        target.classList.add('message-highlight')
         setTimeout(() => {
-          target.classList.remove('message-highlight');
-        }, 2000);
+          target.classList.remove('message-highlight')
+        }, 2000)
       }
     } else {
-      console.warn(`Message ${messageId} not found in DOM`);
+      console.warn(`Message ${messageId} not found in DOM`)
       // Potentially load older messages if not found (complex)
     }
   }
 
   async function loadMoreMessages() {
-    if (!selectedConversation.value || isLoadingMoreMessages.value || !hasMoreMessages.value) return;
+    if (!selectedConversation.value || isLoadingMoreMessages.value || !hasMoreMessages.value) return
 
-    isLoadingMoreMessages.value = true;
+    isLoadingMoreMessages.value = true
 
     try {
-      const scrollHeightBefore = messagesArea.value.scrollHeight;
-      const scrollTopBefore = messagesArea.value.scrollTop;
+      const scrollHeightBefore = messagesArea.value.scrollHeight
+      const scrollTopBefore = messagesArea.value.scrollTop
 
-      const nextPage = currentPage.value + 1;
-      const olderMessages = await messageStore.loadMoreMessages(selectedConversation.value.id, nextPage, 50);
+      const nextPage = currentPage.value + 1
+      const olderMessages = await messageStore.loadMoreMessages(
+        selectedConversation.value.id,
+        nextPage,
+        50
+      )
 
       if (olderMessages && olderMessages.length > 0) {
-        currentPage.value = nextPage;
+        currentPage.value = nextPage
 
         if (olderMessages.length < 50) {
-          hasMoreMessages.value = false;
+          hasMoreMessages.value = false
         }
 
-        applyItemMetadataToMessages();
+        applyItemMetadataToMessages()
 
-        const needsItemRefresh = olderMessages.some(msg => {
-          const itemKey = toItemKey(msg.related_item_id);
-          if (itemKey === null) return false;
-          return !resolveItemFromMap(itemKey);
-        });
+        const needsItemRefresh = olderMessages.some((msg) => {
+          const itemKey = toItemKey(msg.related_item_id)
+          if (itemKey === null) return false
+          return !resolveItemFromMap(itemKey)
+        })
 
         if (needsItemRefresh && selectedConversation.value) {
-          loadConversationItems(selectedConversation.value.id).catch(err => {
-            console.error('Failed to refresh conversation items while loading more:', err);
-          });
+          loadConversationItems(selectedConversation.value.id).catch((err) => {
+            console.error('Failed to refresh conversation items while loading more:', err)
+          })
         }
 
-        await waitForTicks(2);
+        await waitForTicks(2)
 
-        const scrollHeightAfter = messagesArea.value.scrollHeight;
-        const heightDifference = scrollHeightAfter - scrollHeightBefore;
-        messagesArea.value.scrollTop = scrollTopBefore + heightDifference;
+        const scrollHeightAfter = messagesArea.value.scrollHeight
+        const heightDifference = scrollHeightAfter - scrollHeightBefore
+        messagesArea.value.scrollTop = scrollTopBefore + heightDifference
       } else {
         if (currentPage.value > 1) {
-          hasMoreMessages.value = false;
+          hasMoreMessages.value = false
         }
       }
     } catch (err) {
-      console.error('Failed to load more messages:', err);
+      console.error('Failed to load more messages:', err)
     } finally {
-      isLoadingMoreMessages.value = false;
+      isLoadingMoreMessages.value = false
     }
   }
 
   async function initialize() {
-    const conversationId = router.currentRoute.value.query.conversationId;
-    const itemId = router.currentRoute.value.query.itemId;
-    const itemTitle = router.currentRoute.value.query.itemTitle;
+    const conversationId = router.currentRoute.value.query.conversationId
+    const itemId = router.currentRoute.value.query.itemId
+    const itemTitle = router.currentRoute.value.query.itemTitle
 
     if (conversationId) {
       try {
         // 強制重新載入對話列表，確保能找到對話
-        console.log(`[Initialize] Loading conversations for conversationId: ${conversationId}`);
-        await messageStore.loadConversations(true); // forceRefresh = true
+        console.log(`[Initialize] Loading conversations for conversationId: ${conversationId}`)
+        await messageStore.loadConversations(true) // forceRefresh = true
 
         const conversation = displayConversations.value.find(
-          c => c.id === parseInt(conversationId, 10)
-        );
+          (c) => c.id === parseInt(conversationId, 10)
+        )
 
         if (conversation) {
-          console.log(`[Initialize] Found conversation:`, conversation);
+          console.log(`[Initialize] Found conversation:`, conversation)
           // selectConversation 會處理 messagesLoading 狀態
-          await selectConversation(conversation);
+          await selectConversation(conversation)
 
           if (itemId && itemTitle) {
-            console.log(`[Initialize] Setting up item reference: ${itemId} - ${itemTitle}`);
+            console.log(`[Initialize] Setting up item reference: ${itemId} - ${itemTitle}`)
             // 設置待處理的物品引用
             pendingItemReference.value = {
               id: itemId,
-              title: itemTitle
-            };
-            const cacheKey = toItemKey(itemId);
+              title: itemTitle,
+            }
+            const cacheKey = toItemKey(itemId)
             if (cacheKey !== null) {
-              const nextCache = new Map(itemReferenceCache.value);
-              nextCache.set(cacheKey, itemTitle);
-              itemReferenceCache.value = nextCache;
+              const nextCache = new Map(itemReferenceCache.value)
+              nextCache.set(cacheKey, itemTitle)
+              itemReferenceCache.value = nextCache
             }
             // 設置預設訊息
-            messageInput.value = '我想詢問';
+            messageInput.value = '我想詢問'
 
             // 確保 store 也有這個引用
             if (conversation.id) {
               messageStore.setPendingItemReference(conversation.id, {
                 id: itemId,
-                title: itemTitle
-              });
+                title: itemTitle,
+              })
             }
           }
         } else {
-          console.error(`[Initialize] Conversation ${conversationId} not found in displayConversations`);
-          console.log(`[Initialize] Available conversations:`, displayConversations.value.map(c => c.id));
+          console.error(
+            `[Initialize] Conversation ${conversationId} not found in displayConversations`
+          )
+          console.log(
+            `[Initialize] Available conversations:`,
+            displayConversations.value.map((c) => c.id)
+          )
         }
       } catch (err) {
-        console.error('Failed to initialize conversation:', err);
+        console.error('Failed to initialize conversation:', err)
       }
     }
   }
 
   function handleMobileKeyboard() {
-    const isMobile = window.matchMedia('(max-width: 575.98px)').matches;
+    const isMobile = window.matchMedia('(max-width: 575.98px)').matches
 
     if (isMobile) {
-      const originalHeight = window.innerHeight;
+      const originalHeight = window.innerHeight
 
       window.addEventListener('resize', () => {
-        const currentHeight = window.innerHeight;
-        const isKeyboardOpen = currentHeight < (originalHeight - 100);
+        const currentHeight = window.innerHeight
+        const isKeyboardOpen = currentHeight < originalHeight - 100
 
         if (isKeyboardOpen) {
-          document.body.classList.add('keyboard-open');
+          document.body.classList.add('keyboard-open')
         } else {
-          document.body.classList.remove('keyboard-open');
+          document.body.classList.remove('keyboard-open')
         }
-      });
+      })
     }
   }
 
   onMounted(async () => {
-    messageStore.setIsInMessagesPage(true);
-    messageStore.setIsAtMessagesBottom(true);
+    messageStore.setIsInMessagesPage(true)
+    messageStore.setIsAtMessagesBottom(true)
 
-    await initialize();
-    handleMobileKeyboard();
+    await initialize()
+    handleMobileKeyboard()
 
-    await waitForTicks(2);
+    await waitForTicks(2)
 
     watch(
       () => messageStore.currentMessages.length,
       async (newLen, oldLen) => {
-        if (newLen <= oldLen) return;
+        if (newLen <= oldLen) return
 
-        if (messagesLoading.value || isLoadingMoreMessages.value) return;
+        if (messagesLoading.value || isLoadingMoreMessages.value) return
 
-        await waitForTicks(2);
+        await waitForTicks(2)
 
-        if (!messagesArea.value) return;
+        if (!messagesArea.value) return
 
-        const appendedMessages = messageStore.currentMessages.slice(oldLen);
+        const appendedMessages = messageStore.currentMessages.slice(oldLen)
         if (appendedMessages.length > 0) {
-          applyItemMetadataToMessages();
+          applyItemMetadataToMessages()
 
-          const hasItemReferenceWithoutCache = appendedMessages.some(msg => {
-            const itemKey = toItemKey(msg.related_item_id);
-            if (itemKey === null) return false;
-            return !resolveItemFromMap(itemKey);
-          });
+          const hasItemReferenceWithoutCache = appendedMessages.some((msg) => {
+            const itemKey = toItemKey(msg.related_item_id)
+            if (itemKey === null) return false
+            return !resolveItemFromMap(itemKey)
+          })
 
           if (hasItemReferenceWithoutCache && selectedConversation.value) {
-            loadConversationItems(selectedConversation.value.id).catch(err => {
-              console.error('Failed to refresh conversation items for new message:', err);
-            });
+            loadConversationItems(selectedConversation.value.id).catch((err) => {
+              console.error('Failed to refresh conversation items for new message:', err)
+            })
           }
 
-          void scrollCoordinator.emitMessagesAppended({ appendedMessages });
+          void scrollCoordinator.emitMessagesAppended({ appendedMessages })
         }
       }
-    );
-  });
+    )
+  })
 
   onBeforeUnmount(() => {
-    const conversationId = selectedConversation.value?.id;
+    const conversationId = selectedConversation.value?.id
     if (conversationId) {
-      messageStore.setPendingItemReference(conversationId, pendingItemReference.value);
-      messageStore.setMessageDraft(conversationId, messageInput.value);
+      messageStore.setPendingItemReference(conversationId, pendingItemReference.value)
+      messageStore.setMessageDraft(conversationId, messageInput.value)
     }
-    void typingCoordinator.emitReset({ conversationId: conversationId || null });
-    void scrollCoordinator.emitReset({ conversationId: conversationId || null });
+    void typingCoordinator.emitReset({ conversationId: conversationId || null })
+    void scrollCoordinator.emitReset({ conversationId: conversationId || null })
 
-    messageStore.setIsInMessagesPage(false);
-    messageStore.setIsAtMessagesBottom(true);
+    messageStore.setIsInMessagesPage(false)
+    messageStore.setIsAtMessagesBottom(true)
 
-    registerMessagesArea(null);
-  });
+    registerMessagesArea(null)
+  })
 
   return {
     userPoints,
@@ -1494,6 +1531,6 @@ export function useMessagePage() {
     isLoadingTransactionItems,
     conversationItems,
     handleOpenTransactionModal,
-    handleTransactionConfirm
-  };
+    handleTransactionConfirm,
+  }
 }

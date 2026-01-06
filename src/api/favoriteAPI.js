@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'
 
 // ===================================================================
 // ### 收藏 API (Favorite APIs)
@@ -16,10 +16,13 @@ import { supabase } from '@/lib/supabase';
  */
 export async function getMyFavoriteItems(options = {}) {
   // 1. 檢查是否已登入 (RPC 內部也會檢查)
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.warn('getMyFavoriteItems: User not logged in.');
-    return null;
+    console.warn('getMyFavoriteItems: User not logged in.')
+    return null
   }
 
   // 2. RPC 會自動從登入者抓取主要地點
@@ -27,20 +30,20 @@ export async function getMyFavoriteItems(options = {}) {
     p_page: options.page || 1,
     p_size: options.size || 20,
     p_sort_by: options.sort_by || 'favorited_at',
-    p_sort_direction: options.sort_direction || 'desc'
-  };
+    p_sort_direction: options.sort_direction || 'desc',
+  }
 
   // 3. 呼叫 RPC 函式
-  const { data, error } = await supabase.rpc('get_my_favorite_items', rpcParams);
+  const { data, error } = await supabase.rpc('get_my_favorite_items', rpcParams)
 
   // 4. 錯誤處理
   if (error) {
-    console.error('Supabase 獲取 "我的收藏" 失敗:', error);
-    throw new Error(error.message);
+    console.error('Supabase 獲取 "我的收藏" 失敗:', error)
+    throw new Error(error.message)
   }
 
   // 5. RPC 回傳的 data 就是完美的 DTO，直接回傳
-  return data;
+  return data
 }
 
 /**
@@ -51,28 +54,31 @@ export async function getMyFavoriteItems(options = {}) {
  */
 export async function addFavoriteItem(itemId) {
   // 1. 獲取當前登入者 ID (雖然 RPC 會做，前端先檢查可以提升體驗)
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    throw new Error('使用者未登入，無法新增收藏');
+    throw new Error('使用者未登入，無法新增收藏')
   }
 
   // 2. 準備 RPC 參數
   const rpcParams = {
-    p_item_id: itemId
-  };
+    p_item_id: itemId,
+  }
 
   // 3. 呼叫 RPC 而不是 insert
-  const { data, error } = await supabase.rpc('add_favorite_item', rpcParams);
+  const { data, error } = await supabase.rpc('add_favorite_item', rpcParams)
 
   // 4. 錯誤處理
   if (error) {
     // 這裡會捕捉到 RPC 內部的 RAISE EXCEPTION (未登入、物品不存在、收藏自己)
-    console.error(`Supabase 新增收藏 #${itemId} 失敗:`, error);
-    throw new Error(error.message);
+    console.error(`Supabase 新增收藏 #${itemId} 失敗:`, error)
+    throw new Error(error.message)
   }
 
   // 5. 回傳 RPC 回傳的 JSON 結果
-  return data;
+  return data
 }
 
 /**
@@ -82,31 +88,31 @@ export async function addFavoriteItem(itemId) {
  */
 export async function removeFavoriteItem(itemId) {
   // 1. 獲取當前登入者 ID
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
-    throw new Error('使用者未登入，無法取消收藏');
+    throw new Error('使用者未登入，無法取消收藏')
   }
-  const userId = user.id;
+  const userId = user.id
 
   // 2. 執行刪除操作
   // RLS 策略會自動確保 user_id === auth.uid()
-  const { error } = await supabase
-    .from('favorites')
-    .delete()
-    .match({
-      user_id: userId,
-      item_id: itemId
-    });
+  const { error } = await supabase.from('favorites').delete().match({
+    user_id: userId,
+    item_id: itemId,
+  })
 
   // 3. 錯誤處理
   if (error) {
-    console.error(`Supabase 取消收藏 #${itemId} 失敗:`, error);
-    throw new Error(error.message);
+    console.error(`Supabase 取消收藏 #${itemId} 失敗:`, error)
+    throw new Error(error.message)
   }
 
   // 4. 回傳成功
-  console.log(`Successfully removed item #${itemId} from favorites`);
-  return true;
+  console.log(`Successfully removed item #${itemId} from favorites`)
+  return true
 }
 
 /* ===== 範例資料 (Example Data) =====

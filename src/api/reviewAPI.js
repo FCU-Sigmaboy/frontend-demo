@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'
 
 // ===================================================================
 // ### 評價 API (Review APIs) - 整合版
@@ -45,40 +45,40 @@ import { supabase } from '@/lib/supabase';
 export async function createReview(reviewData) {
   // 1. 驗證必填欄位
   if (!reviewData.transaction_id) {
-    throw new Error('缺少必填欄位：transaction_id');
+    throw new Error('缺少必填欄位：transaction_id')
   }
 
   if (reviewData.score === null || reviewData.score === undefined) {
-    throw new Error('缺少必填欄位：score');
+    throw new Error('缺少必填欄位：score')
   }
 
   // 2. 驗證評分範圍
   if (reviewData.score < 1 || reviewData.score > 5) {
-    throw new Error('評分必須在 1-5 之間');
+    throw new Error('評分必須在 1-5 之間')
   }
 
   // 3. 準備 RPC 參數
   const rpcParams = {
     p_transaction_id: reviewData.transaction_id,
     p_score: reviewData.score,
-    p_comment: reviewData.comment || null
-  };
+    p_comment: reviewData.comment || null,
+  }
 
   // 4. 呼叫 RPC 函式
-  const { data, error } = await supabase.rpc('create_review', rpcParams);
+  const { data, error } = await supabase.rpc('create_review', rpcParams)
 
   // 5. 錯誤處理
   if (error) {
-    console.error('建立評價失敗:', error);
-    throw new Error(error.message);
+    console.error('建立評價失敗:', error)
+    throw new Error(error.message)
   }
 
   // 6. 回傳資料
   if (!data || data.length === 0) {
-    throw new Error('評價建立失敗：未回傳資料');
+    throw new Error('評價建立失敗：未回傳資料')
   }
 
-  return data[0]; // 回傳第一筆（唯一）評價記錄
+  return data[0] // 回傳第一筆（唯一）評價記錄
 }
 
 /**
@@ -100,13 +100,15 @@ export async function createReview(reviewData) {
 export async function canCreateReview(transactionId) {
   try {
     // 獲取當前使用者
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     if (!user) {
       return {
         canReview: false,
-        reason: '使用者未登入'
-      };
+        reason: '使用者未登入',
+      }
     }
 
     // 查詢交易資訊
@@ -114,30 +116,30 @@ export async function canCreateReview(transactionId) {
       .from('transactions')
       .select('id, giver_id, receiver_id, transaction_status')
       .eq('id', transactionId)
-      .single();
+      .single()
 
     if (txError || !transaction) {
       return {
         canReview: false,
-        reason: '交易不存在'
-      };
+        reason: '交易不存在',
+      }
     }
 
     // 檢查交易狀態
     if (transaction.transaction_status !== 'completed') {
       return {
         canReview: false,
-        reason: '只有已完成的交易才能建立評價'
-      };
+        reason: '只有已完成的交易才能建立評價',
+      }
     }
 
     // 檢查是否為交易參與者
-    const isParticipant = user.id === transaction.giver_id || user.id === transaction.receiver_id;
+    const isParticipant = user.id === transaction.giver_id || user.id === transaction.receiver_id
     if (!isParticipant) {
       return {
         canReview: false,
-        reason: '您不是此交易的參與者'
-      };
+        reason: '您不是此交易的參與者',
+      }
     }
 
     // 檢查是否已經評價過
@@ -146,35 +148,34 @@ export async function canCreateReview(transactionId) {
       .select('id')
       .eq('transaction_id', transactionId)
       .eq('reviewer_id', user.id)
-      .maybeSingle();
+      .maybeSingle()
 
     if (reviewError) {
-      console.error('檢查評價失敗:', reviewError);
+      console.error('檢查評價失敗:', reviewError)
       return {
         canReview: false,
-        reason: '檢查評價狀態失敗'
-      };
+        reason: '檢查評價狀態失敗',
+      }
     }
 
     if (existingReview) {
       return {
         canReview: false,
-        reason: '您已經對此交易建立過評價'
-      };
+        reason: '您已經對此交易建立過評價',
+      }
     }
 
     // 所有檢查通過
     return {
       canReview: true,
-      reason: null
-    };
-
+      reason: null,
+    }
   } catch (error) {
-    console.error('檢查評價權限失敗:', error);
+    console.error('檢查評價權限失敗:', error)
     return {
       canReview: false,
-      reason: '系統錯誤'
-    };
+      reason: '系統錯誤',
+    }
   }
 }
 
@@ -196,32 +197,27 @@ export async function canCreateReview(transactionId) {
  */
 export async function getMyReviews(params = {}) {
   // 1. 設定預設參數
-  const {
-    page = 1,
-    pageSize = 20,
-    sortBy = 'created_at',
-    sortDirection = 'desc'
-  } = params;
+  const { page = 1, pageSize = 20, sortBy = 'created_at', sortDirection = 'desc' } = params
 
   // 2. 準備 RPC 參數
   const rpcParams = {
     p_page: page,
     p_page_size: pageSize,
     p_sort_by: sortBy,
-    p_sort_direction: sortDirection
-  };
+    p_sort_direction: sortDirection,
+  }
 
   // 3. 呼叫 RPC 函式
-  const { data, error } = await supabase.rpc('get_my_reviews', rpcParams);
+  const { data, error } = await supabase.rpc('get_my_reviews', rpcParams)
 
   // 4. 錯誤處理
   if (error) {
-    console.error('獲取評價列表失敗:', error);
-    throw new Error(error.message);
+    console.error('獲取評價列表失敗:', error)
+    throw new Error(error.message)
   }
 
   // 5. 回傳資料
-  return data || [];
+  return data || []
 }
 
 /**
@@ -239,17 +235,11 @@ export async function getMyReviews(params = {}) {
  */
 export async function getOthersReviews(params = {}) {
   // 1. 參數驗證
-  const {
-    userId,
-    page = 1,
-    pageSize = 20,
-    sortBy = 'created_at',
-    sortDirection = 'desc'
-  } = params;
+  const { userId, page = 1, pageSize = 20, sortBy = 'created_at', sortDirection = 'desc' } = params
 
   // 2. 檢查必填參數
   if (!userId) {
-    throw new Error('必須提供目標用戶 ID (userId)');
+    throw new Error('必須提供目標用戶 ID (userId)')
   }
 
   // 3. 準備 RPC 參數
@@ -258,20 +248,20 @@ export async function getOthersReviews(params = {}) {
     p_page: page,
     p_page_size: pageSize,
     p_sort_by: sortBy,
-    p_sort_direction: sortDirection
-  };
+    p_sort_direction: sortDirection,
+  }
 
   // 4. 呼叫 RPC 函式
-  const { data, error } = await supabase.rpc('get_others_reviews', rpcParams);
+  const { data, error } = await supabase.rpc('get_others_reviews', rpcParams)
 
   // 5. 錯誤處理
   if (error) {
-    console.error('獲取用戶評價列表失敗:', error);
-    throw new Error(error.message);
+    console.error('獲取用戶評價列表失敗:', error)
+    throw new Error(error.message)
   }
 
   // 6. 回傳資料
-  return data || [];
+  return data || []
 }
 
 /* 回傳 data 範例 (getMyReviews & getOthersReviews)

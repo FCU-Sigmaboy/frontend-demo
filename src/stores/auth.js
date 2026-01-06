@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Complete profile data from API (including balance, carbon_saved_kg, locations, etc.)
   const profileData = ref(null)
-  
+
   // Loading state to prevent duplicate API calls
   const isLoadingProfile = ref(false)
 
@@ -42,8 +42,8 @@ export const useAuthStore = defineStore('auth', () => {
         provider: 'google',
         options: {
           // 登入後導回當前頁面
-          redirectTo: window.location.href
-        }
+          redirectTo: window.location.href,
+        },
       })
 
       if (error) throw error
@@ -71,7 +71,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 更新 profile (從資料庫重新載入)
   async function updateCustomProfile() {
     if (!user.value) return
-    
+
     // Prevent duplicate calls
     if (isLoadingProfile.value) {
       console.log('⏳ Profile update already in progress, skipping...')
@@ -80,7 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       isLoadingProfile.value = true
-      
+
       // 直接使用 getMyProfileForEdit API 獲取最新的 profile 資料
       const data = await getMyProfileForEdit()
 
@@ -97,7 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
         avatar: data.profile_picture_url,
         balance: data.profile_details?.balance,
         carbon_saved: data.profile_details?.carbon_saved_kg,
-        locations_count: data.locations?.length || 0
+        locations_count: data.locations?.length || 0,
       })
     } catch (error) {
       console.error('Error updating profile:', error)
@@ -110,7 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 從資料庫載入完整 profile (使用 getMyProfileForEdit API)
   async function loadCustomProfile() {
     if (!user.value) return
-    
+
     // Prevent duplicate calls
     if (isLoadingProfile.value) {
       console.log('Profile load already in progress, skipping...')
@@ -119,7 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       isLoadingProfile.value = true
-      
+
       // 使用 getMyProfileForEdit API 獲取完整的 profile 資料
       const data = await getMyProfileForEdit()
 
@@ -136,7 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
         avatar: data.profile_picture_url,
         balance: data.profile_details?.balance,
         carbon_saved: data.profile_details?.carbon_saved_kg,
-        locations_count: data.locations?.length || 0
+        locations_count: data.locations?.length || 0,
       })
 
       // 檢查是否有 locations，如果沒有則自動獲取並儲存當前位置
@@ -168,11 +168,14 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 儲存位置（首次必須為「家」）
       console.log('💾 Saving location as 家...')
-      const result = await saveLocation({
-        latitude: position.latitude,
-        longitude: position.longitude,
-        type: '家'
-      }, token)
+      const result = await saveLocation(
+        {
+          latitude: position.latitude,
+          longitude: position.longitude,
+          type: '家',
+        },
+        token
+      )
 
       console.log('✅ Location saved successfully:', result.data)
 
@@ -209,13 +212,15 @@ export const useAuthStore = defineStore('auth', () => {
   async function initAuth() {
     try {
       // 獲取當前 session
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession()
       setSession(currentSession)
 
       // 監聽認證狀態變化
       supabase.auth.onAuthStateChange((_event, newSession) => {
         console.log('Auth state changed:', _event)
-        
+
         // Only reload profile on SIGNED_IN event, not on TOKEN_REFRESHED
         if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
           setSession(newSession)
@@ -250,6 +255,6 @@ export const useAuthStore = defineStore('auth', () => {
     initAuth,
     setSession,
     updateCustomProfile,
-    loadCustomProfile
+    loadCustomProfile,
   }
 })
