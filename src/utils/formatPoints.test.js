@@ -1,5 +1,5 @@
 // src/utils/formatPoints.test.js
-// Sprint 1: 第一個測試檔案
+// Sprint 1 基礎測試 + Sprint 2 進階擴展
 import { describe, it, expect } from 'vitest'
 import { formatPoints } from './formatPoints'
 
@@ -47,6 +47,47 @@ describe('formatPoints', () => {
 
     it('應處理負數 -500，返回 "-500 點"', () => {
       expect(formatPoints(-500)).toBe('-500 點')
+    })
+  })
+
+  // =========================================================================
+  // 進階情況測試（Sprint 2 擴展）
+  // =========================================================================
+  describe('進階情況', () => {
+    it('應處理小數', () => {
+      expect(formatPoints(1000.5)).toBe('1,000.5 點')
+    })
+
+    it('應處理極大數字', () => {
+      expect(formatPoints(999999999)).toBe('999,999,999 點')
+    })
+
+    it('應處理 NaN', () => {
+      expect(formatPoints(NaN)).toBe('0 點')
+    })
+
+    it('應處理 Infinity', () => {
+      expect(formatPoints(Infinity)).toBe('∞ 點')
+    })
+
+    it('應處理負 Infinity', () => {
+      expect(formatPoints(-Infinity)).toBe('-∞ 點')
+    })
+
+    it('應處理空物件', () => {
+      expect(formatPoints({})).toBe('0 點')
+    })
+
+    it('應處理空陣列', () => {
+      expect(formatPoints([])).toBe('0 點')
+    })
+
+    it('應處理布林值 true', () => {
+      expect(formatPoints(true)).toBe('1 點')
+    })
+
+    it('應處理布林值 false', () => {
+      expect(formatPoints(false)).toBe('0 點')
     })
   })
 })
