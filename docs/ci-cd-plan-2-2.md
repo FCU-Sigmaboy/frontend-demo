@@ -245,7 +245,7 @@ npm run test
 ### 參考文檔
 
 - [ci-cd-plan-2.md](./ci-cd-plan-2.md) - Sprint 2 總體規劃
-- [ci-cd-plan-2-1.md](./ci-cd-plan-2-1.md) - Sprint 1 實作記錄
+- [ci-cd-plan-2-1.md](./ci-cd-plan-2-1.md) - Sprint 1 基礎建設實作指引
 
 ---
 
