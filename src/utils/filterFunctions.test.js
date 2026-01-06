@@ -347,10 +347,7 @@ describe('filterFunctions', () => {
   describe('combineFilters (AND 邏輯)', () => {
     describe('正常情況', () => {
       it('應組合兩個篩選條件，所有條件都需滿足', () => {
-        const filter = combineFilters(
-          filterByPopularity(50),
-          filterByPriceRange(100, 1000)
-        )
+        const filter = combineFilters(filterByPopularity(50), filterByPriceRange(100, 1000))
 
         // 兩個條件都滿足
         expect(filter({ favorites_count: 50, price: 500 })).toBe(true)
@@ -371,14 +368,10 @@ describe('filterFunctions', () => {
         )
 
         // 三個條件都滿足
-        expect(
-          filter({ favorites_count: 50, price: 500, status: 'active' })
-        ).toBe(true)
+        expect(filter({ favorites_count: 50, price: 500, status: 'active' })).toBe(true)
 
         // 缺少一個條件
-        expect(
-          filter({ favorites_count: 50, price: 500, status: 'inactive' })
-        ).toBe(false)
+        expect(filter({ favorites_count: 50, price: 500, status: 'inactive' })).toBe(false)
       })
     })
 
@@ -404,10 +397,7 @@ describe('filterFunctions', () => {
   describe('combineFiltersOr (OR 邏輯)', () => {
     describe('正常情況', () => {
       it('應組合兩個篩選條件，滿足任一條件即可', () => {
-        const filter = combineFiltersOr(
-          filterByPopularity(100),
-          filterByDiscount()
-        )
+        const filter = combineFiltersOr(filterByPopularity(100), filterByDiscount())
 
         // 兩個條件都滿足
         expect(filter({ favorites_count: 100, discount: 10 })).toBe(true)
@@ -433,9 +423,7 @@ describe('filterFunctions', () => {
         expect(filter({ status: 'sold' })).toBe(true)
 
         // 沒有條件滿足
-        expect(filter({ favorites_count: 10, discount: 0, status: 'active' })).toBe(
-          false
-        )
+        expect(filter({ favorites_count: 10, discount: 0, status: 'active' })).toBe(false)
       })
     })
 
@@ -531,18 +519,14 @@ describe('filterFunctions', () => {
 
     it('應正確使用 filter 方法與 combineFilters', () => {
       // 熱門且附近的商品
-      const result = mockItems.filter(
-        combineFilters(filterByPopularity(50), filterByDistance(5))
-      )
+      const result = mockItems.filter(combineFilters(filterByPopularity(50), filterByDistance(5)))
       expect(result).toHaveLength(2)
       expect(result.map((item) => item.id)).toEqual([1, 4])
     })
 
     it('應正確使用 filter 方法與 combineFiltersOr', () => {
       // 有折扣或已售出的商品
-      const result = mockItems.filter(
-        combineFiltersOr(filterByDiscount(), filterByStatus('sold'))
-      )
+      const result = mockItems.filter(combineFiltersOr(filterByDiscount(), filterByStatus('sold')))
       expect(result).toHaveLength(3)
       expect(result.map((item) => item.id)).toEqual([1, 3, 4])
     })
