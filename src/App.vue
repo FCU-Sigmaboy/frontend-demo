@@ -31,7 +31,7 @@ const INITIAL_GIFT_FALLBACK = {
 
 // 計算是否顯示客服按鈕
 const showCustomerService = computed(() => {
-  return route.name !== 'MapSearch'
+  return !(['MapSearch', 'Messages'].includes(route.name))
 })
 
 const {
