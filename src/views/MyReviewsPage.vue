@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useReviewStore } from '@/stores/review';
 import AppHeader from '../components/AppHeader.vue';
@@ -293,14 +293,17 @@ const totalPages = computed(() => {
 
 // Computed paginated reviews (for display)
 const paginatedReviews = computed(() => {
-  // Ensure current page doesn't exceed total pages
-  if (currentPage.value > totalPages.value && totalPages.value > 0) {
-    currentPage.value = totalPages.value;
-  }
-
-  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const page = Math.min(currentPage.value, Math.max(1, totalPages.value));
+  const start = (page - 1) * itemsPerPage.value;
   const end = start + itemsPerPage.value;
   return filteredReviews.value.slice(start, end);
+});
+
+// Watch for page overflow and adjust
+watch(totalPages, (newTotal) => {
+  if (currentPage.value > newTotal && newTotal > 0) {
+    currentPage.value = newTotal;
+  }
 });
 
 // Pagination methods

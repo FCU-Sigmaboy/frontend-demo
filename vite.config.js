@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // 載入環境變數
-  const env = loadEnv(mode, process.cwd(), '')
+  // 載入環境變數（使用 __dirname 作為根目錄，避免使用 process.cwd()）
+  const env = loadEnv(mode, __dirname, '')
   
   return {
     base: env.VITE_BASE_PATH || '/',

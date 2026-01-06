@@ -6,9 +6,11 @@
 
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTransactionStore } from '@/stores/transaction'
 import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
 const transactionStore = useTransactionStore()
 const authStore = useAuthStore()
 

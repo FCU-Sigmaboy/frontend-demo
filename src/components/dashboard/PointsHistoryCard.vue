@@ -110,7 +110,7 @@ watch(() => props.activeFilter, value => {
   activeFilter.value = value || 'all';
 });
 const selectedTransaction = ref(null);
-const isLoading = ref(false);
+const localIsLoading = ref(false);
 const currentPage = ref(1);
 
 // Filter tabs configuration
@@ -136,13 +136,13 @@ function handleFilterChange(filterKey) {
 
 function handleLoadMore() {
   if (props.isLoading || !props.hasMore) return;
-  isLoading.value = true;
+  localIsLoading.value = true;
   currentPage.value += 1;
 
   emit('load-more', currentPage.value);
 
   setTimeout(() => {
-    isLoading.value = false;
+    localIsLoading.value = false;
   }, 1000);
 }
 

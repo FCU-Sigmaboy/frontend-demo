@@ -143,7 +143,7 @@
                   </span>
 
                   <Transition v-else-if="message.is_read && message.isLatestSentMessage" name="status-fade">
-                    <span class="status-read">
+                    <span v-if="message.is_read" class="status-read">
                       <i class="bi bi-check-all"></i>
                       已讀
                     </span>

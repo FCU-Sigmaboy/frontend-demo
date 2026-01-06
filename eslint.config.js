@@ -23,6 +23,28 @@ export default [
     },
   },
 
+  // 測試檔案專用規則（Vitest globals）
+  {
+    files: ['**/*.test.js', '**/*.spec.js', '**/test/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        // Vitest globals
+        vi: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        test: 'readonly',
+      }
+    },
+  },
+
   // 專案自訂規則
   {
     files: ['**/*.{js,vue}'],
@@ -31,6 +53,8 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
+        // 第三方全局變量
+        google: 'readonly',  // Google Maps API
       }
     },
     rules: {

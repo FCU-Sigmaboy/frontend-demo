@@ -237,7 +237,7 @@ function formatMessageContent(content) {
   
   // 偵測並轉換 Markdown 風格的連結 [文字](URL)
   escapedContent = escapedContent.replace(
-    /\[([^\]]+)\]\(([^\)]+)\)/g,
+    /\[([^\]]+)\]\(([^)]+)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   )
   

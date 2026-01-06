@@ -1,6 +1,6 @@
 // src/test/setup.js
 // Sprint 1: 基礎設置 - 模擬瀏覽器 API
-import { vi } from 'vitest'
+import { vi, afterEach, afterAll } from 'vitest'
 
 // ============================================================================
 // 瀏覽器 API Mock
