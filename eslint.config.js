@@ -11,6 +11,18 @@ export default [
   // Vue.js 推薦規則（Flat Config 格式）
   ...pluginVue.configs['flat/recommended'],
 
+  // Node.js 配置檔案專用規則
+  {
+    files: ['*.config.js', 'vite.config.js', 'vitest.config.js', 'eslint.config.js', 'prettier.config.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      }
+    },
+  },
+
   // 專案自訂規則
   {
     files: ['**/*.{js,vue}'],
