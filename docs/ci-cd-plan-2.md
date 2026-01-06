@@ -1,15 +1,21 @@
 # 階段二：單元測試整合 - 實作指引
 
 > **階段**：Phase 2 - Unit Testing  
-> **預估時間**：2-3 週  
+> **預估時間**：4-6 週（漸進式實作）  
 > **前置需求**：階段一已完成（ESLint + Prettier）  
-> **文檔版本**：1.0.0
+> **文檔版本**：1.1.0
 
 ---
 
 ## 目錄
 
 - [概述](#概述)
+- [漸進式實作策略](#漸進式實作策略)
+  - [Sprint 1：基礎建設](#sprint-1基礎建設)
+  - [Sprint 2：核心工具函數](#sprint-2核心工具函數)
+  - [Sprint 3：狀態管理測試](#sprint-3狀態管理測試)
+  - [Sprint 4：組件測試](#sprint-4組件測試)
+  - [Sprint 5：提升覆蓋率](#sprint-5提升覆蓋率)
 - [實作步驟](#實作步驟)
   - [Step 1：安裝測試依賴套件](#step-1安裝測試依賴套件)
   - [Step 2：建立 Vitest 配置檔](#step-2建立-vitest-配置檔)
@@ -20,6 +26,7 @@
   - [Step 7：設定程式碼覆蓋率](#step-7設定程式碼覆蓋率)
   - [Step 8：更新 CI Workflow](#step-8更新-ci-workflow)
 - [測試策略與優先級](#測試策略與優先級)
+- [覆蓋率提升路線圖](#覆蓋率提升路線圖)
 - [驗證清單](#驗證清單)
 - [常見問題排解](#常見問題排解)
 - [測試撰寫最佳實踐](#測試撰寫最佳實踐)
@@ -54,6 +61,366 @@
 - 🎯 **相容性**：與 Jest API 相容，遷移成本低
 - 📊 **覆蓋率**：內建覆蓋率支援
 - 🔄 **HMR**：支援熱更新，開發體驗佳
+
+---
+
+## 漸進式實作策略
+
+> ⚠️ **重要提示**：單元測試整合是一項龐大的工作，不建議一次性完成所有測試。採用漸進式策略，從基礎建設開始，逐步提高覆蓋率，確保每個階段都穩定可用。
+
+### 實作原則
+
+1. **從零開始，穩步成長**：先建立可運作的測試基礎架構，再逐步增加測試
+2. **優先測試核心邏輯**：先覆蓋最重要的業務邏輯，再擴展到 UI 組件
+3. **CI 先行，門檻漸進**：一開始不設覆蓋率門檻，待測試穩定後再逐步提高
+4. **新功能必須有測試**：建立「測試驅動」的開發文化
+
+### 總體時程規劃
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    階段二：單元測試整合 - 漸進式實作                      │
+├─────────────┬─────────────┬─────────────┬─────────────┬─────────────────┤
+│   Sprint 1  │   Sprint 2  │   Sprint 3  │   Sprint 4  │    Sprint 5     │
+│   (1 週)    │   (1 週)    │   (1 週)    │  (1-2 週)   │   (持續進行)    │
+├─────────────┼─────────────┼─────────────┼─────────────┼─────────────────┤
+│  基礎建設   │ 工具函數    │ 狀態管理    │  組件測試   │   提升覆蓋率    │
+│             │   測試      │   測試      │             │                 │
+│ • Vitest    │ • utils/    │ • stores/   │ • 簡單組件  │ • 複雜組件      │
+│ • 配置檔    │ • 2-3 個    │ • auth      │ • 5-10 個   │ • API 模組      │
+│ • CI 整合   │   核心函數  │ • points    │   基礎組件  │ • 持續優化      │
+├─────────────┼─────────────┼─────────────┼─────────────┼─────────────────┤
+│  覆蓋率     │  覆蓋率     │  覆蓋率     │  覆蓋率     │   覆蓋率        │
+│   0%→5%    │   5%→15%   │  15%→30%   │  30%→50%   │   50%→60%+     │
+└─────────────┴─────────────┴─────────────┴─────────────┴─────────────────┘
+```
+
+---
+
+### Sprint 1：基礎建設
+
+> **預估時間**：1 週
+
+#### 目標
+
+建立可運作的測試基礎架構，確保 CI 可以執行測試（即使測試數量很少）。
+
+#### 工作項目
+
+| 任務 | 說明 | 預估時間 |
+|------|------|----------|
+| 安裝依賴套件 | vitest, @vue/test-utils, happy-dom | 30 分鐘 |
+| 建立 vitest.config.js | 基礎配置（暫不設覆蓋率門檻） | 1 小時 |
+| 建立 setup.js | 瀏覽器 API Mock | 1 小時 |
+| 建立 helpers.js | 測試輔助函數 | 1 小時 |
+| 更新 package.json | 新增測試腳本 | 30 分鐘 |
+| 更新 CI Workflow | 加入 test job（允許失敗） | 1 小時 |
+| 撰寫第一個測試 | 一個簡單的工具函數測試 | 1 小時 |
+
+#### Sprint 1 配置特點
+
+**vitest.config.js（初始版本 - 無覆蓋率門檻）**
+
+```javascript
+// vitest.config.js - Sprint 1 初始版本
+import { defineConfig } from 'vitest/config'
+import vue from '@vitejs/plugin-vue'
+import { fileURLToPath } from 'node:url'
+
+export default defineConfig({
+  plugins: [vue()],
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    include: ['src/**/*.{test,spec}.{js,ts}'],
+    exclude: ['node_modules', 'dist'],
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    },
+    // 初始階段：僅啟用覆蓋率報告，不設門檻
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      reportsDirectory: './coverage',
+      // Sprint 3+ 再啟用門檻設定：
+      // thresholds: {
+      //   lines: 20,
+      //   functions: 20,
+      //   branches: 15,
+      //   statements: 20
+      // }
+    },
+    setupFiles: ['./src/test/setup.js']
+  },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  }
+})
+```
+
+**CI Workflow（初始版本 - 允許測試失敗）**
+
+> 📝 **說明**：使用 `continue-on-error: true` 於 job 層級，這樣測試失敗時 CI 仍會繼續執行，但失敗會被正確標記，便於追蹤。
+
+```yaml
+# Sprint 1: 測試允許失敗，僅做監控用途
+test:
+  name: Unit Tests
+  runs-on: ubuntu-latest
+  needs: lint
+  continue-on-error: true  # Job 層級設定：允許失敗但仍會標記
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run unit tests
+      run: npm run test
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: coverage/
+```
+
+#### Sprint 1 交付成果
+
+- ✅ 測試基礎架構可運作
+- ✅ CI 可執行測試（允許失敗）
+- ✅ 至少 1 個通過的測試案例
+- ✅ 覆蓋率報告可產生
+
+---
+
+### Sprint 2：核心工具函數
+
+> **預估時間**：1 週
+
+#### 目標
+
+為 `utils/` 目錄下的核心工具函數撰寫測試，這些是最容易測試的純函數。
+
+#### 優先測試清單
+
+| 檔案 | 優先級 | 預估測試案例 |
+|------|--------|--------------|
+| formatPoints.js | 🔴 高 | 5-8 個 |
+| timeFormat.js | 🔴 高 | 8-12 個 |
+| sortFunctions.js | 🟡 中 | 5-10 個 |
+| filterFunctions.js | 🟡 中 | 5-10 個 |
+
+#### Sprint 2 里程碑
+
+- ✅ utils/ 目錄覆蓋率達 70%+
+- ✅ 所有測試通過
+- ✅ 總覆蓋率約 10-15%
+
+---
+
+### Sprint 3：狀態管理測試
+
+> **預估時間**：1 週
+
+#### 目標
+
+為核心 Pinia Store 撰寫測試，確保狀態管理邏輯正確。
+
+#### 優先測試清單
+
+| Store | 優先級 | 說明 |
+|-------|--------|------|
+| auth.js | 🔴 高 | 登入/登出邏輯 |
+| points.js | 🔴 高 | 點數系統核心邏輯 |
+| favorites.js | 🟡 中 | 收藏功能 |
+| transaction.js | 🟡 中 | 交易狀態管理 |
+
+#### Sprint 3 配置更新
+
+開始引入覆蓋率門檻（低門檻起步）：
+
+```javascript
+// vitest.config.js - Sprint 3 更新
+coverage: {
+  thresholds: {
+    lines: 20,      // 從 20% 開始
+    functions: 20,
+    branches: 15,
+    statements: 20
+  }
+}
+```
+
+#### Sprint 3 里程碑
+
+- ✅ stores/ 目錄覆蓋率達 50%+
+- ✅ 覆蓋率門檻設為 20%
+- ✅ 總覆蓋率約 20-30%
+
+---
+
+### Sprint 4：組件測試
+
+> **預估時間**：1-2 週
+
+#### 目標
+
+為可重用的 Vue 組件撰寫渲染和互動測試。
+
+#### 分階段測試
+
+**Phase 4a：簡單展示組件（第 1 週）**
+
+| 組件 | 優先級 | 測試重點 |
+|------|--------|----------|
+| ProductCard.vue | 🔴 高 | Props 渲染 |
+| SearchBar.vue | 🔴 高 | 事件發送 |
+| CategoryCard.vue | 🟡 中 | Props 渲染 |
+| Breadcrumb.vue | 🟡 中 | 導航路徑 |
+
+**Phase 4b：互動組件（第 2 週）**
+
+| 組件 | 優先級 | 測試重點 |
+|------|--------|----------|
+| FilterTabs.vue | 🟡 中 | 點擊切換 |
+| ImageCropper.vue | 🟢 低 | 複雜互動（可跳過） |
+
+#### Sprint 4 配置更新
+
+提高覆蓋率門檻：
+
+```javascript
+// vitest.config.js - Sprint 4 更新
+coverage: {
+  thresholds: {
+    lines: 40,
+    functions: 40,
+    branches: 30,
+    statements: 40
+  }
+}
+```
+
+#### Sprint 4 里程碑
+
+- ✅ 核心組件有基本測試
+- ✅ 覆蓋率門檻提高到 40%
+- ✅ 總覆蓋率約 40-50%
+
+---
+
+### Sprint 5：提升覆蓋率
+
+> **預估時間**：持續進行
+
+#### 目標
+
+持續提升覆蓋率，達到最終目標 60%+。
+
+#### 持續改進策略
+
+1. **新功能必須有測試**：所有新增的功能都需要附帶測試
+2. **Bug 修復要補測試**：修復 Bug 時，先撰寫重現 Bug 的測試
+3. **每月檢視覆蓋率報告**：找出未覆蓋的關鍵路徑
+
+#### 最終配置
+
+```javascript
+// vitest.config.js - 最終版本
+coverage: {
+  thresholds: {
+    lines: 60,
+    functions: 60,
+    branches: 50,
+    statements: 60
+  }
+}
+```
+
+#### CI Workflow 最終版本
+
+```yaml
+# 最終版本：測試必須通過
+test:
+  name: Unit Tests
+  runs-on: ubuntu-latest
+  needs: lint
+  # 移除 continue-on-error，測試失敗將阻擋 CI
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run unit tests with coverage
+      run: npm run test:coverage
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: coverage/
+```
+
+---
+
+## 覆蓋率提升路線圖
+
+### 階段性目標
+
+```
+覆蓋率 %
+100 ┤
+ 90 ┤                                              ┌─────────────────
+ 80 ┤                                         ┌────┘ 長期目標 (80%+)
+ 70 ┤                                    ┌────┘
+ 60 ┤                               ┌────┘ ← Sprint 5 目標
+ 50 ┤                          ┌────┘
+ 40 ┤                     ┌────┘ ← Sprint 4 目標
+ 30 ┤                ┌────┘ ← Sprint 3 目標
+ 20 ┤           ┌────┘
+ 10 ┤      ┌────┘ ← Sprint 2 目標
+  0 ┼──────┴─────────────────────────────────────────────────────────
+    Sprint1  Sprint2  Sprint3  Sprint4  Sprint5  維護期
+```
+
+### 模組覆蓋率目標
+
+| 模組 | Sprint 2 | Sprint 3 | Sprint 4 | Sprint 5+ |
+|------|----------|----------|----------|-----------|
+| utils/ | 70% | 80% | 90% | 95%+ |
+| stores/ | 0% | 50% | 70% | 80%+ |
+| api/ | 0% | 0% | 30% | 70%+ |
+| components/ | 0% | 0% | 40% | 60%+ |
+| views/ | 0% | 0% | 0% | 40%+ |
+
+### 每日/每週實踐建議
+
+| 頻率 | 活動 | 說明 |
+|------|------|------|
+| 每日 | 執行 `npm run test:watch` | 開發時即時驗證 |
+| 每次 PR | 執行 CI 測試 | 自動化檢查 |
+| 每週 | 檢視覆蓋率報告 | 找出薄弱區域 |
+| 每月 | 調整覆蓋率門檻 | 逐步提高標準 |
 
 ---
 
