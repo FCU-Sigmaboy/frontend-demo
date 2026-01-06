@@ -85,9 +85,9 @@
 
 本方案適用於：
 
-- **所有開發分支**：`feature/*`、`fix/*`、`hotfix/*`、`refactor/*` 等
+- **所有開發分支**：`dev/*`、`feature/*`、`fix/*`、`hotfix/*`、`refactor/*`、`chore/*`、`copilot/*` 等
 - **主要分支推送**：`main`、`master`、`vibe` 分支的直接推送
-- **Pull Request**：針對主要分支的 PR
+- **Pull Request**：針對 `main`、`master`、`vibe` 的 PR
 
 ---
 
@@ -322,11 +322,13 @@ on:
       - main
       - master
       - vibe
+      - 'dev/**'       # 開發分支
       - 'feature/**'   # 功能開發分支
       - 'fix/**'       # 修復分支
       - 'hotfix/**'    # 緊急修復分支
       - 'refactor/**'  # 重構分支
       - 'chore/**'     # 維護分支
+      - 'copilot/**'   # Copilot 自動建立的分支
   # PR 針對主要分支
   pull_request:
     branches:
@@ -420,8 +422,8 @@ jobs:
 
 | 配置項 | 設定 | 說明 |
 |--------|------|------|
-| `push.branches` | 主要分支 + 開發分支 patterns | 包含 `feature/**`、`fix/**`、`hotfix/**` 等 |
-| `pull_request.branches` | `main`, `master`, `vibe` | PR 仍只針對主要分支 |
+| `push.branches` | 主要分支 + 開發分支 patterns | 包含 `dev/**`、`feature/**`、`fix/**`、`hotfix/**`、`copilot/**` 等 |
+| `pull_request.branches` | `main`, `master`, `vibe` | PR 針對主要分支（含 vibe） |
 | `continue-on-error` | `true` (test job) | Sprint 1 階段允許測試失敗 |
 | `cache: 'npm'` | 啟用 | 加速依賴安裝 |
 
@@ -440,11 +442,13 @@ jobs:
 
 | 類型 | 命名模式 | 範例 |
 |------|----------|------|
+| 開發分支 | `dev/描述` | `dev/new-feature` |
 | 功能開發 | `feature/描述` | `feature/user-auth` |
 | Bug 修復 | `fix/描述` | `fix/login-error` |
 | 緊急修復 | `hotfix/描述` | `hotfix/security-patch` |
 | 重構 | `refactor/描述` | `refactor/api-structure` |
 | 維護 | `chore/描述` | `chore/update-deps` |
+| Copilot | `copilot/描述` | `copilot/add-new-feature` |
 
 ---
 

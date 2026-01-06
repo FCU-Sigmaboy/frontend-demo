@@ -30,11 +30,13 @@ on:
       - main
       - master
       - vibe
+      - 'dev/**'       # 開發分支
       - 'feature/**'   # 功能開發分支
       - 'fix/**'       # 修復分支
       - 'hotfix/**'    # 緊急修復分支
       - 'refactor/**'  # 重構分支
       - 'chore/**'     # 維護分支
+      - 'copilot/**'   # Copilot 自動建立的分支
   # PR 針對主要分支
   pull_request:
     branches:
