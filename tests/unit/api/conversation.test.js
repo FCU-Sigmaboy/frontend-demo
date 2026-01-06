@@ -16,7 +16,7 @@ import {
   subscribeToAllMessages,
   subscribeToUserPresence,
   createConversationTypingChannel
-} from '@/api/conversation';
+} from '@/api/conversationAPI';
 
 // Mock supabase
 vi.mock('@/lib/supabase', () => ({
