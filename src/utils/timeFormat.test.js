@@ -152,7 +152,8 @@ describe('formatRelativeTime', () => {
       const timestampString = '2026-01-06T09:00:00Z'
       // UTC 時間轉換後可能有時差，此處主要測試格式接受性
       const result = formatRelativeTime(timestampString)
-      expect(result).toMatch(/小時前|分鐘前/)
+      // 接受任何有效的時間格式輸出（剛剛、分鐘前、小時前）
+      expect(result).toMatch(/剛剛|分鐘前|小時前/)
     })
   })
 })

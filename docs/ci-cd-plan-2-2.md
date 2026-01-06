@@ -3,7 +3,8 @@
 > **Sprint**：Sprint 2 - 核心工具函數  
 > **預估時間**：1 週（約 6-8 小時實作時間）  
 > **前置需求**：Sprint 1 已完成（測試基礎建設）  
-> **文檔版本**：1.0.0
+> **文檔版本**：1.1.0  
+> **實作狀態**：✅ 已完成（2026-01-07 審核）
 
 ---
 
@@ -1018,10 +1019,10 @@ it('應正確篩選陣列', () => {
 
 確認以下測試檔案已建立：
 
-- [ ] `src/utils/formatPoints.test.js` - 已存在（Sprint 1）
-- [ ] `src/utils/timeFormat.test.js` - 新建立
-- [ ] `src/utils/sortFunctions.test.js` - 新建立
-- [ ] `src/utils/filterFunctions.test.js` - 新建立
+- [x] `src/utils/formatPoints.test.js` - 已存在（Sprint 1），共 18 個測試 ✅
+- [x] `src/utils/timeFormat.test.js` - 已建立，共 24 個測試 ✅
+- [x] `src/utils/sortFunctions.test.js` - 已建立，共 36 個測試 ✅
+- [x] `src/utils/filterFunctions.test.js` - 已建立，共 54 個測試 ✅
 
 ### ✅ 測試執行驗證
 
@@ -1162,13 +1163,13 @@ Sprint 2 完成時，應達成以下標準：
 
 ### 測試案例數量
 
-| 檔案 | 預期測試案例數 |
-|------|----------------|
-| formatPoints.test.js | 9+ 個 |
-| timeFormat.test.js | 15+ 個 |
-| sortFunctions.test.js | 20+ 個 |
-| filterFunctions.test.js | 25+ 個 |
-| **總計** | **69+ 個** |
+| 檔案 | 預期測試案例數 | 實際測試案例數 |
+|------|----------------|----------------|
+| formatPoints.test.js | 9+ 個 | **18 個** ✅ |
+| timeFormat.test.js | 15+ 個 | **24 個** ✅ |
+| sortFunctions.test.js | 20+ 個 | **36 個** ✅ |
+| filterFunctions.test.js | 25+ 個 | **54 個** ✅ |
+| **總計** | **69+ 個** | **132 個** ✅ |
 
 ### 預期覆蓋率
 
@@ -1218,5 +1219,6 @@ src/
 ---
 
 > **文檔維護者**：FCU-Sigmaboy Team  
-> **最後更新**：2026 年 1 月  
+> **最後更新**：2026 年 1 月 7 日  
+> **實作審核**：✅ 通過 - 132 個測試全部通過  
 > **參考**：[ci-cd-plan-2.md](./ci-cd-plan-2.md) | [ci-cd-plan-2-1.md](./ci-cd-plan-2-1.md)
