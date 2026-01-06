@@ -30,8 +30,8 @@ describe('GitHub Actions 工作流程驗證', () => {
       expect(workflowContent).toContain('push:')
       expect(workflowContent).toContain('branches: [ main, master, vibe ]')
       
-      // 檢查 PR 觸發條件
-      expect(workflowContent).toContain('pull_request:')
+      // PR 檢查由 pr-check.yml 專責處理，test.yml 不應包含 pull_request 觸發
+      // 這是職責分離設計，避免同一 PR 觸發多個工作流程
       
       // 檢查手動觸發
       expect(workflowContent).toContain('workflow_dispatch:')
