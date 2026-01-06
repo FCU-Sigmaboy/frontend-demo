@@ -1,13 +1,18 @@
 # =============================================================================
-# CI Workflow - 程式碼品質、測試與建置驗證
+# CI Workflow - 開發分支程式碼品質、測試與建置驗證
 # =============================================================================
 # 此 workflow 在每次 push 和 pull request 時執行，確保程式碼品質和建置正確性
+# 支援所有開發分支，讓開發者能即時獲得品質回饋
 #
 # 功能：
 #   - ESLint 程式碼靜態分析
 #   - Prettier 格式檢查
 #   - Vitest 單元測試（Sprint 1: 允許失敗）
 #   - 建置專案
+#
+# 設計理念：
+#   開發分支 push → CI/CD 檢查 → 持續品質保證 → 高品質 PR
+#   詳細說明請參閱 docs/dev-branch-cicd-workflow-baseline.md
 #
 # 後續進階方案建議 (請參閱 docs/ci-cd-plan.md)：
 #   3. 加入 Playwright/Cypress 進行 E2E 測試
@@ -19,11 +24,18 @@
 name: CI
 
 on:
+  # 所有開發分支的 push 都會觸發，讓開發分支也能享受 CI 的好處
   push:
     branches:
       - main
       - master
       - vibe
+      - 'feature/**'   # 功能開發分支
+      - 'fix/**'       # 修復分支
+      - 'hotfix/**'    # 緊急修復分支
+      - 'refactor/**'  # 重構分支
+      - 'chore/**'     # 維護分支
+  # PR 針對主要分支
   pull_request:
     branches:
       - main
