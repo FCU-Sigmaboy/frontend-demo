@@ -1,6 +1,8 @@
 // src/test/helpers.js
-// Sprint 1: 基礎輔助函數
+// Sprint 3: 擴展 Store 測試輔助函數
 import { createPinia, setActivePinia } from 'pinia'
+import { createTestingPinia } from '@pinia/testing'
+import { vi } from 'vitest'
 
 /**
  * 為測試設置新的 Pinia 實例
@@ -8,6 +10,23 @@ import { createPinia, setActivePinia } from 'pinia'
  */
 export function setupTestPinia() {
   const pinia = createPinia()
+  setActivePinia(pinia)
+  return pinia
+}
+
+/**
+ * 建立測試用 Pinia（使用 @pinia/testing）
+ * @param {Object} options - 設定選項
+ * @param {Object} options.initialState - 初始狀態
+ * @param {boolean} options.stubActions - 是否 stub actions（預設 false）
+ * @returns {TestingPinia} 測試用 Pinia 實例
+ */
+export function createTestPinia(options = {}) {
+  const pinia = createTestingPinia({
+    createSpy: vi.fn,
+    stubActions: options.stubActions ?? false,
+    initialState: options.initialState || {},
+  })
   setActivePinia(pinia)
   return pinia
 }
@@ -55,4 +74,21 @@ export function createErrorResponse(message) {
  */
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * 建立模擬的點數 Profile 資料
+ * @param {Object} overrides - 覆寫的屬性
+ * @returns {Object} 模擬的點數 profile 物件
+ */
+export function createMockPointsProfile(overrides = {}) {
+  return {
+    current_balance: 1000,
+    total_earned: 2500,
+    total_spent: 1500,
+    daily_streak: 5,
+    last_signin_date: null,
+    total_sales_points: 500,
+    ...overrides,
+  }
 }
