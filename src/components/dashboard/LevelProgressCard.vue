@@ -51,278 +51,278 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+  import { computed } from 'vue'
 
-const props = defineProps({
-  currentTier: {
-    type: Object,
-    required: true
-  },
-  nextTier: {
-    type: Object,
-    default: null
-  },
-  progressPercentage: {
-    type: Number,
-    default: 0
-  },
-  pointsToNext: {
-    type: Number,
-    default: 0
-  }
-});
+  const props = defineProps({
+    currentTier: {
+      type: Object,
+      required: true,
+    },
+    nextTier: {
+      type: Object,
+      default: null,
+    },
+    progressPercentage: {
+      type: Number,
+      default: 0,
+    },
+    pointsToNext: {
+      type: Number,
+      default: 0,
+    },
+  })
 
-// Computed
-const formattedPointsToNext = computed(() => {
-  return props.pointsToNext.toLocaleString('zh-TW');
-});
+  // Computed
+  const formattedPointsToNext = computed(() => {
+    return props.pointsToNext.toLocaleString('zh-TW')
+  })
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.level-progress-card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  background: white;
-  transition: all 0.3s;
+  .level-progress-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    background: white;
+    transition: all 0.3s;
 
-  &:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
+    &:hover {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+      transform: translateY(-2px);
+    }
   }
-}
 
-.card-body {
-  padding: 30px;
-}
+  .card-body {
+    padding: 30px;
+  }
 
-.card-header-section {
-  margin-bottom: 25px;
-}
+  .card-header-section {
+    margin-bottom: 25px;
+  }
 
-.card-title {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e1e1e;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  .card-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-  i {
+    i {
+      font-size: 22px;
+      color: #f39c12;
+    }
+  }
+
+  // Current Level Display
+  .current-level {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3d1 100%);
+    border-radius: 10px;
+  }
+
+  .level-icon {
+    font-size: 60px;
+    line-height: 1;
+  }
+
+  .level-info {
+    flex: 1;
+  }
+
+  .level-name {
+    font-family: 'Noto Sans TC', sans-serif;
     font-size: 22px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0 0 5px 0;
+  }
+
+  .level-tier {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
     color: #f39c12;
+    font-weight: 500;
+    margin: 0;
   }
-}
 
-// Current Level Display
-.current-level {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 25px;
-  padding: 20px;
-  background: linear-gradient(135deg, #fff9e6 0%, #fff3d1 100%);
-  border-radius: 10px;
-}
-
-.level-icon {
-  font-size: 60px;
-  line-height: 1;
-}
-
-.level-info {
-  flex: 1;
-}
-
-.level-name {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #1e1e1e;
-  margin: 0 0 5px 0;
-}
-
-.level-tier {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #f39c12;
-  font-weight: 500;
-  margin: 0;
-}
-
-// Progress Section
-.progress-section {
-  margin-bottom: 25px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.progress-label {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #555;
-}
-
-.progress-percentage {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: #f39c12;
-}
-
-.progress-bar-container {
-  width: 100%;
-  height: 12px;
-  background-color: #f0f0f0;
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #f39c12 0%, #f5b041 100%);
-  border-radius: 6px;
-  transition: width 0.5s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-shine {
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 100%
-  );
-  animation: shine 2s infinite;
-}
-
-@keyframes shine {
-  0% {
-    left: -100%;
+  // Progress Section
+  .progress-section {
+    margin-bottom: 25px;
   }
-  100% {
-    left: 100%;
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
   }
-}
 
-// Next Level Section
-.next-level-section {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-}
+  .progress-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #555;
+  }
 
-.next-level-icon {
-  font-size: 40px;
-  line-height: 1;
-}
-
-.next-level-info {
-  flex: 1;
-}
-
-.next-level-name {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #555;
-  margin: 0 0 5px 0;
-}
-
-.points-needed {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13px;
-  color: #777;
-  margin: 0;
-
-  .points-value {
+  .progress-percentage {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
     font-weight: 600;
     color: #f39c12;
   }
-}
 
-// Max Level Badge
-.max-level-badge {
-  width: 100%;
-  padding: 15px;
-  background: linear-gradient(135deg, #f39c12 0%, #f5b041 100%);
-  color: white;
-  border-radius: 8px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-
-  i {
-    font-size: 20px;
-  }
-}
-
-// Responsive Design
-@media (max-width: 991.98px) {
-  .card-body {
-    padding: 25px;
+  .progress-bar-container {
+    width: 100%;
+    height: 12px;
+    background-color: #f0f0f0;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
   }
 
-  .level-icon {
-    font-size: 50px;
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #f39c12 0%, #f5b041 100%);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+    position: relative;
+    overflow: hidden;
   }
 
-  .level-name {
-    font-size: 20px;
+  .progress-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.5) 50%,
+      transparent 100%
+    );
+    animation: shine 2s infinite;
   }
 
-  .next-level-icon {
-    font-size: 35px;
-  }
-}
-
-@media (max-width: 575.98px) {
-  .card-body {
-    padding: 20px;
-  }
-
-  .current-level {
-    padding: 15px;
-    gap: 15px;
+  @keyframes shine {
+    0% {
+      left: -100%;
+    }
+    100% {
+      left: 100%;
+    }
   }
 
-  .level-icon {
-    font-size: 45px;
-  }
-
-  .level-name {
-    font-size: 18px;
-  }
-
+  // Next Level Section
   .next-level-section {
-    padding: 12px;
-    gap: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
   }
 
   .next-level-icon {
-    font-size: 30px;
+    font-size: 40px;
+    line-height: 1;
   }
-}
+
+  .next-level-info {
+    flex: 1;
+  }
+
+  .next-level-name {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #555;
+    margin: 0 0 5px 0;
+  }
+
+  .points-needed {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    color: #777;
+    margin: 0;
+
+    .points-value {
+      font-weight: 600;
+      color: #f39c12;
+    }
+  }
+
+  // Max Level Badge
+  .max-level-badge {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #f39c12 0%, #f5b041 100%);
+    color: white;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    i {
+      font-size: 20px;
+    }
+  }
+
+  // Responsive Design
+  @media (max-width: 991.98px) {
+    .card-body {
+      padding: 25px;
+    }
+
+    .level-icon {
+      font-size: 50px;
+    }
+
+    .level-name {
+      font-size: 20px;
+    }
+
+    .next-level-icon {
+      font-size: 35px;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .card-body {
+      padding: 20px;
+    }
+
+    .current-level {
+      padding: 15px;
+      gap: 15px;
+    }
+
+    .level-icon {
+      font-size: 45px;
+    }
+
+    .level-name {
+      font-size: 18px;
+    }
+
+    .next-level-section {
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .next-level-icon {
+      font-size: 30px;
+    }
+  }
 </style>

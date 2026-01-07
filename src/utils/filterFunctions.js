@@ -9,7 +9,7 @@
  * @returns {Function} 篩選函數
  */
 export function filterByPopularity(threshold = 50) {
-  return (item) => (item.favorites_count || 0) >= threshold;
+  return (item) => (item.favorites_count || 0) >= threshold
 }
 
 /**
@@ -18,7 +18,7 @@ export function filterByPopularity(threshold = 50) {
  * @returns {Function} 篩選函數
  */
 export function filterByDistance(maxDistance = 5) {
-  return (item) => parseFloat(item.distance_km || 999) <= maxDistance;
+  return (item) => parseFloat(item.distance_km || 999) <= maxDistance
 }
 
 /**
@@ -28,9 +28,9 @@ export function filterByDistance(maxDistance = 5) {
  */
 export function filterByRecentlyCreated(days = 7) {
   return (item) => {
-    const daysSinceCreated = (Date.now() - new Date(item.created_at)) / (1000 * 60 * 60 * 24);
-    return daysSinceCreated <= days;
-  };
+    const daysSinceCreated = (Date.now() - new Date(item.created_at)) / (1000 * 60 * 60 * 24)
+    return daysSinceCreated <= days
+  }
 }
 
 /**
@@ -41,9 +41,9 @@ export function filterByRecentlyCreated(days = 7) {
  */
 export function filterByPriceRange(min = 0, max = Infinity) {
   return (item) => {
-    const price = item.price || 0;
-    return price >= min && price <= max;
-  };
+    const price = item.price || 0
+    return price >= min && price <= max
+  }
 }
 
 /**
@@ -51,7 +51,7 @@ export function filterByPriceRange(min = 0, max = Infinity) {
  * @returns {Function} 篩選函數
  */
 export function filterByDiscount() {
-  return (item) => item.discount && item.discount > 0;
+  return (item) => item.discount && item.discount > 0
 }
 
 /**
@@ -60,7 +60,7 @@ export function filterByDiscount() {
  * @returns {Function} 篩選函數
  */
 export function filterByStatus(status) {
-  return (item) => item.status === status;
+  return (item) => item.status === status
 }
 
 /**
@@ -69,7 +69,7 @@ export function filterByStatus(status) {
  * @returns {Function} 組合後的篩選函數
  */
 export function combineFilters(...filters) {
-  return (item) => filters.every(filter => filter(item));
+  return (item) => filters.every((filter) => filter(item))
 }
 
 /**
@@ -78,7 +78,7 @@ export function combineFilters(...filters) {
  * @returns {Function} 組合後的篩選函數
  */
 export function combineFiltersOr(...filters) {
-  return (item) => filters.some(filter => filter(item));
+  return (item) => filters.some((filter) => filter(item))
 }
 
 /* ============================================================================

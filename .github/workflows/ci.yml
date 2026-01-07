@@ -1,15 +1,20 @@
 # =============================================================================
-# 基礎 CI Workflow
+# CI Workflow - 開發分支程式碼品質、測試與建置驗證
 # =============================================================================
 # 此 workflow 在每次 push 和 pull request 時執行，確保程式碼品質和建置正確性
+# 支援所有開發分支，讓開發者能即時獲得品質回饋
 #
 # 功能：
-#   - 安裝依賴
+#   - ESLint 程式碼靜態分析
+#   - Prettier 格式檢查
+#   - Vitest 單元測試（Sprint 1: 允許失敗）
 #   - 建置專案
 #
-# 後續進階方案建議 (請參閱 README.md 或下方註解)：
-#   1. 加入 ESLint/Prettier 進行程式碼風格檢查
-#   2. 加入 Vitest 進行單元測試
+# 設計理念：
+#   開發分支 push → CI/CD 檢查 → 持續品質保證 → 高品質 PR
+#   詳細說明請參閱 docs/dev-branch-cicd-workflow-baseline.md
+#
+# 後續進階方案建議 (請參閱 docs/ci-cd-plan.md)：
 #   3. 加入 Playwright/Cypress 進行 E2E 測試
 #   4. 加入程式碼覆蓋率報告
 #   5. 加入安全性掃描 (如 npm audit)
@@ -19,11 +24,20 @@
 name: CI
 
 on:
+  # 所有開發分支的 push 都會觸發，讓開發分支也能享受 CI 的好處
   push:
     branches:
       - main
       - master
       - vibe
+      - 'dev/**'       # 開發分支
+      - 'feature/**'   # 功能開發分支
+      - 'fix/**'       # 修復分支
+      - 'hotfix/**'    # 緊急修復分支
+      - 'refactor/**'  # 重構分支
+      - 'chore/**'     # 維護分支
+      - 'copilot/**'   # Copilot 自動建立的分支
+  # PR 針對主要分支
   pull_request:
     branches:
       - main
@@ -34,9 +48,72 @@ permissions:
   contents: read
 
 jobs:
+  # 程式碼品質檢查
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check Prettier formatting
+        run: npm run format:check
+
+  # 單元測試（Sprint 1: 允許失敗，僅做監控）
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    continue-on-error: true  # Sprint 1: 允許失敗，不阻擋 CI
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: success() || failure()  # 跳過取消的情況
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # 建置驗證
   build:
     name: Build
     runs-on: ubuntu-latest
+    # Sprint 1 設計：build 依賴 lint 而非 test
+    # 原因：測試尚在建置階段，允許失敗；但不應阻擋正常的建置流程
+    # Sprint 5+ 可改為 needs: [lint, test]
+    needs: lint
 
     steps:
       - name: Checkout repository
@@ -57,30 +134,6 @@ jobs:
 # =============================================================================
 # 進階方案建議 (未來可逐步加入)
 # =============================================================================
-#
-# 1. 程式碼風格檢查 (Linting)
-#    -------------------------
-#    安裝 ESLint 和 Prettier：
-#      npm install -D eslint @eslint/js eslint-plugin-vue prettier
-#
-#    在 package.json 加入 lint script：
-#      "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs"
-#
-#    在 workflow 中加入步驟：
-#      - name: Run ESLint
-#        run: npm run lint
-#
-# 2. 單元測試 (Unit Testing)
-#    -------------------------
-#    安裝 Vitest：
-#      npm install -D vitest @vue/test-utils happy-dom
-#
-#    在 package.json 加入 test script：
-#      "test": "vitest run"
-#
-#    在 workflow 中加入步驟：
-#      - name: Run tests
-#        run: npm run test
 #
 # 3. E2E 測試 (End-to-End Testing)
 #    -------------------------

@@ -10,7 +10,7 @@
  * @returns {number} 排序結果
  */
 export function sortByDate(dateA, dateB) {
-  return new Date(dateA) - new Date(dateB);
+  return new Date(dateA) - new Date(dateB)
 }
 
 /**
@@ -20,7 +20,7 @@ export function sortByDate(dateA, dateB) {
  * @returns {number} 排序結果
  */
 export function sortByNumber(numA, numB) {
-  return (parseFloat(numA) || 0) - (parseFloat(numB) || 0);
+  return (parseFloat(numA) || 0) - (parseFloat(numB) || 0)
 }
 
 /**
@@ -30,9 +30,9 @@ export function sortByNumber(numA, numB) {
  * @returns {number} 排序結果
  */
 export function sortByDistance(itemA, itemB) {
-  const distA = parseFloat(itemA.distance_km) || 0;
-  const distB = parseFloat(itemB.distance_km) || 0;
-  return distA - distB;
+  const distA = parseFloat(itemA.distance_km) || 0
+  const distB = parseFloat(itemB.distance_km) || 0
+  return distA - distB
 }
 
 /**
@@ -42,9 +42,9 @@ export function sortByDistance(itemA, itemB) {
  * @returns {number} 排序結果
  */
 export function sortByFavoritedTime(itemA, itemB) {
-  const dateA = new Date(itemA.favorited_at || itemA.created_at);
-  const dateB = new Date(itemB.favorited_at || itemB.created_at);
-  return dateA - dateB;
+  const dateA = new Date(itemA.favorited_at || itemA.created_at)
+  const dateB = new Date(itemB.favorited_at || itemB.created_at)
+  return dateA - dateB
 }
 
 /**
@@ -54,9 +54,9 @@ export function sortByFavoritedTime(itemA, itemB) {
  * @returns {number} 排序結果
  */
 export function sortByPopularity(itemA, itemB) {
-  const countA = itemA.favorites_count || 0;
-  const countB = itemB.favorites_count || 0;
-  return countA - countB;
+  const countA = itemA.favorites_count || 0
+  const countB = itemB.favorites_count || 0
+  return countA - countB
 }
 
 /**
@@ -67,19 +67,19 @@ export function sortByPopularity(itemA, itemB) {
  */
 export function sortByRecommendation(itemA, itemB) {
   // 綜合考慮：距離、收藏數、新鮮度
-  const distanceScore = (100 - parseFloat(itemA.distance_km || 100)) / 100;
-  const popularityScore = (itemA.favorites_count || 0) / 100;
-  const freshnessScore = (Date.now() - new Date(itemA.created_at)) / (1000 * 60 * 60 * 24 * 30);
+  const distanceScore = (100 - parseFloat(itemA.distance_km || 100)) / 100
+  const popularityScore = (itemA.favorites_count || 0) / 100
+  const freshnessScore = (Date.now() - new Date(itemA.created_at)) / (1000 * 60 * 60 * 24 * 30)
 
-  const scoreA = distanceScore * 0.4 + popularityScore * 0.4 + freshnessScore * 0.2;
+  const scoreA = distanceScore * 0.4 + popularityScore * 0.4 + freshnessScore * 0.2
 
-  const distanceScoreB = (100 - parseFloat(itemB.distance_km || 100)) / 100;
-  const popularityScoreB = (itemB.favorites_count || 0) / 100;
-  const freshnessScoreB = (Date.now() - new Date(itemB.created_at)) / (1000 * 60 * 60 * 24 * 30);
+  const distanceScoreB = (100 - parseFloat(itemB.distance_km || 100)) / 100
+  const popularityScoreB = (itemB.favorites_count || 0) / 100
+  const freshnessScoreB = (Date.now() - new Date(itemB.created_at)) / (1000 * 60 * 60 * 24 * 30)
 
-  const scoreB = distanceScoreB * 0.4 + popularityScoreB * 0.4 + freshnessScoreB * 0.2;
+  const scoreB = distanceScoreB * 0.4 + popularityScoreB * 0.4 + freshnessScoreB * 0.2
 
-  return scoreB - scoreA;
+  return scoreB - scoreA
 }
 
 /* ============================================================================

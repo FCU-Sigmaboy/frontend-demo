@@ -67,333 +67,333 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { usePointsProfile } from '@/composables/usePointsProfile';
+  import { computed, onMounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { usePointsProfile } from '@/composables/usePointsProfile'
 
-const props = defineProps({
-  currentBalance: {
-    type: Number,
-    default: 0
-  },
-  totalEarned: {
-    type: Number,
-    default: 0
-  },
-  totalSpent: {
-    type: Number,
-    default: 0
-  },
-  autoFetch: {
-    type: Boolean,
-    default: true
-  }
-});
+  const props = defineProps({
+    currentBalance: {
+      type: Number,
+      default: 0,
+    },
+    totalEarned: {
+      type: Number,
+      default: 0,
+    },
+    totalSpent: {
+      type: Number,
+      default: 0,
+    },
+    autoFetch: {
+      type: Boolean,
+      default: true,
+    },
+  })
 
-const router = useRouter();
-const { profile, isLoadingProfile, profileError, fetchPointsProfile } = usePointsProfile();
+  const router = useRouter()
+  const { profile, isLoadingProfile, profileError, fetchPointsProfile } = usePointsProfile()
 
-onMounted(() => {
-  if (props.autoFetch) {
-    fetchPointsProfile().catch((error) => {
-      console.error('[PointsBalanceCard] 無法同步點數資料:', error);
-    });
-  }
-});
+  onMounted(() => {
+    if (props.autoFetch) {
+      fetchPointsProfile().catch((error) => {
+        console.error('[PointsBalanceCard] 無法同步點數資料:', error)
+      })
+    }
+  })
 
-const activeProfile = computed(() => {
-  if (profile.value) {
+  const activeProfile = computed(() => {
+    if (profile.value) {
+      return {
+        current_balance: normalizeNumber(profile.value.current_balance),
+        total_earned: normalizeNumber(profile.value.total_earned),
+        total_spent: normalizeNumber(profile.value.total_spent),
+      }
+    }
+
     return {
-      current_balance: normalizeNumber(profile.value.current_balance),
-      total_earned: normalizeNumber(profile.value.total_earned),
-      total_spent: normalizeNumber(profile.value.total_spent)
-    };
+      current_balance: normalizeNumber(props.currentBalance),
+      total_earned: normalizeNumber(props.totalEarned),
+      total_spent: normalizeNumber(props.totalSpent),
+    }
+  })
+
+  const formattedBalance = computed(() => formatNumber(activeProfile.value.current_balance))
+  const formattedEarned = computed(() => formatNumber(activeProfile.value.total_earned))
+  const formattedSpent = computed(() => formatNumber(activeProfile.value.total_spent))
+
+  const isSyncing = computed(() => props.autoFetch && isLoadingProfile.value && !profile.value)
+  const hasSyncError = computed(() => props.autoFetch && !!profileError.value)
+  const syncStatusLabel = computed(() => {
+    if (isSyncing.value) return '同步最新點數中...'
+    if (hasSyncError.value) return '暫時無法同步，顯示上次資料'
+    return null
+  })
+
+  function formatNumber(value) {
+    return normalizeNumber(value).toLocaleString('zh-TW')
   }
 
-  return {
-    current_balance: normalizeNumber(props.currentBalance),
-    total_earned: normalizeNumber(props.totalEarned),
-    total_spent: normalizeNumber(props.totalSpent)
-  };
-});
-
-const formattedBalance = computed(() => formatNumber(activeProfile.value.current_balance));
-const formattedEarned = computed(() => formatNumber(activeProfile.value.total_earned));
-const formattedSpent = computed(() => formatNumber(activeProfile.value.total_spent));
-
-const isSyncing = computed(() => props.autoFetch && isLoadingProfile.value && !profile.value);
-const hasSyncError = computed(() => props.autoFetch && !!profileError.value);
-const syncStatusLabel = computed(() => {
-  if (isSyncing.value) return '同步最新點數中...';
-  if (hasSyncError.value) return '暫時無法同步，顯示上次資料';
-  return null;
-});
-
-function formatNumber(value) {
-  return normalizeNumber(value).toLocaleString('zh-TW');
-}
-
-function normalizeNumber(value) {
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : 0;
-}
-
-// Methods
-function goToTransactions() {
-  const historySection = document.querySelector('.transaction-history-card');
-  if (historySection) {
-    historySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  function normalizeNumber(value) {
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue : 0
   }
-}
 
-function goToEarnPoints() {
-  router.push({ name: 'ItemList' });
-}
+  // Methods
+  function goToTransactions() {
+    const historySection = document.querySelector('.transaction-history-card')
+    if (historySection) {
+      historySection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  function goToEarnPoints() {
+    router.push({ name: 'ItemList' })
+  }
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.points-balance-card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  background: linear-gradient(135deg, #6fb8a5 0%, #5fa795 100%);
-  color: white;
-  transition: all 0.3s;
-
-  &:hover {
-    box-shadow: 0 4px 20px rgba(111, 184, 165, 0.3);
-    transform: translateY(-2px);
-  }
-}
-
-.card-body {
-  padding: 30px;
-}
-
-.card-header-section {
-  margin-bottom: 25px;
-}
-
-.card-title {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: white;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  i {
-    font-size: 22px;
-  }
-}
-
-.sync-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
-  margin-top: 8px;
-}
-
-// Balance Display
-.balance-display {
-  text-align: center;
-  margin-bottom: 30px;
-  padding: 20px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.balance-amount {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.amount-value {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 48px;
-  font-weight: 700;
-  color: white;
-  line-height: 1;
-}
-
-.amount-unit {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.balance-label {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0;
-}
-
-// Stats Row
-.stats-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  margin-bottom: 25px;
-  padding: 0 10px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.stat-icon {
-  font-size: 32px;
-  color: rgba(255, 255, 255, 0.9);
-
-  i {
-    display: block;
-  }
-}
-
-.stat-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-label {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0;
-}
-
-.stat-value {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: white;
-  margin: 0;
-}
-
-.stat-divider {
-  width: 1px;
-  height: 40px;
-  background-color: rgba(255, 255, 255, 0.2);
-  margin: 0 15px;
-}
-
-// Quick Actions
-.quick-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.action-btn {
-  flex: 1;
-  padding: 12px 20px;
-  border: 2px solid white;
-  border-radius: 8px;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  i {
-    font-size: 16px;
-  }
-
-  &.primary {
-    background-color: white;
-    color: $primary;
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.9);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-  }
-
-  &.secondary {
-    background-color: transparent;
+  .points-balance-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, #6fb8a5 0%, #5fa795 100%);
     color: white;
+    transition: all 0.3s;
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(111, 184, 165, 0.3);
       transform: translateY(-2px);
     }
   }
-}
 
-// Responsive Design
-@media (max-width: 991.98px) {
   .card-body {
-    padding: 25px;
+    padding: 30px;
   }
 
-  .amount-value {
-    font-size: 42px;
+  .card-header-section {
+    margin-bottom: 25px;
   }
 
-  .amount-unit {
-    font-size: 24px;
-  }
-
-  .stat-icon {
-    font-size: 28px;
-  }
-
-  .stat-value {
+  .card-title {
+    font-family: 'Noto Sans TC', sans-serif;
     font-size: 18px;
-  }
-}
+    font-weight: 600;
+    color: white;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-@media (max-width: 575.98px) {
-  .card-body {
-    padding: 20px;
+    i {
+      font-size: 22px;
+    }
+  }
+
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 8px;
+  }
+
+  // Balance Display
+  .balance-display {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .balance-amount {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   .amount-value {
-    font-size: 36px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
   }
 
   .amount-unit {
-    font-size: 20px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
   }
 
+  .balance-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+  }
+
+  // Stats Row
   .stats-row {
-    flex-direction: column;
-    gap: 20px;
-    align-items: flex-start;
-  }
-
-  .stat-divider {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin-bottom: 25px;
+    padding: 0 10px;
   }
 
   .stat-item {
-    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
   }
 
-  .quick-actions {
+  .stat-icon {
+    font-size: 32px;
+    color: rgba(255, 255, 255, 0.9);
+
+    i {
+      display: block;
+    }
+  }
+
+  .stat-content {
+    display: flex;
     flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+  }
+
+  .stat-value {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 40px;
+    background-color: rgba(255, 255, 255, 0.2);
+    margin: 0 15px;
+  }
+
+  // Quick Actions
+  .quick-actions {
+    display: flex;
+    gap: 12px;
   }
 
   .action-btn {
-    width: 100%;
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid white;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    i {
+      font-size: 16px;
+    }
+
+    &.primary {
+      background-color: white;
+      color: $primary;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.9);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+
+    &.secondary {
+      background-color: transparent;
+      color: white;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+      }
+    }
   }
-}
+
+  // Responsive Design
+  @media (max-width: 991.98px) {
+    .card-body {
+      padding: 25px;
+    }
+
+    .amount-value {
+      font-size: 42px;
+    }
+
+    .amount-unit {
+      font-size: 24px;
+    }
+
+    .stat-icon {
+      font-size: 28px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .card-body {
+      padding: 20px;
+    }
+
+    .amount-value {
+      font-size: 36px;
+    }
+
+    .amount-unit {
+      font-size: 20px;
+    }
+
+    .stats-row {
+      flex-direction: column;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .stat-divider {
+      display: none;
+    }
+
+    .stat-item {
+      width: 100%;
+    }
+
+    .quick-actions {
+      flex-direction: column;
+    }
+
+    .action-btn {
+      width: 100%;
+    }
+  }
 </style>

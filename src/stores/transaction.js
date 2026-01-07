@@ -7,7 +7,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const STATUS_MAP = {
   confirming: 'waiting',
   pending: 'in_transaction',
-  completed: 'sold'
+  completed: 'sold',
 }
 
 function normalizeBucketPayload(payload) {
@@ -17,7 +17,7 @@ function normalizeBucketPayload(payload) {
 function createEmptyBuckets() {
   return {
     giver: [],
-    receiver: []
+    receiver: [],
   }
 }
 
@@ -47,7 +47,7 @@ function normalizeRealtimeTransaction(record, fallbackStatus) {
   return {
     ...record,
     transaction_id: transactionId,
-    status: normalizedStatus
+    status: normalizedStatus,
   }
 }
 
@@ -70,13 +70,13 @@ export const useTransactionStore = defineStore('transaction', () => {
     onTransactionAccepted: null,
     onTransactionCompleted: null,
     onTransactionRejected: null,
-    onTransactionCancelled: null
+    onTransactionCancelled: null,
   }
 
   // Helper to merge giver/receiver transactions with role labels
   const mergeWithRoles = (bucket) => [
-    ...bucket.giver.map(t => ({ ...t, role: 'giver' })),
-    ...bucket.receiver.map(t => ({ ...t, role: 'receiver' }))
+    ...bucket.giver.map((t) => ({ ...t, role: 'giver' })),
+    ...bucket.receiver.map((t) => ({ ...t, role: 'receiver' })),
   ]
 
   const STATUS_BUCKETS = { confirming, pending, completed }
@@ -89,13 +89,13 @@ export const useTransactionStore = defineStore('transaction', () => {
     const map = new Map()
 
     const addTransactions = (transactions, status, role) => {
-      transactions.forEach(transaction => {
+      transactions.forEach((transaction) => {
         if (!transaction?.item_id) return
         map.set(transaction.item_id, {
           status,
           role,
           transactionId: transaction.transaction_id,
-          transaction
+          transaction,
         })
       })
     }
@@ -124,7 +124,7 @@ export const useTransactionStore = defineStore('transaction', () => {
     console.log('[TransactionStore] fetchAllTransactions called', {
       forceRefresh,
       hasFreshData: hasFreshData.value,
-      lastFetch: lastFetchTime.value
+      lastFetch: lastFetchTime.value,
     })
 
     if (!forceRefresh && hasFreshData.value && !error.value) {
@@ -145,8 +145,8 @@ export const useTransactionStore = defineStore('transaction', () => {
     const buckets = { confirming, pending, completed }
 
     // Generate all combinations of status x role
-    const fetchPromises = statuses.flatMap(status =>
-      roles.map(role => getMyTransactionsByStatus(status, role).catch(() => []))
+    const fetchPromises = statuses.flatMap((status) =>
+      roles.map((role) => getMyTransactionsByStatus(status, role).catch(() => []))
     )
 
     activeRequest = Promise.all(fetchPromises)
@@ -155,8 +155,8 @@ export const useTransactionStore = defineStore('transaction', () => {
         let index = 0
 
         // Assign results to buckets
-        statuses.forEach(status => {
-          roles.forEach(role => {
+        statuses.forEach((status) => {
+          roles.forEach((role) => {
             const data = results[index++]
             buckets[status][role] = normalizeBucketPayload(data)
             logData[`${status}${role.charAt(0).toUpperCase() + role.slice(1)}`] = data?.length
@@ -166,7 +166,7 @@ export const useTransactionStore = defineStore('transaction', () => {
         console.log('[TransactionStore] Transactions fetched', logData)
         lastFetchTime.value = Date.now()
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('[TransactionStore] Failed to fetch transactions:', err)
         error.value = err
         throw err
@@ -191,16 +191,29 @@ export const useTransactionStore = defineStore('transaction', () => {
 
       // If specific status/role provided, only fetch that combination
       if (status && role) {
-        console.log('[TransactionStore] Fetching specific transaction bucket after realtime event', {
-          context, status, role
-        })
+        console.log(
+          '[TransactionStore] Fetching specific transaction bucket after realtime event',
+          {
+            context,
+            status,
+            role,
+          }
+        )
         fetchTransactionBucket(status, role).catch((err) => {
-          console.error('[TransactionStore] Failed to refresh transaction bucket after realtime event', err)
+          console.error(
+            '[TransactionStore] Failed to refresh transaction bucket after realtime event',
+            err
+          )
         })
       } else {
-        console.log('[TransactionStore] Forcing full transaction refetch after realtime event', { context })
+        console.log('[TransactionStore] Forcing full transaction refetch after realtime event', {
+          context,
+        })
         fetchAllTransactions(true).catch((err) => {
-          console.error('[TransactionStore] Failed to refresh transactions after realtime event', err)
+          console.error(
+            '[TransactionStore] Failed to refresh transactions after realtime event',
+            err
+          )
         })
       }
     }, 200)
@@ -228,7 +241,7 @@ export const useTransactionStore = defineStore('transaction', () => {
   function findIndex(bucket, role, transactionId) {
     const list = bucket[role]
     if (!Array.isArray(list)) return -1
-    return list.findIndex(t => t.transaction_id === transactionId)
+    return list.findIndex((t) => t.transaction_id === transactionId)
   }
 
   function removeTransactionFromBuckets(transactionId, role, buckets) {
@@ -276,7 +289,7 @@ export const useTransactionStore = defineStore('transaction', () => {
     const list = targetBucket?.[role]
     if (!Array.isArray(list)) return
 
-    const existingIndex = list.findIndex(t => t.transaction_id === transaction.transaction_id)
+    const existingIndex = list.findIndex((t) => t.transaction_id === transaction.transaction_id)
     if (existingIndex !== -1) {
       list.splice(existingIndex, 1, transaction)
     } else {
@@ -327,7 +340,7 @@ export const useTransactionStore = defineStore('transaction', () => {
           event: '*',
           schema: 'public',
           table: 'transactions',
-          filter
+          filter,
         },
         (payload) => {
           console.log('[TransactionStore] Realtime event:', payload)
@@ -336,9 +349,9 @@ export const useTransactionStore = defineStore('transaction', () => {
       )
     }
 
-  // Listen separately for giver (seller) and receiver (buyer) roles
-  registerListener(`giver_id=eq.${userId}`)
-  registerListener(`receiver_id=eq.${userId}`)
+    // Listen separately for giver (seller) and receiver (buyer) roles
+    registerListener(`giver_id=eq.${userId}`)
+    registerListener(`receiver_id=eq.${userId}`)
 
     realtimeChannel.value = channel.subscribe((status) => {
       console.log('[TransactionStore] Realtime status:', status)
@@ -361,7 +374,7 @@ export const useTransactionStore = defineStore('transaction', () => {
       eventType,
       transactionId: newTransaction?.transaction_id ?? oldTransaction?.transaction_id,
       oldStatus: oldTransaction?.status,
-      newStatus: newTransaction?.status
+      newStatus: newTransaction?.status,
     })
 
     try {
@@ -380,12 +393,14 @@ export const useTransactionStore = defineStore('transaction', () => {
           fetchTransactionBucket('confirming', role)
             .then(() => {
               // Find the transaction in the refreshed bucket
-              const fullTransaction = confirming[role].find(t => t.transaction_id === transaction.transaction_id)
+              const fullTransaction = confirming[role].find(
+                (t) => t.transaction_id === transaction.transaction_id
+              )
               if (fullTransaction) {
                 realtimeCallbacks.onTransactionReceived?.(fullTransaction)
               }
             })
-            .catch(err => {
+            .catch((err) => {
               console.error('[TransactionStore] Failed to fetch full transaction after insert', err)
               // Fallback: use basic transaction data
               realtimeCallbacks.onTransactionReceived?.(transaction)
@@ -409,7 +424,7 @@ export const useTransactionStore = defineStore('transaction', () => {
           transactionId,
           oldStatus,
           newStatus,
-          role
+          role,
         })
 
         if (!transactionId) {
@@ -424,12 +439,14 @@ export const useTransactionStore = defineStore('transaction', () => {
             // Fetch fresh data and trigger callback with complete info
             fetchTransactionBucket('confirming', role)
               .then(() => {
-                const fullTransaction = confirming[role].find(t => t.transaction_id === transactionId)
+                const fullTransaction = confirming[role].find(
+                  (t) => t.transaction_id === transactionId
+                )
                 if (fullTransaction) {
                   realtimeCallbacks.onTransactionReceived?.(fullTransaction)
                 }
               })
-              .catch(err => {
+              .catch((err) => {
                 console.error('[TransactionStore] Failed to fetch full transaction', err)
                 realtimeCallbacks.onTransactionReceived?.(transaction)
               })
@@ -442,29 +459,27 @@ export const useTransactionStore = defineStore('transaction', () => {
         // Handle status transitions
         if (oldStatus === 'confirming' && newStatus === 'pending') {
           // Move from confirming to pending
-          const moved = moveTransaction(
-            transactionId,
-            confirming,
-            pending,
-            role,
-            'pending'
-          )
+          const moved = moveTransaction(transactionId, confirming, pending, role, 'pending')
           console.log('[TransactionStore] Transaction accepted (confirming → pending)', {
             moved,
             role,
-            willShowToast: moved && role === 'giver'
+            willShowToast: moved && role === 'giver',
           })
           if (moved && role === 'giver') {
             // Fetch fresh data to get complete transaction info
             fetchTransactionBucket('pending', role)
               .then(() => {
-                const fullTransaction = pending[role].find(t => t.transaction_id === transactionId)
-                console.log('[TransactionStore] Triggering onTransactionAccepted callback', { fullTransaction })
+                const fullTransaction = pending[role].find(
+                  (t) => t.transaction_id === transactionId
+                )
+                console.log('[TransactionStore] Triggering onTransactionAccepted callback', {
+                  fullTransaction,
+                })
                 if (fullTransaction) {
                   realtimeCallbacks.onTransactionAccepted?.(fullTransaction)
                 }
               })
-              .catch(err => {
+              .catch((err) => {
                 console.error('[TransactionStore] Failed to fetch full transaction', err)
                 realtimeCallbacks.onTransactionAccepted?.(transaction)
               })
@@ -482,7 +497,7 @@ export const useTransactionStore = defineStore('transaction', () => {
             transactionId,
             wasInConfirming,
             isInPending,
-            role
+            role,
           })
 
           // If not in pending bucket yet, this is a new acceptance
@@ -496,45 +511,44 @@ export const useTransactionStore = defineStore('transaction', () => {
             // Fetch fresh data and show toast
             fetchTransactionBucket('pending', role)
               .then(() => {
-                const fullTransaction = pending[role].find(t => t.transaction_id === transactionId)
-                console.log('[TransactionStore] Triggering onTransactionAccepted callback (late arrival)', { fullTransaction })
+                const fullTransaction = pending[role].find(
+                  (t) => t.transaction_id === transactionId
+                )
+                console.log(
+                  '[TransactionStore] Triggering onTransactionAccepted callback (late arrival)',
+                  { fullTransaction }
+                )
                 if (fullTransaction) {
                   realtimeCallbacks.onTransactionAccepted?.(fullTransaction)
                 }
               })
-              .catch(err => {
+              .catch((err) => {
                 console.error('[TransactionStore] Failed to fetch full transaction', err)
               })
           } else {
             // Just a regular update, refresh the bucket
             queueRealtimeRefresh('realtime-update-pending', 'pending', role)
           }
-        }
-        else if (newStatus === 'completed') {
+        } else if (newStatus === 'completed') {
           // Move to completed
-          const moved = moveTransaction(
-            transactionId,
-            pending,
-            completed,
-            role,
-            'completed'
-          )
+          const moved = moveTransaction(transactionId, pending, completed, role, 'completed')
           if (moved) {
             // Fetch fresh data to get complete transaction info
             fetchTransactionBucket('completed', role)
               .then(() => {
-                const fullTransaction = completed[role].find(t => t.transaction_id === transactionId)
+                const fullTransaction = completed[role].find(
+                  (t) => t.transaction_id === transactionId
+                )
                 if (fullTransaction) {
                   realtimeCallbacks.onTransactionCompleted?.(fullTransaction)
                 }
               })
-              .catch(err => {
+              .catch((err) => {
                 console.error('[TransactionStore] Failed to fetch full transaction', err)
                 realtimeCallbacks.onTransactionCompleted?.(transaction)
               })
           }
-        }
-        else if (newStatus === 'rejected') {
+        } else if (newStatus === 'rejected') {
           // Remove from confirming
           const list = confirming[role]
           const index = findIndex(confirming, role, transaction.transaction_id)
@@ -547,14 +561,13 @@ export const useTransactionStore = defineStore('transaction', () => {
             // Refresh confirming bucket for this role (transaction removed)
             queueRealtimeRefresh('realtime-update-rejected', 'confirming', role)
           }
-        }
-        else if (newStatus === 'cancelled') {
+        } else if (newStatus === 'cancelled') {
           // Find and remove transaction, keeping the full data
           let removedTransaction = null
           for (const bucket of [confirming, pending]) {
             const index = findIndex(bucket, role, transactionId)
             if (index !== -1) {
-              [removedTransaction] = bucket[role].splice(index, 1)
+              ;[removedTransaction] = bucket[role].splice(index, 1)
               break
             }
           }
@@ -564,17 +577,21 @@ export const useTransactionStore = defineStore('transaction', () => {
             queueRealtimeRefresh('realtime-update-cancelled')
           }
         }
-      }
-      else if (eventType === 'DELETE') {
+      } else if (eventType === 'DELETE') {
         const transactionId = oldTransaction?.transaction_id
-        const role = oldTransaction?.giver_id === userId
-          ? 'giver'
-          : oldTransaction?.receiver_id === userId
-            ? 'receiver'
-            : null
+        const role =
+          oldTransaction?.giver_id === userId
+            ? 'giver'
+            : oldTransaction?.receiver_id === userId
+              ? 'receiver'
+              : null
 
         if (transactionId && role) {
-          const removed = removeTransactionFromBuckets(transactionId, role, [confirming, pending, completed])
+          const removed = removeTransactionFromBuckets(transactionId, role, [
+            confirming,
+            pending,
+            completed,
+          ])
           if (removed) {
             // Could be in any bucket, do full refresh for safety
             queueRealtimeRefresh('realtime-delete')
@@ -630,6 +647,6 @@ export const useTransactionStore = defineStore('transaction', () => {
     getTransactionByItem,
     startRealtime,
     stopRealtime,
-    setRealtimeCallbacks
+    setRealtimeCallbacks,
   }
 })

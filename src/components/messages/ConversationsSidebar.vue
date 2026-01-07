@@ -6,12 +6,7 @@
 
     <div class="search-bar">
       <i class="bi bi-search"></i>
-      <input
-        v-model="searchModel"
-        type="text"
-        placeholder="搜尋對話..."
-        class="search-input"
-      />
+      <input v-model="searchModel" type="text" placeholder="搜尋對話..." class="search-input" />
     </div>
 
     <div class="conversations-list">
@@ -62,276 +57,276 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+  import { computed } from 'vue'
 
-const props = defineProps({
-  loading: {
-    type: Boolean,
-    default: false
-  },
-  conversations: {
-    type: Array,
-    default: () => []
-  },
-  selectedId: {
-    type: [Number, String],
-    default: null
-  },
-  searchQuery: {
-    type: String,
-    default: ''
-  },
-  mobileHidden: {
-    type: Boolean,
-    default: false
+  const props = defineProps({
+    loading: {
+      type: Boolean,
+      default: false,
+    },
+    conversations: {
+      type: Array,
+      default: () => [],
+    },
+    selectedId: {
+      type: [Number, String],
+      default: null,
+    },
+    searchQuery: {
+      type: String,
+      default: '',
+    },
+    mobileHidden: {
+      type: Boolean,
+      default: false,
+    },
+  })
+
+  const emit = defineEmits(['select', 'update:searchQuery'])
+
+  const searchModel = computed({
+    get: () => props.searchQuery,
+    set: (value) => emit('update:searchQuery', value),
+  })
+
+  function handleSelect(conversation) {
+    emit('select', conversation)
   }
-});
-
-const emit = defineEmits(['select', 'update:searchQuery']);
-
-const searchModel = computed({
-  get: () => props.searchQuery,
-  set: value => emit('update:searchQuery', value)
-});
-
-function handleSelect(conversation) {
-  emit('select', conversation);
-}
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.conversations-sidebar {
-  width: 380px;
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e0e0e0;
-  height: 70px;
-
-  .sidebar-title {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: #1e1e1e;
-    margin: 0;
-  }
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #e0e0e0;
-
-  i {
-    font-size: 16px;
-    color: #999;
+  .conversations-sidebar {
+    width: 380px;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
-  .search-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #1e1e1e;
-    outline: none;
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    height: 70px;
 
-    &::placeholder {
+    .sidebar-title {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e1e1e;
+      margin: 0;
+    }
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e0e0e0;
+
+    i {
+      font-size: 16px;
       color: #999;
     }
-  }
-}
 
-.conversations-list {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  display: flex;
-  flex-direction: column;
-}
+    .search-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #1e1e1e;
+      outline: none;
 
-.conversation-item {
-  display: flex;
-  gap: 12px;
-  padding: 16px 24px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-bottom: 1px solid #f0f0f0;
-
-  &:hover {
-    background: #f9f9f9;
+      &::placeholder {
+        color: #999;
+      }
+    }
   }
 
-  &.active {
-    background: #f0faf8;
-    border-left: 3px solid $primary;
-  }
-}
-
-.conversation-list-move {
-  transition: transform 0.4s ease;
-}
-
-.conversation-list-enter-active,
-.conversation-list-leave-active {
-  transition: all 0.4s ease;
-}
-
-.conversation-list-enter-from,
-.conversation-list-leave-to {
-  opacity: 0;
-  transform: translateX(-20px);
-}
-
-.conversation-list-leave-active {
-  position: absolute;
-}
-
-.conv-avatar {
-  position: relative;
-  flex-shrink: 0;
-  cursor: pointer;
-  transition: opacity 0.3s;
-
-  .avatar-image {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
+  .conversations-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    display: flex;
+    flex-direction: column;
   }
 
-  .online-indicator {
+  .conversation-item {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:hover {
+      background: #f9f9f9;
+    }
+
+    &.active {
+      background: #f0faf8;
+      border-left: 3px solid $primary;
+    }
+  }
+
+  .conversation-list-move {
+    transition: transform 0.4s ease;
+  }
+
+  .conversation-list-enter-active,
+  .conversation-list-leave-active {
+    transition: all 0.4s ease;
+  }
+
+  .conversation-list-enter-from,
+  .conversation-list-leave-to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  .conversation-list-leave-active {
     position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 12px;
-    height: 12px;
-    background: #00b894;
-    border: 2px solid white;
-    border-radius: 50%;
   }
-}
 
-.conv-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.conv-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-
-  .conv-name {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin: 0;
+  .conv-avatar {
+    position: relative;
+    flex-shrink: 0;
     cursor: pointer;
     transition: opacity 0.3s;
+
+    .avatar-image {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .online-indicator {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      background: #00b894;
+      border: 2px solid white;
+      border-radius: 50%;
+    }
   }
 
-  .conv-time {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 12px;
-    color: #999;
-    flex-shrink: 0;
-  }
-}
-
-.conv-preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-
-  .preview-text {
+  .conv-content {
     flex: 1;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #666;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
   }
 
-  .unread-badge {
-    display: inline-flex;
+  .conv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+
+    .conv-name {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin: 0;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+
+    .conv-time {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 12px;
+      color: #999;
+      flex-shrink: 0;
+    }
+  }
+
+  .conv-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    .preview-text {
+      flex: 1;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #666;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .unread-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      background: $primary;
+      border-radius: 10px;
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    background: $primary;
-    border-radius: 10px;
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    color: white;
-    flex-shrink: 0;
-  }
-}
+    padding: 60px 20px;
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
+    i {
+      font-size: 60px;
+      color: #e0e0e0;
+      margin-bottom: 16px;
+    }
 
-  i {
-    font-size: 60px;
-    color: #e0e0e0;
-    margin-bottom: 16px;
-  }
-
-  p {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 14px;
-    color: #999;
-    margin: 0;
-  }
-}
-
-@media (max-width: 991.98px) {
-  .conversations-sidebar {
-    width: 320px;
-
-    &.mobile-hidden {
-      display: none;
+    p {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 14px;
+      color: #999;
+      margin: 0;
     }
   }
-}
 
-@media (max-width: 575.98px) {
-  .conversations-sidebar {
-    width: 100%;
-    border-right: none;
+  @media (max-width: 991.98px) {
+    .conversations-sidebar {
+      width: 320px;
 
-    &.mobile-hidden {
-      display: none;
+      &.mobile-hidden {
+        display: none;
+      }
     }
   }
-}
+
+  @media (max-width: 575.98px) {
+    .conversations-sidebar {
+      width: 100%;
+      border-right: none;
+
+      &.mobile-hidden {
+        display: none;
+      }
+    }
+  }
 </style>

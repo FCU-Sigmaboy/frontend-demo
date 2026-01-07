@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'
 
 // ===================================================================
 // ### 交易 API (Transaction APIs) - 整合版
@@ -26,10 +26,10 @@ import { supabase } from '@/lib/supabase';
 export async function initiateTransaction(itemId, receiverId) {
   const { data, error } = await supabase.rpc('initiate_transaction', {
     p_item_id: itemId,
-    p_receiver_id: receiverId
-  });
-  if (error) throw new Error(`發起交易失敗: ${error.message}`);
-  return data;
+    p_receiver_id: receiverId,
+  })
+  if (error) throw new Error(`發起交易失敗: ${error.message}`)
+  return data
 }
 
 /**
@@ -41,10 +41,10 @@ export async function initiateTransaction(itemId, receiverId) {
 export async function getMyTransactionsByStatus(status, role) {
   const { data, error } = await supabase.rpc('get_my_transactions_by_status', {
     p_status: status,
-    p_role: role
-  });
-  if (error) throw new Error(`查詢交易列表失敗: ${error.message}`);
-  return data;
+    p_role: role,
+  })
+  if (error) throw new Error(`查詢交易列表失敗: ${error.message}`)
+  return data
 }
 
 /**
@@ -56,10 +56,10 @@ export async function getMyTransactionsByStatus(status, role) {
 export async function updateGiverNote(transactionId, note) {
   const { data, error } = await supabase.rpc('update_giver_note', {
     p_transaction_id: transactionId,
-    p_note: note
-  });
-  if (error) throw new Error(`更新備註失敗: ${error.message}`);
-  return data;
+    p_note: note,
+  })
+  if (error) throw new Error(`更新備註失敗: ${error.message}`)
+  return data
 }
 
 /**
@@ -72,10 +72,10 @@ export async function updateGiverNote(transactionId, note) {
 export async function buyerConfirmTransaction(transactionId, note) {
   const { data, error } = await supabase.rpc('buyer_confirm_transaction', {
     p_transaction_id: transactionId,
-    p_note: note
-  });
-  if (error) throw new Error(`買家確認失敗: ${error.message}`);
-  return data;
+    p_note: note,
+  })
+  if (error) throw new Error(`買家確認失敗: ${error.message}`)
+  return data
 }
 
 /**
@@ -87,10 +87,10 @@ export async function buyerConfirmTransaction(transactionId, note) {
  */
 export async function cancelTransaction(transactionId) {
   const { data, error } = await supabase.rpc('cancel_transaction', {
-    p_transaction_id: transactionId
-  });
-  if (error) throw new Error(`取消交易失敗: ${error.message}`);
-  return data;
+    p_transaction_id: transactionId,
+  })
+  if (error) throw new Error(`取消交易失敗: ${error.message}`)
+  return data
 }
 
 /**
@@ -101,24 +101,26 @@ export async function cancelTransaction(transactionId) {
  */
 export async function finalizeTransactionWithCode(transactionId, code) {
   // 1. 檢查使用者是否登入 (RPC 也會檢查)
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   // 2. 準備 RPC 參數
   const rpcParams = {
     p_transaction_id: transactionId,
-    p_confirmation_code: code
-  };
+    p_confirmation_code: code,
+  }
 
   // 3. 呼叫 RPC
-  const { data, error } = await supabase.rpc('finalize_transaction_with_code', rpcParams);
+  const { data, error } = await supabase.rpc('finalize_transaction_with_code', rpcParams)
 
   // 4. 錯誤處理 (會捕捉 RPC 的 RAISE EXCEPTION)
   if (error) {
-    console.error(`Supabase 完成交易 #${transactionId} 失敗:`, error);
-    throw new Error(error.message); // (例如 "確認碼錯誤")
+    console.error(`Supabase 完成交易 #${transactionId} 失敗:`, error)
+    throw new Error(error.message) // (例如 "確認碼錯誤")
   }
-  return data;
+  return data
 }
 
 // ===========================================
@@ -131,8 +133,10 @@ export async function finalizeTransactionWithCode(transactionId, code) {
  * @returns {Promise<object>} - Created offer with example data
  */
 export async function createOffer(offerData) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   // For now, return example data until backend is ready
   const exampleOffer = {
@@ -142,13 +146,13 @@ export async function createOffer(offerData) {
     offered_by: offerData.offered_by,
     status: 'pending',
     created_at: new Date().toISOString(),
-    responded_at: null
-  };
+    responded_at: null,
+  }
 
-  console.log('createOffer called with:', offerData);
-  console.log('Returning example offer:', exampleOffer);
+  console.log('createOffer called with:', offerData)
+  console.log('Returning example offer:', exampleOffer)
 
-  return exampleOffer;
+  return exampleOffer
 }
 
 /**
@@ -159,26 +163,31 @@ export async function createOffer(offerData) {
  * @returns {Promise<object>} - Updated offer
  */
 export async function respondToOffer(offerId, action, counterAmount = null) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const exampleResponse = {
     id: offerId,
     status: action === 'counter' ? 'countered' : action + 'd',
     responded_at: new Date().toISOString(),
-    counter_offer: action === 'counter' ? {
-      id: `offer_${Date.now()}`,
-      amount: counterAmount,
-      offered_by: 'seller',
-      status: 'pending',
-      created_at: new Date().toISOString()
-    } : null
-  };
+    counter_offer:
+      action === 'counter'
+        ? {
+            id: `offer_${Date.now()}`,
+            amount: counterAmount,
+            offered_by: 'seller',
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          }
+        : null,
+  }
 
-  console.log('respondToOffer called with:', { offerId, action, counterAmount });
-  console.log('Returning example response:', exampleResponse);
+  console.log('respondToOffer called with:', { offerId, action, counterAmount })
+  console.log('Returning example response:', exampleResponse)
 
-  return exampleResponse;
+  return exampleResponse
 }
 
 /**
@@ -187,8 +196,10 @@ export async function respondToOffer(offerId, action, counterAmount = null) {
  * @returns {Promise<object>} - Created order request
  */
 export async function createOrderRequest(orderData) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const exampleOrderRequest = {
     id: `order_${Date.now()}`,
@@ -196,13 +207,13 @@ export async function createOrderRequest(orderData) {
     item_id: orderData.item_id,
     agreed_price: orderData.agreed_price,
     status: 'pending',
-    created_at: new Date().toISOString()
-  };
+    created_at: new Date().toISOString(),
+  }
 
-  console.log('createOrderRequest called with:', orderData);
-  console.log('Returning example order request:', exampleOrderRequest);
+  console.log('createOrderRequest called with:', orderData)
+  console.log('Returning example order request:', exampleOrderRequest)
 
-  return exampleOrderRequest;
+  return exampleOrderRequest
 }
 
 /**
@@ -212,19 +223,21 @@ export async function createOrderRequest(orderData) {
  * @returns {Promise<object>} - Updated order request
  */
 export async function respondToOrderRequest(orderId, action) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const exampleResponse = {
     id: orderId,
     status: action === 'accept' ? 'accepted' : 'declined',
-    responded_at: new Date().toISOString()
-  };
+    responded_at: new Date().toISOString(),
+  }
 
-  console.log('respondToOrderRequest called with:', { orderId, action });
-  console.log('Returning example response:', exampleResponse);
+  console.log('respondToOrderRequest called with:', { orderId, action })
+  console.log('Returning example response:', exampleResponse)
 
-  return exampleResponse;
+  return exampleResponse
 }
 
 /**
@@ -233,8 +246,10 @@ export async function respondToOrderRequest(orderId, action) {
  * @returns {Promise<object>} - Transaction details with item and user balance
  */
 export async function getTransactionConfirmation(conversationId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   // Example data for testing
   const exampleData = {
@@ -243,25 +258,25 @@ export async function getTransactionConfirmation(conversationId) {
       conversation_id: conversationId,
       item_id: 'item_123',
       agreed_price: 450,
-      status: 'buyer_confirmed'
+      status: 'buyer_confirmed',
     },
     item: {
       id: 'item_123',
       title: 'IKEA 檯燈',
       cover_image_url: 'https://placehold.co/130x130/6fb8a5/ffffff?text=Lamp',
       location: '台北市北投區',
-      price: 500
+      price: 500,
     },
     user: {
       id: user.id,
-      balance: 500
-    }
-  };
+      balance: 500,
+    },
+  }
 
-  console.log('getTransactionConfirmation called with:', conversationId);
-  console.log('Returning example data:', exampleData);
+  console.log('getTransactionConfirmation called with:', conversationId)
+  console.log('Returning example data:', exampleData)
 
-  return exampleData;
+  return exampleData
 }
 
 /**
@@ -271,21 +286,23 @@ export async function getTransactionConfirmation(conversationId) {
  * @returns {Promise<object>} - Updated transaction
  */
 export async function confirmTransaction(transactionId, deliveryData) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const exampleResponse = {
     id: transactionId,
     status: 'buyer_confirmed',
     delivery_location: deliveryData.delivery_location,
     delivery_notes: deliveryData.delivery_notes,
-    buyer_confirmed_at: new Date().toISOString()
-  };
+    buyer_confirmed_at: new Date().toISOString(),
+  }
 
-  console.log('confirmTransaction called with:', { transactionId, deliveryData });
-  console.log('Returning example response:', exampleResponse);
+  console.log('confirmTransaction called with:', { transactionId, deliveryData })
+  console.log('Returning example response:', exampleResponse)
 
-  return exampleResponse;
+  return exampleResponse
 }
 
 /**
@@ -294,8 +311,10 @@ export async function confirmTransaction(transactionId, deliveryData) {
  * @returns {Promise<object>} - Completed transaction with new balances
  */
 export async function completeTransaction(transactionId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const exampleResponse = {
     success: true,
@@ -304,13 +323,13 @@ export async function completeTransaction(transactionId) {
     status: 'completed',
     completed_at: new Date().toISOString(),
     buyer_new_balance: 50,
-    seller_new_balance: 1450
-  };
+    seller_new_balance: 1450,
+  }
 
-  console.log('completeTransaction called with:', transactionId);
-  console.log('Returning example response:', exampleResponse);
+  console.log('completeTransaction called with:', transactionId)
+  console.log('Returning example response:', exampleResponse)
 
-  return exampleResponse;
+  return exampleResponse
 }
 
 /**
@@ -319,8 +338,10 @@ export async function completeTransaction(transactionId) {
  * @returns {Promise<Array>} - List of transactions
  */
 export async function getMyTransactions(filters = {}) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   // Example data
   const exampleTransactions = [
@@ -333,13 +354,13 @@ export async function getMyTransactions(filters = {}) {
       item: {
         id: 'item_1',
         title: 'IKEA 檯燈',
-        image: 'https://placehold.co/80x80/6fb8a5/ffffff?text=Lamp'
+        image: 'https://placehold.co/80x80/6fb8a5/ffffff?text=Lamp',
       },
       otherParty: {
         id: 'user_2',
-        name: 'Joseph'
+        name: 'Joseph',
       },
-      review: null
+      review: null,
     },
     {
       id: 'trans_2',
@@ -350,23 +371,23 @@ export async function getMyTransactions(filters = {}) {
       item: {
         id: 'item_2',
         title: '登山背包',
-        image: 'https://placehold.co/80x80/5a9d8c/ffffff?text=Bag'
+        image: 'https://placehold.co/80x80/5a9d8c/ffffff?text=Bag',
       },
       otherParty: {
         id: 'user_3',
-        name: 'Amber'
+        name: 'Amber',
       },
       review: {
         rating: 5,
-        comment: '很棒的買家'
-      }
-    }
-  ];
+        comment: '很棒的買家',
+      },
+    },
+  ]
 
-  console.log('getMyTransactions called with filters:', filters);
-  console.log('Returning example transactions:', exampleTransactions);
+  console.log('getMyTransactions called with filters:', filters)
+  console.log('Returning example transactions:', exampleTransactions)
 
-  return exampleTransactions;
+  return exampleTransactions
 }
 
 /**
@@ -375,8 +396,10 @@ export async function getMyTransactions(filters = {}) {
  * @returns {Promise<object>} - Transaction details
  */
 export async function getTransactionById(transactionId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   const exampleTransaction = {
     id: transactionId,
@@ -391,23 +414,23 @@ export async function getTransactionById(transactionId) {
       id: 'item_1',
       title: 'IKEA 檯燈',
       image: 'https://placehold.co/130x130/6fb8a5/ffffff?text=Lamp',
-      price: 500
+      price: 500,
     },
     buyer: {
       id: 'user_1',
-      name: '您'
+      name: '您',
     },
     seller: {
       id: 'user_2',
-      name: 'Joseph'
+      name: 'Joseph',
     },
-    review: null
-  };
+    review: null,
+  }
 
-  console.log('getTransactionById called with:', transactionId);
-  console.log('Returning example transaction:', exampleTransaction);
+  console.log('getTransactionById called with:', transactionId)
+  console.log('Returning example transaction:', exampleTransaction)
 
-  return exampleTransaction;
+  return exampleTransaction
 }
 
 /**
@@ -417,12 +440,14 @@ export async function getTransactionById(transactionId) {
  * @deprecated 請使用 reviewAPI.js 的函式
  */
 export async function getReviewByTransaction(transactionId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('使用者未登入');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('使用者未登入')
 
   // Return null if no review exists
-  console.log('getReviewByTransaction called with:', transactionId);
-  console.log('Returning null (no review)');
+  console.log('getReviewByTransaction called with:', transactionId)
+  console.log('Returning null (no review)')
 
-  return null;
+  return null
 }

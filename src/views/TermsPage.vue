@@ -5,9 +5,7 @@
     <div class="content-wrapper">
       <BContainer>
         <!-- Breadcrumb -->
-        <nav class="breadcrumb-nav">
-          <router-link to="/">首頁</router-link> &gt; 服務條款
-        </nav>
+        <nav class="breadcrumb-nav"><router-link to="/">首頁</router-link> &gt; 服務條款</nav>
 
         <!-- Page Title -->
         <div class="page-header">
@@ -30,9 +28,7 @@
           <section class="terms-section">
             <h2>2. 使用者帳號與責任</h2>
             <h3>2.1 帳號註冊</h3>
-            <p>
-              本平台皆使用 Google 帳號登入。
-            </p>
+            <p>本平台皆使用 Google 帳號登入。</p>
             <h3>2.2 使用者責任</h3>
             <ul>
               <li>確保上架物品資訊真實、準確，不得發布虛假或誤導性內容</li>
@@ -56,17 +52,13 @@
               點數僅可用於本平台內的物品交易，不得轉讓、販售或以任何方式兌換成真實貨幣。本平台保留調整點數價值、使用規則的權利。
             </p>
             <h3>3.3 點數有效期</h3>
-            <p>
-              點數無使用期限，自取得之日起永久有效。
-            </p>
+            <p>點數無使用期限，自取得之日起永久有效。</p>
           </section>
 
           <section class="terms-section">
             <h2>4. 物品交易規範</h2>
             <h3>4.1 物品上架</h3>
-            <p>
-              上架物品時，請提供清晰的照片、詳細的描述及所需點數。禁止上架以下物品：
-            </p>
+            <p>上架物品時，請提供清晰的照片、詳細的描述及所需點數。禁止上架以下物品：</p>
             <ul>
               <li>侵犯智慧財產權的物品</li>
               <li>食品、藥品或其他有安全疑慮的物品</li>
@@ -118,9 +110,7 @@
 
           <section class="terms-section">
             <h2>9. 違規處理</h2>
-            <p>
-              若使用者違反本服務條款或相關法律，本平台有權採取以下措施：
-            </p>
+            <p>若使用者違反本服務條款或相關法律，本平台有權採取以下措施：</p>
             <ul>
               <li>移除違規物品或內容</li>
               <li>暫停或終止使用者帳號</li>
@@ -158,201 +148,201 @@
 </template>
 
 <script setup>
-import { BContainer } from 'bootstrap-vue-next';
-import AppHeader from '../components/AppHeader.vue';
-import AppFooter from '../components/AppFooter.vue';
+  import { BContainer } from 'bootstrap-vue-next'
+  import AppHeader from '../components/AppHeader.vue'
+  import AppFooter from '../components/AppFooter.vue'
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables';
+  @import '@/styles/variables';
 
-.terms-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f9f9f9;
-}
-
-.content-wrapper {
-  flex: 1;
-  padding: 40px 0 60px;
-}
-
-.breadcrumb-nav {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 30px;
-
-  a {
-    color: $primary;
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-.page-header {
-  text-align: center;
-  margin-bottom: 50px;
-}
-
-.page-title {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 36px;
-  font-weight: 700;
-  color: #1e1e1e;
-  margin-bottom: 12px;
-}
-
-.last-updated {
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  color: #888;
-}
-
-.terms-content {
-  background-color: white;
-  border-radius: 12px;
-  padding: 50px 60px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.terms-section {
-  margin-bottom: 40px;
-
-  &:last-child {
-    margin-bottom: 0;
+  .terms-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f9f9f9;
   }
 
-  h2 {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 24px;
-    font-weight: 600;
-    color: #1e1e1e;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid $primary;
+  .content-wrapper {
+    flex: 1;
+    padding: 40px 0 60px;
   }
 
-  h3 {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 20px;
-    font-weight: 600;
-    color: #333;
-    margin: 24px 0 16px;
-  }
-
-  p {
+  .breadcrumb-nav {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 16px;
-    line-height: 1.8;
-    color: #555;
-    margin-bottom: 16px;
+    color: #666;
+    margin-bottom: 30px;
+
+    a {
+      color: $primary;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
-  ul {
-    margin: 16px 0;
-    padding-left: 28px;
+  .page-header {
+    text-align: center;
+    margin-bottom: 50px;
+  }
 
-    li {
+  .page-title {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin-bottom: 12px;
+  }
+
+  .last-updated {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    color: #888;
+  }
+
+  .terms-content {
+    background-color: white;
+    border-radius: 12px;
+    padding: 50px 60px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .terms-section {
+    margin-bottom: 40px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid $primary;
+    }
+
+    h3 {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin: 24px 0 16px;
+    }
+
+    p {
       font-family: 'Noto Sans TC', sans-serif;
       font-size: 16px;
       line-height: 1.8;
       color: #555;
-      margin-bottom: 10px;
-    }
-  }
-}
-
-@media (max-width: 991.98px) {
-  .content-wrapper {
-    padding: 30px 0 50px;
-  }
-
-  .breadcrumb-nav {
-    font-size: 15px;
-    margin-bottom: 25px;
-  }
-
-  .page-header {
-    margin-bottom: 40px;
-  }
-
-  .page-title {
-    font-size: 32px;
-  }
-
-  .terms-content {
-    padding: 40px 45px;
-  }
-
-  .terms-section {
-    h2 {
-      font-size: 22px;
-    }
-
-    h3 {
-      font-size: 19px;
-    }
-
-    p,
-    ul li {
-      font-size: 15px;
-    }
-  }
-}
-
-@media (max-width: 575.98px) {
-  .content-wrapper {
-    padding: 20px 0 40px;
-  }
-
-  .breadcrumb-nav {
-    font-size: 14px;
-    margin-bottom: 20px;
-  }
-
-  .page-header {
-    margin-bottom: 30px;
-  }
-
-  .page-title {
-    font-size: 26px;
-  }
-
-  .last-updated {
-    font-size: 13px;
-  }
-
-  .terms-content {
-    padding: 30px 25px;
-    border-radius: 8px;
-  }
-
-  .terms-section {
-    margin-bottom: 35px;
-
-    h2 {
-      font-size: 20px;
-      margin-bottom: 18px;
-    }
-
-    h3 {
-      font-size: 18px;
-      margin: 20px 0 14px;
-    }
-
-    p,
-    ul li {
-      font-size: 14px;
+      margin-bottom: 16px;
     }
 
     ul {
-      padding-left: 24px;
+      margin: 16px 0;
+      padding-left: 28px;
+
+      li {
+        font-family: 'Noto Sans TC', sans-serif;
+        font-size: 16px;
+        line-height: 1.8;
+        color: #555;
+        margin-bottom: 10px;
+      }
     }
   }
-}
+
+  @media (max-width: 991.98px) {
+    .content-wrapper {
+      padding: 30px 0 50px;
+    }
+
+    .breadcrumb-nav {
+      font-size: 15px;
+      margin-bottom: 25px;
+    }
+
+    .page-header {
+      margin-bottom: 40px;
+    }
+
+    .page-title {
+      font-size: 32px;
+    }
+
+    .terms-content {
+      padding: 40px 45px;
+    }
+
+    .terms-section {
+      h2 {
+        font-size: 22px;
+      }
+
+      h3 {
+        font-size: 19px;
+      }
+
+      p,
+      ul li {
+        font-size: 15px;
+      }
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .content-wrapper {
+      padding: 20px 0 40px;
+    }
+
+    .breadcrumb-nav {
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .page-header {
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      font-size: 26px;
+    }
+
+    .last-updated {
+      font-size: 13px;
+    }
+
+    .terms-content {
+      padding: 30px 25px;
+      border-radius: 8px;
+    }
+
+    .terms-section {
+      margin-bottom: 35px;
+
+      h2 {
+        font-size: 20px;
+        margin-bottom: 18px;
+      }
+
+      h3 {
+        font-size: 18px;
+        margin: 20px 0 14px;
+      }
+
+      p,
+      ul li {
+        font-size: 14px;
+      }
+
+      ul {
+        padding-left: 24px;
+      }
+    }
+  }
 </style>

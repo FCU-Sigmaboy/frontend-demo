@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
  */
 export async function getUserBadgesWithProgress(userId = null) {
   const { data, error } = await supabase.rpc('get_user_badges_with_progress', {
-    p_user_id: userId
+    p_user_id: userId,
   })
 
   if (error) {
@@ -23,7 +23,9 @@ export async function getUserBadgesWithProgress(userId = null) {
  * @returns {Promise<object>} - { newly_earned_count, total_points_awarded, badges }
  */
 export async function manuallyCheckBadges() {
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) throw new Error('使用者未登入')
 
   const { data, error } = await supabase.rpc('manually_check_badges')
@@ -41,7 +43,9 @@ export async function manuallyCheckBadges() {
  * @returns {Promise<object>} - 簽到結果
  */
 export async function dailySignIn() {
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) throw new Error('使用者未登入')
 
   const { data, error } = await supabase.rpc('daily_check_in')
