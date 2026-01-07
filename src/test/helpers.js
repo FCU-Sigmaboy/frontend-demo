@@ -1,5 +1,5 @@
 // src/test/helpers.js
-// Sprint 1: 基礎輔助函數
+// Sprint 3: 擴充 Store 測試輔助函數
 import { createPinia, setActivePinia } from 'pinia'
 
 /**
@@ -55,4 +55,21 @@ export function createErrorResponse(message) {
  */
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * 建立模擬的交易資料
+ * @param {Object} overrides - 覆寫的屬性
+ * @returns {Object} 模擬的交易物件
+ */
+export function createMockTransaction(overrides = {}) {
+  return {
+    transaction_id: 'txn-123',
+    item_id: 1,
+    status: 'pending',
+    giver_id: 'user-giver',
+    receiver_id: 'user-receiver',
+    created_at: new Date().toISOString(),
+    ...overrides,
+  }
 }
