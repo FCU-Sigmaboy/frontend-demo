@@ -119,9 +119,13 @@ describe('Points Store', () => {
       })
 
       it('今日已簽到時應返回 true', () => {
+        // Use fake timers to ensure consistent date across test execution
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2024-06-15T12:00:00+08:00'))
         const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
         pointsStore.profile = createMockPointsProfile({ last_signin_date: today })
         expect(pointsStore.hasSignedInToday).toBe(true)
+        vi.useRealTimers()
       })
 
       it('非今日簽到時應返回 false', () => {
@@ -192,14 +196,28 @@ describe('Points Store', () => {
 
       it('正在載入時不應重複請求', async () => {
         const { getUserPointsProfile } = await import('@/api/pointsAPI')
-        getUserPointsProfile.mockResolvedValue(createMockPointsProfile())
+        // Simulate a pending API request by using a never-resolving promise
+        let resolveFirst
+        getUserPointsProfile.mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolveFirst = resolve
+            })
+        )
 
-        pointsStore.isLoadingProfile = true
+        // Start first fetch
+        const firstFetchPromise = pointsStore.fetchProfile(true)
 
-        const result = await pointsStore.fetchProfile(true)
+        // Attempt second fetch while first is in progress
+        const secondResult = await pointsStore.fetchProfile(true)
 
-        expect(getUserPointsProfile).not.toHaveBeenCalled()
-        expect(result).toBeNull()
+        // Second fetch should return null without calling API again
+        expect(getUserPointsProfile).toHaveBeenCalledTimes(1)
+        expect(secondResult).toBeNull()
+
+        // Clean up: resolve the first promise
+        resolveFirst(createMockPointsProfile())
+        await firstFetchPromise
       })
     })
 
